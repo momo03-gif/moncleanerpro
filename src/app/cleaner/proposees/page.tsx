@@ -1,0 +1,105 @@
+'use client';
+
+import { useState } from 'react';
+import { getProposedMissions } from '@/lib/mockData';
+import { Mission } from '@/lib/types';
+
+const typeLabel: Record<string, string> = {
+  checkout: 'Check-out',
+  checkin: 'Check-in',
+  deep_clean: 'Grand ménage',
+  regular: 'Régulier',
+};
+
+export default function ProposedMissionsPage() {
+  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+  const [declined, setDeclined] = useState<Set<string>>(new Set());
+
+  const missions = getProposedMissions().filter(m => !declined.has(m.id));
+
+  function accept(id: string) {
+    setAccepted(prev => new Set(prev).add(id));
+  }
+
+  function decline(id: string) {
+    setDeclined(prev => new Set(prev).add(id));
+  }
+
+  return (
+    <div className="p-5">
+      <div className="mb-6 pt-2">
+        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Missions proposées</h1>
+        <p className="text-sm mt-1" style={{ color: '#9CA3AF' }}>{missions.length} disponible{missions.length > 1 ? 's' : ''}</p>
+      </div>
+
+      {missions.length === 0 ? (
+        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <p className="text-2xl mb-3">✦</p>
+          <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>Aucune mission disponible</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Revenez plus tard</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {missions.map(m => (
+            <div key={m.id} className="rounded-2xl border overflow-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+              {accepted.has(m.id) && (
+                <div className="px-5 py-2 text-xs font-semibold text-center" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+                  ✓ Mission acceptée
+                </div>
+              )}
+
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{m.property}</h3>
+                    <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>{m.address}</p>
+                  </div>
+                  <span className="text-lg font-bold ml-4 shrink-0" style={{ color: '#C9A84C' }}>{m.price}€</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[
+                    { label: 'Date', value: m.date.split('-').slice(1).join('/') },
+                    { label: 'Heure', value: m.time },
+                    { label: 'Durée', value: `${m.duration}h` },
+                  ].map(s => (
+                    <div key={s.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: '#F8F6F2' }}>
+                      <p className="text-xs" style={{ color: '#A8A09A' }}>{s.label}</p>
+                      <p className="text-sm font-semibold mt-0.5" style={{ color: '#1A1A1A' }}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>{typeLabel[m.type]}</span>
+                  {m.requestedBy && (
+                    <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}>{m.requestedBy}</span>
+                  )}
+                </div>
+
+                {!accepted.has(m.id) && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => decline(m.id)}
+                      className="flex-1 py-3 rounded-xl text-sm font-medium transition-all border"
+                      style={{ borderColor: '#E8E4DC', color: '#7A7068' }}
+                    >
+                      Refuser
+                    </button>
+                    <button
+                      onClick={() => accept(m.id)}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all"
+                      style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}
+                    >
+                      Accepter
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
