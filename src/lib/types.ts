@@ -10,10 +10,14 @@ export interface User {
   rating?: number;
   completedMissions?: number;
   status?: 'available' | 'busy' | 'offline';
+  isActive?: boolean;
+  hourlyRateHotel?: number;
+  rateAirbnb?: number;
 }
 
 export type MissionStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
 export type MissionType = 'checkout' | 'checkin' | 'deep_clean' | 'regular';
+export type MissionSource = 'hotel' | 'airbnb';
 
 export interface Mission {
   id: string;
@@ -26,12 +30,13 @@ export interface Mission {
   cleanerId?: string;
   cleanerName?: string;
   price: number;
+  cleanerGain?: number;
   type: MissionType;
+  source?: MissionSource;
   requestedBy?: string;
   notes?: string;
 }
 
-// Annonce déposée par un hôtel
 export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed';
 export type AnnounceType = 'menage' | 'checkin' | 'checkout' | 'grand_menage';
 
@@ -50,15 +55,25 @@ export interface HotelAnnounce {
   cleanerName?: string;
 }
 
-// Appartement Airbnb géré par l'admin
 export interface Apartment {
   id: string;
   name: string;
   address: string;
-  accessCode: string;
+  portalCode?: string;
+  keyboxCode?: string;
   entryDirectives: string;
   cleanerId?: string;
   cleanerName?: string;
+}
+
+export interface Payment {
+  id: string;
+  cleanerId: string;
+  cleanerName: string;
+  amount: number;
+  missionIds: string[];
+  date: string;
+  month: string;
 }
 
 export interface FinancialEntry {

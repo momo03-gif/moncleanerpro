@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { APARTMENTS, USERS } from '@/lib/mockData';
+import { APARTMENTS, getActiveCleaners } from '@/lib/mockData';
 import { Apartment } from '@/lib/types';
 
-const cleaners = USERS.filter(u => u.role === 'cleaner');
+const cleaners = getActiveCleaners();
 
 const inputStyle = {
   backgroundColor: '#FFFFFF',
@@ -13,21 +13,27 @@ const inputStyle = {
   outline: 'none',
 };
 
+const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '' };
+
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>(APARTMENTS);
   const [showForm, setShowForm] = useState(false);
   const [assignId, setAssignId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
-  const [form, setForm] = useState({ name: '', address: '', accessCode: '', entryDirectives: '' });
+  const [form, setForm] = useState(emptyForm);
 
   function handleAddApartment(e: React.FormEvent) {
     e.preventDefault();
     const newApt: Apartment = {
       id: `ap${Date.now()}`,
-      ...form,
+      name: form.name,
+      address: form.address,
+      portalCode: form.portalCode || undefined,
+      keyboxCode: form.keyboxCode || undefined,
+      entryDirectives: form.entryDirectives,
     };
     setApartments(prev => [...prev, newApt]);
-    setForm({ name: '', address: '', accessCode: '', entryDirectives: '' });
+    setForm(emptyForm);
     setShowForm(false);
   }
 
@@ -64,6 +70,8 @@ export default function AirbnbPage() {
         <form onSubmit={handleAddApartment} className="rounded-2xl border p-6 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>Nouvel appartement</h2>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
+
+            {/* Nom */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Nom</label>
               <input
@@ -77,6 +85,8 @@ export default function AirbnbPage() {
                 onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
               />
             </div>
+
+            {/* Adresse */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Adresse complète</label>
               <input
@@ -90,12 +100,31 @@ export default function AirbnbPage() {
                 onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
               />
             </div>
+
+            {/* Code portail */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Code d'accès</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>
+                Code portail <span className="normal-case font-normal tracking-normal" style={{ color: '#A8A09A' }}>— optionnel</span>
+              </label>
               <input
-                required
-                value={form.accessCode}
-                onChange={e => setForm(p => ({ ...p, accessCode: e.target.value }))}
+                value={form.portalCode}
+                onChange={e => setForm(p => ({ ...p, portalCode: e.target.value }))}
+                placeholder="Ex : 1234A"
+                className="w-full px-4 py-3 rounded-xl text-sm border font-mono"
+                style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
+              />
+            </div>
+
+            {/* Code boîte à clé */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>
+                Code boîte à clé <span className="normal-case font-normal tracking-normal" style={{ color: '#A8A09A' }}>— optionnel</span>
+              </label>
+              <input
+                value={form.keyboxCode}
+                onChange={e => setForm(p => ({ ...p, keyboxCode: e.target.value }))}
                 placeholder="Ex : B#4512"
                 className="w-full px-4 py-3 rounded-xl text-sm border font-mono"
                 style={inputStyle}
@@ -103,13 +132,15 @@ export default function AirbnbPage() {
                 onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
               />
             </div>
-            <div>
+
+            {/* Directives d'entrée */}
+            <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Directives d'entrée</label>
               <input
                 required
                 value={form.entryDirectives}
                 onChange={e => setForm(p => ({ ...p, entryDirectives: e.target.value }))}
-                placeholder="Digicode portail, localisation clés..."
+                placeholder="Instructions pour trouver et accéder au logement..."
                 className="w-full px-4 py-3 rounded-xl text-sm border"
                 style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
@@ -117,6 +148,7 @@ export default function AirbnbPage() {
               />
             </div>
           </div>
+
           <button
             type="submit"
             className="px-6 py-2.5 rounded-xl text-sm font-semibold"
@@ -150,19 +182,31 @@ export default function AirbnbPage() {
               </div>
             </div>
 
-            {/* Codes */}
+            {/* Codes + directives */}
             <div className="px-5 py-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code d'accès</span>
-                <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.accessCode}</span>
-              </div>
+              {apt.portalCode && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code portail</span>
+                  <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
+                    {apt.portalCode}
+                  </span>
+                </div>
+              )}
+              {apt.keyboxCode && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Boîte à clé</span>
+                  <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
+                    {apt.keyboxCode}
+                  </span>
+                </div>
+              )}
               <div className="flex items-start gap-3">
                 <span className="text-xs w-28 shrink-0 mt-0.5" style={{ color: '#A8A09A' }}>Entrée</span>
                 <p className="text-sm leading-snug" style={{ color: '#7A7068' }}>{apt.entryDirectives}</p>
               </div>
             </div>
 
-            {/* Action */}
+            {/* Assign action */}
             <div className="px-5 pb-4">
               {assignId === apt.id ? (
                 <div className="flex gap-2">
