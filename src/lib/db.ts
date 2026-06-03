@@ -15,13 +15,8 @@ export async function loginUser(email: string, password: string): Promise<User |
   if (error || !data) return null;
   if (data.role === 'cleaner' && data.status === 'inactive') return null;
 
-  // Check hotel account status
   if (data.role === 'hotel') {
-    const { data: hotel } = await supabase
-      .from('hotels')
-      .select('status_account')
-      .eq('user_id', data.id)
-      .single();
+    const { data: hotel } = await supabase.from('hotels').select('status_account').eq('user_id', data.id).single();
     if (hotel?.status_account === 'pending' || hotel?.status_account === 'refused') return null;
   }
 
@@ -29,7 +24,7 @@ export async function loginUser(email: string, password: string): Promise<User |
     id: data.id,
     name: data.name,
     email: data.email,
-    password: '', // never expose
+    password: '',
     role: data.role,
     phone: data.phone,
     isActive: data.status === 'active',
@@ -38,14 +33,34 @@ export async function loginUser(email: string, password: string): Promise<User |
 
 // ── CLEANERS ──────────────────────────────────────────────────────────────────
 
+// Resolve cleaners.id → users.id (missions.cleaner_id must always be users.id)
+async function resolveToUserId(cleanerTableId: string): Promise<string> {
+  const { data } = await supabase.from('cleaners').select('user_id').eq('id', cleanerTableId).single();
+  return data?.user_id ?? cleanerTableId;
+}
+
 export async function getCleaners() {
-  const { data } = await supabase.from('cleaners').select('*').order('created_at');
-  return data ?? [];
+  const { data: cleaners } = await supabase.from('cleaners').select('*').order('created_at');
+  if (cleaners && cleaners.length > 0) return cleaners;
+
+  // Fallback: get cleaners from users table directly
+  const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner');
+  return (users ?? []).map(u => ({
+    id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
+    hourly_rate_hotel: 0, rate_airbnb: 0, status: u.status ?? 'active',
+  }));
 }
 
 export async function getActiveCleanersDB() {
-  const { data } = await supabase.from('cleaners').select('*').eq('status', 'active');
-  return data ?? [];
+  const { data: cleaners } = await supabase.from('cleaners').select('*').eq('status', 'active');
+  if (cleaners && cleaners.length > 0) return cleaners;
+
+  // Fallback: get from users table — id = users.id, consistent with missions.cleaner_id
+  const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner').eq('status', 'active');
+  return (users ?? []).map(u => ({
+    id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
+    hourly_rate_hotel: 0, rate_airbnb: 0, status: 'active',
+  }));
 }
 
 export async function createCleaner(fields: {
@@ -53,23 +68,30 @@ export async function createCleaner(fields: {
   password: string; hourlyRateHotel?: number; rateAirbnb?: number;
 }) {
   const hash = await hashPassword(fields.password || 'cleaner123');
-  const { data: user } = await supabase
+  const { data: user, error: userError } = await supabase
     .from('users')
     .insert({ email: fields.email, password_hash: hash, role: 'cleaner', name: fields.name, phone: fields.phone, status: 'active' })
     .select()
     .single();
 
-  if (!user) return;
+  if (userError || !user) {
+    console.error('createCleaner - users insert error:', userError);
+    return;
+  }
 
-  await supabase.from('cleaners').insert({
+  const { error: cleanerError } = await supabase.from('cleaners').insert({
     user_id: user.id,
     name: fields.name,
     email: fields.email,
-    phone: fields.phone,
+    phone: fields.phone ?? null,
     hourly_rate_hotel: fields.hourlyRateHotel ?? 0,
     rate_airbnb: fields.rateAirbnb ?? 0,
     status: 'active',
   });
+
+  if (cleanerError) {
+    console.error('createCleaner - cleaners insert error:', cleanerError);
+  }
 }
 
 export async function setCleanerActive(id: string, active: boolean) {
@@ -82,20 +104,27 @@ export async function updateCleanerRatesDB(id: string, hotelRate: number, airbnb
 
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
   const hash = await hashPassword(newPassword);
-  // Find the user_id
   const { data: cleaner } = await supabase.from('cleaners').select('user_id').eq('id', cleanerId).single();
   if (cleaner?.user_id) {
     await supabase.from('users').update({ password_hash: hash }).eq('id', cleaner.user_id);
+  } else {
+    // Fallback: cleanerId might be users.id directly
+    await supabase.from('users').update({ password_hash: hash }).eq('id', cleanerId);
   }
+}
+
+export async function getCleanerByUserId(userId: string) {
+  const { data } = await supabase.from('cleaners').select('*').eq('user_id', userId).single();
+  if (data) return data;
+  // Fallback: return user row if no cleaners entry
+  const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+  return user;
 }
 
 // ── AIRBNBS ───────────────────────────────────────────────────────────────────
 
 export async function getAirbnbs() {
-  const { data } = await supabase
-    .from('airbnbs')
-    .select('*, cleaners(name)')
-    .order('created_at');
+  const { data } = await supabase.from('airbnbs').select('*, cleaners(name)').order('created_at');
   return (data ?? []).map(a => ({
     id: a.id,
     name: a.name,
@@ -147,7 +176,9 @@ function rowToMission(row: any): Mission {
 }
 
 function mapMissionStatus(s: string): MissionStatus {
-  const map: Record<string, MissionStatus> = { pending: 'pending', assigned: 'accepted', inprogress: 'in_progress', done: 'completed', cancelled: 'cancelled' };
+  const map: Record<string, MissionStatus> = {
+    pending: 'pending', assigned: 'accepted', inprogress: 'in_progress', done: 'completed', cancelled: 'cancelled',
+  };
   return map[s] ?? 'pending';
 }
 
@@ -157,11 +188,24 @@ export async function getMissionsDB(): Promise<Mission[]> {
 }
 
 export async function getMissionsForCleanerDB(userId: string): Promise<Mission[]> {
-  // missions.cleaner_id stores cleaners.id, not users.id — resolve first
-  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  if (!cleaner) return [];
-  const { data } = await supabase.from('missions').select('*').eq('cleaner_id', cleaner.id).order('date_from', { ascending: false });
-  return (data ?? []).map(rowToMission);
+  // PRIMARY: missions.cleaner_id should now be users.id
+  const { data: direct } = await supabase
+    .from('missions')
+    .select('*')
+    .eq('cleaner_id', userId)
+    .order('date_from', { ascending: false });
+
+  // FALLBACK: old missions might have stored cleaners.id instead of users.id
+  const { data: cleanerRow } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  const { data: indirect } = cleanerRow
+    ? await supabase.from('missions').select('*').eq('cleaner_id', cleanerRow.id).order('date_from', { ascending: false })
+    : { data: [] };
+
+  // Merge and deduplicate by id
+  const all = [...(direct ?? []), ...(indirect ?? [])];
+  const seen = new Set<string>();
+  const unique = all.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+  return unique.map(rowToMission);
 }
 
 export async function getPendingMissionsDB(): Promise<Mission[]> {
@@ -170,14 +214,14 @@ export async function getPendingMissionsDB(): Promise<Mission[]> {
 }
 
 export async function acceptMissionDB(missionId: string, userId: string): Promise<void> {
-  const { data: cleaner } = await supabase.from('cleaners').select('id, name').eq('user_id', userId).single();
-  if (!cleaner) return;
-  await supabase.from('missions').update({ cleaner_id: cleaner.id, cleaner_name: cleaner.name, status: 'assigned' }).eq('id', missionId);
-}
-
-export async function getCleanerByUserId(userId: string) {
-  const { data } = await supabase.from('cleaners').select('*').eq('user_id', userId).single();
-  return data;
+  // userId is users.id — store directly so getMissionsForCleanerDB finds it
+  const { data: cleanerRow } = await supabase.from('cleaners').select('name').eq('user_id', userId).single();
+  const cleanerName = cleanerRow?.name ?? '';
+  await supabase.from('missions').update({
+    cleaner_id: userId,
+    cleaner_name: cleanerName,
+    status: 'assigned',
+  }).eq('id', missionId);
 }
 
 export async function createMissionDB(fields: {
@@ -186,7 +230,13 @@ export async function createMissionDB(fields: {
   cleanerId?: string; cleanerName?: string; clientName?: string;
   price: number; cleanerGain: number; instructions?: string;
 }) {
-  await supabase.from('missions').insert({
+  // Resolve cleaners.id → users.id so the cleaner can find this mission
+  let cleanerIdToStore: string | null = null;
+  if (fields.cleanerId) {
+    cleanerIdToStore = await resolveToUserId(fields.cleanerId);
+  }
+
+  const { error } = await supabase.from('missions').insert({
     type: fields.type,
     source: fields.source,
     property_name: fields.propertyName,
@@ -195,14 +245,16 @@ export async function createMissionDB(fields: {
     time_from: fields.timeFrom,
     time_to: fields.timeTo,
     hours_worked: fields.duration,
-    cleaner_id: fields.cleanerId || null,
+    cleaner_id: cleanerIdToStore,
     cleaner_name: fields.cleanerName || null,
     client_name: fields.clientName || null,
     price: fields.price,
     cleaner_gain: fields.cleanerGain,
     instructions: fields.instructions || null,
-    status: fields.cleanerId ? 'assigned' : 'pending',
+    status: cleanerIdToStore ? 'assigned' : 'pending',
   });
+
+  if (error) console.error('createMissionDB error:', error);
 }
 
 export async function updateMissionStatusDB(id: string, status: string) {
@@ -244,7 +296,7 @@ export async function createHotelRequestDB(fields: {
   dateFrom: string; dateTo: string; timeFrom: string; timeTo: string;
   persons: number; instructions?: string;
 }) {
-  await supabase.from('hotel_requests').insert({
+  const { error } = await supabase.from('hotel_requests').insert({
     hotel_id: fields.hotelId,
     hotel_name: fields.hotelName,
     type_prestation: fields.type,
@@ -256,18 +308,23 @@ export async function createHotelRequestDB(fields: {
     instructions: fields.instructions || null,
     status: 'pending',
   });
+  if (error) console.error('createHotelRequestDB error:', error);
 }
 
 export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string) {
-  // Fetch request details first
   const { data: req } = await supabase.from('hotel_requests').select('*').eq('id', id).single();
 
-  // Update the hotel request
-  await supabase.from('hotel_requests').update({ status: 'validated', cleaner_id: cleanerId, cleaner_name: cleanerName }).eq('id', id);
+  await supabase.from('hotel_requests').update({
+    status: 'validated',
+    cleaner_id: cleanerId,
+    cleaner_name: cleanerName,
+  }).eq('id', id);
 
-  // Create the corresponding mission so the cleaner sees it
   if (req) {
-    await supabase.from('missions').insert({
+    // Resolve cleaners.id → users.id so the cleaner finds the mission on their dashboard
+    const userIdToStore = await resolveToUserId(cleanerId);
+
+    const { error } = await supabase.from('missions').insert({
       type: req.type_prestation ?? 'regular',
       source: 'hotel',
       property_name: req.hotel_name ?? '',
@@ -276,7 +333,7 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
       time_from: req.time_from ?? '',
       time_to: req.time_to ?? '',
       hours_worked: 2,
-      cleaner_id: cleanerId,
+      cleaner_id: userIdToStore,   // users.id — cleaner can find it
       cleaner_name: cleanerName,
       client_name: req.hotel_name ?? '',
       price: 0,
@@ -284,6 +341,8 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
       instructions: req.instructions ?? null,
       status: 'assigned',
     });
+
+    if (error) console.error('validateRequestDB - mission insert error:', error);
   }
 }
 
@@ -295,7 +354,7 @@ export async function refuseRequestDB(id: string) {
 
 export async function getPendingHotelsDB() {
   const { data } = await supabase.from('hotels').select('*, users(name, email, phone)').eq('status_account', 'pending');
-  return (data ?? []).map(h => ({
+  return (data ?? []).map((h: any) => ({
     id: h.id,
     name: h.hotel_name,
     address: h.address,
@@ -307,7 +366,6 @@ export async function getPendingHotelsDB() {
 
 export async function approveHotelDB(id: string) {
   await supabase.from('hotels').update({ status_account: 'approved' }).eq('id', id);
-  // Also activate the user
   const { data } = await supabase.from('hotels').select('user_id').eq('id', id).single();
   if (data?.user_id) await supabase.from('users').update({ status: 'active' }).eq('id', data.user_id);
 }
@@ -382,8 +440,8 @@ export async function getStatsDB() {
   ]);
 
   const completed = (missions ?? []).filter(m => m.status === 'done');
-  const totalRevenue = completed.reduce((s, m) => s + (m.price ?? 0), 0);
-  const totalSalaries = completed.reduce((s, m) => s + (m.cleaner_gain ?? 0), 0);
+  const totalRevenue = completed.reduce((s: number, m: any) => s + (m.price ?? 0), 0);
+  const totalSalaries = completed.reduce((s: number, m: any) => s + (m.cleaner_gain ?? 0), 0);
 
   return {
     totalMissions: (missions ?? []).length,
@@ -391,7 +449,7 @@ export async function getStatsDB() {
     totalRevenue,
     totalSalaries,
     netProfit: totalRevenue - totalSalaries,
-    activeCleaners: (cleaners ?? []).filter(c => c.status === 'active').length,
-    approvedHotels: (hotels ?? []).filter(h => h.status_account === 'approved').length,
+    activeCleaners: (cleaners ?? []).filter((c: any) => c.status === 'active').length,
+    approvedHotels: (hotels ?? []).filter((h: any) => h.status_account === 'approved').length,
   };
 }
