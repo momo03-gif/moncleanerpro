@@ -22,6 +22,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Safe area pour iPhone avec notch */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Taille de tap minimale pour mobile (44px Apple HIG) */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Scroll fluide */
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
 /* Remplacer les focus rings bleus du navigateur par de l'or */
 *:focus-visible {
   outline: 2px solid #C9A84C;
