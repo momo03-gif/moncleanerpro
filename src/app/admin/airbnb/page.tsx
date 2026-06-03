@@ -8,6 +8,61 @@ const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', co
 const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '' };
 type FilterType = 'all' | 'assigned' | 'unassigned';
 
+function MapsModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const encoded = encodeURIComponent(address);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(26,26,26,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+        style={{ backgroundColor: '#FFFFFF' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b" style={{ borderColor: '#E8E4DC' }}>
+          <p className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Ouvrir l'adresse</p>
+          <p className="text-xs mt-1 truncate" style={{ color: '#A8A09A' }}>{address}</p>
+        </div>
+        <div className="p-3 space-y-2">
+          <a
+            href={`https://maps.google.com/?q=${encoded}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
+            style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}
+          >
+            <span className="text-base">🗺</span>
+            Ouvrir dans Google Maps
+          </a>
+          <a
+            href={`https://maps.apple.com/?q=${encoded}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
+            style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}
+          >
+            <span className="text-base">📍</span>
+            Ouvrir dans Plans (Apple Maps)
+          </a>
+        </div>
+        <div className="px-3 pb-3">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl text-sm font-medium"
+            style={{ backgroundColor: '#F8F6F2', color: '#A8A09A' }}
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
@@ -19,6 +74,8 @@ export default function AirbnbPage() {
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [mapsModal, setMapsModal] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [a, c] = await Promise.all([getAirbnbs(), getActiveCleanersDB()]);
@@ -28,6 +85,14 @@ export default function AirbnbPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  function toggleExpand(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   const visible = apartments.filter(a => {
     const q = search.toLowerCase();
@@ -63,6 +128,8 @@ export default function AirbnbPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      {mapsModal && <MapsModal address={mapsModal} onClose={() => setMapsModal(null)} />}
+
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Airbnb</h1>
@@ -129,63 +196,106 @@ export default function AirbnbPage() {
       )}
 
       <div className="grid md:grid-cols-2 gap-4">
-        {visible.map(apt => (
-          <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-            <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
-                  <p className="text-xs mt-0.5 truncate" style={{ color: '#A8A09A' }}>{apt.address}</p>
+        {visible.map(apt => {
+          const isExpanded = expanded.has(apt.id);
+          const isLong = apt.entryDirectives && apt.entryDirectives.length > 100;
+
+          return (
+            <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+              {/* Header */}
+              <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
+                    {/* Adresse cliquable → ouvre la modale Maps */}
+                    <button
+                      onClick={() => setMapsModal(apt.address)}
+                      className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full"
+                      style={{ color: '#A8A09A' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}
+                    >
+                      <span className="text-xs shrink-0">◎</span>
+                      <span className="text-xs truncate">{apt.address}</span>
+                    </button>
+                  </div>
+                  {apt.cleanerName ? (
+                    <span className="text-xs px-2 py-1 rounded-full shrink-0 font-medium" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}>{apt.cleanerName.split(' ')[0]}</span>
+                  ) : (
+                    <span className="text-xs px-2 py-1 rounded-full shrink-0" style={{ backgroundColor: '#F5F3EF', color: '#A8A09A' }}>Non assigné</span>
+                  )}
                 </div>
-                {apt.cleanerName ? (
-                  <span className="text-xs px-2 py-1 rounded-full shrink-0 font-medium" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}>{apt.cleanerName.split(' ')[0]}</span>
+              </div>
+
+              {/* Codes + directives */}
+              <div className="px-5 py-4 space-y-3">
+                {apt.portalCode && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code portail</span>
+                    <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.portalCode}</span>
+                  </div>
+                )}
+                {apt.keyboxCode && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Boîte à clé</span>
+                    <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.keyboxCode}</span>
+                  </div>
+                )}
+                {/* Entrée : tronqué à 3 lignes avec "Voir plus" */}
+                <div className="flex items-start gap-3">
+                  <span className="text-xs w-28 shrink-0 mt-0.5" style={{ color: '#A8A09A' }}>Entrée</span>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-sm leading-snug"
+                      style={{
+                        color: '#7A7068',
+                        ...(isLong && !isExpanded ? {
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                        } : {}),
+                      }}
+                    >
+                      {apt.entryDirectives}
+                    </p>
+                    {isLong && (
+                      <button
+                        onClick={() => toggleExpand(apt.id)}
+                        className="text-xs mt-1.5 font-medium transition-colors"
+                        style={{ color: '#C9A84C' }}
+                      >
+                        {isExpanded ? 'Voir moins ↑' : 'Voir plus ↓'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Assign action */}
+              <div className="px-5 pb-4">
+                {assignId === apt.id ? (
+                  <div className="flex gap-2">
+                    <select value={selectedCleaner} onChange={e => setSelectedCleaner(e.target.value)} className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
+                      style={{ ...inputStyle, color: selectedCleaner ? '#1A1A1A' : '#A8A09A' }}>
+                      <option value="">Choisir un cleaner</option>
+                      {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <button onClick={() => handleAssign(apt.id)} disabled={!selectedCleaner} className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
+                    <button onClick={() => { setAssignId(null); setSelectedCleaner(''); }} className="px-3 py-2 rounded-xl text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+                  </div>
                 ) : (
-                  <span className="text-xs px-2 py-1 rounded-full shrink-0" style={{ backgroundColor: '#F5F3EF', color: '#A8A09A' }}>Non assigné</span>
+                  <button onClick={() => { setAssignId(apt.id); setSelectedCleaner(apt.cleanerId ?? ''); }}
+                    className="w-full py-2.5 rounded-xl text-sm font-medium border transition-all" style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.color = '#C9A84C'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E4DC'; e.currentTarget.style.color = '#7A7068'; }}>
+                    {apt.cleanerName ? `Réassigner · ${apt.cleanerName}` : 'Attribuer à un cleaner'}
+                  </button>
                 )}
               </div>
             </div>
-
-            <div className="px-5 py-4 space-y-3">
-              {apt.portalCode && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code portail</span>
-                  <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.portalCode}</span>
-                </div>
-              )}
-              {apt.keyboxCode && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Boîte à clé</span>
-                  <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.keyboxCode}</span>
-                </div>
-              )}
-              <div className="flex items-start gap-3">
-                <span className="text-xs w-28 shrink-0 mt-0.5" style={{ color: '#A8A09A' }}>Entrée</span>
-                <p className="text-sm leading-snug" style={{ color: '#7A7068' }}>{apt.entryDirectives}</p>
-              </div>
-            </div>
-
-            <div className="px-5 pb-4">
-              {assignId === apt.id ? (
-                <div className="flex gap-2">
-                  <select value={selectedCleaner} onChange={e => setSelectedCleaner(e.target.value)} className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
-                    style={{ ...inputStyle, color: selectedCleaner ? '#1A1A1A' : '#A8A09A' }}>
-                    <option value="">Choisir un cleaner</option>
-                    {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  <button onClick={() => handleAssign(apt.id)} disabled={!selectedCleaner} className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-                  <button onClick={() => { setAssignId(null); setSelectedCleaner(''); }} className="px-3 py-2 rounded-xl text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
-                </div>
-              ) : (
-                <button onClick={() => { setAssignId(apt.id); setSelectedCleaner(apt.cleanerId ?? ''); }}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium border transition-all" style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.color = '#C9A84C'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E4DC'; e.currentTarget.style.color = '#7A7068'; }}>
-                  {apt.cleanerName ? `Réassigner · ${apt.cleanerName}` : 'Attribuer à un cleaner'}
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
