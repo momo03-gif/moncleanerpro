@@ -13,28 +13,115 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'Prévue',   color: '#C48A2A', bg: '#C48A2A15' },
-  accepted:    { label: 'Prévue',   color: '#C9A84C', bg: '#C9A84C15' },
-  in_progress: { label: 'En cours', color: '#8B7A62', bg: '#8B7A6215' },
-  completed:   { label: 'Terminée', color: '#5A8A6A', bg: '#5A8A6A15' },
-  cancelled:   { label: 'Annulée',  color: '#B85A50', bg: '#B85A5015' },
+  pending:     { label: 'À assigner', color: '#6B7280', bg: '#6B728018' },
+  accepted:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A15' },
+  validated:   { label: 'Validée',    color: '#C9A84C', bg: '#C9A84C15' },
+  in_progress: { label: 'En cours',   color: '#5B6EF5', bg: '#5B6EF518' },
+  completed:   { label: 'Terminée',   color: '#5A8A6A', bg: '#5A8A6A15' },
+  cancelled:   { label: 'Annulée',    color: '#B85A50', bg: '#B85A5015' },
 };
 
-function formatDateLabel(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+function toDateStr(d: Date) {
+  return d.toISOString().split('T')[0];
 }
 
-function shiftDate(d: string, n: number) {
-  const date = new Date(d + 'T00:00:00');
-  date.setDate(date.getDate() + n);
-  return date.toISOString().split('T')[0];
+function getCalendarGrid(year: number, month: number): (Date | null)[] {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const startDow = first.getDay(); // 0=Sun
+  const offset = startDow === 0 ? 6 : startDow - 1; // Monday-based
+  const cells: (Date | null)[] = Array(offset).fill(null);
+  for (let d = 1; d <= last.getDate(); d++) cells.push(new Date(year, month, d));
+  return cells;
 }
+
+// ── Calendrier ────────────────────────────────────────────────────────────────
+
+function MonthCalendar({
+  selectedDate,
+  missionDates,
+  onSelect,
+}: {
+  selectedDate: string;
+  missionDates: Set<string>;
+  onSelect: (d: string) => void;
+}) {
+  const today = toDateStr(new Date());
+  const [viewYear, setViewYear] = useState(() => new Date(selectedDate + 'T00:00:00').getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => new Date(selectedDate + 'T00:00:00').getMonth());
+
+  function prev() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  }
+  function next() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  }
+
+  const cells = getCalendarGrid(viewYear, viewMonth);
+
+  return (
+    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      {/* Header mois */}
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#F2EFE9' }}>
+        <button onClick={prev} className="w-8 h-8 flex items-center justify-center rounded-xl"
+          style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>←</button>
+        <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
+          {MONTHS_FR[viewMonth]} {viewYear}
+        </span>
+        <button onClick={next} className="w-8 h-8 flex items-center justify-center rounded-xl"
+          style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>→</button>
+      </div>
+
+      {/* Jours de la semaine */}
+      <div className="grid grid-cols-7 px-3 pt-3 pb-1">
+        {WEEKDAYS.map((d, i) => (
+          <div key={i} className="text-center">
+            <span className="text-xs font-medium" style={{ color: '#A8A09A' }}>{d}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Grille jours */}
+      <div className="grid grid-cols-7 px-3 pb-3 gap-y-1">
+        {cells.map((day, i) => {
+          if (!day) return <div key={i} />;
+          const dateStr = toDateStr(day);
+          const isSelected = dateStr === selectedDate;
+          const isToday = dateStr === today;
+          const hasMission = missionDates.has(dateStr);
+
+          return (
+            <button key={i} onClick={() => onSelect(dateStr)}
+              className="flex flex-col items-center justify-center h-9 rounded-xl transition-all relative"
+              style={{
+                backgroundColor: isSelected ? '#C9A84C' : isToday ? '#C9A84C18' : 'transparent',
+                color: isSelected ? '#1A1A1A' : isToday ? '#C9A84C' : '#1A1A1A',
+              }}>
+              <span className="text-sm font-medium leading-none">{day.getDate()}</span>
+              {hasMission && (
+                <span className="w-1 h-1 rounded-full mt-0.5"
+                  style={{ backgroundColor: isSelected ? '#1A1A1A' : '#C9A84C' }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Carte mission ─────────────────────────────────────────────────────────────
 
 function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => void }) {
   const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
-  const canStart  = mission.status === 'accepted' || mission.status === 'pending';
+  const canStart  = mission.status === 'accepted' || mission.status === 'validated' || mission.status === 'pending';
   const canFinish = mission.status === 'in_progress';
 
   async function act(status: MissionStatus) {
@@ -54,7 +141,8 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
             {mission.address && (
-              <button onClick={() => setMapsOpen(true)} className="flex items-center gap-1 mt-0.5 text-left transition-colors"
+              <button onClick={() => setMapsOpen(true)}
+                className="flex items-center gap-1 mt-0.5 text-left transition-colors"
                 style={{ color: '#A8A09A' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
@@ -132,11 +220,13 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
   );
 }
 
+// ── Dashboard cleaner ─────────────────────────────────────────────────────────
+
 export default function CleanerDashboard() {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const today = new Date().toISOString().split('T')[0];
+  const today = toDateStr(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
@@ -160,11 +250,15 @@ export default function CleanerDashboard() {
   if (!user) return null;
   if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
-  const isToday = selectedDate === today;
+  // Dates qui ont au moins une mission non annulée
+  const missionDates = new Set(missions.filter(m => m.status !== 'cancelled').map(m => m.date));
+
   const dayMissions = missions
     .filter(m => m.date === selectedDate && m.status !== 'cancelled')
     .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+
   const dayGain = dayMissions.filter(m => m.status === 'completed').reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+  const isToday = selectedDate === today;
 
   return (
     <div className="p-5">
@@ -174,34 +268,22 @@ export default function CleanerDashboard() {
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{user.name.split(' ')[0]} ✦</h1>
       </div>
 
-      {/* Date navigator */}
-      <div className="rounded-2xl border mb-5 overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-        <div className="flex items-center justify-between px-4 py-3.5">
-          <button onClick={() => setSelectedDate(d => shiftDate(d, -1))}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-lg transition-all"
-            style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>←</button>
-          <div className="text-center">
-            <p className="text-sm font-semibold capitalize" style={{ color: '#1A1A1A' }}>
-              {formatDateLabel(selectedDate)}
-            </p>
-            {isToday && <p className="text-xs mt-0.5" style={{ color: '#C9A84C' }}>Aujourd'hui</p>}
-          </div>
-          <button onClick={() => setSelectedDate(d => shiftDate(d, 1))}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-lg transition-all"
-            style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>→</button>
-        </div>
+      {/* Calendrier mensuel */}
+      <div className="mb-5">
+        <MonthCalendar
+          selectedDate={selectedDate}
+          missionDates={missionDates}
+          onSelect={setSelectedDate}
+        />
         {!isToday && (
-          <div className="px-4 pb-3">
-            <button onClick={() => setSelectedDate(today)}
-              className="w-full py-2 rounded-xl text-xs font-medium"
-              style={{ backgroundColor: '#F8F6F2', color: '#C9A84C' }}>
-              Revenir à aujourd'hui
-            </button>
-          </div>
+          <button onClick={() => setSelectedDate(today)} className="w-full mt-2 py-2 rounded-xl text-xs font-medium"
+            style={{ backgroundColor: '#F8F6F2', color: '#C9A84C' }}>
+            Revenir à aujourd'hui
+          </button>
         )}
       </div>
 
-      {/* Stats */}
+      {/* Stats du jour */}
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="rounded-2xl p-4" style={{ backgroundColor: '#C9A84C' }}>
           <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{dayMissions.length}</p>
@@ -215,10 +297,14 @@ export default function CleanerDashboard() {
         </div>
       </div>
 
-      {/* Missions */}
+      {/* Missions du jour sélectionné */}
+      <h2 className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>
+        {isToday ? "Missions d'aujourd'hui" : `Missions du ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}
+      </h2>
+
       {dayMissions.length === 0 ? (
         <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-2xl mb-3">📅</p>
+          <p className="text-xl mb-3">📅</p>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission prévue</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>pour cette date</p>
         </div>

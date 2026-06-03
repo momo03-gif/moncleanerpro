@@ -134,11 +134,14 @@ export async function getAirbnbs() {
     entryDirectives: a.entry_instructions ?? '',
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
+    clientPrice: Number(a.client_price) || 0,
+    cleanerGain: Number(a.cleaner_gain) || 0,
   })) as Apartment[];
 }
 
 export async function createAirbnb(fields: {
-  name: string; address: string; portalCode?: string; keyboxCode?: string; entryDirectives: string;
+  name: string; address: string; portalCode?: string; keyboxCode?: string;
+  entryDirectives: string; clientPrice?: number; cleanerGain?: number;
 }) {
   await supabase.from('airbnbs').insert({
     name: fields.name,
@@ -146,6 +149,8 @@ export async function createAirbnb(fields: {
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
+    client_price: fields.clientPrice ?? 0,
+    cleaner_gain: fields.cleanerGain ?? 0,
   });
 }
 
@@ -177,7 +182,12 @@ function rowToMission(row: any): Mission {
 
 function mapMissionStatus(s: string): MissionStatus {
   const map: Record<string, MissionStatus> = {
-    pending: 'pending', assigned: 'accepted', inprogress: 'in_progress', done: 'completed', cancelled: 'cancelled',
+    pending: 'pending',
+    assigned: 'accepted',
+    validated: 'validated',
+    inprogress: 'in_progress',
+    done: 'completed',
+    cancelled: 'cancelled',
   };
   return map[s] ?? 'pending';
 }
@@ -260,13 +270,27 @@ export async function createMissionDB(fields: {
 // Maps app-level MissionStatus → DB status string
 function toDbMissionStatus(appStatus: MissionStatus): string {
   const map: Record<MissionStatus, string> = {
-    pending: 'pending', accepted: 'assigned', in_progress: 'inprogress', completed: 'done', cancelled: 'cancelled',
+    pending: 'pending',
+    accepted: 'assigned',
+    validated: 'validated',
+    in_progress: 'inprogress',
+    completed: 'done',
+    cancelled: 'cancelled',
   };
   return map[appStatus] ?? appStatus;
 }
 
 export async function updateMissionStatusDB(id: string, status: MissionStatus): Promise<void> {
   await supabase.from('missions').update({ status: toDbMissionStatus(status) }).eq('id', id);
+}
+
+export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string): Promise<void> {
+  const userIdToStore = await resolveToUserId(cleanerId);
+  await supabase.from('missions').update({
+    cleaner_id: userIdToStore,
+    cleaner_name: cleanerName,
+    status: 'assigned', // → accepted → "En attente"
+  }).eq('id', missionId);
 }
 
 // ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────

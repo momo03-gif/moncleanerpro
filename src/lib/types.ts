@@ -19,7 +19,7 @@ export interface User {
   pendingStatus?: PendingStatus;
 }
 
-export type MissionStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+export type MissionStatus = 'pending' | 'accepted' | 'validated' | 'in_progress' | 'completed' | 'cancelled';
 export type MissionType = 'checkout' | 'checkin' | 'deep_clean' | 'regular';
 export type MissionSource = 'hotel' | 'airbnb';
 
@@ -69,6 +69,8 @@ export interface Apartment {
   entryDirectives: string;
   cleanerId?: string;
   cleanerName?: string;
+  clientPrice?: number;
+  cleanerGain?: number;
 }
 
 export interface Payment {
