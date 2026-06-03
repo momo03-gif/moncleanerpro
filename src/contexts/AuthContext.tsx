@@ -2,17 +2,18 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Role } from '@/lib/types';
+import { loginUser } from '@/lib/db';
 
 interface AuthContextValue {
   user: User | null;
-  login: (user: User) => void;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
-  login: () => {},
+  login: async () => null,
   logout: () => {},
   isLoading: true,
 });
@@ -24,19 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem('mcp_user');
     if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('mcp_user');
-      }
+      try { setUser(JSON.parse(stored)); } catch { localStorage.removeItem('mcp_user'); }
     }
     setIsLoading(false);
   }, []);
 
-  function login(u: User) {
-    const { password: _, ...safeUser } = u as User & { password?: string };
-    localStorage.setItem('mcp_user', JSON.stringify(safeUser));
-    setUser(safeUser as User);
+  async function login(email: string, password: string): Promise<User | null> {
+    const found = await loginUser(email, password);
+    if (found) {
+      const safe = { ...found, password: '' };
+      localStorage.setItem('mcp_user', JSON.stringify(safe));
+      setUser(safe);
+    }
+    return found;
   }
 
   function logout() {
@@ -51,14 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export function useAuth() { return useContext(AuthContext); }
 
 export function redirectPathForRole(role: Role): string {
-  switch (role) {
-    case 'admin': return '/admin';
-    case 'cleaner': return '/cleaner';
-    case 'hotel': return '/hotel';
-  }
+  return role === 'admin' ? '/admin' : role === 'cleaner' ? '/cleaner' : '/hotel';
 }

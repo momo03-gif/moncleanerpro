@@ -9,6 +9,7 @@ const navItems = [
   { href: '/admin/missions', label: 'Missions', icon: '◎' },
   { href: '/admin/cleaners', label: 'Cleaners', icon: '◉' },
   { href: '/admin/airbnb', label: 'Airbnb', icon: '⬡' },
+  { href: '/admin/comptes', label: 'Comptes', icon: '◻' },
   { href: '/admin/stats', label: 'Statistiques', icon: '◈' },
   { href: '/admin/comptabilite', label: 'Comptabilité', icon: '◇' },
 ];
