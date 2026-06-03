@@ -18,9 +18,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (isLoading || !user || user.role !== 'admin') return null;
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#FAFAF8' }}>
+    <div className="flex flex-col md:flex-row min-h-screen" style={{ backgroundColor: '#FAFAF8' }}>
       <AdminSidebar />
-      <main className="flex-1 overflow-x-hidden pb-4 md:pb-0">
+      <main className="flex-1 min-w-0 overflow-x-hidden pb-6 md:pb-0">
         {children}
       </main>
     </div>

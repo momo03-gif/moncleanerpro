@@ -26,7 +26,7 @@ export default function ComptesPage() {
   if (loading) return <div className="p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Comptes en attente</h1>
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription partenaires hôtel</p>
@@ -44,20 +44,20 @@ export default function ComptesPage() {
         <div className="space-y-3 mb-8">
           {active.map(h => (
             <div key={h.id} className="rounded-2xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#C48A2A40' }}>
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{h.name}</h3>
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#C48A2A15', color: '#C48A2A' }}>En attente</span>
                   </div>
                   {h.address && <p className="text-sm" style={{ color: '#7A7068' }}>{h.address}</p>}
                   <p className="text-sm" style={{ color: '#A8A09A' }}>{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => handleApprove(h.id)} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                <div className="flex gap-2">
+                  <button onClick={() => handleApprove(h.id)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                     Valider
                   </button>
-                  <button onClick={() => handleRefuse(h.id)} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
+                  <button onClick={() => handleRefuse(h.id)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
                     Refuser
                   </button>
                 </div>

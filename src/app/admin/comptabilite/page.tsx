@@ -36,25 +36,25 @@ export default function ComptabilitePage() {
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Comptabilité</h1>
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue financière globale</p>
       </div>
 
       {/* ── Global KPIs */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>Revenus totaux</p>
           <p className="text-2xl font-bold" style={{ color: '#5A8A6A' }}>{totalRevenue}€</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{completedMissions.length} missions terminées</p>
         </div>
-        <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>Salaires cleaners</p>
           <p className="text-2xl font-bold" style={{ color: '#B85A50' }}>{totalSalaries}€</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Gains distribués</p>
         </div>
-        <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#C9A84C', borderColor: '#C9A84C' }}>
+        <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#C9A84C', borderColor: '#C9A84C' }}>
           <p className="text-xs mb-2" style={{ color: '#7A6030' }}>Bénéfice net</p>
           <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{netProfit}€</p>
           <p className="text-xs mt-1" style={{ color: '#7A6030' }}>Revenus − Salaires</p>

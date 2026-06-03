@@ -54,9 +54,9 @@ export default function CleanersPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Cleaners</h1>
           <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{cleaners.filter(c => c.isActive !== false).length} actif{cleaners.filter(c => c.isActive !== false).length > 1 ? 's' : ''} · {cleaners.length} total</p>
@@ -130,7 +130,7 @@ export default function CleanersPage() {
 
               return (
                 <div key={cleaner.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', opacity: isActive ? 1 : 0.65 }}>
-                  <div className="px-6 py-5 flex items-start gap-4">
+                  <div className="px-4 md:px-6 py-5 flex items-start gap-4">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shrink-0" style={{ backgroundColor: isActive ? '#C9A84C18' : '#F5F3EF', color: isActive ? '#C9A84C' : '#A8A09A' }}>
                       {cleaner.name.charAt(0)}
                     </div>
@@ -176,7 +176,7 @@ export default function CleanersPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 px-6 pb-5">
+                  <div className="grid grid-cols-3 gap-2 px-4 md:px-6 pb-5">
                     {[{ v: completed, l: 'Terminées', c: '#1A1A1A' }, { v: upcoming, l: 'À venir', c: '#1A1A1A' }, { v: `${hoursMonth}h`, l: 'Ce mois', c: '#C9A84C' }].map(s => (
                       <div key={s.l} className="rounded-xl p-3 text-center" style={{ backgroundColor: '#F8F6F2' }}>
                         <p className="text-xl font-bold" style={{ color: s.c }}>{s.v}</p>
@@ -185,7 +185,7 @@ export default function CleanersPage() {
                     ))}
                   </div>
 
-                  <div className="px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
+                  <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Tarification</p>
                       {editRates !== cleaner.id ? (
@@ -238,7 +238,7 @@ export default function CleanersPage() {
             return (
               <div key={cleaner.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
                 {/* Header */}
-                <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: '#F2EFE9' }}>
+                <div className="px-4 md:px-6 py-4 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#F2EFE9' }}>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>{cleaner.name.charAt(0)}</div>
                     <div>
@@ -253,7 +253,7 @@ export default function CleanersPage() {
                 </div>
 
                 {/* Unpaid missions */}
-                <div className="px-6 py-4">
+                <div className="px-4 md:px-6 py-4">
                   <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>
                     À payer ce mois — <span style={{ color: unpaidTotal > 0 ? '#C48A2A' : '#5A8A6A' }}>{unpaidTotal}€</span>
                   </p>
@@ -285,7 +285,7 @@ export default function CleanersPage() {
 
                 {/* Payment history */}
                 {historyPayments.length > 0 && (
-                  <div className="px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
+                  <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
                     <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Historique paiements</p>
                     <div className="space-y-2">
                       {historyPayments.map(p => (
