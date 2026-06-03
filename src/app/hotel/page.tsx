@@ -4,10 +4,8 @@ import { useState } from 'react';
 import { AnnounceType } from '@/lib/types';
 
 const TYPES: { value: AnnounceType; label: string; desc: string }[] = [
-  { value: 'menage', label: 'Ménage', desc: 'Nettoyage courant' },
-  { value: 'checkin', label: 'Check-in', desc: 'Préparation arrivée' },
-  { value: 'checkout', label: 'Check-out', desc: 'Remise en état' },
-  { value: 'grand_menage', label: 'Grand ménage', desc: 'Nettoyage complet' },
+  { value: 'menage',      label: 'Ménage courant', desc: 'Nettoyage régulier des chambres' },
+  { value: 'grand_menage', label: 'Grand ménage',  desc: 'Nettoyage approfondi complet' },
 ];
 
 const inputStyle = {
@@ -17,22 +15,33 @@ const inputStyle = {
   outline: 'none',
 };
 
+const today = new Date().toISOString().split('T')[0];
+
 export default function HotelDemandePage() {
   const [form, setForm] = useState({
     type: '' as AnnounceType | '',
-    date: '',
+    dateStart: '',
+    dateEnd: '',
     timeStart: '',
     timeEnd: '',
     guestCount: '',
-    instructions: '',
   });
+  const [hasInstructions, setHasInstructions] = useState(false);
+  const [instructions, setInstructions] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const isValid = form.type && form.date && form.timeStart && form.timeEnd && form.guestCount;
+  const isValid = form.type && form.dateStart && form.dateEnd && form.timeStart && form.timeEnd && form.guestCount;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isValid) setSubmitted(true);
+  }
+
+  function reset() {
+    setSubmitted(false);
+    setForm({ type: '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', guestCount: '' });
+    setHasInstructions(false);
+    setInstructions('');
   }
 
   if (submitted) {
@@ -44,11 +53,7 @@ export default function HotelDemandePage() {
           </div>
           <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Annonce envoyée</h2>
           <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Vous serez notifié une fois validée.</p>
-          <button
-            onClick={() => { setSubmitted(false); setForm({ type: '', date: '', timeStart: '', timeEnd: '', guestCount: '', instructions: '' }); }}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}
-          >
+          <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             Nouvelle annonce
           </button>
         </div>
@@ -68,7 +73,7 @@ export default function HotelDemandePage() {
         {/* Type */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Type de prestation</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {TYPES.map(t => (
               <button
                 key={t.value}
@@ -87,33 +92,21 @@ export default function HotelDemandePage() {
           </div>
         </div>
 
-        {/* Date */}
+        {/* Dates Du / Au */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</p>
-          <input
-            type="date"
-            value={form.date}
-            onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-            required
-            min={new Date().toISOString().split('T')[0]}
-            className="w-full px-4 py-3 rounded-xl text-sm border"
-            style={inputStyle}
-            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
-            onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
-          />
-        </div>
-
-        {/* Horaires */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Horaires</p>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Période</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Début</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Du</label>
               <input
-                type="time"
-                value={form.timeStart}
-                onChange={e => setForm(p => ({ ...p, timeStart: e.target.value }))}
+                type="date"
+                value={form.dateStart}
+                onChange={e => {
+                  const v = e.target.value;
+                  setForm(p => ({ ...p, dateStart: v, dateEnd: p.dateEnd < v ? v : p.dateEnd }));
+                }}
                 required
+                min={today}
                 className="w-full px-4 py-3 rounded-xl text-sm border"
                 style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
@@ -121,12 +114,13 @@ export default function HotelDemandePage() {
               />
             </div>
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Fin</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Au</label>
               <input
-                type="time"
-                value={form.timeEnd}
-                onChange={e => setForm(p => ({ ...p, timeEnd: e.target.value }))}
+                type="date"
+                value={form.dateEnd}
+                onChange={e => setForm(p => ({ ...p, dateEnd: e.target.value }))}
                 required
+                min={form.dateStart || today}
                 className="w-full px-4 py-3 rounded-xl text-sm border"
                 style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
@@ -136,43 +130,72 @@ export default function HotelDemandePage() {
           </div>
         </div>
 
-        {/* Personnes */}
+        {/* Horaires */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Horaires (chaque jour)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Début</label>
+              <input type="time" value={form.timeStart} onChange={e => setForm(p => ({ ...p, timeStart: e.target.value }))} required
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+            </div>
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Fin</label>
+              <input type="time" value={form.timeEnd} onChange={e => setForm(p => ({ ...p, timeEnd: e.target.value }))} required
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+            </div>
+          </div>
+        </div>
+
+        {/* Nombre de personnes */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Nombre de personnes</p>
           <div className="flex gap-2">
             {['1', '2', '3', '4', '5', '6+'].map(n => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setForm(p => ({ ...p, guestCount: n }))}
+              <button key={n} type="button" onClick={() => setForm(p => ({ ...p, guestCount: n }))}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all"
                 style={{
                   borderColor: form.guestCount === n ? '#C9A84C' : '#E8E4DC',
                   backgroundColor: form.guestCount === n ? '#C9A84C' : '#FFFFFF',
                   color: form.guestCount === n ? '#1A1A1A' : '#A8A09A',
-                }}
-              >
+                }}>
                 {n}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Instructions */}
+        {/* Instructions particulières — checkbox + textarea conditionnel */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>
-            Instructions <span className="normal-case font-normal tracking-normal" style={{ color: '#A8A09A' }}>— optionnel</span>
-          </p>
-          <textarea
-            value={form.instructions}
-            onChange={e => setForm(p => ({ ...p, instructions: e.target.value }))}
-            rows={3}
-            placeholder="Codes d'accès, consignes particulières, points d'attention..."
-            className="w-full px-4 py-3 rounded-xl text-sm border resize-none"
-            style={inputStyle}
-            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
-            onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
-          />
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div
+              onClick={() => setHasInstructions(v => !v)}
+              className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
+              style={{
+                borderColor: hasInstructions ? '#C9A84C' : '#C8C2BA',
+                backgroundColor: hasInstructions ? '#C9A84C' : '#FFFFFF',
+              }}
+            >
+              {hasInstructions && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
+            </div>
+            <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>Instructions particulières</span>
+          </label>
+
+          {hasInstructions && (
+            <textarea
+              value={instructions}
+              onChange={e => setInstructions(e.target.value)}
+              rows={3}
+              placeholder="Ex : 15 chambres dont 8 départs et 7 arrivées, priorité aux chambres 101-108..."
+              className="w-full mt-3 px-4 py-3 rounded-xl text-sm border resize-none"
+              style={inputStyle}
+              autoFocus
+              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
+            />
+          )}
         </div>
 
         <button

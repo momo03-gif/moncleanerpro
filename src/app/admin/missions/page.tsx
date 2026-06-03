@@ -145,7 +145,11 @@ export default function MissionsPage() {
                 <div className="px-5 py-3.5 flex items-center justify-between gap-3 border-b" style={{ borderColor: '#F2EFE9' }}>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{TYPE_LABEL[a.type]} — {a.hotelName}</span>
-                    <span className="text-xs" style={{ color: '#A8A09A' }}>{new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {a.timeStart}–{a.timeEnd}</span>
+                    <span className="text-xs" style={{ color: '#A8A09A' }}>
+                      {new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      {a.dateEnd && a.dateEnd !== a.date && <> → {new Date(a.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</>}
+                      {' · '}{a.timeStart}–{a.timeEnd}
+                    </span>
                   </div>
                   <span className="text-xs px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: `${st.color}15`, color: st.color }}>{st.label}</span>
                 </div>

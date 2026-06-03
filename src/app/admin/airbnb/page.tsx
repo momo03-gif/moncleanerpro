@@ -15,12 +15,23 @@ const inputStyle = {
 
 const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '' };
 
+type FilterType = 'all' | 'assigned' | 'unassigned';
+
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>(APARTMENTS);
   const [showForm, setShowForm] = useState(false);
   const [assignId, setAssignId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
+
+  const visible = apartments.filter(a => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q);
+    const matchFilter = filter === 'all' || (filter === 'assigned' ? !!a.cleanerName : !a.cleanerName);
+    return matchSearch && matchFilter;
+  });
 
   function handleAddApartment(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +74,35 @@ export default function AirbnbPage() {
           <span>{showForm ? '✕' : '+'}</span>
           {showForm ? 'Annuler' : 'Ajouter un appartement'}
         </button>
+      </div>
+
+      {/* Search + filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="relative flex-1">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou adresse..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border"
+            style={inputStyle}
+            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
+            onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
+          />
+        </div>
+        <div className="flex gap-1 p-1 rounded-xl shrink-0" style={{ backgroundColor: '#F5F3EF' }}>
+          {([['all', 'Tous'], ['assigned', 'Assignés'], ['unassigned', 'Non assignés']] as const).map(([val, lbl]) => (
+            <button
+              key={val}
+              onClick={() => setFilter(val)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{ backgroundColor: filter === val ? '#FFFFFF' : 'transparent', color: filter === val ? '#1A1A1A' : '#A8A09A', boxShadow: filter === val ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Add form */}
@@ -160,8 +200,13 @@ export default function AirbnbPage() {
       )}
 
       {/* Apartments grid */}
+      {visible.length === 0 && (
+        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucun appartement trouvé</p>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 gap-4">
-        {apartments.map(apt => (
+        {visible.map(apt => (
           <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
             {/* Header */}
             <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>

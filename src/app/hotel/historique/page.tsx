@@ -71,9 +71,12 @@ export default function HotelHistoriquePage() {
                 <div className="px-5 py-4">
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Date</p>
+                      <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Période</p>
                       <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
                         {new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        {a.dateEnd && a.dateEnd !== a.date && (
+                          <> → {new Date(a.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</>
+                        )}
                       </p>
                     </div>
                     <div>

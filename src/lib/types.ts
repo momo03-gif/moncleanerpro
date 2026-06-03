@@ -46,6 +46,7 @@ export interface HotelAnnounce {
   hotelName: string;
   type: AnnounceType;
   date: string;
+  dateEnd?: string;
   timeStart: string;
   timeEnd: string;
   guestCount: number;
