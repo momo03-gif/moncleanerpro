@@ -83,7 +83,7 @@ export default function AdminSidebar() {
       </aside>
 
       {/* ── MOBILE TOP BAR ── */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b sticky top-0 z-30" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <div className="flex items-center gap-2">
           <span style={{ color: '#C9A84C' }}>✦</span>
           <span className="font-bold text-sm" style={{ color: '#1A1A1A' }}>MonCleanerPro</span>
