@@ -156,9 +156,28 @@ export async function getMissionsDB(): Promise<Mission[]> {
   return (data ?? []).map(rowToMission);
 }
 
-export async function getMissionsForCleanerDB(cleanerId: string): Promise<Mission[]> {
-  const { data } = await supabase.from('missions').select('*').eq('cleaner_id', cleanerId).order('date_from', { ascending: false });
+export async function getMissionsForCleanerDB(userId: string): Promise<Mission[]> {
+  // missions.cleaner_id stores cleaners.id, not users.id — resolve first
+  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  if (!cleaner) return [];
+  const { data } = await supabase.from('missions').select('*').eq('cleaner_id', cleaner.id).order('date_from', { ascending: false });
   return (data ?? []).map(rowToMission);
+}
+
+export async function getPendingMissionsDB(): Promise<Mission[]> {
+  const { data } = await supabase.from('missions').select('*').eq('status', 'pending').order('date_from');
+  return (data ?? []).map(rowToMission);
+}
+
+export async function acceptMissionDB(missionId: string, userId: string): Promise<void> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id, name').eq('user_id', userId).single();
+  if (!cleaner) return;
+  await supabase.from('missions').update({ cleaner_id: cleaner.id, cleaner_name: cleaner.name, status: 'assigned' }).eq('id', missionId);
+}
+
+export async function getCleanerByUserId(userId: string) {
+  const { data } = await supabase.from('cleaners').select('*').eq('user_id', userId).single();
+  return data;
 }
 
 export async function createMissionDB(fields: {
@@ -240,7 +259,32 @@ export async function createHotelRequestDB(fields: {
 }
 
 export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string) {
+  // Fetch request details first
+  const { data: req } = await supabase.from('hotel_requests').select('*').eq('id', id).single();
+
+  // Update the hotel request
   await supabase.from('hotel_requests').update({ status: 'validated', cleaner_id: cleanerId, cleaner_name: cleanerName }).eq('id', id);
+
+  // Create the corresponding mission so the cleaner sees it
+  if (req) {
+    await supabase.from('missions').insert({
+      type: req.type_prestation ?? 'regular',
+      source: 'hotel',
+      property_name: req.hotel_name ?? '',
+      address: '',
+      date_from: req.date_from,
+      time_from: req.time_from ?? '',
+      time_to: req.time_to ?? '',
+      hours_worked: 2,
+      cleaner_id: cleanerId,
+      cleaner_name: cleanerName,
+      client_name: req.hotel_name ?? '',
+      price: 0,
+      cleaner_gain: 0,
+      instructions: req.instructions ?? null,
+      status: 'assigned',
+    });
+  }
 }
 
 export async function refuseRequestDB(id: string) {

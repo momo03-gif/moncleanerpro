@@ -1,21 +1,44 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleaner, USERS, currentMonth } from '@/lib/mockData';
+import { getMissionsForCleanerDB, getCleanerByUserId } from '@/lib/db';
+import type { Mission } from '@/lib/types';
+
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 export default function CleanerProfil() {
   const { user } = useAuth();
-  if (!user) return null;
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [cleanerRow, setCleanerRow] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const fullUser = USERS.find(u => u.id === user.id);
-  const missions = getMissionsForCleaner(user.id);
-  const completed = missions.filter(m => m.status === 'completed');
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([getMissionsForCleanerDB(user.id), getCleanerByUserId(user.id)]).then(([m, c]) => {
+      setMissions(m);
+      setCleanerRow(c);
+      setLoading(false);
+    });
+  }, [user]);
+
+  if (!user) return null;
+  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+
   const month = currentMonth();
-  const hotelHoursMonth = completed
-    .filter(m => m.source === 'hotel' && m.date.startsWith(month))
-    .reduce((s, m) => s + m.duration, 0);
+  const completed = missions.filter(m => m.status === 'completed');
+  const hotelHoursMonth = completed.filter(m => m.source === 'hotel' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
   const completedMonth = completed.filter(m => m.date.startsWith(month)).length;
   const totalEarned = completed.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+
+  const STATUS_MAP: Record<string, { label: string; color: string }> = {
+    available: { label: 'Disponible', color: '#5A8A6A' },
+    busy: { label: 'En mission', color: '#C48A2A' },
+    offline: { label: 'Hors ligne', color: '#A8A09A' },
+  };
 
   return (
     <div className="p-5">
@@ -32,7 +55,7 @@ export default function CleanerProfil() {
           <div>
             <h2 className="text-lg font-bold" style={{ color: '#1A1A1A' }}>{user.name}</h2>
             <p className="text-sm" style={{ color: '#A8A09A' }}>{user.email}</p>
-            {fullUser?.phone && <p className="text-sm" style={{ color: '#A8A09A' }}>{fullUser.phone}</p>}
+            {(user.phone || cleanerRow?.phone) && <p className="text-sm" style={{ color: '#A8A09A' }}>{user.phone ?? cleanerRow?.phone}</p>}
           </div>
         </div>
 
@@ -55,21 +78,14 @@ export default function CleanerProfil() {
       <div className="rounded-2xl p-5 border mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
         <h3 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>Disponibilité</h3>
         <div className="flex gap-3">
-          {[
-            { label: 'Disponible', value: 'available', color: '#5A8A6A' },
-            { label: 'En mission', value: 'busy', color: '#C48A2A' },
-            { label: 'Hors ligne', value: 'offline', color: '#A8A09A' },
-          ].map(s => (
-            <div
-              key={s.value}
-              className="flex-1 rounded-xl p-3 text-center border-2 transition-all"
+          {Object.entries(STATUS_MAP).map(([value, { label, color }]) => (
+            <div key={value} className="flex-1 rounded-xl p-3 text-center border-2 transition-all"
               style={{
-                borderColor: fullUser?.status === s.value ? s.color : '#E8E4DC',
-                backgroundColor: fullUser?.status === s.value ? `${s.color}12` : 'transparent',
-              }}
-            >
-              <span className="w-2 h-2 rounded-full mx-auto block mb-2" style={{ backgroundColor: s.color }} />
-              <p className="text-xs font-medium" style={{ color: fullUser?.status === s.value ? s.color : '#A8A09A' }}>{s.label}</p>
+                borderColor: cleanerRow?.status === value ? color : '#E8E4DC',
+                backgroundColor: cleanerRow?.status === value ? `${color}12` : 'transparent',
+              }}>
+              <span className="w-2 h-2 rounded-full mx-auto block mb-2" style={{ backgroundColor: color }} />
+              <p className="text-xs font-medium" style={{ color: cleanerRow?.status === value ? color : '#A8A09A' }}>{label}</p>
             </div>
           ))}
         </div>
@@ -92,7 +108,7 @@ export default function CleanerProfil() {
                 <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
                 <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.time}</p>
               </div>
-              <span className="text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>{m.price}€</span>
+              <span className="text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>{m.cleanerGain ?? m.price}€</span>
             </div>
           ))
         )}

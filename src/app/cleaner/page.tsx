@@ -53,8 +53,9 @@ export default function CleanerDashboard() {
   useEffect(() => {
     load();
     if (!user) return;
+    // Subscribe without filter — cleaner_id stores cleaners.id not users.id
     const ch = supabase.channel('cleaner-missions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions', filter: `cleaner_id=eq.${user.id}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load, user]);

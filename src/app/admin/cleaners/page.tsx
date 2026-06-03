@@ -1,48 +1,84 @@
 'use client';
 
-import { useState } from 'react';
-import { getUsers, getMissions, getPayments, setUserActive, addUser, updateUserRates, updateUserPassword, addPayment, currentMonth } from '@/lib/mockData';
-import { User, Payment } from '@/lib/types';
+import { useState, useEffect, useCallback } from 'react';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerRatesDB, updateCleanerPasswordDB, createPaymentDB } from '@/lib/db';
+import type { Mission, Payment } from '@/lib/types';
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' };
-const STATUS_LABEL: Record<string, string> = { available: 'Disponible', busy: 'En mission', offline: 'Hors ligne' };
-const STATUS_COLOR: Record<string, string> = { available: '#5A8A6A', busy: '#C48A2A', offline: '#A8A09A' };
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRateHotel: '', rateAirbnb: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
+type CleanerRow = { id: string; user_id?: string; name: string; email: string; phone?: string | null; hourly_rate_hotel?: number; rate_airbnb?: number; status: string; };
+
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function CleanersPage() {
   const [tab, setTab] = useState<typeof TABS_MAIN[number]>('Profils');
-  const [cleaners, setCleaners] = useState<User[]>(() => getUsers().filter(u => u.role === 'cleaner'));
-  const [payments, setPayments] = useState<Payment[]>(getPayments());
+  const [cleaners, setCleaners] = useState<CleanerRow[]>([]);
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editRates, setEditRates] = useState<string | null>(null);
   const [rateForm, setRateForm] = useState({ hourlyRateHotel: '', rateAirbnb: '' });
   const [editPassword, setEditPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
-  const missions = getMissions();
 
-  function refresh() { setCleaners(getUsers().filter(u => u.role === 'cleaner')); setPayments(getPayments()); }
+  const load = useCallback(async () => {
+    const [c, m, p] = await Promise.all([getCleaners(), getMissionsDB(), getPaymentsDB()]);
+    setCleaners(c as CleanerRow[]);
+    setMissions(m);
+    setPayments(p);
+    setLoading(false);
+  }, []);
 
-  function handleToggleActive(id: string, current: boolean) { setUserActive(id, !current); refresh(); }
+  useEffect(() => { load(); }, [load]);
 
-  function handleAddCleaner(e: React.FormEvent) {
+  async function handleToggleActive(id: string, currentStatus: string) {
+    await setCleanerActive(id, currentStatus !== 'active');
+    await load();
+  }
+
+  async function handleAddCleaner(e: React.FormEvent) {
     e.preventDefault();
-    addUser({ id: `c${Date.now()}`, name: form.name, email: form.email, password: form.password || 'cleaner123', role: 'cleaner', phone: form.phone || undefined, hourlyRateHotel: form.hourlyRateHotel ? Number(form.hourlyRateHotel) : undefined, rateAirbnb: form.rateAirbnb ? Number(form.rateAirbnb) : undefined, status: 'available', isActive: true, completedMissions: 0 });
-    refresh(); setForm(emptyForm); setShowForm(false);
+    setSaving(true);
+    await createCleaner({
+      name: form.name, email: form.email,
+      phone: form.phone || undefined,
+      password: form.password || 'cleaner123',
+      hourlyRateHotel: form.hourlyRateHotel ? Number(form.hourlyRateHotel) : undefined,
+      rateAirbnb: form.rateAirbnb ? Number(form.rateAirbnb) : undefined,
+    });
+    await load();
+    setForm(emptyForm);
+    setShowForm(false);
+    setSaving(false);
   }
 
-  function handleSaveRates(id: string) { updateUserRates(id, Number(rateForm.hourlyRateHotel), Number(rateForm.rateAirbnb)); refresh(); setEditRates(null); }
-  function handleSavePassword(id: string) { if (newPassword.trim()) { updateUserPassword(id, newPassword.trim()); } setEditPassword(null); setNewPassword(''); }
-
-  function handlePay(cleanerId: string, cleanerName: string, missionIds: string[], amount: number) {
-    addPayment({ id: `pay${Date.now()}`, cleanerId, cleanerName, amount, missionIds, date: new Date().toISOString().split('T')[0], month });
-    setPayments(getPayments());
+  async function handleSaveRates(id: string) {
+    await updateCleanerRatesDB(id, Number(rateForm.hourlyRateHotel) || 0, Number(rateForm.rateAirbnb) || 0);
+    await load();
+    setEditRates(null);
   }
 
-  // ── Per-cleaner pay calculations
+  async function handleSavePassword(id: string) {
+    if (newPassword.trim()) await updateCleanerPasswordDB(id, newPassword.trim());
+    setEditPassword(null);
+    setNewPassword('');
+  }
+
+  async function handlePay(cleanerId: string, cleanerName: string, missionIds: string[], amount: number) {
+    await createPaymentDB({ cleanerId, cleanerName, amount, missionIds, month });
+    await load();
+  }
+
   function getPayData(cleanerId: string) {
     const paidIds = payments.filter(p => p.cleanerId === cleanerId && p.month === month).flatMap(p => p.missionIds);
     const completedThisMonth = missions.filter(m => m.cleanerId === cleanerId && m.status === 'completed' && m.date.startsWith(month));
@@ -53,13 +89,14 @@ export default function CleanersPage() {
     return { completedThisMonth, unpaid, unpaidTotal, paidTotal, historyPayments };
   }
 
+  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Cleaners</h1>
-          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{cleaners.filter(c => c.isActive !== false).length} actif{cleaners.filter(c => c.isActive !== false).length > 1 ? 's' : ''} · {cleaners.length} total</p>
+          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{cleaners.filter(c => c.status === 'active').length} actif{cleaners.filter(c => c.status === 'active').length > 1 ? 's' : ''} · {cleaners.length} total</p>
         </div>
         {tab === 'Profils' && (
           <button onClick={() => setShowForm(s => !s)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
@@ -70,7 +107,6 @@ export default function CleanersPage() {
         )}
       </div>
 
-      {/* Main tabs */}
       <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
         {TABS_MAIN.map(t => (
           <button key={t} onClick={() => setTab(t)} className="px-5 py-2 rounded-xl text-sm font-medium transition-all"
@@ -87,10 +123,12 @@ export default function CleanersPage() {
             <form onSubmit={handleAddCleaner} className="rounded-2xl border p-6 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
               <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>Nouveau cleaner</h2>
               <div className="grid md:grid-cols-2 gap-4 mb-5">
-                {[{ label: 'Nom complet', key: 'name', placeholder: 'Sophie Martin', required: true, type: 'text' },
+                {[
+                  { label: 'Nom complet', key: 'name', placeholder: 'Sophie Martin', required: true, type: 'text' },
                   { label: 'Email', key: 'email', placeholder: 'sophie@email.com', required: true, type: 'email' },
                   { label: 'Téléphone', key: 'phone', placeholder: '06 12 34 56 78', required: false, type: 'text' },
-                  { label: 'Mot de passe', key: 'password', placeholder: 'Choisir un mot de passe', required: false, type: 'password' }].map(f => (
+                  { label: 'Mot de passe', key: 'password', placeholder: 'Par défaut : cleaner123', required: false, type: 'password' },
+                ].map(f => (
                   <div key={f.key}>
                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{f.label}</label>
                     <input required={f.required} type={f.type} value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
@@ -113,20 +151,19 @@ export default function CleanersPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button type="submit" className="px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Ajouter le cleaner</button>
-                {!form.password && <p className="text-xs" style={{ color: '#A8A09A' }}>Mot de passe par défaut : <span className="font-mono">cleaner123</span></p>}
-              </div>
+              <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                {saving ? 'Création...' : 'Ajouter le cleaner'}
+              </button>
             </form>
           )}
 
           <div className="space-y-4">
             {cleaners.map(cleaner => {
+              const isActive = cleaner.status === 'active';
               const cm = missions.filter(m => m.cleanerId === cleaner.id);
               const completed = cm.filter(m => m.status === 'completed').length;
               const upcoming = cm.filter(m => ['accepted', 'in_progress'].includes(m.status)).length;
               const hoursMonth = cm.filter(m => m.status === 'completed' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
-              const isActive = cleaner.isActive !== false;
 
               return (
                 <div key={cleaner.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', opacity: isActive ? 1 : 0.65 }}>
@@ -137,40 +174,25 @@ export default function CleanersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{cleaner.name}</h3>
-                        {cleaner.status && isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${STATUS_COLOR[cleaner.status]}15`, color: STATUS_COLOR[cleaner.status] }}>{STATUS_LABEL[cleaner.status]}</span>}
                         {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
                       {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
                       {editPassword === cleaner.id ? (
                         <div className="flex items-center gap-2 mt-2">
-                          <input
-                            type="password"
-                            value={newPassword}
-                            onChange={e => setNewPassword(e.target.value)}
-                            placeholder="Nouveau mot de passe"
-                            autoFocus
-                            className="px-3 py-1.5 rounded-xl text-xs border w-44"
-                            style={inputStyle}
-                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
-                            onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
-                          />
-                          <button onClick={() => handleSavePassword(cleaner.id)} disabled={!newPassword.trim()}
-                            className="text-xs px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-40"
-                            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-                          <button onClick={() => { setEditPassword(null); setNewPassword(''); }}
-                            className="text-xs px-2 py-1.5 rounded-lg"
-                            style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+                          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" autoFocus
+                            className="px-3 py-1.5 rounded-xl text-xs border w-44" style={inputStyle}
+                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                          <button onClick={() => handleSavePassword(cleaner.id)} disabled={!newPassword.trim()} className="text-xs px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
+                          <button onClick={() => { setEditPassword(null); setNewPassword(''); }} className="text-xs px-2 py-1.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditPassword(cleaner.id); setNewPassword(''); }}
-                          className="text-xs mt-1.5 px-2.5 py-1 rounded-lg transition-all"
-                          style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+                        <button onClick={() => { setEditPassword(cleaner.id); setNewPassword(''); }} className="text-xs mt-1.5 px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
                           🔑 Modifier le mot de passe
                         </button>
                       )}
                     </div>
-                    <button onClick={() => handleToggleActive(cleaner.id, isActive)} className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+                    <button onClick={() => handleToggleActive(cleaner.id, cleaner.status)} className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
                       style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>
                       {isActive ? 'Désactiver' : 'Activer'}
                     </button>
@@ -189,7 +211,7 @@ export default function CleanersPage() {
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Tarification</p>
                       {editRates !== cleaner.id ? (
-                        <button onClick={() => { setEditRates(cleaner.id); setRateForm({ hourlyRateHotel: String(cleaner.hourlyRateHotel ?? ''), rateAirbnb: String(cleaner.rateAirbnb ?? '') }); }}
+                        <button onClick={() => { setEditRates(cleaner.id); setRateForm({ hourlyRateHotel: String(cleaner.hourly_rate_hotel ?? ''), rateAirbnb: String(cleaner.rate_airbnb ?? '') }); }}
                           className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
                       ) : (
                         <div className="flex gap-2">
@@ -213,12 +235,12 @@ export default function CleanersPage() {
                       <div className="flex gap-4">
                         <div className="flex items-center gap-2">
                           <span className="text-xs" style={{ color: '#A8A09A' }}>Hôtel</span>
-                          <span className="text-sm font-semibold" style={{ color: cleaner.hourlyRateHotel ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourlyRateHotel ? `${cleaner.hourlyRateHotel}€/h` : '—'}</span>
+                          <span className="text-sm font-semibold" style={{ color: cleaner.hourly_rate_hotel ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate_hotel ? `${cleaner.hourly_rate_hotel}€/h` : '—'}</span>
                         </div>
                         <div className="w-px" style={{ backgroundColor: '#E8E4DC' }} />
                         <div className="flex items-center gap-2">
                           <span className="text-xs" style={{ color: '#A8A09A' }}>Airbnb</span>
-                          <span className="text-sm font-semibold" style={{ color: cleaner.rateAirbnb ? '#1A1A1A' : '#A8A09A' }}>{cleaner.rateAirbnb ? `${cleaner.rateAirbnb}€/apt` : '—'}</span>
+                          <span className="text-sm font-semibold" style={{ color: cleaner.rate_airbnb ? '#1A1A1A' : '#A8A09A' }}>{cleaner.rate_airbnb ? `${cleaner.rate_airbnb}€/apt` : '—'}</span>
                         </div>
                       </div>
                     )}
@@ -233,11 +255,10 @@ export default function CleanersPage() {
       {/* ══ TAB : PAIE ══ */}
       {tab === 'Paie' && (
         <div className="space-y-6">
-          {cleaners.filter(c => c.isActive !== false).map(cleaner => {
+          {cleaners.filter(c => c.status === 'active').map(cleaner => {
             const { completedThisMonth, unpaid, unpaidTotal, paidTotal, historyPayments } = getPayData(cleaner.id);
             return (
               <div key={cleaner.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-                {/* Header */}
                 <div className="px-4 md:px-6 py-4 border-b flex flex-wrap items-center justify-between gap-2" style={{ borderColor: '#F2EFE9' }}>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>{cleaner.name.charAt(0)}</div>
@@ -252,12 +273,10 @@ export default function CleanersPage() {
                   </div>
                 </div>
 
-                {/* Unpaid missions */}
                 <div className="px-4 md:px-6 py-4">
                   <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>
                     À payer ce mois — <span style={{ color: unpaidTotal > 0 ? '#C48A2A' : '#5A8A6A' }}>{unpaidTotal}€</span>
                   </p>
-
                   {unpaid.length === 0 ? (
                     <p className="text-sm py-2" style={{ color: '#5A8A6A' }}>✓ Tout est payé ce mois</p>
                   ) : (
@@ -273,17 +292,14 @@ export default function CleanersPage() {
                           </div>
                         ))}
                       </div>
-                      <button
-                        onClick={() => handlePay(cleaner.id, cleaner.name, unpaid.map(m => m.id), unpaidTotal)}
-                        className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
-                        style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                      <button onClick={() => handlePay(cleaner.id, cleaner.name, unpaid.map(m => m.id), unpaidTotal)}
+                        className="w-full py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                         Marquer comme payé — {unpaidTotal}€
                       </button>
                     </>
                   )}
                 </div>
 
-                {/* Payment history */}
                 {historyPayments.length > 0 && (
                   <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
                     <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Historique paiements</p>

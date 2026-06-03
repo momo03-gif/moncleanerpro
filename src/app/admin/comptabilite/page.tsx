@@ -1,31 +1,39 @@
 'use client';
 
-import { getMissions, getUsers, getPayments, currentMonth } from '@/lib/mockData';
+import { useState, useEffect } from 'react';
+import { getMissionsDB, getCleaners, getPaymentsDB } from '@/lib/db';
+import type { Mission, Payment } from '@/lib/types';
+
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 export default function ComptabilitePage() {
-  const missions = getMissions();
-  const cleaners = getUsers().filter(u => u.role === 'cleaner');
-  const payments = getPayments();
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [cleaners, setCleaners] = useState<any[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB()]).then(([m, c, p]) => {
+      setMissions(m); setCleaners(c); setPayments(p); setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+
   const month = currentMonth();
-
   const completedMissions = missions.filter(m => m.status === 'completed');
-
-  // Revenus = prix client de toutes les missions terminées
   const totalRevenue = completedMissions.reduce((s, m) => s + m.price, 0);
-
-  // Salaires = gains cleaners des missions terminées
   const totalSalaries = completedMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
-
-  // Bénéfice net
   const netProfit = totalRevenue - totalSalaries;
 
-  // Ce mois
   const thisMonthMissions = completedMissions.filter(m => m.date.startsWith(month));
   const revenueMonth = thisMonthMissions.reduce((s, m) => s + m.price, 0);
   const salariesMonth = thisMonthMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
   const profitMonth = revenueMonth - salariesMonth;
 
-  // Par cleaner
   const cleanerStats = cleaners.map(c => {
     const cm = completedMissions.filter(m => m.cleanerId === c.id);
     const cmMonth = cm.filter(m => m.date.startsWith(month));
@@ -42,7 +50,6 @@ export default function ComptabilitePage() {
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue financière globale</p>
       </div>
 
-      {/* ── Global KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>Revenus totaux</p>
@@ -61,10 +68,9 @@ export default function ComptabilitePage() {
         </div>
       </div>
 
-      {/* ── Ce mois */}
       <div className="rounded-2xl border p-5 mb-8" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#7A7068' }}>Ce mois — {month}</p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Revenus</p>
             <p className="text-xl font-bold" style={{ color: '#5A8A6A' }}>{revenueMonth}€</p>
@@ -80,33 +86,25 @@ export default function ComptabilitePage() {
         </div>
       </div>
 
-      {/* ── Par cleaner */}
       <h2 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>Par cleaner</h2>
       <div className="rounded-2xl overflow-hidden border mb-8" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
         <div className="hidden md:grid grid-cols-5 px-5 py-3 text-xs font-semibold uppercase tracking-wide border-b" style={{ color: '#A8A09A', borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
-          <span className="col-span-2">Cleaner</span>
-          <span>Missions (mois)</span>
-          <span>Total gagné</span>
-          <span>À payer (mois)</span>
+          <span className="col-span-2">Cleaner</span><span>Missions (mois)</span><span>Total gagné</span><span>À payer (mois)</span>
         </div>
+        {cleanerStats.length === 0 && <div className="py-10 text-center text-sm" style={{ color: '#A8A09A' }}>Aucun cleaner</div>}
         {cleanerStats.map((s, i) => (
           <div key={s.cleaner.id} className={`px-5 py-4 flex flex-col md:grid md:grid-cols-5 gap-2 md:gap-0 md:items-center ${i < cleanerStats.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
             <div className="md:col-span-2 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>
-                {s.cleaner.name.charAt(0)}
-              </div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>{s.cleaner.name.charAt(0)}</div>
               <div>
                 <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{s.cleaner.name}</p>
-                <p className="text-xs" style={{ color: '#A8A09A' }}>{s.cleaner.hourlyRateHotel ? `${s.cleaner.hourlyRateHotel}€/h hôtel` : ''}{s.cleaner.hourlyRateHotel && s.cleaner.rateAirbnb ? ' · ' : ''}{s.cleaner.rateAirbnb ? `${s.cleaner.rateAirbnb}€/apt` : ''}</p>
+                <p className="text-xs" style={{ color: '#A8A09A' }}>
+                  {s.cleaner.hourly_rate_hotel ? `${s.cleaner.hourly_rate_hotel}€/h` : ''}{s.cleaner.hourly_rate_hotel && s.cleaner.rate_airbnb ? ' · ' : ''}{s.cleaner.rate_airbnb ? `${s.cleaner.rate_airbnb}€/apt` : ''}
+                </p>
               </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{s.missionCountMonth}</p>
-              <p className="text-xs" style={{ color: '#A8A09A' }}>{s.missionCount} total</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{s.totalEarned}€</p>
-            </div>
+            <div><p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{s.missionCountMonth}</p><p className="text-xs" style={{ color: '#A8A09A' }}>{s.missionCount} total</p></div>
+            <div><p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{s.totalEarned}€</p></div>
             <div>
               <span className="text-sm font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: s.unpaidAmount > 0 ? '#C48A2A15' : '#5A8A6A15', color: s.unpaidAmount > 0 ? '#C48A2A' : '#5A8A6A' }}>
                 {s.unpaidAmount > 0 ? `${s.unpaidAmount}€` : '✓ Payé'}
@@ -116,15 +114,12 @@ export default function ComptabilitePage() {
         ))}
       </div>
 
-      {/* ── Détail missions terminées */}
       <h2 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>Détail missions terminées</h2>
       <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
         <div className="hidden md:grid grid-cols-5 px-5 py-3 text-xs font-semibold uppercase tracking-wide border-b" style={{ color: '#A8A09A', borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
-          <span className="col-span-2">Propriété</span>
-          <span>Cleaner</span>
-          <span>Prix client</span>
-          <span>Gain cleaner</span>
+          <span className="col-span-2">Propriété</span><span>Cleaner</span><span>Prix client</span><span>Gain cleaner</span>
         </div>
+        {completedMissions.length === 0 && <div className="py-10 text-center text-sm" style={{ color: '#A8A09A' }}>Aucune mission terminée</div>}
         {completedMissions.sort((a, b) => b.date.localeCompare(a.date)).map((m, i) => (
           <div key={m.id} className={`px-5 py-4 flex flex-col md:grid md:grid-cols-5 gap-1 md:gap-0 md:items-center ${i < completedMissions.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
             <div className="md:col-span-2">

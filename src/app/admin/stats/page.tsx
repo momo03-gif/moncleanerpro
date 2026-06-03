@@ -1,28 +1,41 @@
-import { MISSIONS, USERS } from '@/lib/mockData';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { getMissionsDB, getCleaners } from '@/lib/db';
+import type { Mission } from '@/lib/types';
 
 export default function StatsPage() {
-  const total = MISSIONS.length;
-  const completed = MISSIONS.filter(m => m.status === 'completed').length;
-  const pending = MISSIONS.filter(m => m.status === 'pending').length;
-  const revenue = MISSIONS.filter(m => m.status === 'completed').reduce((s, m) => s + m.price, 0);
-  const avgPrice = total > 0 ? Math.round(MISSIONS.reduce((s, m) => s + m.price, 0) / total) : 0;
-  const cleaners = USERS.filter(u => u.role === 'cleaner');
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [cleaners, setCleaners] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getMissionsDB(), getCleaners()]).then(([m, c]) => {
+      setMissions(m); setCleaners(c); setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+
+  const total = missions.length;
+  const completed = missions.filter(m => m.status === 'completed').length;
+  const pending = missions.filter(m => m.status === 'pending').length;
+  const revenue = missions.filter(m => m.status === 'completed').reduce((s, m) => s + m.price, 0);
+  const avgPrice = total > 0 ? Math.round(missions.reduce((s, m) => s + m.price, 0) / total) : 0;
 
   const byType: Record<string, number> = {};
-  MISSIONS.forEach(m => { byType[m.type] = (byType[m.type] ?? 0) + 1; });
+  missions.forEach(m => { byType[m.type] = (byType[m.type] ?? 0) + 1; });
 
   const typeLabel: Record<string, string> = {
-    checkout: 'Check-out',
-    checkin: 'Check-in',
-    deep_clean: 'Grand ménage',
-    regular: 'Régulier',
+    checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
+    regular: 'Régulier', menage: 'Ménage', grand_menage: 'Grand ménage',
   };
 
-  const topCleaner = cleaners.reduce((best, c) => {
-    const count = MISSIONS.filter(m => m.cleanerId === c.id && m.status === 'completed').length;
-    const bestCount = MISSIONS.filter(m => m.cleanerId === best.id && m.status === 'completed').length;
+  const topCleaner = cleaners.length > 0 ? cleaners.reduce((best, c) => {
+    const count = missions.filter(m => m.cleanerId === c.id && m.status === 'completed').length;
+    const bestCount = missions.filter(m => m.cleanerId === best.id && m.status === 'completed').length;
     return count > bestCount ? c : best;
-  }, cleaners[0]);
+  }, cleaners[0]) : null;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -31,11 +44,10 @@ export default function StatsPage() {
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue d'ensemble des performances</p>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total missions', value: total, icon: '◎' },
-          { label: 'Taux de completion', value: `${Math.round((completed / total) * 100)}%`, icon: '◈' },
+          { label: 'Taux de completion', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '0%', icon: '◈' },
           { label: 'Revenus générés', value: `${revenue}€`, icon: '◇', accent: true },
           { label: 'Prix moyen', value: `${avgPrice}€`, icon: '◉' },
         ].map(kpi => (
@@ -48,25 +60,27 @@ export default function StatsPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* By type */}
         <div className="rounded-2xl p-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>Répartition par type</h2>
-          <div className="space-y-4">
-            {Object.entries(byType).map(([type, count]) => (
-              <div key={type}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm" style={{ color: '#7A7068' }}>{typeLabel[type]}</span>
-                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{count}</span>
+          {Object.keys(byType).length === 0 ? (
+            <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune donnée</p>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(byType).map(([type, count]) => (
+                <div key={type}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm" style={{ color: '#7A7068' }}>{typeLabel[type] ?? type}</span>
+                    <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{count}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full" style={{ backgroundColor: '#F2EFE9' }}>
+                    <div className="h-1.5 rounded-full" style={{ backgroundColor: '#C9A84C', width: `${(count / total) * 100}%` }} />
+                  </div>
                 </div>
-                <div className="h-1.5 rounded-full" style={{ backgroundColor: '#F2EFE9' }}>
-                  <div className="h-1.5 rounded-full" style={{ backgroundColor: '#C9A84C', width: `${(count / total) * 100}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Top performer + mission status */}
         <div className="space-y-4">
           {topCleaner && (
             <div className="rounded-2xl p-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
@@ -78,7 +92,7 @@ export default function StatsPage() {
                 <div>
                   <p className="font-semibold" style={{ color: '#1A1A1A' }}>{topCleaner.name}</p>
                   <p className="text-sm" style={{ color: '#A8A09A' }}>
-                    ⭐ {topCleaner.rating} · {MISSIONS.filter(m => m.cleanerId === topCleaner.id && m.status === 'completed').length} missions terminées
+                    {missions.filter(m => m.cleanerId === topCleaner.id && m.status === 'completed').length} missions terminées
                   </p>
                 </div>
               </div>
@@ -91,8 +105,8 @@ export default function StatsPage() {
               {[
                 { label: 'Terminées', count: completed, color: '#5A8A6A' },
                 { label: 'En attente', count: pending, color: '#C48A2A' },
-                { label: 'Acceptées', count: MISSIONS.filter(m => m.status === 'accepted').length, color: '#C9A84C' },
-                { label: 'Annulées', count: MISSIONS.filter(m => m.status === 'cancelled').length, color: '#B85A50' },
+                { label: 'Acceptées', count: missions.filter(m => m.status === 'accepted').length, color: '#C9A84C' },
+                { label: 'Annulées', count: missions.filter(m => m.status === 'cancelled').length, color: '#B85A50' },
               ].map(s => (
                 <div key={s.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
