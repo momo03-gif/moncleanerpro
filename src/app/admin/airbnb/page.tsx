@@ -1,76 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAirbnbs, getActiveCleanersDB, createAirbnb, assignAirbnbCleaner } from '@/lib/db';
+import { getAirbnbs, createAirbnb } from '@/lib/db';
 import type { Apartment } from '@/lib/types';
+import { inputStyle } from '@/lib/ui';
+import MapsModal from '@/components/MapsModal';
 
-const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' };
 const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '' };
 type FilterType = 'all' | 'assigned' | 'unassigned';
 
-function MapsModal({ address, onClose }: { address: string; onClose: () => void }) {
-  const encoded = encodeURIComponent(address);
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(26,26,26,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
-        style={{ backgroundColor: '#FFFFFF' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="px-5 py-4 border-b" style={{ borderColor: '#E8E4DC' }}>
-          <p className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Ouvrir l'adresse</p>
-          <p className="text-xs mt-1 truncate" style={{ color: '#A8A09A' }}>{address}</p>
-        </div>
-        <div className="p-3 space-y-2">
-          <a
-            href={`https://maps.google.com/?q=${encoded}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}
-          >
-            <span className="text-base">🗺</span>
-            Ouvrir dans Google Maps
-          </a>
-          <a
-            href={`https://maps.apple.com/?q=${encoded}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}
-          >
-            <span className="text-base">📍</span>
-            Ouvrir dans Plans (Apple Maps)
-          </a>
-        </div>
-        <div className="px-3 pb-3">
-          <button
-            onClick={onClose}
-            className="w-full py-3 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: '#F8F6F2', color: '#A8A09A' }}
-          >
-            Annuler
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [cleaners, setCleaners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [assignId, setAssignId] = useState<string | null>(null);
-  const [selectedCleaner, setSelectedCleaner] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -78,9 +21,8 @@ export default function AirbnbPage() {
   const [mapsModal, setMapsModal] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [a, c] = await Promise.all([getAirbnbs(), getActiveCleanersDB()]);
+    const a = await getAirbnbs();
     setApartments(a);
-    setCleaners(c);
     setLoading(false);
   }, []);
 
@@ -114,14 +56,6 @@ export default function AirbnbPage() {
     setForm(emptyForm);
     setShowForm(false);
     setSaving(false);
-  }
-
-  async function handleAssign(aptId: string) {
-    if (!selectedCleaner) return;
-    await assignAirbnbCleaner(aptId, selectedCleaner || null);
-    await load();
-    setAssignId(null);
-    setSelectedCleaner('');
   }
 
   if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
@@ -272,27 +206,6 @@ export default function AirbnbPage() {
                 </div>
               </div>
 
-              {/* Assign action */}
-              <div className="px-5 pb-4">
-                {assignId === apt.id ? (
-                  <div className="flex gap-2">
-                    <select value={selectedCleaner} onChange={e => setSelectedCleaner(e.target.value)} className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
-                      style={{ ...inputStyle, color: selectedCleaner ? '#1A1A1A' : '#A8A09A' }}>
-                      <option value="">Choisir un cleaner</option>
-                      {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <button onClick={() => handleAssign(apt.id)} disabled={!selectedCleaner} className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-                    <button onClick={() => { setAssignId(null); setSelectedCleaner(''); }} className="px-3 py-2 rounded-xl text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
-                  </div>
-                ) : (
-                  <button onClick={() => { setAssignId(apt.id); setSelectedCleaner(apt.cleanerId ?? ''); }}
-                    className="w-full py-2.5 rounded-xl text-sm font-medium border transition-all" style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.color = '#C9A84C'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E4DC'; e.currentTarget.style.color = '#7A7068'; }}>
-                    {apt.cleanerName ? `Réassigner · ${apt.cleanerName}` : 'Attribuer à un cleaner'}
-                  </button>
-                )}
-              </div>
             </div>
           );
         })}

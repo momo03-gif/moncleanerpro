@@ -4,11 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, getCleanerByUserId } from '@/lib/db';
 import type { Mission } from '@/lib/types';
-
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
+import { currentMonth } from '@/lib/mockData';
 
 export default function CleanerProfil() {
   const { user } = useAuth();

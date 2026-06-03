@@ -81,6 +81,17 @@ export interface Payment {
   month: string;
 }
 
+export interface CleanerRow {
+  id: string;
+  user_id?: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  hourly_rate_hotel?: number;
+  rate_airbnb?: number;
+  status: string;
+}
+
 export interface FinancialEntry {
   id: string;
   date: string;

@@ -1,42 +1,75 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getMissionsDB, getHotelRequestsDB, getActiveCleanersDB, createMissionDB, validateRequestDB, refuseRequestDB } from '@/lib/db';
+import {
+  getMissionsDB, getHotelRequestsDB, getActiveCleanersDB,
+  createMissionDB, validateRequestDB, refuseRequestDB,
+  getApprovedHotelsDB, getAirbnbs,
+} from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import type { Mission, HotelAnnounce, MissionType, MissionSource } from '@/lib/types';
+import type { Mission, HotelAnnounce, MissionType, MissionSource, Apartment } from '@/lib/types';
+import { inputStyle } from '@/lib/ui';
 
 const ST_MISSION: Record<string, { label: string; color: string }> = {
-  pending: { label: 'En attente', color: '#C48A2A' }, accepted: { label: 'Validée', color: '#C9A84C' },
-  in_progress: { label: 'En cours', color: '#8B7A62' }, completed: { label: 'Terminée', color: '#5A8A6A' }, cancelled: { label: 'Annulée', color: '#B85A50' },
+  pending: { label: 'En attente', color: '#C48A2A' },
+  accepted: { label: 'Validée', color: '#C9A84C' },
+  in_progress: { label: 'En cours', color: '#8B7A62' },
+  completed: { label: 'Terminée', color: '#5A8A6A' },
+  cancelled: { label: 'Annulée', color: '#B85A50' },
 };
 const ST_REQ: Record<string, { label: string; color: string }> = {
-  pending: { label: 'En attente', color: '#C48A2A' }, validated: { label: 'Validée', color: '#C9A84C' },
-  refused: { label: 'Refusée', color: '#B85A50' }, in_progress: { label: 'En cours', color: '#8B7A62' }, completed: { label: 'Terminée', color: '#5A8A6A' },
+  pending: { label: 'En attente', color: '#C48A2A' },
+  validated: { label: 'Validée', color: '#C9A84C' },
+  refused: { label: 'Refusée', color: '#B85A50' },
+  in_progress: { label: 'En cours', color: '#8B7A62' },
+  completed: { label: 'Terminée', color: '#5A8A6A' },
 };
-const TYPE_LABEL: Record<string, string> = { checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage', regular: 'Régulier', menage: 'Ménage', grand_menage: 'Grand ménage' };
-const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' };
+const TYPE_LABEL: Record<string, string> = {
+  checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
+  regular: 'Régulier', menage: 'Ménage', grand_menage: 'Grand ménage',
+};
 const TABS = ['Annonces hôtel', 'Missions', 'Créer'] as const;
+
+const emptyForm = {
+  source: 'hotel' as MissionSource,
+  hotelId: '',
+  airbnbId: '',
+  property: '',
+  address: '',
+  cleanerId: '',
+  date: '',
+  time: '',
+  duration: '2',
+  price: '',
+  cleanerGain: '',
+};
 
 export default function MissionsPage() {
   const [tab, setTab] = useState<typeof TABS[number]>('Annonces hôtel');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
+  const [hotels, setHotels] = useState<any[]>([]);
+  const [airbnbs, setAirbnbs] = useState<Apartment[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const [form, setForm] = useState({ property: '', address: '', type: 'checkout' as MissionType, source: 'hotel' as MissionSource, date: '', time: '', duration: '2', cleanerId: '', price: '', cleanerGain: '' });
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState(emptyForm);
 
   const load = useCallback(async () => {
-    const [m, r, c] = await Promise.all([getMissionsDB(), getHotelRequestsDB(), getActiveCleanersDB()]);
-    setMissions(m); setRequests(r); setCleaners(c); setLoading(false);
+    const [m, r, c, h, a] = await Promise.all([
+      getMissionsDB(), getHotelRequestsDB(), getActiveCleanersDB(),
+      getApprovedHotelsDB(), getAirbnbs(),
+    ]);
+    setMissions(m); setRequests(r); setCleaners(c);
+    setHotels(h); setAirbnbs(a);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
-    // Realtime subscriptions
     const ch1 = supabase.channel('rt-requests').on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_requests' }, load).subscribe();
     const ch2 = supabase.channel('rt-missions').on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
@@ -52,41 +85,74 @@ export default function MissionsPage() {
 
   async function handleRefuse(id: string) { await refuseRequestDB(id); await load(); }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    const c = cleaners.find(x => x.id === form.cleanerId);
-    await createMissionDB({
-      type: form.type, source: form.source, propertyName: form.property, address: form.address,
-      dateFrom: form.date, timeFrom: form.time, timeTo: '', duration: Number(form.duration),
-      cleanerId: form.cleanerId || undefined, cleanerName: c?.name,
-      price: Number(form.price) || 0, cleanerGain: Number(form.cleanerGain) || 0,
-    });
-    setForm({ property: '', address: '', type: 'checkout', source: 'hotel', date: '', time: '', duration: '2', cleanerId: '', price: '', cleanerGain: '' });
-    setTab('Missions');
-    await load();
+  function selectHotel(hotelId: string) {
+    const h = hotels.find(x => x.id === hotelId);
+    setForm(p => ({ ...p, hotelId, property: h?.hotel_name ?? '', address: h?.address ?? '' }));
   }
 
-  function autoCalc(patch: Partial<typeof form>) {
+  function selectAirbnb(airbnbId: string) {
+    const a = airbnbs.find(x => x.id === airbnbId);
+    const matchedCleaner = a?.cleanerId
+      ? cleaners.find(c => c.id === a.cleanerId || c.user_id === a.cleanerId)
+      : null;
+    setForm(p => ({
+      ...p,
+      airbnbId,
+      property: a?.name ?? '',
+      address: a?.address ?? '',
+      cleanerId: matchedCleaner?.id ?? '',
+    }));
+  }
+
+  function calcGain(patch: Partial<typeof form>) {
     const next = { ...form, ...patch };
-    const dur = Number(next.duration) || 0;
     const c = cleaners.find(x => x.id === next.cleanerId);
-    if (c && dur > 0) {
-      const gain = next.source === 'hotel' ? (c.hourly_rate_hotel ?? 0) * dur : (c.rate_airbnb ?? 0);
-      next.cleanerGain = String(gain);
-      next.price = String(next.source === 'hotel' ? dur * 40 : 25);
+    if (c && next.source === 'hotel') {
+      const dur = Number(next.duration) || 0;
+      if (dur > 0) {
+        next.cleanerGain = String((c.hourly_rate_hotel ?? 0) * dur);
+        if (!next.price) next.price = String(dur * 40);
+      }
+    } else if (c && next.source === 'airbnb') {
+      next.cleanerGain = String(c.rate_airbnb ?? 0);
     }
     setForm(next);
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    const c = cleaners.find(x => x.id === form.cleanerId);
+    const type: MissionType = form.source === 'airbnb' ? 'regular' : 'checkout';
+    await createMissionDB({
+      type, source: form.source,
+      propertyName: form.property,
+      address: form.address,
+      dateFrom: form.date,
+      timeFrom: form.time,
+      timeTo: '',
+      duration: Number(form.duration) || 2,
+      cleanerId: form.cleanerId || undefined,
+      cleanerName: c?.name,
+      price: Number(form.price) || 0,
+      cleanerGain: Number(form.cleanerGain) || 0,
+    });
+    setForm(emptyForm);
+    setTab('Missions');
+    await load();
+    setCreating(false);
   }
 
   const pendingReqs = requests.filter(r => r.status === 'pending').length;
   const filtered = filter === 'all' ? missions : missions.filter(m => m.status === filter);
 
-  if (loading) return <div className="p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-6"><h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Missions</h1></div>
 
+      {/* Tabs */}
       <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all relative"
@@ -99,10 +165,14 @@ export default function MissionsPage() {
         ))}
       </div>
 
-      {/* Annonces hôtel */}
+      {/* ── ANNONCES HÔTEL ── */}
       {tab === 'Annonces hôtel' && (
         <div className="space-y-3">
-          {requests.length === 0 && <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}><p className="text-sm" style={{ color: '#A8A09A' }}>Aucune annonce</p></div>}
+          {requests.length === 0 && (
+            <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+              <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune annonce</p>
+            </div>
+          )}
           {requests.map(a => {
             const st = ST_REQ[a.status];
             const isPending = a.status === 'pending';
@@ -147,7 +217,7 @@ export default function MissionsPage() {
         </div>
       )}
 
-      {/* Missions */}
+      {/* ── MISSIONS ── */}
       {tab === 'Missions' && (
         <>
           <div className="flex gap-2 mb-6 flex-wrap">
@@ -186,64 +256,199 @@ export default function MissionsPage() {
         </>
       )}
 
-      {/* Créer */}
+      {/* ── CRÉER ── */}
       {tab === 'Créer' && (
         <form onSubmit={handleCreate} className="rounded-2xl border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>Nouvelle mission</h2>
-          <div className="grid md:grid-cols-2 gap-4 mb-5">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Source</label>
-              <div className="flex gap-2">
-                {(['hotel', 'airbnb'] as MissionSource[]).map(s => (
-                  <button key={s} type="button" onClick={() => autoCalc({ source: s })}
-                    className="px-5 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
-                    style={{ borderColor: form.source === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.source === s ? '#C9A84C12' : '#FFFFFF', color: form.source === s ? '#C9A84C' : '#7A7068' }}>
-                    {s === 'hotel' ? '🏨 Hôtel' : '🏠 Airbnb'}
-                  </button>
-                ))}
-              </div>
+          <h2 className="font-semibold mb-6" style={{ color: '#1A1A1A' }}>Nouvelle mission</h2>
+
+          {/* Source */}
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Source</label>
+            <div className="flex gap-2">
+              {(['hotel', 'airbnb'] as MissionSource[]).map(s => (
+                <button key={s} type="button"
+                  onClick={() => setForm({ ...emptyForm, source: s })}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all"
+                  style={{ borderColor: form.source === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.source === s ? '#C9A84C12' : '#FFFFFF', color: form.source === s ? '#C9A84C' : '#7A7068' }}>
+                  {s === 'hotel' ? '🏨 Hôtel' : '🏠 Airbnb'}
+                </button>
+              ))}
             </div>
-            {[{ label: 'Propriété', key: 'property', placeholder: 'Nom de la propriété' }, { label: 'Adresse', key: 'address', placeholder: '12 Rue de la Paix, Paris' }].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{f.label}</label>
-                <input required value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder} className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+
+            {/* ── SOURCE = HÔTEL ── */}
+            {form.source === 'hotel' && (<>
+              {/* Sélection hôtel */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Hôtel partenaire</label>
+                <select
+                  value={form.hotelId}
+                  onChange={e => selectHotel(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: form.hotelId ? '#1A1A1A' : '#A8A09A' }}
+                >
+                  <option value="">Sélectionner un hôtel</option>
+                  {hotels.map(h => <option key={h.id} value={h.id}>{h.hotel_name}</option>)}
+                </select>
+              </div>
+
+              {/* Propriété (auto-rempli) */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Propriété</label>
+                <input required value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))}
+                  placeholder="Nom de la propriété"
+                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
-            ))}
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Cleaner</label>
-              <select value={form.cleanerId} onChange={e => autoCalc({ cleanerId: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm border appearance-none" style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
-                <option value="">Assigner plus tard</option>
-                {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+
+              {/* Adresse (auto-remplie) */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</label>
-                <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Adresse</label>
+                <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
+                  placeholder="Adresse de l'hôtel"
+                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
+
+              {/* Cleaner */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure</label>
-                <input required type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))} className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Cleaner</label>
+                <select value={form.cleanerId} onChange={e => calcGain({ cleanerId: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
+                  <option value="">Assigner plus tard</option>
+                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Durée (h)</label>
-              <div className="flex gap-2">{['1','2','3','4','5'].map(d => <button key={d} type="button" onClick={() => autoCalc({ duration: d })} className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all" style={{ borderColor: form.duration === d ? '#C9A84C' : '#E8E4DC', backgroundColor: form.duration === d ? '#C9A84C' : '#FFFFFF', color: form.duration === d ? '#1A1A1A' : '#A8A09A' }}>{d}h</button>)}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+
+              {/* Date + Heure */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</label>
+                  <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure</label>
+                  <input required type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+              </div>
+
+              {/* Durée */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Durée</label>
+                <div className="flex gap-2">
+                  {['1', '2', '3', '4', '5'].map(d => (
+                    <button key={d} type="button" onClick={() => calcGain({ duration: d })}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all"
+                      style={{ borderColor: form.duration === d ? '#C9A84C' : '#E8E4DC', backgroundColor: form.duration === d ? '#C9A84C' : '#FFFFFF', color: form.duration === d ? '#1A1A1A' : '#A8A09A' }}>
+                      {d}h
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prix client + Gain cleaner */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€)</label>
-                <input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <input type="number" min="0" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
+                  placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Gain cleaner (€)</label>
-                <input type="number" value={form.cleanerGain} onChange={e => setForm(p => ({ ...p, cleanerGain: e.target.value }))} placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <input type="number" min="0" value={form.cleanerGain} onChange={e => setForm(p => ({ ...p, cleanerGain: e.target.value }))}
+                  placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
-            </div>
+            </>)}
+
+            {/* ── SOURCE = AIRBNB ── */}
+            {form.source === 'airbnb' && (<>
+              {/* Sélection appartement */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Appartement</label>
+                <select
+                  value={form.airbnbId}
+                  onChange={e => selectAirbnb(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: form.airbnbId ? '#1A1A1A' : '#A8A09A' }}
+                >
+                  <option value="">Sélectionner un appartement</option>
+                  {airbnbs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+
+              {/* Coordonnées auto-remplies (lecture seule) */}
+              {form.airbnbId && (
+                <div className="md:col-span-2 rounded-xl p-4 space-y-2" style={{ backgroundColor: '#F8F6F2' }}>
+                  {form.property && (
+                    <p className="text-sm" style={{ color: '#1A1A1A' }}>
+                      <span className="text-xs font-semibold uppercase tracking-wide mr-2" style={{ color: '#A8A09A' }}>Propriété</span>
+                      {form.property}
+                    </p>
+                  )}
+                  {form.address && (
+                    <p className="text-sm" style={{ color: '#7A7068' }}>
+                      <span className="text-xs font-semibold uppercase tracking-wide mr-2" style={{ color: '#A8A09A' }}>Adresse</span>
+                      {form.address}
+                    </p>
+                  )}
+                  {(() => {
+                    const apt = airbnbs.find(a => a.id === form.airbnbId);
+                    return (<>
+                      {apt?.portalCode && <p className="text-sm font-mono" style={{ color: '#1A1A1A' }}><span className="text-xs font-semibold uppercase tracking-wide mr-2 font-sans" style={{ color: '#A8A09A' }}>Code portail</span>{apt.portalCode}</p>}
+                      {apt?.keyboxCode && <p className="text-sm font-mono" style={{ color: '#1A1A1A' }}><span className="text-xs font-semibold uppercase tracking-wide mr-2 font-sans" style={{ color: '#A8A09A' }}>Boîte à clé</span>{apt.keyboxCode}</p>}
+                      {apt?.entryDirectives && <p className="text-sm" style={{ color: '#7A7068' }}><span className="text-xs font-semibold uppercase tracking-wide mr-2" style={{ color: '#A8A09A' }}>Entrée</span>{apt.entryDirectives}</p>}
+                    </>);
+                  })()}
+                </div>
+              )}
+
+              {/* Cleaner (pré-sélectionné si appartement a un cleaner assigné) */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Cleaner</label>
+                <select value={form.cleanerId} onChange={e => calcGain({ cleanerId: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
+                  <option value="">Assigner plus tard</option>
+                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              {/* Date nettoyage + Heure départ clients */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date de nettoyage</label>
+                <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure départ clients</label>
+                <input required type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+
+              {/* Gain cleaner seulement */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Gain cleaner (€)</label>
+                <input type="number" min="0" value={form.cleanerGain} onChange={e => setForm(p => ({ ...p, cleanerGain: e.target.value }))}
+                  placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+            </>)}
           </div>
-          <button type="submit" className="px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Créer la mission</button>
+
+          <button type="submit" disabled={creating} className="px-6 py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            {creating ? 'Création...' : 'Créer la mission'}
+          </button>
         </form>
       )}
     </div>

@@ -2,18 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerRatesDB, updateCleanerPasswordDB, createPaymentDB } from '@/lib/db';
-import type { Mission, Payment } from '@/lib/types';
+import type { Mission, Payment, CleanerRow } from '@/lib/types';
+import { inputStyle } from '@/lib/ui';
+import { currentMonth } from '@/lib/mockData';
 
-const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' };
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRateHotel: '', rateAirbnb: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
-
-type CleanerRow = { id: string; user_id?: string; name: string; email: string; phone?: string | null; hourly_rate_hotel?: number; rate_airbnb?: number; status: string; };
-
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
 
 export default function CleanersPage() {
   const [tab, setTab] = useState<typeof TABS_MAIN[number]>('Profils');

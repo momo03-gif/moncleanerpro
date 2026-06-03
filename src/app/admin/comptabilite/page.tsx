@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getMissionsDB, getCleaners, getPaymentsDB } from '@/lib/db';
 import type { Mission, Payment } from '@/lib/types';
-
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
+import { currentMonth } from '@/lib/mockData';
 
 export default function ComptabilitePage() {
   const [missions, setMissions] = useState<Mission[]>([]);

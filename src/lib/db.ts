@@ -396,6 +396,11 @@ export async function registerHotelDB(fields: {
   });
 }
 
+export async function getApprovedHotelsDB() {
+  const { data } = await supabase.from('hotels').select('*').eq('status_account', 'approved').order('hotel_name');
+  return data ?? [];
+}
+
 export async function getHotelByUserId(userId: string) {
   const { data } = await supabase.from('hotels').select('*').eq('user_id', userId).single();
   return data;
