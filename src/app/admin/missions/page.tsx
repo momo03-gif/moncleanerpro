@@ -104,6 +104,19 @@ export default function MissionsPage() {
     }));
   }
 
+  function cleanerWarning(cleanerId: string, date: string): string | null {
+    if (!cleanerId || !date) return null;
+    const c = cleaners.find(x => x.id === cleanerId);
+    if (!c) return null;
+    if (c.status === 'offline') return '⚠️ Ce cleaner est actuellement hors ligne. Vous pouvez quand même assigner.';
+    if (c.status === 'busy') return 'ℹ️ Ce cleaner est actuellement en mission.';
+    if (c.available_days?.length > 0) {
+      const dayName = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      if (!c.available_days.includes(dayName)) return `⚠️ Ce cleaner n'est pas disponible ce jour-là (${dayName}). Vous pouvez quand même assigner.`;
+    }
+    return null;
+  }
+
   function calcGain(patch: Partial<typeof form>) {
     const next = { ...form, ...patch };
     const c = cleaners.find(x => x.id === next.cleanerId);
@@ -319,9 +332,15 @@ export default function MissionsPage() {
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Assigner plus tard</option>
-                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : c.status === 'busy' ? ' · En mission' : ''}</option>)}
                 </select>
               </div>
+              {/* Availability warning */}
+              {cleanerWarning(form.cleanerId, form.date) && (
+                <div className="md:col-span-2 px-3 py-2.5 rounded-xl text-xs" style={{ backgroundColor: '#C48A2A10', color: '#C48A2A' }}>
+                  {cleanerWarning(form.cleanerId, form.date)}
+                </div>
+              )}
 
               {/* Date + Heure */}
               <div className="grid grid-cols-2 gap-3">
@@ -417,9 +436,14 @@ export default function MissionsPage() {
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Assigner plus tard</option>
-                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : c.status === 'busy' ? ' · En mission' : ''}</option>)}
                 </select>
               </div>
+              {cleanerWarning(form.cleanerId, form.date) && (
+                <div className="md:col-span-2 px-3 py-2.5 rounded-xl text-xs" style={{ backgroundColor: '#C48A2A10', color: '#C48A2A' }}>
+                  {cleanerWarning(form.cleanerId, form.date)}
+                </div>
+              )}
 
               {/* Date nettoyage + Heure départ clients */}
               <div>

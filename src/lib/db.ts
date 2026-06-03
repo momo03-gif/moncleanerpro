@@ -257,8 +257,37 @@ export async function createMissionDB(fields: {
   if (error) console.error('createMissionDB error:', error);
 }
 
-export async function updateMissionStatusDB(id: string, status: string) {
-  await supabase.from('missions').update({ status }).eq('id', id);
+// Maps app-level MissionStatus → DB status string
+function toDbMissionStatus(appStatus: MissionStatus): string {
+  const map: Record<MissionStatus, string> = {
+    pending: 'pending', accepted: 'assigned', in_progress: 'inprogress', completed: 'done', cancelled: 'cancelled',
+  };
+  return map[appStatus] ?? appStatus;
+}
+
+export async function updateMissionStatusDB(id: string, status: MissionStatus): Promise<void> {
+  await supabase.from('missions').update({ status: toDbMissionStatus(status) }).eq('id', id);
+}
+
+// ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────
+
+export async function updateCleanerStatusDB(userId: string, status: 'available' | 'busy' | 'offline'): Promise<boolean> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  if (cleaner) {
+    const { error } = await supabase.from('cleaners').update({ status }).eq('id', cleaner.id);
+    return !error;
+  }
+  // Fallback: try by id directly (when cleaners table uses users.id)
+  const { error } = await supabase.from('cleaners').update({ status }).eq('id', userId);
+  return !error;
+}
+
+export async function updateCleanerAvailableDaysDB(userId: string, days: string[]): Promise<boolean> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  const targetId = cleaner?.id ?? userId;
+  const { error } = await supabase.from('cleaners').update({ available_days: days }).eq('id', targetId);
+  if (error) console.warn('updateCleanerAvailableDaysDB:', error.message);
+  return !error;
 }
 
 // ── HOTEL REQUESTS ────────────────────────────────────────────────────────────
