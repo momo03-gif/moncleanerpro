@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { getUsers, getMissions, getPayments, setUserActive, addUser, updateUserRates, addPayment, currentMonth } from '@/lib/mockData';
+import { getUsers, getMissions, getPayments, setUserActive, addUser, updateUserRates, updateUserPassword, addPayment, currentMonth } from '@/lib/mockData';
 import { User, Payment } from '@/lib/types';
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' };
 const STATUS_LABEL: Record<string, string> = { available: 'Disponible', busy: 'En mission', offline: 'Hors ligne' };
 const STATUS_COLOR: Record<string, string> = { available: '#5A8A6A', busy: '#C48A2A', offline: '#A8A09A' };
-const emptyForm = { name: '', email: '', phone: '', hourlyRateHotel: '', rateAirbnb: '' };
+const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRateHotel: '', rateAirbnb: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
 export default function CleanersPage() {
@@ -18,6 +18,8 @@ export default function CleanersPage() {
   const [form, setForm] = useState(emptyForm);
   const [editRates, setEditRates] = useState<string | null>(null);
   const [rateForm, setRateForm] = useState({ hourlyRateHotel: '', rateAirbnb: '' });
+  const [editPassword, setEditPassword] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
 
   const month = currentMonth();
   const missions = getMissions();
@@ -28,11 +30,12 @@ export default function CleanersPage() {
 
   function handleAddCleaner(e: React.FormEvent) {
     e.preventDefault();
-    addUser({ id: `c${Date.now()}`, name: form.name, email: form.email, password: 'cleaner123', role: 'cleaner', phone: form.phone || undefined, hourlyRateHotel: form.hourlyRateHotel ? Number(form.hourlyRateHotel) : undefined, rateAirbnb: form.rateAirbnb ? Number(form.rateAirbnb) : undefined, status: 'available', isActive: true, completedMissions: 0 });
+    addUser({ id: `c${Date.now()}`, name: form.name, email: form.email, password: form.password || 'cleaner123', role: 'cleaner', phone: form.phone || undefined, hourlyRateHotel: form.hourlyRateHotel ? Number(form.hourlyRateHotel) : undefined, rateAirbnb: form.rateAirbnb ? Number(form.rateAirbnb) : undefined, status: 'available', isActive: true, completedMissions: 0 });
     refresh(); setForm(emptyForm); setShowForm(false);
   }
 
   function handleSaveRates(id: string) { updateUserRates(id, Number(rateForm.hourlyRateHotel), Number(rateForm.rateAirbnb)); refresh(); setEditRates(null); }
+  function handleSavePassword(id: string) { if (newPassword.trim()) { updateUserPassword(id, newPassword.trim()); } setEditPassword(null); setNewPassword(''); }
 
   function handlePay(cleanerId: string, cleanerName: string, missionIds: string[], amount: number) {
     addPayment({ id: `pay${Date.now()}`, cleanerId, cleanerName, amount, missionIds, date: new Date().toISOString().split('T')[0], month });
@@ -86,7 +89,8 @@ export default function CleanersPage() {
               <div className="grid md:grid-cols-2 gap-4 mb-5">
                 {[{ label: 'Nom complet', key: 'name', placeholder: 'Sophie Martin', required: true, type: 'text' },
                   { label: 'Email', key: 'email', placeholder: 'sophie@email.com', required: true, type: 'email' },
-                  { label: 'Téléphone', key: 'phone', placeholder: '06 12 34 56 78', required: false, type: 'text' }].map(f => (
+                  { label: 'Téléphone', key: 'phone', placeholder: '06 12 34 56 78', required: false, type: 'text' },
+                  { label: 'Mot de passe', key: 'password', placeholder: 'Choisir un mot de passe', required: false, type: 'password' }].map(f => (
                   <div key={f.key}>
                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{f.label}</label>
                     <input required={f.required} type={f.type} value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
@@ -111,7 +115,7 @@ export default function CleanersPage() {
               </div>
               <div className="flex items-center gap-3">
                 <button type="submit" className="px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Ajouter le cleaner</button>
-                <p className="text-xs" style={{ color: '#A8A09A' }}>Mot de passe : <span className="font-mono">cleaner123</span></p>
+                {!form.password && <p className="text-xs" style={{ color: '#A8A09A' }}>Mot de passe par défaut : <span className="font-mono">cleaner123</span></p>}
               </div>
             </form>
           )}
@@ -138,6 +142,33 @@ export default function CleanersPage() {
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
                       {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
+                      {editPassword === cleaner.id ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <input
+                            type="password"
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                            placeholder="Nouveau mot de passe"
+                            autoFocus
+                            className="px-3 py-1.5 rounded-xl text-xs border w-44"
+                            style={inputStyle}
+                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
+                            onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')}
+                          />
+                          <button onClick={() => handleSavePassword(cleaner.id)} disabled={!newPassword.trim()}
+                            className="text-xs px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-40"
+                            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
+                          <button onClick={() => { setEditPassword(null); setNewPassword(''); }}
+                            className="text-xs px-2 py-1.5 rounded-lg"
+                            style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setEditPassword(cleaner.id); setNewPassword(''); }}
+                          className="text-xs mt-1.5 px-2.5 py-1 rounded-lg transition-all"
+                          style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+                          🔑 Modifier le mot de passe
+                        </button>
+                      )}
                     </div>
                     <button onClick={() => handleToggleActive(cleaner.id, isActive)} className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
                       style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>

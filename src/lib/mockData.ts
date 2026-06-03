@@ -13,7 +13,14 @@ export function getUsers(): User[] { return _users; }
 export function setUserActive(id: string, active: boolean): void { _users = _users.map(u => u.id === id ? { ...u, isActive: active } : u); }
 export function addUser(user: User): void { _users = [..._users, user]; }
 export function updateUserRates(id: string, hourlyRateHotel: number, rateAirbnb: number): void { _users = _users.map(u => u.id === id ? { ...u, hourlyRateHotel, rateAirbnb } : u); }
+export function updateUserPassword(id: string, password: string): void { _users = _users.map(u => u.id === id ? { ...u, password } : u); }
 export function getActiveCleaners(): User[] { return _users.filter(u => u.role === 'cleaner' && u.isActive !== false); }
+export function getPendingHotels(): User[] { return _users.filter(u => u.role === 'hotel' && u.pendingStatus === 'pending'); }
+export function approveHotel(id: string): void { _users = _users.map(u => u.id === id ? { ...u, pendingStatus: 'approved' as const, isActive: true } : u); }
+export function refuseHotel(id: string): void { _users = _users.map(u => u.id === id ? { ...u, pendingStatus: 'refused' as const } : u); }
+export function registerHotel(data: { name: string; address: string; email: string; phone: string; password: string }): void {
+  _users = [..._users, { id: `h${Date.now()}`, ...data, role: 'hotel', isActive: false, pendingStatus: 'pending' as const }];
+}
 export const USERS = _users;
 
 // ── Mutable missions state
@@ -64,6 +71,8 @@ export function findUser(email: string, password: string): User | null {
   const u = _users.find(u => u.email === email && u.password === password);
   if (!u) return null;
   if (u.role === 'cleaner' && u.isActive === false) return null;
+  if (u.role === 'hotel' && u.pendingStatus === 'pending') return null;
+  if (u.role === 'hotel' && u.pendingStatus === 'refused') return null;
   return u;
 }
 

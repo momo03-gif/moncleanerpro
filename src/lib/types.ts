@@ -1,5 +1,7 @@
 export type Role = 'admin' | 'cleaner' | 'hotel';
 
+export type PendingStatus = 'pending' | 'approved' | 'refused';
+
 export interface User {
   id: string;
   name: string;
@@ -7,12 +9,14 @@ export interface User {
   password: string;
   role: Role;
   phone?: string;
+  address?: string;
   rating?: number;
   completedMissions?: number;
   status?: 'available' | 'busy' | 'offline';
   isActive?: boolean;
   hourlyRateHotel?: number;
   rateAirbnb?: number;
+  pendingStatus?: PendingStatus;
 }
 
 export type MissionStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';

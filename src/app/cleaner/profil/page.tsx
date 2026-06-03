@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleaner, USERS } from '@/lib/mockData';
+import { getMissionsForCleaner, USERS, currentMonth } from '@/lib/mockData';
 
 export default function CleanerProfil() {
   const { user } = useAuth();
@@ -10,7 +10,12 @@ export default function CleanerProfil() {
   const fullUser = USERS.find(u => u.id === user.id);
   const missions = getMissionsForCleaner(user.id);
   const completed = missions.filter(m => m.status === 'completed');
-  const totalEarned = completed.reduce((s, m) => s + m.price, 0);
+  const month = currentMonth();
+  const hotelHoursMonth = completed
+    .filter(m => m.source === 'hotel' && m.date.startsWith(month))
+    .reduce((s, m) => s + m.duration, 0);
+  const completedMonth = completed.filter(m => m.date.startsWith(month)).length;
+  const totalEarned = completed.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
 
   return (
     <div className="p-5">
@@ -33,13 +38,14 @@ export default function CleanerProfil() {
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Note', value: `⭐ ${fullUser?.rating ?? '—'}`, gold: true },
-            { label: 'Terminées', value: completed.length },
-            { label: 'Gagnés', value: `${totalEarned}€` },
+            { label: 'Heures hôtel', value: `${hotelHoursMonth}h`, gold: true, sub: 'ce mois' },
+            { label: 'Missions', value: completedMonth, sub: 'ce mois' },
+            { label: 'Gains', value: `${totalEarned}€`, sub: 'total' },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center" style={{ backgroundColor: '#F8F6F2' }}>
               <p className="text-xl font-bold" style={{ color: s.gold ? '#C9A84C' : '#1A1A1A' }}>{s.value}</p>
-              <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{s.label}</p>
+              <p className="text-xs mt-0.5" style={{ color: '#1A1A1A' }}>{s.label}</p>
+              <p className="text-xs" style={{ color: '#A8A09A' }}>{s.sub}</p>
             </div>
           ))}
         </div>
