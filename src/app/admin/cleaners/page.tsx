@@ -156,7 +156,7 @@ export default function CleanersPage() {
               const isActive = cleaner.status === 'active';
               const cm = missions.filter(m => m.cleanerId === cleaner.id);
               const completed = cm.filter(m => m.status === 'completed').length;
-              const upcoming = cm.filter(m => ['accepted', 'in_progress'].includes(m.status)).length;
+              const upcoming = cm.filter(m => ['accepted', 'validated', 'in_progress'].includes(m.status)).length;
               const hoursMonth = cm.filter(m => m.status === 'completed' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
 
               return (

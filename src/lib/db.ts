@@ -33,10 +33,11 @@ export async function loginUser(email: string, password: string): Promise<User |
 
 // ── CLEANERS ──────────────────────────────────────────────────────────────────
 
-// Resolve cleaners.id → users.id (missions.cleaner_id must always be users.id)
-async function resolveToUserId(cleanerTableId: string): Promise<string> {
-  const { data } = await supabase.from('cleaners').select('user_id').eq('id', cleanerTableId).single();
-  return data?.user_id ?? cleanerTableId;
+// missions.cleaner_id is a FK to cleaners.id (NOT users.id)
+// When we only have users.id (e.g. logged-in cleaner), resolve to cleaners.id
+async function resolveToCleanerTableId(userId: string): Promise<string | null> {
+  const { data } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  return data?.id ?? null;
 }
 
 export async function getCleaners() {
@@ -160,13 +161,18 @@ export async function assignAirbnbCleaner(airbnbId: string, cleanerId: string | 
 
 // ── MISSIONS ──────────────────────────────────────────────────────────────────
 
+// Trim time to HH:mm (DB sometimes stores HH:mm:ss)
+function trimTime(t: string | null | undefined): string {
+  return (t ?? '').substring(0, 5);
+}
+
 function rowToMission(row: any): Mission {
   return {
     id: row.id,
     property: row.property_name ?? '',
     address: row.address ?? '',
     date: row.date_from ?? '',
-    time: row.time_from ?? '',
+    time: trimTime(row.time_from),
     duration: Number(row.hours_worked) || 0,
     status: mapMissionStatus(row.status),
     cleanerId: row.cleaner_id,
@@ -193,29 +199,23 @@ function mapMissionStatus(s: string): MissionStatus {
 }
 
 export async function getMissionsDB(): Promise<Mission[]> {
-  const { data } = await supabase.from('missions').select('*').order('date_from', { ascending: false });
+  const { data, error } = await supabase.from('missions').select('*').order('date_from', { ascending: false });
+  if (error) console.error('getMissionsDB error:', error.code, error.message);
   return (data ?? []).map(rowToMission);
 }
 
 export async function getMissionsForCleanerDB(userId: string): Promise<Mission[]> {
-  // PRIMARY: missions.cleaner_id should now be users.id
-  const { data: direct } = await supabase
+  // missions.cleaner_id is a FK to cleaners.id — resolve users.id → cleaners.id
+  const cleanerTableId = await resolveToCleanerTableId(userId);
+  if (!cleanerTableId) return [];
+
+  const { data, error } = await supabase
     .from('missions')
     .select('*')
-    .eq('cleaner_id', userId)
+    .eq('cleaner_id', cleanerTableId)
     .order('date_from', { ascending: false });
-
-  // FALLBACK: old missions might have stored cleaners.id instead of users.id
-  const { data: cleanerRow } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  const { data: indirect } = cleanerRow
-    ? await supabase.from('missions').select('*').eq('cleaner_id', cleanerRow.id).order('date_from', { ascending: false })
-    : { data: [] };
-
-  // Merge and deduplicate by id
-  const all = [...(direct ?? []), ...(indirect ?? [])];
-  const seen = new Set<string>();
-  const unique = all.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
-  return unique.map(rowToMission);
+  if (error) console.error('getMissionsForCleanerDB:', error.code, error.message);
+  return (data ?? []).map(rowToMission);
 }
 
 export async function getPendingMissionsDB(): Promise<Mission[]> {
@@ -224,12 +224,12 @@ export async function getPendingMissionsDB(): Promise<Mission[]> {
 }
 
 export async function acceptMissionDB(missionId: string, userId: string): Promise<void> {
-  // userId is users.id — store directly so getMissionsForCleanerDB finds it
-  const { data: cleanerRow } = await supabase.from('cleaners').select('name').eq('user_id', userId).single();
-  const cleanerName = cleanerRow?.name ?? '';
+  // userId is users.id — resolve to cleaners.id (FK constraint)
+  const { data: cleanerRow } = await supabase.from('cleaners').select('id, name').eq('user_id', userId).single();
+  if (!cleanerRow) return;
   await supabase.from('missions').update({
-    cleaner_id: userId,
-    cleaner_name: cleanerName,
+    cleaner_id: cleanerRow.id,
+    cleaner_name: cleanerRow.name,
     status: 'assigned',
   }).eq('id', missionId);
 }
@@ -239,12 +239,9 @@ export async function createMissionDB(fields: {
   dateFrom: string; timeTo: string; timeFrom: string; duration: number;
   cleanerId?: string; cleanerName?: string; clientName?: string;
   price: number; cleanerGain: number; instructions?: string;
-}) {
-  // Resolve cleaners.id → users.id so the cleaner can find this mission
-  let cleanerIdToStore: string | null = null;
-  if (fields.cleanerId) {
-    cleanerIdToStore = await resolveToUserId(fields.cleanerId);
-  }
+}): Promise<{ error: string | null }> {
+  // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
+  const cleanerIdToStore: string | null = fields.cleanerId || null;
 
   const { error } = await supabase.from('missions').insert({
     type: fields.type,
@@ -252,8 +249,8 @@ export async function createMissionDB(fields: {
     property_name: fields.propertyName,
     address: fields.address,
     date_from: fields.dateFrom,
-    time_from: fields.timeFrom,
-    time_to: fields.timeTo,
+    time_from: fields.timeFrom || null,
+    time_to: fields.timeTo || null,
     hours_worked: fields.duration,
     cleaner_id: cleanerIdToStore,
     cleaner_name: fields.cleanerName || null,
@@ -264,7 +261,11 @@ export async function createMissionDB(fields: {
     status: cleanerIdToStore ? 'assigned' : 'pending',
   });
 
-  if (error) console.error('createMissionDB error:', error);
+  if (error) {
+    console.error('createMissionDB error:', error);
+    return { error: error.message };
+  }
+  return { error: null };
 }
 
 // Maps app-level MissionStatus → DB status string
@@ -285,11 +286,11 @@ export async function updateMissionStatusDB(id: string, status: MissionStatus): 
 }
 
 export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string): Promise<void> {
-  const userIdToStore = await resolveToUserId(cleanerId);
+  // cleanerId is already cleaners.id (from the dropdown) — store directly
   await supabase.from('missions').update({
-    cleaner_id: userIdToStore,
+    cleaner_id: cleanerId,
     cleaner_name: cleanerName,
-    status: 'assigned', // → accepted → "En attente"
+    status: 'assigned',
   }).eq('id', missionId);
 }
 
@@ -324,8 +325,8 @@ function rowToAnnounce(row: any): HotelAnnounce {
     type: row.type_prestation as any,
     date: row.date_from ?? '',
     dateEnd: row.date_to ?? undefined,
-    timeStart: row.time_from ?? '',
-    timeEnd: row.time_to ?? '',
+    timeStart: trimTime(row.time_from),
+    timeEnd: trimTime(row.time_to),
     guestCount: row.persons ?? 1,
     instructions: row.instructions ?? undefined,
     status: row.status as AnnounceStatus,
@@ -374,19 +375,17 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
   }).eq('id', id);
 
   if (req) {
-    // Resolve cleaners.id → users.id so the cleaner finds the mission on their dashboard
-    const userIdToStore = await resolveToUserId(cleanerId);
-
+    // cleanerId is cleaners.id (from dropdown) — store directly (FK to cleaners.id)
     const { error } = await supabase.from('missions').insert({
       type: req.type_prestation ?? 'regular',
       source: 'hotel',
       property_name: req.hotel_name ?? '',
       address: '',
       date_from: req.date_from,
-      time_from: req.time_from ?? '',
-      time_to: req.time_to ?? '',
+      time_from: req.time_from || null,
+      time_to: req.time_to || null,
       hours_worked: 2,
-      cleaner_id: userIdToStore,   // users.id — cleaner can find it
+      cleaner_id: cleanerId,
       cleaner_name: cleanerName,
       client_name: req.hotel_name ?? '',
       price: 0,

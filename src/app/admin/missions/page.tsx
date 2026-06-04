@@ -248,6 +248,7 @@ export default function MissionsPage() {
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [form, setForm] = useState(emptyForm);
 
   const load = useCallback(async () => {
@@ -328,6 +329,29 @@ export default function MissionsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
+    setCreateError('');
+
+    if (form.source === 'airbnb' && !form.airbnbId) {
+      setCreateError('Veuillez sélectionner un appartement.');
+      setCreating(false);
+      return;
+    }
+    if (form.source === 'hotel' && !form.property.trim()) {
+      setCreateError('Veuillez renseigner le nom de la propriété.');
+      setCreating(false);
+      return;
+    }
+    if (!form.date) {
+      setCreateError('Veuillez renseigner la date.');
+      setCreating(false);
+      return;
+    }
+    if (!form.time) {
+      setCreateError('Veuillez renseigner l\'heure.');
+      setCreating(false);
+      return;
+    }
+
     const c = cleaners.find(x => x.id === form.cleanerId);
     const type: MissionType = form.source === 'airbnb' ? 'regular' : 'checkout';
 
@@ -344,7 +368,8 @@ export default function MissionsPage() {
       }
     }
 
-    await createMissionDB({
+    setCreateError('');
+    const result = await createMissionDB({
       type, source: form.source,
       propertyName: form.property,
       address: form.address,
@@ -359,7 +384,12 @@ export default function MissionsPage() {
       instructions,
     });
 
-    // Fix : reset filter to 'all' BEFORE switching tab so the new mission is visible
+    if (result.error) {
+      setCreateError(`Erreur Supabase : ${result.error}`);
+      setCreating(false);
+      return;
+    }
+
     setFilter('all');
     setForm(emptyForm);
     await load();
@@ -664,6 +694,11 @@ export default function MissionsPage() {
             </>)}
           </div>
 
+          {createError && (
+            <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>
+              {createError}
+            </div>
+          )}
           <button type="submit" disabled={creating}
             className="px-8 py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
             style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>

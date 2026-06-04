@@ -21,98 +21,23 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   cancelled:   { label: 'Annulée',    color: '#B85A50', bg: '#B85A5015' },
 };
 
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-
 function toDateStr(d: Date) {
   return d.toISOString().split('T')[0];
 }
 
-function getCalendarGrid(year: number, month: number): (Date | null)[] {
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const startDow = first.getDay(); // 0=Sun
-  const offset = startDow === 0 ? 6 : startDow - 1; // Monday-based
-  const cells: (Date | null)[] = Array(offset).fill(null);
-  for (let d = 1; d <= last.getDate(); d++) cells.push(new Date(year, month, d));
-  return cells;
+function formatDateFR(d: string) {
+  if (!d) return '';
+  return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 }
 
-// ── Calendrier ────────────────────────────────────────────────────────────────
-
-function MonthCalendar({
-  selectedDate,
-  missionDates,
-  onSelect,
-}: {
-  selectedDate: string;
-  missionDates: Set<string>;
-  onSelect: (d: string) => void;
-}) {
-  const today = toDateStr(new Date());
-  const [viewYear, setViewYear] = useState(() => new Date(selectedDate + 'T00:00:00').getFullYear());
-  const [viewMonth, setViewMonth] = useState(() => new Date(selectedDate + 'T00:00:00').getMonth());
-
-  function prev() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
-  }
-  function next() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
-  }
-
-  const cells = getCalendarGrid(viewYear, viewMonth);
-
-  return (
-    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-      {/* Header mois */}
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#F2EFE9' }}>
-        <button onClick={prev} className="w-8 h-8 flex items-center justify-center rounded-xl"
-          style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>←</button>
-        <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
-          {MONTHS_FR[viewMonth]} {viewYear}
-        </span>
-        <button onClick={next} className="w-8 h-8 flex items-center justify-center rounded-xl"
-          style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>→</button>
-      </div>
-
-      {/* Jours de la semaine */}
-      <div className="grid grid-cols-7 px-3 pt-3 pb-1">
-        {WEEKDAYS.map((d, i) => (
-          <div key={i} className="text-center">
-            <span className="text-xs font-medium" style={{ color: '#A8A09A' }}>{d}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Grille jours */}
-      <div className="grid grid-cols-7 px-3 pb-3 gap-y-1">
-        {cells.map((day, i) => {
-          if (!day) return <div key={i} />;
-          const dateStr = toDateStr(day);
-          const isSelected = dateStr === selectedDate;
-          const isToday = dateStr === today;
-          const hasMission = missionDates.has(dateStr);
-
-          return (
-            <button key={i} onClick={() => onSelect(dateStr)}
-              className="flex flex-col items-center justify-center h-9 rounded-xl transition-all relative"
-              style={{
-                backgroundColor: isSelected ? '#C9A84C' : isToday ? '#C9A84C18' : 'transparent',
-                color: isSelected ? '#1A1A1A' : isToday ? '#C9A84C' : '#1A1A1A',
-              }}>
-              <span className="text-sm font-medium leading-none">{day.getDate()}</span>
-              {hasMission && (
-                <span className="w-1 h-1 rounded-full mt-0.5"
-                  style={{ backgroundColor: isSelected ? '#1A1A1A' : '#C9A84C' }} />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+function getWeekBounds() {
+  const d = new Date();
+  const day = d.getDay();
+  const start = new Date(d);
+  start.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start: toDateStr(start), end: toDateStr(end) };
 }
 
 // ── Carte mission ─────────────────────────────────────────────────────────────
@@ -139,6 +64,9 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
       <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>
+              {new Date(mission.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
             <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
             {mission.address && (
               <button onClick={() => setMapsOpen(true)}
@@ -227,7 +155,8 @@ export default function CleanerDashboard() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const today = toDateStr(new Date());
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [dateStart, setDateStart] = useState(today);
+  const [dateEnd, setDateEnd] = useState(today);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
 
@@ -250,15 +179,30 @@ export default function CleanerDashboard() {
   if (!user) return null;
   if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
-  // Dates qui ont au moins une mission non annulée
-  const missionDates = new Set(missions.filter(m => m.status !== 'cancelled').map(m => m.date));
+  const isToday = dateStart === today && dateEnd === today;
+  const isSingleDay = dateStart === dateEnd;
+  const tomorrow = toDateStr(new Date(Date.now() + 86400000));
+  const { start: weekStart, end: weekEnd } = getWeekBounds();
 
-  const dayMissions = missions
-    .filter(m => m.date === selectedDate && m.status !== 'cancelled')
-    .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+  const filteredMissions = missions
+    .filter(m => m.date >= dateStart && m.date <= dateEnd && m.status !== 'cancelled')
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? ''));
 
-  const dayGain = dayMissions.filter(m => m.status === 'completed').reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
-  const isToday = selectedDate === today;
+  const completedGain = filteredMissions
+    .filter(m => m.status === 'completed')
+    .reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+
+  function getPeriodLabel() {
+    if (isToday) return "Missions d'aujourd'hui";
+    if (isSingleDay) return `Missions du ${formatDateFR(dateStart)}`;
+    return `Missions du ${formatDateFR(dateStart)} au ${formatDateFR(dateEnd)}`;
+  }
+
+  const quickFilters = [
+    { label: "Auj.", start: today, end: today },
+    { label: 'Demain', start: tomorrow, end: tomorrow },
+    { label: 'Semaine', start: weekStart, end: weekEnd },
+  ];
 
   return (
     <div className="p-5">
@@ -268,49 +212,83 @@ export default function CleanerDashboard() {
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{user.name.split(' ')[0]} ✦</h1>
       </div>
 
-      {/* Calendrier mensuel */}
-      <div className="mb-5">
-        <MonthCalendar
-          selectedDate={selectedDate}
-          missionDates={missionDates}
-          onSelect={setSelectedDate}
-        />
-        {!isToday && (
-          <button onClick={() => setSelectedDate(today)} className="w-full mt-2 py-2 rounded-xl text-xs font-medium"
-            style={{ backgroundColor: '#F8F6F2', color: '#C9A84C' }}>
-            Revenir à aujourd'hui
-          </button>
-        )}
+      {/* Filtre par date */}
+      <div className="rounded-2xl border p-4 mb-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Période</p>
+
+        {/* Raccourcis */}
+        <div className="flex gap-2 mb-3">
+          {quickFilters.map(opt => {
+            const isActive = dateStart === opt.start && dateEnd === opt.end;
+            return (
+              <button key={opt.label}
+                onClick={() => { setDateStart(opt.start); setDateEnd(opt.end); }}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: isActive ? '#C9A84C' : '#F5F3EF',
+                  color: isActive ? '#1A1A1A' : '#7A7068',
+                }}>
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Champs date */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Du</label>
+            <input
+              type="date"
+              value={dateStart}
+              onChange={e => {
+                setDateStart(e.target.value);
+                if (e.target.value > dateEnd) setDateEnd(e.target.value);
+              }}
+              className="w-full px-3 py-2.5 rounded-xl text-sm border"
+              style={{ borderColor: '#E8E4DC', backgroundColor: '#FAFAF8', color: '#1A1A1A', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Au</label>
+            <input
+              type="date"
+              value={dateEnd}
+              min={dateStart}
+              onChange={e => setDateEnd(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl text-sm border"
+              style={{ borderColor: '#E8E4DC', backgroundColor: '#FAFAF8', color: '#1A1A1A', outline: 'none' }}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Stats du jour */}
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="rounded-2xl p-4" style={{ backgroundColor: '#C9A84C' }}>
-          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{dayMissions.length}</p>
+          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{filteredMissions.length}</p>
           <p className="text-xs mt-1" style={{ color: '#7A6030' }}>
-            Mission{dayMissions.length > 1 ? 's' : ''}
+            Mission{filteredMissions.length > 1 ? 's' : ''}
           </p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{dayGain}€</p>
+          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{completedGain}€</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Gain terminé</p>
         </div>
       </div>
 
-      {/* Missions du jour sélectionné */}
-      <h2 className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>
-        {isToday ? "Missions d'aujourd'hui" : `Missions du ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}
-      </h2>
+      {/* Liste missions */}
+      <h2 className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>{getPeriodLabel()}</h2>
 
-      {dayMissions.length === 0 ? (
+      {filteredMissions.length === 0 ? (
         <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
           <p className="text-xl mb-3">📅</p>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission prévue</p>
-          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>pour cette date</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>pour cette période</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {dayMissions.map(m => <MissionCard key={m.id} mission={m} onUpdate={load} />)}
+          {filteredMissions.map(m => <MissionCard key={m.id} mission={m} onUpdate={load} />)}
         </div>
       )}
     </div>
