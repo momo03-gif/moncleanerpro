@@ -57,9 +57,12 @@ function getWeekBounds() {
 function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => void }) {
   const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const canStart  = mission.status === 'accepted' || mission.status === 'validated' || mission.status === 'pending';
   const canFinish = mission.status === 'in_progress';
+  const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
+  const notesIsLong = extra.length > 120;
 
   async function act(status: MissionStatus) {
     setBusy(true);
@@ -129,37 +132,49 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
           </p>
         )}
 
-        {mission.notes && (() => {
-          const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
-          return (
-            <>
-              {(portalCode || keyboxCode) && (
-                <div className="flex flex-wrap gap-2">
-                  {portalCode && (
-                    <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
-                      style={{ backgroundColor: '#C9A84C20', color: '#C48A2A' }}>
-                      <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Portail</span>
-                      {portalCode}
-                    </span>
-                  )}
-                  {keyboxCode && (
-                    <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
-                      style={{ backgroundColor: '#5B6EF518', color: '#5B6EF5' }}>
-                      <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Clé</span>
-                      {keyboxCode}
-                    </span>
-                  )}
-                </div>
-              )}
-              {extra && (
-                <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A8A09A' }}>Consignes</p>
-                  <p className="text-sm leading-snug" style={{ color: '#7A7068' }}>{extra}</p>
-                </div>
-              )}
-            </>
-          );
-        })()}
+        {(portalCode || keyboxCode || extra) && (
+          <>
+            {(portalCode || keyboxCode) && (
+              <div className="flex flex-wrap gap-2">
+                {portalCode && (
+                  <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                    style={{ backgroundColor: '#C9A84C20', color: '#C48A2A' }}>
+                    <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Portail</span>
+                    {portalCode}
+                  </span>
+                )}
+                {keyboxCode && (
+                  <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                    style={{ backgroundColor: '#5B6EF518', color: '#5B6EF5' }}>
+                    <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Clé</span>
+                    {keyboxCode}
+                  </span>
+                )}
+              </div>
+            )}
+            {extra && (
+              <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A8A09A' }}>Consignes</p>
+                <p className="text-sm leading-snug" style={{
+                  color: '#7A7068',
+                  ...(notesIsLong && !notesOpen ? {
+                    overflow: 'hidden', display: '-webkit-box',
+                    WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                  } : {}),
+                }}>
+                  {extra}
+                </p>
+                {notesIsLong && (
+                  <button onClick={() => setNotesOpen(o => !o)}
+                    className="mt-1.5 text-xs font-medium"
+                    style={{ color: '#C9A84C' }}>
+                    {notesOpen ? 'Voir moins ↑' : 'Voir plus ↓'}
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Actions */}
