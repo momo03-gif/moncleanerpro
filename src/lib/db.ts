@@ -125,7 +125,8 @@ export async function getCleanerByUserId(userId: string) {
 // ── AIRBNBS ───────────────────────────────────────────────────────────────────
 
 export async function getAirbnbs() {
-  const { data } = await supabase.from('airbnbs').select('*, cleaners(name)').order('created_at');
+  const { data, error } = await supabase.from('airbnbs').select('*, cleaners(name)').order('created_at');
+  if (error) console.error('getAirbnbs error:', error.code, error.message);
   return (data ?? []).map(a => ({
     id: a.id,
     name: a.name,
@@ -135,24 +136,23 @@ export async function getAirbnbs() {
     entryDirectives: a.entry_instructions ?? '',
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
-    clientPrice: Number(a.client_price) || 0,
-    cleanerGain: Number(a.cleaner_gain) || 0,
+    clientPrice: 0,
+    cleanerGain: 0,
   })) as Apartment[];
 }
 
 export async function createAirbnb(fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
-  entryDirectives: string; clientPrice?: number; cleanerGain?: number;
+  entryDirectives: string;
 }) {
-  await supabase.from('airbnbs').insert({
+  const { error } = await supabase.from('airbnbs').insert({
     name: fields.name,
     address: fields.address,
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
-    client_price: fields.clientPrice ?? 0,
-    cleaner_gain: fields.cleanerGain ?? 0,
   });
+  if (error) console.error('createAirbnb error:', error.code, error.message);
 }
 
 export async function assignAirbnbCleaner(airbnbId: string, cleanerId: string | null) {

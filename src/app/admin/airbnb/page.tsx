@@ -6,7 +6,7 @@ import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 
-const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '', clientPrice: '', cleanerGain: '' };
+const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '' };
 
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -47,8 +47,6 @@ export default function AirbnbPage() {
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
       entryDirectives: form.entryDirectives,
-      clientPrice: form.clientPrice ? Number(form.clientPrice) : undefined,
-      cleanerGain: form.cleanerGain ? Number(form.cleanerGain) : undefined,
     });
     await load();
     setForm(emptyForm);
@@ -104,18 +102,6 @@ export default function AirbnbPage() {
                 placeholder="Instructions pour accéder au logement..." className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€) <span className="normal-case font-normal" style={{ color: '#A8A09A' }}>— optionnel</span></label>
-              <input type="number" min="0" value={form.clientPrice} onChange={e => setForm(p => ({ ...p, clientPrice: e.target.value }))}
-                placeholder="Ex : 25" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Gain cleaner (€) <span className="normal-case font-normal" style={{ color: '#A8A09A' }}>— optionnel</span></label>
-              <input type="number" min="0" value={form.cleanerGain} onChange={e => setForm(p => ({ ...p, cleanerGain: e.target.value }))}
-                placeholder="Ex : 15" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-            </div>
           </div>
           <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             {saving ? 'Ajout...' : "Ajouter l'appartement"}
@@ -151,23 +137,6 @@ export default function AirbnbPage() {
                 </button>
               </div>
 
-              {/* Prix */}
-              {((apt.clientPrice ?? 0) > 0 || (apt.cleanerGain ?? 0) > 0) && (
-                <div className="px-5 py-3 border-b flex items-center gap-6" style={{ borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
-                  {(apt.clientPrice ?? 0) > 0 && (
-                    <div>
-                      <p className="text-xs" style={{ color: '#A8A09A' }}>Prix client</p>
-                      <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€</p>
-                    </div>
-                  )}
-                  {(apt.cleanerGain ?? 0) > 0 && (
-                    <div>
-                      <p className="text-xs" style={{ color: '#A8A09A' }}>Gain cleaner</p>
-                      <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{apt.cleanerGain}€</p>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Codes + directives */}
               <div className="px-5 py-4 space-y-3">
