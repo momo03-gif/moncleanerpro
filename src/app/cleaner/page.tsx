@@ -12,6 +12,18 @@ const TYPE_LABEL: Record<string, string> = {
   regular: 'Ménage', menage: 'Ménage', grand_menage: 'Grand ménage',
 };
 
+function parseMissionNotes(notes: string | undefined | null) {
+  if (!notes) return { portalCode: null, keyboxCode: null, extra: '' };
+  let text = notes;
+  let portalCode: string | null = null;
+  let keyboxCode: string | null = null;
+  const pm = text.match(/Code portail\s*:\s*([^·]+)/);
+  if (pm) { portalCode = pm[1].trim(); text = text.replace(pm[0], ''); }
+  const km = text.match(/Boîte à clé\s*:\s*([^·]+)/);
+  if (km) { keyboxCode = km[1].trim(); text = text.replace(km[0], ''); }
+  return { portalCode, keyboxCode, extra: text.replace(/·/g, '').trim() };
+}
+
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
   pending:     { label: 'À assigner', color: '#6B7280', bg: '#6B728018' },
   accepted:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A15' },
@@ -117,12 +129,37 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
           </p>
         )}
 
-        {mission.notes && (
-          <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A8A09A' }}>Consignes</p>
-            <p className="text-sm leading-snug" style={{ color: '#7A7068' }}>{mission.notes}</p>
-          </div>
-        )}
+        {mission.notes && (() => {
+          const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
+          return (
+            <>
+              {(portalCode || keyboxCode) && (
+                <div className="flex flex-wrap gap-2">
+                  {portalCode && (
+                    <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                      style={{ backgroundColor: '#C9A84C20', color: '#C48A2A' }}>
+                      <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Portail</span>
+                      {portalCode}
+                    </span>
+                  )}
+                  {keyboxCode && (
+                    <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                      style={{ backgroundColor: '#5B6EF518', color: '#5B6EF5' }}>
+                      <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Clé</span>
+                      {keyboxCode}
+                    </span>
+                  )}
+                </div>
+              )}
+              {extra && (
+                <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A8A09A' }}>Consignes</p>
+                  <p className="text-sm leading-snug" style={{ color: '#7A7068' }}>{extra}</p>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Actions */}

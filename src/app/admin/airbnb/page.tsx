@@ -7,7 +7,6 @@ import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 
 const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '', clientPrice: '', cleanerGain: '' };
-type FilterType = 'all' | 'assigned' | 'unassigned';
 
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -16,7 +15,6 @@ export default function AirbnbPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mapsModal, setMapsModal] = useState<string | null>(null);
 
@@ -38,9 +36,7 @@ export default function AirbnbPage() {
 
   const visible = apartments.filter(a => {
     const q = search.toLowerCase();
-    const matchSearch = !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q);
-    const matchFilter = filter === 'all' || (filter === 'assigned' ? !!a.cleanerName : !a.cleanerName);
-    return matchSearch && matchFilter;
+    return !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q);
   });
 
   async function handleAddApartment(e: React.FormEvent) {
@@ -78,21 +74,11 @@ export default function AirbnbPage() {
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom ou adresse..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
-            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-        </div>
-        <div className="flex gap-1 p-1 rounded-xl shrink-0" style={{ backgroundColor: '#F5F3EF' }}>
-          {([['all', 'Tous'], ['assigned', 'Assignés'], ['unassigned', 'Non assignés']] as const).map(([val, lbl]) => (
-            <button key={val} onClick={() => setFilter(val)} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ backgroundColor: filter === val ? '#FFFFFF' : 'transparent', color: filter === val ? '#1A1A1A' : '#A8A09A', boxShadow: filter === val ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-              {lbl}
-            </button>
-          ))}
-        </div>
+      <div className="relative mb-6">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom ou adresse..."
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+          onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
       </div>
 
       {showForm && (
@@ -152,27 +138,17 @@ export default function AirbnbPage() {
             <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
               {/* Header */}
               <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
-                    {/* Adresse cliquable → ouvre la modale Maps */}
-                    <button
-                      onClick={() => setMapsModal(apt.address)}
-                      className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full"
-                      style={{ color: '#A8A09A' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}
-                    >
-                      <span className="text-xs shrink-0">◎</span>
-                      <span className="text-xs truncate">{apt.address}</span>
-                    </button>
-                  </div>
-                  {apt.cleanerName ? (
-                    <span className="text-xs px-2 py-1 rounded-full shrink-0 font-medium" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}>{apt.cleanerName.split(' ')[0]}</span>
-                  ) : (
-                    <span className="text-xs px-2 py-1 rounded-full shrink-0" style={{ backgroundColor: '#F5F3EF', color: '#A8A09A' }}>Non assigné</span>
-                  )}
-                </div>
+                <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
+                <button
+                  onClick={() => setMapsModal(apt.address)}
+                  className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full"
+                  style={{ color: '#A8A09A' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}
+                >
+                  <span className="text-xs shrink-0">◎</span>
+                  <span className="text-xs truncate">{apt.address}</span>
+                </button>
               </div>
 
               {/* Prix */}
