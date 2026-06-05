@@ -9,7 +9,7 @@ const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', co
 
 const emptyForm = {
   name: '', address: '', portalCode: '', keyboxCode: '',
-  entryDirectives: '', bedrooms: '', beds: '', notes: '',
+  entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '', notes: '',
 };
 type FormState = typeof emptyForm;
 
@@ -22,6 +22,8 @@ function aptToForm(a: Apartment): FormState {
     entryDirectives: a.entryDirectives ?? '',
     bedrooms: a.bedrooms != null ? String(a.bedrooms) : '',
     beds: a.beds != null ? String(a.beds) : '',
+    sofaBeds: a.sofaBeds != null ? String(a.sofaBeds) : '',
+    clientPrice: a.clientPrice != null ? String(a.clientPrice) : '',
     notes: a.notes ?? '',
   };
 }
@@ -83,6 +85,8 @@ export default function AirbnbApartmentsPage() {
       entryDirectives: form.entryDirectives,
       bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
       beds: form.beds ? Number(form.beds) : undefined,
+      sofaBeds: form.sofaBeds ? Number(form.sofaBeds) : undefined,
+      clientPrice: form.clientPrice ? Number(form.clientPrice) : undefined,
       notes: form.notes || undefined,
     };
     if (editingId) {
@@ -135,19 +139,33 @@ export default function AirbnbApartmentsPage() {
               </div>
             ))}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Chambres — si utile</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Chambres</label>
                 <input type="number" min="0" value={form.bedrooms} onChange={e => setForm(p => ({ ...p, bedrooms: e.target.value }))}
                   placeholder="2" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Lits — si utile</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Lits</label>
                 <input type="number" min="0" value={form.beds} onChange={e => setForm(p => ({ ...p, beds: e.target.value }))}
                   placeholder="3" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Canapé-lit</label>
+                <input type="number" min="0" value={form.sofaBeds} onChange={e => setForm(p => ({ ...p, sofaBeds: e.target.value }))}
+                  placeholder="1" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Prix par ménage (€) — facturé</label>
+              <input type="number" min="0" step="0.01" value={form.clientPrice} onChange={e => setForm(p => ({ ...p, clientPrice: e.target.value }))}
+                placeholder="Ex : 45" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Repris automatiquement sur chaque mission de cet appartement.</p>
             </div>
 
             <div>
@@ -203,8 +221,17 @@ export default function AirbnbApartmentsPage() {
                 </div>
               </div>
               <div className="px-5 py-3 space-y-1.5 text-sm" style={{ color: '#7A7068' }}>
-                {(apt.bedrooms != null || apt.beds != null) && (
-                  <p className="text-xs">{apt.bedrooms != null && <>🛏 {apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}{apt.bedrooms != null && apt.beds != null && ' · '}{apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}</p>
+                {apt.clientPrice != null && (
+                  <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ / ménage</p>
+                )}
+                {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
+                  <p className="text-xs">
+                    {apt.bedrooms != null && <>🛏 {apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
+                    {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
+                    {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
+                    {apt.beds != null && apt.sofaBeds != null && ' · '}
+                    {apt.sofaBeds != null && <>{apt.sofaBeds} canapé-lit{apt.sofaBeds > 1 ? 's' : ''}</>}
+                  </p>
                 )}
                 {apt.portalCode && <p className="text-xs"><span style={{ color: '#A8A09A' }}>Portail : </span><span className="font-mono font-semibold" style={{ color: '#1A1A1A' }}>{apt.portalCode}</span></p>}
                 {apt.keyboxCode && <p className="text-xs"><span style={{ color: '#A8A09A' }}>Clé : </span><span className="font-mono font-semibold" style={{ color: '#1A1A1A' }}>{apt.keyboxCode}</span></p>}

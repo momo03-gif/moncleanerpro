@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS airbnbs (
   partner_name TEXT,                                        -- nom de la conciergerie / partenaire (libre, pour filtres)
   bedrooms INTEGER,
   beds INTEGER,
+  sofa_beds INTEGER,                                        -- nombre de canapés-lits
+  client_price NUMERIC,                                     -- prix facturé par ménage (repris sur les missions, comptabilité)
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

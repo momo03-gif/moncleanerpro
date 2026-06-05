@@ -77,6 +77,7 @@ export interface Apartment {
   partnerName?: string;
   bedrooms?: number;
   beds?: number;
+  sofaBeds?: number;
   notes?: string;
 }
 

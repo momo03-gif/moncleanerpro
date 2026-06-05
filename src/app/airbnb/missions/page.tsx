@@ -77,12 +77,14 @@ export default function AirbnbMissionsPage() {
     if (!date) { setError('Choisissez une date.'); return; }
     if (!time) { setError('Choisissez une heure.'); return; }
     setSaving(true); setError('');
+    const apt = apartments.find(a => a.id === airbnbId);
     const res = await createAirbnbMissionDB({
       partnerId: user.id,
       airbnbId,
       dateFrom: date,
       timeFrom: time,
       instructions: hasInstructions ? instructions : undefined,
+      price: apt?.clientPrice,  // prix repris automatiquement de l'appartement
     });
     if (res.error) { setError(`Erreur : ${res.error}`); setSaving(false); return; }
     resetForm();
@@ -146,6 +148,7 @@ export default function AirbnbMissionsPage() {
                 <div className="rounded-xl p-4 text-sm space-y-1" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
                   <p style={{ color: '#1A1A1A', fontWeight: 600 }}>{a.name}</p>
                   <p className="text-xs">◎ {a.address}</p>
+                  {a.clientPrice != null && <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{a.clientPrice}€ / ménage</p>}
                   {a.portalCode && <p className="text-xs">Portail : <span className="font-mono">{a.portalCode}</span></p>}
                   {a.keyboxCode && <p className="text-xs">Clé : <span className="font-mono">{a.keyboxCode}</span></p>}
                 </div>

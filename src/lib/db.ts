@@ -139,12 +139,13 @@ function rowToApartment(a: any): Apartment {
     entryDirectives: a.entry_instructions ?? '',
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
-    clientPrice: 0,
+    clientPrice: a.client_price != null ? Number(a.client_price) : undefined,
     cleanerGain: 0,
     partnerId: a.partner_id ?? undefined,
     partnerName: a.partner_name ?? undefined,
     bedrooms: a.bedrooms ?? undefined,
     beds: a.beds ?? undefined,
+    sofaBeds: a.sofa_beds ?? undefined,
     notes: a.notes ?? undefined,
   };
 }
@@ -169,7 +170,7 @@ export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]>
 export async function createAirbnb(fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
   entryDirectives: string; partnerId?: string; partnerName?: string;
-  bedrooms?: number; beds?: number; notes?: string;
+  bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number; notes?: string;
 }) {
   const { error } = await supabase.from('airbnbs').insert({
     name: fields.name,
@@ -181,6 +182,8 @@ export async function createAirbnb(fields: {
     partner_name: fields.partnerName || null,
     bedrooms: fields.bedrooms ?? null,
     beds: fields.beds ?? null,
+    sofa_beds: fields.sofaBeds ?? null,
+    client_price: fields.clientPrice ?? null,
     notes: fields.notes || null,
   });
   if (error) console.error('createAirbnb error:', error.code, error.message);
@@ -189,7 +192,7 @@ export async function createAirbnb(fields: {
 export async function updateAirbnb(id: string, fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
   entryDirectives: string; partnerName?: string;
-  bedrooms?: number; beds?: number; notes?: string;
+  bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number; notes?: string;
 }) {
   const { error } = await supabase.from('airbnbs').update({
     name: fields.name,
@@ -200,6 +203,8 @@ export async function updateAirbnb(id: string, fields: {
     partner_name: fields.partnerName || null,
     bedrooms: fields.bedrooms ?? null,
     beds: fields.beds ?? null,
+    sofa_beds: fields.sofaBeds ?? null,
+    client_price: fields.clientPrice ?? null,
     notes: fields.notes || null,
   }).eq('id', id);
   if (error) console.error('updateAirbnb error:', error.code, error.message);
@@ -317,7 +322,7 @@ export async function getPendingMissionsDB(): Promise<Mission[]> {
 // sans cleaner assigné (status 'pending' → « À assigner » côté admin).
 export async function createAirbnbMissionDB(fields: {
   partnerId: string; airbnbId: string;
-  dateFrom: string; timeFrom: string; instructions?: string;
+  dateFrom: string; timeFrom: string; instructions?: string; price?: number;
 }): Promise<{ error: string | null }> {
   const { error } = await supabase.from('missions').insert({
     type: 'regular',
@@ -327,6 +332,7 @@ export async function createAirbnbMissionDB(fields: {
     date_from: fields.dateFrom,
     time_from: fields.timeFrom || null,
     instructions: fields.instructions || null,
+    price: fields.price ?? 0,  // prix repris depuis la fiche appartement (comptabilité)
     status: 'pending',
   });
   if (error) {
