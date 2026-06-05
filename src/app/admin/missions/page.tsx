@@ -92,8 +92,15 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
   async function handleAssign() {
     if (!newCleaner) return;
     const c = cleaners.find(x => x.id === newCleaner);
+    // Calcule le gain cleaner si la mission n'en avait pas (créée par un partenaire)
+    let gain: number | undefined = mission.cleanerGain && mission.cleanerGain > 0 ? mission.cleanerGain : undefined;
+    if (!gain && c) {
+      gain = mission.source === 'airbnb'
+        ? Number(c.rate_airbnb) || 0
+        : (Number(c.hourly_rate_hotel) || 0) * (mission.duration || 2);
+    }
     setBusy(true);
-    await assignCleanerToMissionDB(mission.id, newCleaner, c?.name ?? '');
+    await assignCleanerToMissionDB(mission.id, newCleaner, c?.name ?? '', gain);
     setAssignOpen(false);
     setNewCleaner('');
     onRefresh();
@@ -404,18 +411,9 @@ export default function MissionsPage() {
     const c = cleaners.find(x => x.id === form.cleanerId);
     const type: MissionType = form.source === 'airbnb' ? 'regular' : 'checkout';
 
-    // Include airbnb access info in instructions
-    let instructions: string | undefined;
-    if (form.source === 'airbnb' && form.airbnbId) {
-      const apt = airbnbs.find(a => a.id === form.airbnbId);
-      if (apt) {
-        const parts: string[] = [];
-        if (apt.portalCode) parts.push(`Code portail : ${apt.portalCode}`);
-        if (apt.keyboxCode) parts.push(`Boîte à clé : ${apt.keyboxCode}`);
-        if (apt.entryDirectives) parts.push(apt.entryDirectives);
-        if (parts.length > 0) instructions = parts.join(' · ');
-      }
-    }
+    // Mission Airbnb : on la lie à l'appartement (source de vérité pour
+    // l'adresse et les codes d'accès) et au partenaire propriétaire s'il existe.
+    const apt = form.source === 'airbnb' ? airbnbs.find(a => a.id === form.airbnbId) : undefined;
 
     setCreateError('');
     const result = await createMissionDB({
@@ -430,7 +428,8 @@ export default function MissionsPage() {
       cleanerName: c?.name,
       price: Number(form.price) || 0,
       cleanerGain: Number(form.cleanerGain) || 0,
-      instructions,
+      airbnbId: apt?.id,
+      partnerId: apt?.partnerId,
     });
 
     if (result.error) {

@@ -1,26 +1,48 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAirbnbs, createAirbnb } from '@/lib/db';
+import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB } from '@/lib/db';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 
-const emptyForm = { name: '', address: '', portalCode: '', keyboxCode: '', entryDirectives: '' };
+const emptyForm = {
+  name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
+  entryDirectives: '', bedrooms: '', beds: '', notes: '',
+};
+type FormState = typeof emptyForm;
+
+function aptToForm(a: Apartment): FormState {
+  return {
+    name: a.name ?? '',
+    address: a.address ?? '',
+    partnerName: a.partnerName ?? '',
+    portalCode: a.portalCode ?? '',
+    keyboxCode: a.keyboxCode ?? '',
+    entryDirectives: a.entryDirectives ?? '',
+    bedrooms: a.bedrooms != null ? String(a.bedrooms) : '',
+    beds: a.beds != null ? String(a.beds) : '',
+    notes: a.notes ?? '',
+  };
+}
 
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [partnerNames, setPartnerNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [search, setSearch] = useState('');
+  const [partnerFilter, setPartnerFilter] = useState<string>('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mapsModal, setMapsModal] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const a = await getAirbnbs();
+    const [a, names] = await Promise.all([getAirbnbs(), getPartnerNamesDB()]);
     setApartments(a);
+    setPartnerNames(names);
     setLoading(false);
   }, []);
 
@@ -34,24 +56,46 @@ export default function AirbnbPage() {
     });
   }
 
+  function openCreate() { setEditingId(null); setForm(emptyForm); setShowForm(true); }
+  function openEdit(a: Apartment) {
+    setEditingId(a.id); setForm(aptToForm(a)); setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function closeForm() { setShowForm(false); setEditingId(null); setForm(emptyForm); }
+
+  // Filtres : par partenaire + recherche texte
+  const partners = Array.from(new Set(apartments.map(a => a.partnerName).filter(Boolean) as string[])).sort();
   const visible = apartments.filter(a => {
+    if (partnerFilter !== 'all' && (a.partnerName ?? '') !== partnerFilter) return false;
     const q = search.toLowerCase();
-    return !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q);
+    return !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q) || (a.partnerName ?? '').toLowerCase().includes(q);
   });
 
-  async function handleAddApartment(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await createAirbnb({
-      name: form.name, address: form.address,
+    const payload = {
+      name: form.name,
+      address: form.address,
+      partnerName: form.partnerName || undefined,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
       entryDirectives: form.entryDirectives,
-    });
+      bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
+      beds: form.beds ? Number(form.beds) : undefined,
+      notes: form.notes || undefined,
+    };
+    if (editingId) await updateAirbnb(editingId, payload);
+    else await createAirbnb(payload);
     await load();
-    setForm(emptyForm);
-    setShowForm(false);
+    closeForm();
     setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Supprimer cet appartement ?')) return;
+    await deleteAirbnb(id);
+    await load();
   }
 
   if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
@@ -65,48 +109,90 @@ export default function AirbnbPage() {
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Airbnb</h1>
           <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{apartments.length} appartement{apartments.length > 1 ? 's' : ''}</p>
         </div>
-        <button onClick={() => setShowForm(s => !s)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+        <button onClick={() => (showForm ? closeForm() : openCreate())} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
           style={{ backgroundColor: showForm ? '#F5F3EF' : '#C9A84C', color: showForm ? '#7A7068' : '#1A1A1A' }}>
           <span>{showForm ? '✕' : '+'}</span>
           {showForm ? 'Annuler' : 'Ajouter un appartement'}
         </button>
       </div>
 
-      <div className="relative mb-6">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom ou adresse..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
-          onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-      </div>
-
       {showForm && (
-        <form onSubmit={handleAddApartment} className="rounded-2xl border p-6 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>Nouvel appartement</h2>
+        <form onSubmit={handleSubmit} className="rounded-2xl border p-6 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>{editingId ? "Modifier l'appartement" : 'Nouvel appartement'}</h2>
+          <datalist id="partner-names">
+            {partnerNames.map(n => <option key={n} value={n} />)}
+          </datalist>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             {[
-              { label: 'Nom', key: 'name', placeholder: 'Studio Montmartre', required: true },
-              { label: 'Adresse complète', key: 'address', placeholder: '12 Rue de la Paix, Paris', required: true },
-              { label: 'Code portail — optionnel', key: 'portalCode', placeholder: '1234A', required: false },
-              { label: 'Code boîte à clé — optionnel', key: 'keyboxCode', placeholder: 'B#4512', required: false },
+              { label: 'Nom', key: 'name', placeholder: 'Studio Bellecour', required: true, list: undefined },
+              { label: 'Adresse complète', key: 'address', placeholder: '12 Rue de la Paix, Lyon', required: true, list: undefined },
+              { label: 'Partenaire / conciergerie', key: 'partnerName', placeholder: 'Hosting Services Lyon', required: false, list: 'partner-names' },
+              { label: 'Code portail — optionnel', key: 'portalCode', placeholder: '1234A', required: false, list: undefined },
+              { label: 'Code boîte à clé — optionnel', key: 'keyboxCode', placeholder: 'B#4512', required: false, list: undefined },
             ].map(f => (
               <div key={f.key}>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{f.label}</label>
-                <input required={f.required} value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                <input required={f.required} list={f.list} value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                   placeholder={f.placeholder} className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
             ))}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Chambres</label>
+                <input type="number" min="0" value={form.bedrooms} onChange={e => setForm(p => ({ ...p, bedrooms: e.target.value }))}
+                  placeholder="2" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Lits</label>
+                <input type="number" min="0" value={form.beds} onChange={e => setForm(p => ({ ...p, beds: e.target.value }))}
+                  placeholder="3" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Directives d'entrée</label>
               <input required value={form.entryDirectives} onChange={e => setForm(p => ({ ...p, entryDirectives: e.target.value }))}
                 placeholder="Instructions pour accéder au logement..." className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
             </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Notes particulières — optionnel</label>
+              <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                placeholder="Animaux, parking, fragilités..." className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+            </div>
           </div>
           <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-            {saving ? 'Ajout...' : "Ajouter l'appartement"}
+            {saving ? 'Enregistrement...' : editingId ? 'Enregistrer' : "Ajouter l'appartement"}
           </button>
         </form>
+      )}
+
+      <div className="relative mb-4">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom, adresse ou partenaire..."
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+          onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+      </div>
+
+      {/* Filtre par partenaire */}
+      {partners.length > 0 && (
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {[{ v: 'all', label: 'Tous' }, ...partners.map(p => ({ v: p, label: p }))].map(({ v, label }) => (
+            <button key={v} onClick={() => setPartnerFilter(v)}
+              className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+              style={{
+                backgroundColor: partnerFilter === v ? '#C9A84C' : '#FFFFFF',
+                color: partnerFilter === v ? '#1A1A1A' : '#7A7068',
+                border: `1px solid ${partnerFilter === v ? '#C9A84C' : '#E8E4DC'}`,
+              }}>
+              {label}
+              <span className="ml-1.5 opacity-60">{v === 'all' ? apartments.length : apartments.filter(a => a.partnerName === v).length}</span>
+            </button>
+          ))}
+        </div>
       )}
 
       {visible.length === 0 && (
@@ -122,24 +208,39 @@ export default function AirbnbPage() {
 
           return (
             <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-              {/* Header */}
               <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
-                <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
-                <button
-                  onClick={() => setMapsModal(apt.address)}
-                  className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full"
-                  style={{ color: '#A8A09A' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}
-                >
-                  <span className="text-xs shrink-0">◎</span>
-                  <span className="text-xs truncate">{apt.address}</span>
-                </button>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
+                    <button onClick={() => setMapsModal(apt.address)}
+                      className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full"
+                      style={{ color: '#A8A09A' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
+                      <span className="text-xs shrink-0">◎</span>
+                      <span className="text-xs truncate">{apt.address}</span>
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => openEdit(apt)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
+                    <button onClick={() => handleDelete(apt.id)} className="text-xs px-2.5 py-1.5 rounded-lg" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>✕</button>
+                  </div>
+                </div>
+                {apt.partnerName && (
+                  <span className="inline-block mt-2 text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#C9A84C15', color: '#C9A84C' }}>
+                    {apt.partnerName}
+                  </span>
+                )}
               </div>
 
-
-              {/* Codes + directives */}
               <div className="px-5 py-4 space-y-3">
+                {(apt.bedrooms != null || apt.beds != null) && (
+                  <p className="text-xs" style={{ color: '#7A7068' }}>
+                    {apt.bedrooms != null && <>🛏 {apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
+                    {apt.bedrooms != null && apt.beds != null && ' · '}
+                    {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
+                  </p>
+                )}
                 {apt.portalCode && (
                   <div className="flex items-center gap-3">
                     <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code portail</span>
@@ -152,37 +253,26 @@ export default function AirbnbPage() {
                     <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.keyboxCode}</span>
                   </div>
                 )}
-                {/* Entrée : tronqué à 3 lignes avec "Voir plus" */}
                 <div className="flex items-start gap-3">
                   <span className="text-xs w-28 shrink-0 mt-0.5" style={{ color: '#A8A09A' }}>Entrée</span>
                   <div className="flex-1 min-w-0">
-                    <p
-                      className="text-sm leading-snug"
-                      style={{
-                        color: '#7A7068',
-                        ...(isLong && !isExpanded ? {
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                        } : {}),
-                      }}
-                    >
+                    <p className="text-sm leading-snug" style={{
+                      color: '#7A7068',
+                      ...(isLong && !isExpanded ? { overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' } : {}),
+                    }}>
                       {apt.entryDirectives}
                     </p>
                     {isLong && (
-                      <button
-                        onClick={() => toggleExpand(apt.id)}
-                        className="text-xs mt-1.5 font-medium transition-colors"
-                        style={{ color: '#C9A84C' }}
-                      >
+                      <button onClick={() => toggleExpand(apt.id)} className="text-xs mt-1.5 font-medium" style={{ color: '#C9A84C' }}>
                         {isExpanded ? 'Voir moins ↑' : 'Voir plus ↓'}
                       </button>
                     )}
                   </div>
                 </div>
+                {apt.notes && (
+                  <div className="px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</div>
+                )}
               </div>
-
             </div>
           );
         })}

@@ -20,6 +20,11 @@ export async function loginUser(email: string, password: string): Promise<User |
     if (hotel?.status_account === 'pending' || hotel?.status_account === 'refused') return null;
   }
 
+  if (data.role === 'airbnb') {
+    const { data: partner } = await supabase.from('airbnb_partners').select('status_account').eq('user_id', data.id).single();
+    if (partner?.status_account === 'pending' || partner?.status_account === 'refused') return null;
+  }
+
   return {
     id: data.id,
     name: data.name,
@@ -124,10 +129,8 @@ export async function getCleanerByUserId(userId: string) {
 
 // ── AIRBNBS ───────────────────────────────────────────────────────────────────
 
-export async function getAirbnbs() {
-  const { data, error } = await supabase.from('airbnbs').select('*, cleaners(name)').order('created_at');
-  if (error) console.error('getAirbnbs error:', error.code, error.message);
-  return (data ?? []).map(a => ({
+function rowToApartment(a: any): Apartment {
+  return {
     id: a.id,
     name: a.name,
     address: a.address,
@@ -138,12 +141,35 @@ export async function getAirbnbs() {
     cleanerName: a.cleaners?.name,
     clientPrice: 0,
     cleanerGain: 0,
-  })) as Apartment[];
+    partnerId: a.partner_id ?? undefined,
+    partnerName: a.partner_name ?? undefined,
+    bedrooms: a.bedrooms ?? undefined,
+    beds: a.beds ?? undefined,
+    notes: a.notes ?? undefined,
+  };
+}
+
+export async function getAirbnbs(): Promise<Apartment[]> {
+  const { data, error } = await supabase.from('airbnbs').select('*, cleaners(name)').order('created_at');
+  if (error) console.error('getAirbnbs error:', error.code, error.message);
+  return (data ?? []).map(rowToApartment);
+}
+
+// Appartements d'un partenaire Airbnb (avec compte) — filtrés par partner_id
+export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]> {
+  const { data, error } = await supabase
+    .from('airbnbs')
+    .select('*, cleaners(name)')
+    .eq('partner_id', userId)
+    .order('created_at');
+  if (error) console.error('getAirbnbsForPartner error:', error.code, error.message);
+  return (data ?? []).map(rowToApartment);
 }
 
 export async function createAirbnb(fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
-  entryDirectives: string;
+  entryDirectives: string; partnerId?: string; partnerName?: string;
+  bedrooms?: number; beds?: number; notes?: string;
 }) {
   const { error } = await supabase.from('airbnbs').insert({
     name: fields.name,
@@ -151,8 +177,38 @@ export async function createAirbnb(fields: {
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
+    partner_id: fields.partnerId || null,
+    partner_name: fields.partnerName || null,
+    bedrooms: fields.bedrooms ?? null,
+    beds: fields.beds ?? null,
+    notes: fields.notes || null,
   });
   if (error) console.error('createAirbnb error:', error.code, error.message);
+}
+
+export async function updateAirbnb(id: string, fields: {
+  name: string; address: string; portalCode?: string; keyboxCode?: string;
+  entryDirectives: string; partnerName?: string;
+  bedrooms?: number; beds?: number; notes?: string;
+}) {
+  const { error } = await supabase.from('airbnbs').update({
+    name: fields.name,
+    address: fields.address,
+    code_portail: fields.portalCode || null,
+    code_boite: fields.keyboxCode || null,
+    entry_instructions: fields.entryDirectives,
+    partner_name: fields.partnerName || null,
+    bedrooms: fields.bedrooms ?? null,
+    beds: fields.beds ?? null,
+    notes: fields.notes || null,
+  }).eq('id', id);
+  if (error) console.error('updateAirbnb error:', error.code, error.message);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteAirbnb(id: string) {
+  const { error } = await supabase.from('airbnbs').delete().eq('id', id);
+  if (error) console.error('deleteAirbnb error:', error.code, error.message);
 }
 
 export async function assignAirbnbCleaner(airbnbId: string, cleanerId: string | null) {
@@ -166,11 +222,32 @@ function trimTime(t: string | null | undefined): string {
   return (t ?? '').substring(0, 5);
 }
 
+// Sélection commune : on joint l'appartement lié pour les missions Airbnb
+// afin d'en récupérer adresse + accès sans dupliquer l'info dans la mission.
+const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions)';
+
 function rowToMission(row: any): Mission {
+  let property = row.property_name ?? '';
+  let address = row.address ?? '';
+  let notes: string | undefined = row.instructions ?? undefined;
+
+  // Mission liée à un appartement → source de vérité = la fiche appartement
+  const apt = row.airbnbs;
+  if (row.airbnb_id && apt) {
+    property = apt.name ?? property;
+    address = apt.address ?? address;
+    const parts: string[] = [];
+    if (apt.code_portail) parts.push(`Code portail : ${apt.code_portail}`);
+    if (apt.code_boite) parts.push(`Boîte à clé : ${apt.code_boite}`);
+    if (apt.entry_instructions) parts.push(apt.entry_instructions);
+    if (row.instructions) parts.push(row.instructions); // consignes ajoutées par le partenaire
+    notes = parts.length > 0 ? parts.join(' · ') : undefined;
+  }
+
   return {
     id: row.id,
-    property: row.property_name ?? '',
-    address: row.address ?? '',
+    property,
+    address,
     date: row.date_from ?? '',
     time: trimTime(row.time_from),
     duration: Number(row.hours_worked) || 0,
@@ -182,7 +259,9 @@ function rowToMission(row: any): Mission {
     type: (row.type as MissionType) ?? 'regular',
     source: (row.source as MissionSource) ?? 'hotel',
     requestedBy: row.client_name,
-    notes: row.instructions,
+    notes,
+    partnerId: row.partner_id ?? undefined,
+    airbnbId: row.airbnb_id ?? undefined,
   };
 }
 
@@ -199,7 +278,7 @@ function mapMissionStatus(s: string): MissionStatus {
 }
 
 export async function getMissionsDB(): Promise<Mission[]> {
-  const { data, error } = await supabase.from('missions').select('*').order('date_from', { ascending: false });
+  const { data, error } = await supabase.from('missions').select(MISSION_SELECT).order('date_from', { ascending: false });
   if (error) console.error('getMissionsDB error:', error.code, error.message);
   return (data ?? []).map(rowToMission);
 }
@@ -211,16 +290,50 @@ export async function getMissionsForCleanerDB(userId: string): Promise<Mission[]
 
   const { data, error } = await supabase
     .from('missions')
-    .select('*')
+    .select(MISSION_SELECT)
     .eq('cleaner_id', cleanerTableId)
     .order('date_from', { ascending: false });
   if (error) console.error('getMissionsForCleanerDB:', error.code, error.message);
   return (data ?? []).map(rowToMission);
 }
 
-export async function getPendingMissionsDB(): Promise<Mission[]> {
-  const { data } = await supabase.from('missions').select('*').eq('status', 'pending').order('date_from');
+// Missions d'un partenaire Airbnb (avec compte) — filtrées par partner_id
+export async function getMissionsForPartnerDB(userId: string): Promise<Mission[]> {
+  const { data, error } = await supabase
+    .from('missions')
+    .select(MISSION_SELECT)
+    .eq('partner_id', userId)
+    .order('date_from', { ascending: false });
+  if (error) console.error('getMissionsForPartnerDB:', error.code, error.message);
   return (data ?? []).map(rowToMission);
+}
+
+export async function getPendingMissionsDB(): Promise<Mission[]> {
+  const { data } = await supabase.from('missions').select(MISSION_SELECT).eq('status', 'pending').order('date_from');
+  return (data ?? []).map(rowToMission);
+}
+
+// Création d'une mission par un partenaire Airbnb : liée à un appartement,
+// sans cleaner assigné (status 'pending' → « À assigner » côté admin).
+export async function createAirbnbMissionDB(fields: {
+  partnerId: string; airbnbId: string;
+  dateFrom: string; timeFrom: string; instructions?: string;
+}): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('missions').insert({
+    type: 'regular',
+    source: 'airbnb',
+    partner_id: fields.partnerId,
+    airbnb_id: fields.airbnbId,
+    date_from: fields.dateFrom,
+    time_from: fields.timeFrom || null,
+    instructions: fields.instructions || null,
+    status: 'pending',
+  });
+  if (error) {
+    console.error('createAirbnbMissionDB error:', error);
+    return { error: error.message };
+  }
+  return { error: null };
 }
 
 export async function acceptMissionDB(missionId: string, userId: string): Promise<void> {
@@ -239,15 +352,21 @@ export async function createMissionDB(fields: {
   dateFrom: string; timeTo: string; timeFrom: string; duration: number;
   cleanerId?: string; cleanerName?: string; clientName?: string;
   price: number; cleanerGain: number; instructions?: string;
+  airbnbId?: string; partnerId?: string;
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
   const cleanerIdToStore: string | null = fields.cleanerId || null;
+  // Quand la mission est liée à un appartement, on ne duplique pas
+  // nom/adresse : ils sont récupérés depuis la fiche appartement (join).
+  const linked = !!fields.airbnbId;
 
   const { error } = await supabase.from('missions').insert({
     type: fields.type,
     source: fields.source,
-    property_name: fields.propertyName,
-    address: fields.address,
+    airbnb_id: fields.airbnbId || null,
+    partner_id: fields.partnerId || null,
+    property_name: linked ? null : fields.propertyName,
+    address: linked ? null : fields.address,
     date_from: fields.dateFrom,
     time_from: fields.timeFrom || null,
     time_to: fields.timeTo || null,
@@ -285,13 +404,16 @@ export async function updateMissionStatusDB(id: string, status: MissionStatus): 
   await supabase.from('missions').update({ status: toDbMissionStatus(status) }).eq('id', id);
 }
 
-export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string): Promise<void> {
+export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string, gain?: number): Promise<void> {
   // cleanerId is already cleaners.id (from the dropdown) — store directly
-  await supabase.from('missions').update({
+  const patch: Record<string, unknown> = {
     cleaner_id: cleanerId,
     cleaner_name: cleanerName,
     status: 'assigned',
-  }).eq('id', missionId);
+  };
+  // Renseigne le gain cleaner s'il n'avait pas été fixé (missions créées par un partenaire)
+  if (gain != null && gain > 0) patch.cleaner_gain = gain;
+  await supabase.from('missions').update(patch).eq('id', missionId);
 }
 
 // ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────
@@ -375,6 +497,11 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
   }).eq('id', id);
 
   if (req) {
+    // Gain cleaner = tarif horaire hôtel × durée (par défaut 2h)
+    const { data: cleaner } = await supabase.from('cleaners').select('hourly_rate_hotel').eq('id', cleanerId).single();
+    const hours = 2;
+    const gain = (Number(cleaner?.hourly_rate_hotel) || 0) * hours;
+
     // cleanerId is cleaners.id (from dropdown) — store directly (FK to cleaners.id)
     const { error } = await supabase.from('missions').insert({
       type: req.type_prestation ?? 'regular',
@@ -384,12 +511,12 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
       date_from: req.date_from,
       time_from: req.time_from || null,
       time_to: req.time_to || null,
-      hours_worked: 2,
+      hours_worked: hours,
       cleaner_id: cleanerId,
       cleaner_name: cleanerName,
       client_name: req.hotel_name ?? '',
       price: 0,
-      cleaner_gain: 0,
+      cleaner_gain: gain,
       instructions: req.instructions ?? null,
       status: 'assigned',
     });
@@ -456,6 +583,70 @@ export async function getApprovedHotelsDB() {
 export async function getHotelByUserId(userId: string) {
   const { data } = await supabase.from('hotels').select('*').eq('user_id', userId).single();
   return data;
+}
+
+// ── AIRBNB PARTNERS (comptes) ──────────────────────────────────────────────────
+
+export async function registerAirbnbPartnerDB(fields: {
+  name: string; email: string; phone: string; password: string;
+}) {
+  const hash = await hashPassword(fields.password);
+  const { data: user, error } = await supabase
+    .from('users')
+    .insert({ email: fields.email.toLowerCase(), password_hash: hash, role: 'airbnb', name: fields.name, phone: fields.phone, status: 'pending' })
+    .select()
+    .single();
+
+  if (error || !user) throw new Error(error?.message ?? 'Erreur lors de la création du compte');
+
+  const { error: pErr } = await supabase.from('airbnb_partners').insert({
+    user_id: user.id,
+    partner_name: fields.name,
+    email: fields.email,
+    phone: fields.phone,
+    status_account: 'pending',
+  });
+  if (pErr) throw new Error(pErr.message);
+}
+
+export async function getAirbnbPartnerByUserId(userId: string) {
+  const { data } = await supabase.from('airbnb_partners').select('*').eq('user_id', userId).single();
+  return data;
+}
+
+export async function getPendingAirbnbPartnersDB() {
+  const { data } = await supabase.from('airbnb_partners').select('*, users(name, email, phone)').eq('status_account', 'pending');
+  return (data ?? []).map((p: any) => ({
+    id: p.id,
+    name: p.partner_name,
+    email: p.email ?? p.users?.email,
+    phone: p.phone ?? p.users?.phone,
+    userId: p.user_id,
+    partnerKind: 'airbnb' as const,
+  }));
+}
+
+export async function approveAirbnbPartnerDB(id: string) {
+  await supabase.from('airbnb_partners').update({ status_account: 'approved' }).eq('id', id);
+  const { data } = await supabase.from('airbnb_partners').select('user_id').eq('id', id).single();
+  if (data?.user_id) await supabase.from('users').update({ status: 'active' }).eq('id', data.user_id);
+}
+
+export async function refuseAirbnbPartnerDB(id: string) {
+  await supabase.from('airbnb_partners').update({ status_account: 'refused' }).eq('id', id);
+}
+
+// Liste des noms de partenaires connus (comptes + libellés saisis sur les apparts)
+// — utile pour proposer une auto-complétion côté admin.
+export async function getPartnerNamesDB(): Promise<string[]> {
+  const [{ data: partners }, { data: apts }] = await Promise.all([
+    supabase.from('airbnb_partners').select('partner_name').eq('status_account', 'approved'),
+    supabase.from('airbnbs').select('partner_name'),
+  ]);
+  const names = new Set<string>();
+  (partners ?? []).forEach((p: any) => p.partner_name && names.add(p.partner_name));
+  (apts ?? []).forEach((a: any) => a.partner_name && names.add(a.partner_name));
+  return Array.from(names).sort();
 }
 
 // ── PAYMENTS ──────────────────────────────────────────────────────────────────

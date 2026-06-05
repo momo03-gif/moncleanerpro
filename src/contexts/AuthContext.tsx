@@ -55,5 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() { return useContext(AuthContext); }
 
 export function redirectPathForRole(role: Role): string {
-  return role === 'admin' ? '/admin' : role === 'cleaner' ? '/cleaner' : '/hotel';
+  return role === 'admin' ? '/admin'
+    : role === 'cleaner' ? '/cleaner'
+    : role === 'airbnb' ? '/airbnb'
+    : '/hotel';
 }

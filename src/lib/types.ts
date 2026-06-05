@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'cleaner' | 'hotel';
+export type Role = 'admin' | 'cleaner' | 'hotel' | 'airbnb';
 
 export type PendingStatus = 'pending' | 'approved' | 'refused';
 
@@ -39,6 +39,8 @@ export interface Mission {
   source?: MissionSource;
   requestedBy?: string;
   notes?: string;
+  partnerId?: string;
+  airbnbId?: string;
 }
 
 export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed';
@@ -71,6 +73,11 @@ export interface Apartment {
   cleanerName?: string;
   clientPrice?: number;
   cleanerGain?: number;
+  partnerId?: string;
+  partnerName?: string;
+  bedrooms?: number;
+  beds?: number;
+  notes?: string;
 }
 
 export interface Payment {

@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getMissionsDB, getCleaners, getPendingHotelsDB, approveHotelDB, refuseHotelDB } from '@/lib/db';
+import {
+  getMissionsDB, getCleaners,
+  getPendingHotelsDB, approveHotelDB, refuseHotelDB,
+  getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
+} from '@/lib/db';
 import type { Mission } from '@/lib/types';
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
@@ -15,8 +19,8 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-const STATUS_COLOR: Record<string, string> = { pending: '#C48A2A', accepted: '#C9A84C', in_progress: '#8B7A62', completed: '#5A8A6A', cancelled: '#B85A50' };
-const STATUS_LABEL: Record<string, string> = { pending: 'En attente', accepted: 'Validée', in_progress: 'En cours', completed: 'Terminée', cancelled: 'Annulée' };
+const STATUS_COLOR: Record<string, string> = { pending: '#6B7280', accepted: '#C48A2A', validated: '#C9A84C', in_progress: '#5B6EF5', completed: '#5A8A6A', cancelled: '#B85A50' };
+const STATUS_LABEL: Record<string, string> = { pending: 'À assigner', accepted: 'En attente', validated: 'Validée', in_progress: 'En cours', completed: 'Terminée', cancelled: 'Annulée' };
 
 export default function AdminDashboard() {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -26,17 +30,32 @@ export default function AdminDashboard() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  async function loadPending() {
+    const [hotels, partners] = await Promise.all([getPendingHotelsDB(), getPendingAirbnbPartnersDB()]);
+    setPending([
+      ...hotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
+      ...partners.map((p: any) => ({ ...p, kind: 'airbnb' as const })),
+    ]);
+  }
+
   useEffect(() => {
     async function load() {
-      const [m, c, p] = await Promise.all([getMissionsDB(), getCleaners(), getPendingHotelsDB()]);
-      setMissions(m); setCleaners(c); setPending(p);
+      const [m, c] = await Promise.all([getMissionsDB(), getCleaners()]);
+      setMissions(m); setCleaners(c);
+      await loadPending();
       setLoading(false);
     }
     load();
   }, []);
 
-  async function handleApprove(id: string) { await approveHotelDB(id); setPending(await getPendingHotelsDB()); }
-  async function handleRefuse(id: string) { await refuseHotelDB(id); setPending(await getPendingHotelsDB()); }
+  async function handleApprove(h: any) {
+    if (h.kind === 'airbnb') await approveAirbnbPartnerDB(h.id); else await approveHotelDB(h.id);
+    await loadPending();
+  }
+  async function handleRefuse(h: any) {
+    if (h.kind === 'airbnb') await refuseAirbnbPartnerDB(h.id); else await refuseHotelDB(h.id);
+    await loadPending();
+  }
 
   const todayMissions = missions.filter(m => m.date === today);
   const pendingMissions = missions.filter(m => m.status === 'pending');
@@ -66,13 +85,19 @@ export default function AdminDashboard() {
           {pending.map((h, i) => (
             <div key={h.id} className={`px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ${i < pending.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.name}</p>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: h.kind === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: h.kind === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
+                    {h.kind === 'airbnb' ? 'Airbnb' : 'Hôtel'}
+                  </span>
+                </div>
                 {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
                 <p className="text-xs" style={{ color: '#A8A09A' }}>{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={() => handleApprove(h.id)} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Valider</button>
-                <button onClick={() => handleRefuse(h.id)} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>Refuser</button>
+                <button onClick={() => handleApprove(h)} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Valider</button>
+                <button onClick={() => handleRefuse(h)} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>Refuser</button>
               </div>
             </div>
           ))}

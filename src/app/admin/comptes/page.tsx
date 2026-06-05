@@ -1,23 +1,49 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPendingHotelsDB, approveHotelDB, refuseHotelDB } from '@/lib/db';
+import {
+  getPendingHotelsDB, approveHotelDB, refuseHotelDB,
+  getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
+} from '@/lib/db';
+
+type PartnerKind = 'hotel' | 'airbnb';
+interface PendingPartner {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  userId?: string;
+  kind: PartnerKind;
+}
+
+const KIND_LABEL: Record<PartnerKind, string> = { hotel: 'Hôtel', airbnb: 'Airbnb / Conciergerie' };
 
 export default function ComptesPage() {
-  const [pending, setPending] = useState<any[]>([]);
+  const [pending, setPending] = useState<PendingPartner[]>([]);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
 
-  useEffect(() => { getPendingHotelsDB().then(d => { setPending(d); setLoading(false); }); }, []);
-
-  async function handleApprove(id: string) {
-    await approveHotelDB(id);
-    setDone(p => ({ ...p, [id]: 'approved' }));
+  async function load() {
+    const [hotels, partners] = await Promise.all([getPendingHotelsDB(), getPendingAirbnbPartnersDB()]);
+    const list: PendingPartner[] = [
+      ...hotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
+      ...partners.map((p: any) => ({ ...p, kind: 'airbnb' as const })),
+    ];
+    setPending(list);
+    setLoading(false);
   }
 
-  async function handleRefuse(id: string) {
-    await refuseHotelDB(id);
-    setDone(p => ({ ...p, [id]: 'refused' }));
+  useEffect(() => { load(); }, []);
+
+  async function handleApprove(p: PendingPartner) {
+    if (p.kind === 'hotel') await approveHotelDB(p.id); else await approveAirbnbPartnerDB(p.id);
+    setDone(d => ({ ...d, [p.id]: 'approved' }));
+  }
+
+  async function handleRefuse(p: PendingPartner) {
+    if (p.kind === 'hotel') await refuseHotelDB(p.id); else await refuseAirbnbPartnerDB(p.id);
+    setDone(d => ({ ...d, [p.id]: 'refused' }));
   }
 
   const active = pending.filter(h => !done[h.id]);
@@ -29,7 +55,7 @@ export default function ComptesPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Comptes en attente</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription partenaires hôtel</p>
+        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription des partenaires hôtel et Airbnb / conciergerie</p>
       </div>
 
       {active.length === 0 && processed.length === 0 && (
@@ -48,16 +74,19 @@ export default function ComptesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{h.name}</h3>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#C48A2A15', color: '#C48A2A' }}>En attente</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ backgroundColor: h.kind === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: h.kind === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
+                      {KIND_LABEL[h.kind]}
+                    </span>
                   </div>
                   {h.address && <p className="text-sm" style={{ color: '#7A7068' }}>{h.address}</p>}
                   <p className="text-sm" style={{ color: '#A8A09A' }}>{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleApprove(h.id)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  <button onClick={() => handleApprove(h)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                     Valider
                   </button>
-                  <button onClick={() => handleRefuse(h.id)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
+                  <button onClick={() => handleRefuse(h)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
                     Refuser
                   </button>
                 </div>

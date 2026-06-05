@@ -79,12 +79,12 @@ export default function LoginPage() {
 
         {/* Register hotel CTA */}
         <div className="mt-4">
-          <button onClick={() => router.push('/register/hotel')}
+          <button onClick={() => router.push('/register')}
             className="w-full py-3 rounded-xl text-sm font-medium border transition-all"
             style={{ borderColor: '#2E2E2E', color: '#C9A84C', backgroundColor: 'transparent' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.backgroundColor = '#C9A84C10'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.backgroundColor = 'transparent'; }}>
-            Créer un compte partenaire hôtel
+            Créer un compte partenaire
           </button>
         </div>
 
