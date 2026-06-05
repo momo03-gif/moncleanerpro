@@ -40,6 +40,7 @@ export interface Mission {
   requestedBy?: string;
   notes?: string;
   partnerId?: string;
+  partnerName?: string;
   airbnbId?: string;
 }
 

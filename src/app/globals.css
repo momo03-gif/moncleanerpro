@@ -61,3 +61,23 @@ input:-webkit-autofill:focus {
   -webkit-text-fill-color: #FFFFFF;
   -webkit-box-shadow: 0 0 0px 1000px #1F1F1F inset;
 }
+
+/* ── Impression facture ── */
+@media print {
+  body { background: #FFFFFF !important; }
+  /* on masque tout sauf la facture */
+  body * { visibility: hidden !important; }
+  .invoice-print, .invoice-print * { visibility: visible !important; }
+  .invoice-print {
+    position: absolute; left: 0; top: 0; width: 100%;
+    padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important;
+  }
+  .print-hidden { display: none !important; }
+  /* champs montants : enlever l'apparence input à l'impression */
+  .invoice-print input {
+    border: none !important; background: transparent !important; padding: 0 !important;
+    -webkit-appearance: none; appearance: none; color: #1A1A1A !important;
+  }
+  .invoice-print input::-webkit-outer-spin-button,
+  .invoice-print input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+}
