@@ -138,6 +138,9 @@ export default function FacturationPage() {
   const [partner, setPartner] = useState('');
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [savedMsg, setSavedMsg] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState('');
 
   const [showSettings, setShowSettings] = useState(false);
   const [companyForm, setCompanyForm] = useState<CompanyInfo>({});
@@ -190,9 +193,51 @@ export default function FacturationPage() {
     const foot = `\n\nTotal : ${total.toFixed(2)} €\n\n${company.name || 'MonCleanerPro'}`;
     return head + body + foot;
   }
-  function sendEmail() {
-    window.location.href = `mailto:?subject=${encodeURIComponent(`Facture ${invoiceNo} — ${company.name || 'MonCleanerPro'}`)}&body=${encodeURIComponent(buildText())}`;
+  function buildHtml(): string {
+    const info = [company.address, [company.email, company.phone].filter(Boolean).join(' · '),
+      [company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join(' · ')]
+      .filter(Boolean).map(x => `<div style="color:#7A7068;font-size:12px">${x}</div>`).join('');
+    const rows = liveLines.map(l =>
+      `<tr><td style="padding:6px 0;border-bottom:1px solid #F2EFE9">${fmtDateFR(l.date)}</td>
+        <td style="padding:6px 0;border-bottom:1px solid #F2EFE9">${l.label}</td>
+        <td style="padding:6px 0;border-bottom:1px solid #F2EFE9;text-align:right">${l.amount.toFixed(2)} €</td></tr>`).join('');
+    return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;color:#1A1A1A">
+      <div style="font-size:20px;font-weight:bold"><span style="color:#C9A84C">✦</span> ${company.name || 'MonCleanerPro'}</div>
+      ${info}
+      <p style="margin:18px 0 4px"><strong>FACTURE ${invoiceNo}</strong></p>
+      <p style="margin:0 0 2px">Facturé à : <strong>${partner}</strong></p>
+      <p style="margin:0 0 14px;color:#7A7068">Période : ${fmtDateFR(from)} → ${fmtDateFR(to)}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr style="border-bottom:2px solid #E8E4DC"><th style="text-align:left;padding:6px 0">Date</th><th style="text-align:left;padding:6px 0">Prestation</th><th style="text-align:right;padding:6px 0">Montant</th></tr>
+        ${rows}
+      </table>
+      <p style="text-align:right;font-size:16px;margin-top:14px"><strong>Total : ${total.toFixed(2)} €</strong></p>
+      <p style="color:#A8A09A;font-size:12px;margin-top:24px">Merci de votre confiance. — ${company.name || 'MonCleanerPro'}</p>
+    </div>`;
   }
+
+  async function sendInvoiceEmail() {
+    if (!recipient) { setSendMsg("Renseignez l'email du destinataire."); return; }
+    setSending(true); setSendMsg('');
+    try {
+      const res = await fetch('/api/send-invoice', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: recipient,
+          subject: `Facture ${invoiceNo} — ${company.name || 'MonCleanerPro'}`,
+          text: buildText(), html: buildHtml(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setSendMsg('Erreur : ' + (data.error || res.status)); }
+      else {
+        setSendMsg('Facture envoyée à ' + recipient + ' ✓');
+        if (partner) await handleSaveInvoice(); // archive auto à l'envoi
+      }
+    } catch (e: any) { setSendMsg('Erreur : ' + e.message); }
+    setSending(false);
+  }
+
   function sendWhatsApp() { window.open(`https://wa.me/?text=${encodeURIComponent(buildText())}`, '_blank'); }
 
   async function handleSaveInvoice() {
@@ -298,12 +343,23 @@ export default function FacturationPage() {
               {partners.length === 0 && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Aucune mission terminée sur cette période.</p>}
             </div>
             {partner && liveLines.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1 items-center">
-                <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>🖨 Imprimer / PDF</button>
-                <button onClick={handleSaveInvoice} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#C9A84C', color: '#C9A84C' }}>💾 Enregistrer</button>
-                <button onClick={sendEmail} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>✉ Email</button>
-                <button onClick={sendWhatsApp} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#5A8A6A' }}>WhatsApp</button>
-                {savedMsg && <span className="text-xs font-medium" style={{ color: '#5A8A6A' }}>{savedMsg}</span>}
+              <div className="pt-1 space-y-3">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>🖨 Imprimer / PDF</button>
+                  <button onClick={handleSaveInvoice} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#C9A84C', color: '#C9A84C' }}>💾 Enregistrer</button>
+                  <button onClick={sendWhatsApp} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#5A8A6A' }}>WhatsApp</button>
+                  {savedMsg && <span className="text-xs font-medium" style={{ color: '#5A8A6A' }}>{savedMsg}</span>}
+                </div>
+                {/* Envoi email réel (SMTP) */}
+                <div className="flex flex-wrap gap-2 items-center pt-3 border-t" style={{ borderColor: '#F2EFE9' }}>
+                  <input type="email" value={recipient} onChange={e => setRecipient(e.target.value)}
+                    placeholder="email du partenaire" className="flex-1 min-w-[200px] px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                  <button onClick={sendInvoiceEmail} disabled={sending} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#1A1A1A', color: '#FFFFFF' }}>
+                    {sending ? 'Envoi...' : '✉ Envoyer la facture'}
+                  </button>
+                  {sendMsg && <span className="text-xs font-medium" style={{ color: sendMsg.startsWith('Erreur') ? '#B85A50' : '#5A8A6A' }}>{sendMsg}</span>}
+                </div>
               </div>
             )}
           </div>
