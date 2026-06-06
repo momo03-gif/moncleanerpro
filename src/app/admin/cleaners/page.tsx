@@ -17,12 +17,8 @@ export default function CleanersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [editRates, setEditRates] = useState<string | null>(null);
-  const [rateForm, setRateForm] = useState({ hourlyRateHotel: '', rateAirbnb: '' });
-  const [editPassword, setEditPassword] = useState<string | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [editInfo, setEditInfo] = useState<string | null>(null);
-  const [infoForm, setInfoForm] = useState({ name: '', email: '', phone: '' });
+  const [managing, setManaging] = useState<string | null>(null);
+  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRateHotel: '', rateAirbnb: '', password: '' });
   const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
@@ -42,16 +38,25 @@ export default function CleanersPage() {
     await load();
   }
 
-  function openEditInfo(c: CleanerRow) {
-    setEditInfo(c.id);
-    setInfoForm({ name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '' });
+  function openManage(c: CleanerRow) {
+    setManaging(c.id);
+    setManageForm({
+      name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '',
+      hourlyRateHotel: String(c.hourly_rate_hotel ?? ''), rateAirbnb: String(c.rate_airbnb ?? ''),
+      password: '',
+    });
   }
 
-  async function handleSaveInfo(id: string) {
-    if (!infoForm.name.trim() || !infoForm.email.trim()) return;
-    await updateCleanerInfoDB(id, { name: infoForm.name.trim(), email: infoForm.email.trim(), phone: infoForm.phone.trim() || undefined });
-    setEditInfo(null);
+  // Enregistre en une fois : infos + tarifs + mot de passe (si renseigné)
+  async function handleSaveManage(id: string) {
+    if (!manageForm.name.trim() || !manageForm.email.trim()) return;
+    setSaving(true);
+    await updateCleanerInfoDB(id, { name: manageForm.name.trim(), email: manageForm.email.trim(), phone: manageForm.phone.trim() || undefined });
+    await updateCleanerRatesDB(id, Number(manageForm.hourlyRateHotel) || 0, Number(manageForm.rateAirbnb) || 0);
+    if (manageForm.password.trim()) await updateCleanerPasswordDB(id, manageForm.password.trim());
+    setManaging(null);
     await load();
+    setSaving(false);
   }
 
   async function handleDeleteCleaner(id: string, name: string) {
@@ -74,18 +79,6 @@ export default function CleanersPage() {
     setForm(emptyForm);
     setShowForm(false);
     setSaving(false);
-  }
-
-  async function handleSaveRates(id: string) {
-    await updateCleanerRatesDB(id, Number(rateForm.hourlyRateHotel) || 0, Number(rateForm.rateAirbnb) || 0);
-    await load();
-    setEditRates(null);
-  }
-
-  async function handleSavePassword(id: string) {
-    if (newPassword.trim()) await updateCleanerPasswordDB(id, newPassword.trim());
-    setEditPassword(null);
-    setNewPassword('');
   }
 
   async function handlePay(cleanerId: string, cleanerName: string, missionIds: string[], amount: number) {
@@ -186,57 +179,18 @@ export default function CleanersPage() {
                       {cleaner.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      {editInfo === cleaner.id ? (
-                        <div className="space-y-2">
-                          {[
-                            { key: 'name', placeholder: 'Nom complet', type: 'text' },
-                            { key: 'email', placeholder: 'Email', type: 'email' },
-                            { key: 'phone', placeholder: 'Téléphone', type: 'text' },
-                          ].map(f => (
-                            <input key={f.key} type={f.type} value={(infoForm as any)[f.key]} onChange={e => setInfoForm(p => ({ ...p, [f.key]: e.target.value }))}
-                              placeholder={f.placeholder} className="w-full max-w-xs px-3 py-2 rounded-xl text-sm border" style={inputStyle}
-                              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                          ))}
-                          <div className="flex gap-2">
-                            <button onClick={() => handleSaveInfo(cleaner.id)} disabled={!infoForm.name.trim() || !infoForm.email.trim()} className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
-                            <button onClick={() => setEditInfo(null)} className="text-xs px-3 py-1.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Annuler</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{cleaner.name}</h3>
-                            {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
-                          </div>
-                          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
-                          {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
-                          {editPassword === cleaner.id ? (
-                            <div className="flex items-center gap-2 mt-2">
-                              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" autoFocus
-                                className="px-3 py-1.5 rounded-xl text-xs border w-44" style={inputStyle}
-                                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                              <button onClick={() => handleSavePassword(cleaner.id)} disabled={!newPassword.trim()} className="text-xs px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-                              <button onClick={() => { setEditPassword(null); setNewPassword(''); }} className="text-xs px-2 py-1.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              <button onClick={() => openEditInfo(cleaner)} className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✎ Modifier les infos</button>
-                              <button onClick={() => { setEditPassword(cleaner.id); setNewPassword(''); }} className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>🔑 Mot de passe</button>
-                            </div>
-                          )}
-                        </>
-                      )}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{cleaner.name}</h3>
+                        {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
+                      {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
                     </div>
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <button onClick={() => handleToggleActive(cleaner.id, cleaner.status)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
-                        style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>
-                        {isActive ? 'Désactiver' : 'Activer'}
-                      </button>
-                      <button onClick={() => handleDeleteCleaner(cleaner.id, cleaner.name)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
-                        style={{ borderColor: '#B85A5040', backgroundColor: '#B85A5010', color: '#B85A50' }}>
-                        🗑 Supprimer
-                      </button>
-                    </div>
+                    <button onClick={() => (managing === cleaner.id ? setManaging(null) : openManage(cleaner))}
+                      className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold border transition-all"
+                      style={{ borderColor: managing === cleaner.id ? '#C9A84C' : '#E8E4DC', backgroundColor: managing === cleaner.id ? '#C9A84C12' : '#FAFAF8', color: managing === cleaner.id ? '#C9A84C' : '#7A7068' }}>
+                      {managing === cleaner.id ? '✕ Fermer' : '⚙ Gérer'}
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 px-4 md:px-6 pb-5">
@@ -248,31 +202,9 @@ export default function CleanersPage() {
                     ))}
                   </div>
 
-                  <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Tarification</p>
-                      {editRates !== cleaner.id ? (
-                        <button onClick={() => { setEditRates(cleaner.id); setRateForm({ hourlyRateHotel: String(cleaner.hourly_rate_hotel ?? ''), rateAirbnb: String(cleaner.rate_airbnb ?? '') }); }}
-                          className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button onClick={() => handleSaveRates(cleaner.id)} className="text-xs px-2.5 py-1 rounded-lg font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
-                          <button onClick={() => setEditRates(null)} className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
-                        </div>
-                      )}
-                    </div>
-                    {editRates === cleaner.id ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        {[{ label: 'Hôtel (€/h)', key: 'hourlyRateHotel' }, { label: 'Airbnb (€/apt)', key: 'rateAirbnb' }].map(f => (
-                          <div key={f.key}>
-                            <label className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>{f.label}</label>
-                            <input type="number" min="0" value={(rateForm as any)[f.key]} onChange={e => setRateForm(p => ({ ...p, [f.key]: e.target.value }))}
-                              className="w-full px-3 py-2 rounded-xl text-sm border" style={inputStyle}
-                              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
+                  {managing !== cleaner.id ? (
+                    <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Tarification</p>
                       <div className="flex gap-4">
                         <div className="flex items-center gap-2">
                           <span className="text-xs" style={{ color: '#A8A09A' }}>Hôtel</span>
@@ -284,8 +216,56 @@ export default function CleanersPage() {
                           <span className="text-sm font-semibold" style={{ color: cleaner.rate_airbnb ? '#1A1A1A' : '#A8A09A' }}>{cleaner.rate_airbnb ? `${cleaner.rate_airbnb}€/apt` : '—'}</span>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 md:px-6 pb-5 border-t pt-4 space-y-4" style={{ borderColor: '#F2EFE9' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Modifier le cleaner</p>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {[
+                          { key: 'name', label: 'Nom complet', type: 'text' },
+                          { key: 'email', label: 'Email', type: 'email' },
+                          { key: 'phone', label: 'Téléphone', type: 'text' },
+                          { key: 'password', label: 'Nouveau mot de passe', type: 'password' },
+                        ].map(f => (
+                          <div key={f.key}>
+                            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>{f.label}</label>
+                            <input type={f.type} value={(manageForm as any)[f.key]} onChange={e => setManageForm(p => ({ ...p, [f.key]: e.target.value }))}
+                              placeholder={f.key === 'password' ? 'Laisser vide pour ne pas changer' : ''}
+                              className="w-full px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+                              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                          </div>
+                        ))}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Tarif hôtel (€/h)</label>
+                          <input type="number" min="0" value={manageForm.hourlyRateHotel} onChange={e => setManageForm(p => ({ ...p, hourlyRateHotel: e.target.value }))}
+                            className="w-full px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Prix Airbnb (€/apt)</label>
+                          <input type="number" min="0" value={manageForm.rateAirbnb} onChange={e => setManageForm(p => ({ ...p, rateAirbnb: e.target.value }))}
+                            className="w-full px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleSaveManage(cleaner.id)} disabled={saving || !manageForm.name.trim() || !manageForm.email.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                          {saving ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                        <button onClick={() => setManaging(null)} className="px-5 py-2.5 rounded-xl text-sm font-medium border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-3 border-t" style={{ borderColor: '#F2EFE9' }}>
+                        <button onClick={() => handleToggleActive(cleaner.id, cleaner.status)} className="px-4 py-2 rounded-xl text-xs font-semibold border"
+                          style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>
+                          {isActive ? 'Désactiver le compte' : 'Activer le compte'}
+                        </button>
+                        <button onClick={() => handleDeleteCleaner(cleaner.id, cleaner.name)} className="px-4 py-2 rounded-xl text-xs font-semibold border"
+                          style={{ borderColor: '#B85A5040', backgroundColor: '#B85A5010', color: '#B85A50' }}>
+                          🗑 Supprimer définitivement
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
