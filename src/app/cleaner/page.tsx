@@ -101,6 +101,18 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
 
       {/* Infos */}
       <div className="px-5 py-4 space-y-3">
+        {mission.nextArrival && (
+          mission.nextArrival === mission.date ? (
+            <div className="px-3 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+              <span>⚠️</span>
+              <span>Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''} — terminer à temps</span>
+            </div>
+          ) : (
+            <p className="text-xs" style={{ color: '#7A7068' }}>
+              Prochaine arrivée : {new Date(mission.nextArrival + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+            </p>
+          )
+        )}
         <div className="flex flex-wrap items-center gap-3">
           {mission.time && (
             <div className="flex items-center gap-1.5">

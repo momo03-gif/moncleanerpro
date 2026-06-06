@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerRatesDB, updateCleanerPasswordDB, createPaymentDB } from '@/lib/db';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerRatesDB, updateCleanerPasswordDB, updateCleanerInfoDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
@@ -21,6 +21,8 @@ export default function CleanersPage() {
   const [rateForm, setRateForm] = useState({ hourlyRateHotel: '', rateAirbnb: '' });
   const [editPassword, setEditPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [editInfo, setEditInfo] = useState<string | null>(null);
+  const [infoForm, setInfoForm] = useState({ name: '', email: '', phone: '' });
   const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
@@ -37,6 +39,24 @@ export default function CleanersPage() {
 
   async function handleToggleActive(id: string, currentStatus: string) {
     await setCleanerActive(id, currentStatus !== 'active');
+    await load();
+  }
+
+  function openEditInfo(c: CleanerRow) {
+    setEditInfo(c.id);
+    setInfoForm({ name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '' });
+  }
+
+  async function handleSaveInfo(id: string) {
+    if (!infoForm.name.trim() || !infoForm.email.trim()) return;
+    await updateCleanerInfoDB(id, { name: infoForm.name.trim(), email: infoForm.email.trim(), phone: infoForm.phone.trim() || undefined });
+    setEditInfo(null);
+    await load();
+  }
+
+  async function handleDeleteCleaner(id: string, name: string) {
+    if (!confirm(`Supprimer définitivement le cleaner « ${name} » ? Ses missions passées sont conservées (sans cleaner assigné).`)) return;
+    await deleteCleanerDB(id);
     await load();
   }
 
@@ -166,30 +186,57 @@ export default function CleanersPage() {
                       {cleaner.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{cleaner.name}</h3>
-                        {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
-                      </div>
-                      <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
-                      {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
-                      {editPassword === cleaner.id ? (
-                        <div className="flex items-center gap-2 mt-2">
-                          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" autoFocus
-                            className="px-3 py-1.5 rounded-xl text-xs border w-44" style={inputStyle}
-                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                          <button onClick={() => handleSavePassword(cleaner.id)} disabled={!newPassword.trim()} className="text-xs px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-                          <button onClick={() => { setEditPassword(null); setNewPassword(''); }} className="text-xs px-2 py-1.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+                      {editInfo === cleaner.id ? (
+                        <div className="space-y-2">
+                          {[
+                            { key: 'name', placeholder: 'Nom complet', type: 'text' },
+                            { key: 'email', placeholder: 'Email', type: 'email' },
+                            { key: 'phone', placeholder: 'Téléphone', type: 'text' },
+                          ].map(f => (
+                            <input key={f.key} type={f.type} value={(infoForm as any)[f.key]} onChange={e => setInfoForm(p => ({ ...p, [f.key]: e.target.value }))}
+                              placeholder={f.placeholder} className="w-full max-w-xs px-3 py-2 rounded-xl text-sm border" style={inputStyle}
+                              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                          ))}
+                          <div className="flex gap-2">
+                            <button onClick={() => handleSaveInfo(cleaner.id)} disabled={!infoForm.name.trim() || !infoForm.email.trim()} className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
+                            <button onClick={() => setEditInfo(null)} className="text-xs px-3 py-1.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Annuler</button>
+                          </div>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditPassword(cleaner.id); setNewPassword(''); }} className="text-xs mt-1.5 px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
-                          🔑 Modifier le mot de passe
-                        </button>
+                        <>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{cleaner.name}</h3>
+                            {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
+                          </div>
+                          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
+                          {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
+                          {editPassword === cleaner.id ? (
+                            <div className="flex items-center gap-2 mt-2">
+                              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" autoFocus
+                                className="px-3 py-1.5 rounded-xl text-xs border w-44" style={inputStyle}
+                                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                              <button onClick={() => handleSavePassword(cleaner.id)} disabled={!newPassword.trim()} className="text-xs px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
+                              <button onClick={() => { setEditPassword(null); setNewPassword(''); }} className="text-xs px-2 py-1.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-2 mt-1.5">
+                              <button onClick={() => openEditInfo(cleaner)} className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✎ Modifier les infos</button>
+                              <button onClick={() => { setEditPassword(cleaner.id); setNewPassword(''); }} className="text-xs px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>🔑 Mot de passe</button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
-                    <button onClick={() => handleToggleActive(cleaner.id, cleaner.status)} className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
-                      style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>
-                      {isActive ? 'Désactiver' : 'Activer'}
-                    </button>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button onClick={() => handleToggleActive(cleaner.id, cleaner.status)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+                        style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>
+                        {isActive ? 'Désactiver' : 'Activer'}
+                      </button>
+                      <button onClick={() => handleDeleteCleaner(cleaner.id, cleaner.name)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+                        style={{ borderColor: '#B85A5040', backgroundColor: '#B85A5010', color: '#B85A50' }}>
+                        🗑 Supprimer
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 px-4 md:px-6 pb-5">

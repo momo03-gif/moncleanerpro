@@ -104,6 +104,31 @@ export async function setCleanerActive(id: string, active: boolean) {
   await supabase.from('cleaners').update({ status: active ? 'active' : 'inactive' }).eq('id', id);
 }
 
+export async function updateCleanerInfoDB(id: string, fields: { name: string; email: string; phone?: string }) {
+  const { error } = await supabase.from('cleaners').update({
+    name: fields.name,
+    email: fields.email,
+    phone: fields.phone ?? null,
+  }).eq('id', id);
+  // Garde le compte de connexion (users) synchronisé
+  const { data: c } = await supabase.from('cleaners').select('user_id').eq('id', id).single();
+  const userId = c?.user_id ?? id;
+  await supabase.from('users').update({
+    name: fields.name,
+    email: fields.email.toLowerCase().trim(),
+    phone: fields.phone ?? null,
+  }).eq('id', userId);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteCleanerDB(id: string) {
+  // missions.cleaner_id est FK ON DELETE SET NULL → les missions sont conservées
+  const { data: c } = await supabase.from('cleaners').select('user_id').eq('id', id).single();
+  const userId = c?.user_id ?? id;
+  await supabase.from('cleaners').delete().eq('id', id);
+  await supabase.from('users').delete().eq('id', userId);
+}
+
 export async function updateCleanerRatesDB(id: string, hotelRate: number, airbnbRate: number) {
   await supabase.from('cleaners').update({ hourly_rate_hotel: hotelRate, rate_airbnb: airbnbRate }).eq('id', id);
 }
@@ -268,6 +293,8 @@ function rowToMission(row: any): Mission {
     partnerId: row.partner_id ?? undefined,
     partnerName: row.airbnbs?.partner_name ?? undefined,
     airbnbId: row.airbnb_id ?? undefined,
+    nextArrival: row.next_arrival ?? undefined,
+    nextArrivalTime: row.next_arrival_time ? trimTime(row.next_arrival_time) : undefined,
   };
 }
 
@@ -324,6 +351,7 @@ export async function getPendingMissionsDB(): Promise<Mission[]> {
 export async function createAirbnbMissionDB(fields: {
   partnerId: string; airbnbId: string;
   dateFrom: string; timeFrom: string; instructions?: string; price?: number;
+  nextArrival?: string; nextArrivalTime?: string;
 }): Promise<{ error: string | null }> {
   const { error } = await supabase.from('missions').insert({
     type: 'regular',
@@ -334,6 +362,8 @@ export async function createAirbnbMissionDB(fields: {
     time_from: fields.timeFrom || null,
     instructions: fields.instructions || null,
     price: fields.price ?? 0,  // prix repris depuis la fiche appartement (comptabilité)
+    next_arrival: fields.nextArrival || null,
+    next_arrival_time: fields.nextArrivalTime || null,
     status: 'pending',
   });
   if (error) {

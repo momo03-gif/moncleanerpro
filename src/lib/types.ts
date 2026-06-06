@@ -42,6 +42,8 @@ export interface Mission {
   partnerId?: string;
   partnerName?: string;
   airbnbId?: string;
+  nextArrival?: string;
+  nextArrivalTime?: string;
 }
 
 export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed';

@@ -33,6 +33,8 @@ export default function AirbnbMissionsPage() {
   const [airbnbId, setAirbnbId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [nextArrival, setNextArrival] = useState('');
+  const [nextArrivalTime, setNextArrivalTime] = useState('');
   const [hasInstructions, setHasInstructions] = useState(false);
   const [instructions, setInstructions] = useState('');
   const [saving, setSaving] = useState(false);
@@ -61,6 +63,7 @@ export default function AirbnbMissionsPage() {
 
   function resetForm() {
     setAirbnbId(''); setDate(''); setTime('');
+    setNextArrival(''); setNextArrivalTime('');
     setHasInstructions(false); setInstructions(''); setError('');
   }
 
@@ -85,6 +88,8 @@ export default function AirbnbMissionsPage() {
       timeFrom: time,
       instructions: hasInstructions ? instructions : undefined,
       price: apt?.clientPrice,  // prix repris automatiquement de l'appartement
+      nextArrival: nextArrival || undefined,
+      nextArrivalTime: nextArrivalTime || undefined,
     });
     if (res.error) { setError(`Erreur : ${res.error}`); setSaving(false); return; }
     resetForm();
@@ -171,6 +176,23 @@ export default function AirbnbMissionsPage() {
             </div>
 
             <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée client — optionnel</label>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="date" value={nextArrival} min={date || today} onChange={e => setNextArrival(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <input type="time" value={nextArrivalTime} onChange={e => setNextArrivalTime(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+              {nextArrival && date && nextArrival === date && (
+                <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                  ⚠️ Arrivée le jour même du ménage — turnover urgent
+                </p>
+              )}
+            </div>
+
+            <div>
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <div onClick={() => setHasInstructions(v => !v)}
                   className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
@@ -219,6 +241,17 @@ export default function AirbnbMissionsPage() {
                       <span>📅 {formatDate(m.date)}</span>
                       {m.time && <span>◷ {m.time}</span>}
                     </div>
+                    {m.nextArrival && (
+                      m.nextArrival === m.date ? (
+                        <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                          ⚠️ Arrivée client le jour même{m.nextArrivalTime ? ` à ${m.nextArrivalTime}` : ''}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-xs" style={{ color: '#7A7068' }}>
+                          Prochaine arrivée : {formatDate(m.nextArrival)}{m.nextArrivalTime ? ` à ${m.nextArrivalTime}` : ''}
+                        </p>
+                      )
+                    )}
                     {m.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Cleaner : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{m.cleanerName}</span></p>}
                     {m.status === 'pending' && (
                       <button onClick={() => handleCancel(m.id)}

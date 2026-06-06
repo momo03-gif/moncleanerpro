@@ -153,6 +153,18 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
           {mission.duration > 0 && <span>⟳ {mission.duration}h</span>}
         </div>
 
+        {mission.nextArrival && (
+          mission.nextArrival === mission.date ? (
+            <div className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+              <span>⚠️</span><span>Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}</span>
+            </div>
+          ) : (
+            <p className="text-xs" style={{ color: '#7A7068' }}>
+              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+            </p>
+          )
+        )}
+
         {/* Cleaner + Prix */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           <div>
