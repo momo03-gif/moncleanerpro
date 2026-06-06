@@ -254,7 +254,7 @@ function trimTime(t: string | null | undefined): string {
 
 // Sélection commune : on joint l'appartement lié pour les missions Airbnb
 // afin d'en récupérer adresse + accès sans dupliquer l'info dans la mission.
-const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name)';
+const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes)';
 
 function rowToMission(row: any): Mission {
   let property = row.property_name ?? '';
@@ -270,6 +270,7 @@ function rowToMission(row: any): Mission {
     if (apt.code_portail) parts.push(`Code portail : ${apt.code_portail}`);
     if (apt.code_boite) parts.push(`Boîte à clé : ${apt.code_boite}`);
     if (apt.entry_instructions) parts.push(apt.entry_instructions);
+    if (apt.notes) parts.push(apt.notes); // notes particulières de l'appartement
     if (row.instructions) parts.push(row.instructions); // consignes ajoutées par le partenaire
     notes = parts.length > 0 ? parts.join(' · ') : undefined;
   }

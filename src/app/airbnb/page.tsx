@@ -129,7 +129,7 @@ export default function AirbnbApartmentsPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <h2 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>{editingId ? "Modifier l'appartement" : 'Nouvel appartement'}</h2>
-          <div className="space-y-3">
+          <div className="grid md:grid-cols-2 gap-3">
             {TEXT_FIELDS.map(f => (
               <div key={f.key}>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>{f.label}</label>
@@ -139,7 +139,7 @@ export default function AirbnbApartmentsPage() {
               </div>
             ))}
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="md:col-span-2 grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Chambres</label>
                 <input type="number" min="0" value={form.bedrooms} onChange={e => setForm(p => ({ ...p, bedrooms: e.target.value }))}
@@ -160,7 +160,7 @@ export default function AirbnbApartmentsPage() {
               </div>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Prix par ménage (€) — facturé</label>
               <input type="number" min="0" step="0.01" value={form.clientPrice} onChange={e => setForm(p => ({ ...p, clientPrice: e.target.value }))}
                 placeholder="Ex : 45" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
@@ -168,14 +168,14 @@ export default function AirbnbApartmentsPage() {
               <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Repris automatiquement sur chaque mission de cet appartement.</p>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Instructions d'entrée</label>
               <textarea required value={form.entryDirectives} onChange={e => setForm(p => ({ ...p, entryDirectives: e.target.value }))} rows={2}
                 placeholder="Comment accéder au logement..." className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Notes particulières — optionnel</label>
               <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
                 placeholder="Animaux, parking, fragilités..." className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}

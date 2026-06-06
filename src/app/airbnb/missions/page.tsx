@@ -150,12 +150,24 @@ export default function AirbnbMissionsPage() {
               const a = apartments.find(x => x.id === airbnbId);
               if (!a) return null;
               return (
-                <div className="rounded-xl p-4 text-sm space-y-1" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
+                <div className="rounded-xl p-4 text-sm space-y-1.5" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#A8A09A' }}>Coordonnées reprises automatiquement</p>
                   <p style={{ color: '#1A1A1A', fontWeight: 600 }}>{a.name}</p>
                   <p className="text-xs">◎ {a.address}</p>
                   {a.clientPrice != null && <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{a.clientPrice}€ / ménage</p>}
+                  {(a.bedrooms != null || a.beds != null || a.sofaBeds != null) && (
+                    <p className="text-xs">
+                      {a.bedrooms != null && <>🛏 {a.bedrooms} ch.</>}
+                      {a.bedrooms != null && (a.beds != null || a.sofaBeds != null) && ' · '}
+                      {a.beds != null && <>{a.beds} lit{a.beds > 1 ? 's' : ''}</>}
+                      {a.beds != null && a.sofaBeds != null && ' · '}
+                      {a.sofaBeds != null && <>{a.sofaBeds} canapé-lit{a.sofaBeds > 1 ? 's' : ''}</>}
+                    </p>
+                  )}
                   {a.portalCode && <p className="text-xs">Portail : <span className="font-mono">{a.portalCode}</span></p>}
                   {a.keyboxCode && <p className="text-xs">Clé : <span className="font-mono">{a.keyboxCode}</span></p>}
+                  {a.entryDirectives && <p className="text-xs">Entrée : {a.entryDirectives}</p>}
+                  {a.notes && <p className="text-xs">Notes : {a.notes}</p>}
                 </div>
               );
             })()}
