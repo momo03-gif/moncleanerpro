@@ -390,6 +390,7 @@ export async function createMissionDB(fields: {
   cleanerId?: string; cleanerName?: string; clientName?: string;
   price: number; cleanerGain: number; instructions?: string;
   airbnbId?: string; partnerId?: string;
+  nextArrival?: string; nextArrivalTime?: string;
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
   const cleanerIdToStore: string | null = fields.cleanerId || null;
@@ -414,6 +415,8 @@ export async function createMissionDB(fields: {
     price: fields.price,
     cleaner_gain: fields.cleanerGain,
     instructions: fields.instructions || null,
+    next_arrival: fields.nextArrival || null,
+    next_arrival_time: fields.nextArrivalTime || null,
     status: cleanerIdToStore ? 'assigned' : 'pending',
   });
 

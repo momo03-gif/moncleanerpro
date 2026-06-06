@@ -57,6 +57,7 @@ const emptyForm = {
   property: '', address: '',
   cleanerId: '', date: '', time: '',
   duration: '2', price: '', cleanerGain: '',
+  nextArrival: '', nextArrivalTime: '',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -442,6 +443,8 @@ export default function MissionsPage() {
       cleanerGain: Number(form.cleanerGain) || 0,
       airbnbId: apt?.id,
       partnerId: apt?.partnerId,
+      nextArrival: form.nextArrival || undefined,
+      nextArrivalTime: form.nextArrivalTime || undefined,
     });
 
     if (result.error) {
@@ -744,6 +747,22 @@ export default function MissionsPage() {
                 <input required type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée client — optionnel</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(p => ({ ...p, nextArrival: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                  <input type="time" value={form.nextArrivalTime} onChange={e => setForm(p => ({ ...p, nextArrivalTime: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+                {form.nextArrival && form.date && form.nextArrival === form.date && (
+                  <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                    ⚠️ Arrivée le jour même du ménage — turnover urgent
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Gain cleaner (€)</label>
