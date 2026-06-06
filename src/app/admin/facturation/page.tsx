@@ -221,7 +221,8 @@ export default function FacturationPage() {
     setSending(true); setSendMsg('');
     try {
       const res = await fetch('/api/send-invoice', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-mail-key': process.env.NEXT_PUBLIC_MAIL_KEY ?? '' },
         body: JSON.stringify({
           to: recipient,
           subject: `Facture ${invoiceNo} — ${company.name || 'MonCleanerPro'}`,
