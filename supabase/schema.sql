@@ -125,6 +125,28 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Infos légales de l'entreprise (ligne unique) — affichées sur les factures
+CREATE TABLE IF NOT EXISTS company_info (
+  id INT PRIMARY KEY DEFAULT 1,
+  name TEXT, address TEXT, siret TEXT, vat TEXT, email TEXT, phone TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT company_info_single CHECK (id = 1)
+);
+
+-- Historique des factures générées
+CREATE TABLE IF NOT EXISTS invoices (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  number TEXT,
+  partner_label TEXT,
+  partner_type TEXT,
+  period_from DATE,
+  period_to DATE,
+  total NUMERIC DEFAULT 0,
+  lines JSONB DEFAULT '[]',
+  status TEXT DEFAULT 'issued',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── DÉSACTIVER RLS (prototype) ───────────────────
 -- ⚠️  En production, configurer des policies RLS appropriées
 
@@ -136,6 +158,8 @@ ALTER TABLE airbnbs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE missions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE hotel_requests DISABLE ROW LEVEL SECURITY;
 ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE company_info DISABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices DISABLE ROW LEVEL SECURITY;
 
 -- ── ACTIVER REALTIME ─────────────────────────────
 ALTER PUBLICATION supabase_realtime ADD TABLE missions;

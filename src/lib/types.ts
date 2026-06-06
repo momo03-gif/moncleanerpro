@@ -103,6 +103,35 @@ export interface CleanerRow {
   status: string;
 }
 
+export interface CompanyInfo {
+  name?: string;
+  address?: string;
+  siret?: string;
+  vat?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface InvoiceLine {
+  date: string;
+  label: string;
+  type: string;
+  amount: number;
+}
+
+export interface InvoiceRecord {
+  id: string;
+  number: string;
+  partnerLabel: string;
+  partnerType: string;
+  periodFrom: string;
+  periodTo: string;
+  total: number;
+  lines: InvoiceLine[];
+  status: string;
+  createdAt: string;
+}
+
 export interface FinancialEntry {
   id: string;
   date: string;
