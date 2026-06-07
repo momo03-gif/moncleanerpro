@@ -262,11 +262,20 @@ export default function CleanerDashboard() {
     return `Missions du ${formatDateFR(dateStart)} au ${formatDateFR(dateEnd)}`;
   }
 
+  // Bornes "Toutes" : de la 1re à la dernière mission du cleaner
+  const allDates = missions.map(m => m.date).filter(Boolean).sort();
+  const allStart = allDates[0] ?? today;
+  const allEnd = allDates[allDates.length - 1] ?? today;
+
   const quickFilters = [
     { label: "Auj.", start: today, end: today },
     { label: 'Demain', start: tomorrow, end: tomorrow },
     { label: 'Semaine', start: weekStart, end: weekEnd },
+    { label: 'Toutes', start: allStart, end: allEnd },
   ];
+
+  // Missions hors période (info quand la vue courante est vide)
+  const outOfRangeCount = missions.filter(m => m.status !== 'cancelled' && (m.date < dateStart || m.date > dateEnd)).length;
 
   return (
     <div className="p-5">
@@ -349,6 +358,12 @@ export default function CleanerDashboard() {
           <p className="text-xl mb-3">📅</p>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission prévue</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>pour cette période</p>
+          {outOfRangeCount > 0 && (
+            <button onClick={() => { setDateStart(allStart); setDateEnd(allEnd); }}
+              className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+              Voir mes {outOfRangeCount} mission{outOfRangeCount > 1 ? 's' : ''} sur d'autres dates →
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
