@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAirbnbsForPartner, getMissionsForPartnerDB, createAirbnbMissionDB, updateMissionStatusDB } from '@/lib/db';
+import { getAirbnbsForPartner, getMissionsForPartnerDB, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, Mission } from '@/lib/types';
+import DateRangeFilter from '@/components/DateRangeFilter';
+import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 const today = new Date().toISOString().split('T')[0];
@@ -23,12 +25,174 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
 }
 
+// ── Carte mission partenaire (consultation + modification/suppression) ──────────
+// Le partenaire (créateur) peut modifier ou supprimer tant que la mission n'est
+// pas terminée/annulée. Au-delà, elle est verrouillée (donnée de facturation).
+function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
+  mission: Mission;
+  apartments: Apartment[];
+  userId: string;
+  onRefresh: () => void;
+}) {
+  const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
+  const locked = isMissionLocked(mission.status);
+  const [editOpen, setEditOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    airbnbId: mission.airbnbId ?? '',
+    date: mission.date,
+    time: mission.time,
+    nextArrival: mission.nextArrival ?? '',
+    nextArrivalTime: mission.nextArrivalTime ?? '',
+    instructions: mission.instructionsRaw ?? '',
+  });
+
+  function openEdit() {
+    setForm({
+      airbnbId: mission.airbnbId ?? '',
+      date: mission.date,
+      time: mission.time,
+      nextArrival: mission.nextArrival ?? '',
+      nextArrivalTime: mission.nextArrivalTime ?? '',
+      instructions: mission.instructionsRaw ?? '',
+    });
+    setError('');
+    setEditOpen(true);
+  }
+
+  async function save() {
+    if (!form.airbnbId) { setError('Sélectionnez un appartement.'); return; }
+    if (!form.date) { setError('Choisissez une date.'); return; }
+    if (!form.time) { setError('Choisissez une heure.'); return; }
+    setBusy(true); setError('');
+    const res = await updateMissionDB(mission.id, { id: userId, role: 'airbnb' }, {
+      airbnbId: form.airbnbId,
+      dateFrom: form.date,
+      timeFrom: form.time,
+      instructions: form.instructions,
+      nextArrival: form.nextArrival || null,
+      nextArrivalTime: form.nextArrivalTime || null,
+    });
+    setBusy(false);
+    if (res.error) { setError(res.error); return; }
+    setEditOpen(false);
+    onRefresh();
+  }
+
+  async function remove() {
+    if (!confirm('Supprimer définitivement cette mission ?')) return;
+    setBusy(true); setError('');
+    const res = await deleteMissionDB(mission.id, { id: userId, role: 'airbnb' });
+    setBusy(false);
+    if (res.error) { setError(res.error); return; }
+    onRefresh();
+  }
+
+  return (
+    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      <div className="px-5 py-3.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
+        <span className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</span>
+        <span className="text-xs px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
+      </div>
+
+      <div className="px-5 py-4">
+        {mission.address && <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>◎ {mission.address}</p>}
+        <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
+          <span>{formatDate(mission.date)}</span>
+          {mission.time && <span>◷ {mission.time}</span>}
+        </div>
+        {mission.nextArrival && (
+          mission.nextArrival === mission.date ? (
+            <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+            </p>
+          ) : (
+            <p className="mt-2 text-xs" style={{ color: '#7A7068' }}>
+              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+            </p>
+          )
+        )}
+        {mission.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Cleaner : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{mission.cleanerName}</span></p>}
+
+        {error && <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{error}</p>}
+
+        {/* Mission verrouillée : consultation uniquement */}
+        {locked ? (
+          <p className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
+            🔒 Mission {mission.status === 'completed' ? 'terminée' : 'annulée'} — elle ne peut plus être modifiée ni supprimée.
+          </p>
+        ) : editOpen ? (
+          /* Formulaire de modification (créateur) */
+          <div className="mt-3 space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
+            <div>
+              <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Appartement</label>
+              <select value={form.airbnbId} onChange={e => setForm(f => ({ ...f, airbnbId: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                <option value="">Sélectionner un appartement</option>
+                {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
+                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Heure</label>
+                <input type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prochaine arrivée — optionnel</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(f => ({ ...f, nextArrival: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <input type="time" value={form.nextArrivalTime} onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Consignes — optionnel</label>
+              <textarea value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} rows={2}
+                className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={save} disabled={busy}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                {busy ? '...' : 'Enregistrer'}
+              </button>
+              <button onClick={() => { setEditOpen(false); setError(''); }} disabled={busy}
+                className="px-4 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+            </div>
+          </div>
+        ) : (
+          /* Actions : Modifier / Supprimer */
+          <div className="flex gap-2 mt-3">
+            <button onClick={openEdit} disabled={busy}
+              className="flex-1 py-2 rounded-xl text-xs font-medium border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              Modifier
+            </button>
+            <button onClick={remove} disabled={busy}
+              className="px-4 py-2 rounded-xl text-xs font-medium border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
+              Supprimer
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AirbnbMissionsPage() {
   const { user } = useAuth();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'create' | 'track'>('track');
+  const [range, setRange] = useState<DateRange>(() => presetRange('today'));
 
   const [airbnbId, setAirbnbId] = useState('');
   const [date, setDate] = useState('');
@@ -65,12 +229,6 @@ export default function AirbnbMissionsPage() {
     setAirbnbId(''); setDate(''); setTime('');
     setNextArrival(''); setNextArrivalTime('');
     setHasInstructions(false); setInstructions(''); setError('');
-  }
-
-  async function handleCancel(id: string) {
-    if (!confirm('Annuler cette mission ?')) return;
-    await updateMissionStatusDB(id, 'cancelled');
-    await load();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -230,55 +388,43 @@ export default function AirbnbMissionsPage() {
         )
       )}
 
-      {tab === 'track' && (
-        missions.length === 0 ? (
-          <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-            <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
-            <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission</p>
-            <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Créez votre première mission</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {missions.map(m => {
-              const st = STATUS_CFG[m.status] ?? STATUS_CFG.pending;
-              return (
-                <div key={m.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-                  <div className="px-5 py-3.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
-                    <span className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{m.property || 'Mission'}</span>
-                    <span className="text-xs px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
-                  </div>
-                  <div className="px-5 py-4">
-                    {m.address && <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>◎ {m.address}</p>}
-                    <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
-                      <span>{formatDate(m.date)}</span>
-                      {m.time && <span>◷ {m.time}</span>}
-                    </div>
-                    {m.nextArrival && (
-                      m.nextArrival === m.date ? (
-                        <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-                          Arrivée client le jour même{m.nextArrivalTime ? ` à ${m.nextArrivalTime}` : ''}
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-xs" style={{ color: '#7A7068' }}>
-                          Prochaine arrivée : {formatDate(m.nextArrival)}{m.nextArrivalTime ? ` à ${m.nextArrivalTime}` : ''}
-                        </p>
-                      )
-                    )}
-                    {m.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Cleaner : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{m.cleanerName}</span></p>}
-                    {m.status === 'pending' && (
-                      <button onClick={() => handleCancel(m.id)}
-                        className="mt-3 px-4 py-2 rounded-xl text-xs font-medium border"
-                        style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
-                        Annuler la mission
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )
-      )}
+      {tab === 'track' && (() => {
+        const visibleMissions = missions
+          .filter(m => inRange(m.date, range))
+          .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? ''));
+        const allDates = missions.map(m => m.date).filter(Boolean).sort();
+        const outOfRangeCount = missions.length - visibleMissions.length;
+
+        return (
+        <>
+          <DateRangeFilter start={range.start} end={range.end} onChange={setRange} className="mb-4" />
+          <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>
+            {visibleMissions.length} mission{visibleMissions.length > 1 ? 's' : ''} sur cette période
+          </p>
+
+          {visibleMissions.length === 0 ? (
+            <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+              <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
+              <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission sur cette période</p>
+              {outOfRangeCount > 0 && allDates.length > 0 ? (
+                <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}
+                  className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  Voir mes {outOfRangeCount} mission{outOfRangeCount > 1 ? 's' : ''} sur d'autres dates →
+                </button>
+              ) : (
+                <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Créez votre première mission</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleMissions.map(m => (
+                <PartnerMissionCard key={m.id} mission={m} apartments={apartments} userId={user?.id ?? ''} onRefresh={load} />
+              ))}
+            </div>
+          )}
+        </>
+        );
+      })()}
     </div>
   );
 }

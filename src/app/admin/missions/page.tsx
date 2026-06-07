@@ -6,11 +6,15 @@ import {
   createMissionDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB,
+  updateMissionDB, deleteMissionDB, isMissionLocked,
 } from '@/lib/db';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { Mission, HotelAnnounce, MissionType, MissionSource, Apartment, MissionStatus } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
+import DateRangeFilter from '@/components/DateRangeFilter';
+import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 
 // ── Status config (cycle complet) ─────────────────────────────────────────────
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
@@ -74,11 +78,18 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
   cleaners: any[];
   onRefresh: () => void;
 }) {
+  const { user } = useAuth();
   const [assignOpen, setAssignOpen] = useState(false);
   const [newCleaner, setNewCleaner] = useState('');
   const [busy, setBusy] = useState(false);
   const [mapsOpen, setMapsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [editForm, setEditForm] = useState({
+    date: mission.date, time: mission.time, duration: String(mission.duration || 2),
+    type: mission.type, price: String(mission.price ?? 0), cleanerGain: String(mission.cleanerGain ?? 0),
+  });
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
   const notesIsLong = extra.length > 120;
@@ -88,6 +99,42 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
     await updateMissionStatusDB(mission.id, s);
     onRefresh();
     setBusy(false);
+  }
+
+  function openEdit() {
+    setEditForm({
+      date: mission.date, time: mission.time, duration: String(mission.duration || 2),
+      type: mission.type, price: String(mission.price ?? 0), cleanerGain: String(mission.cleanerGain ?? 0),
+    });
+    setActionError('');
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    if (!user) return;
+    setBusy(true); setActionError('');
+    const res = await updateMissionDB(mission.id, { id: user.id, role: 'admin' }, {
+      dateFrom: editForm.date,
+      timeFrom: editForm.time,
+      duration: Number(editForm.duration) || 0,
+      type: editForm.type,
+      price: Number(editForm.price) || 0,
+      cleanerGain: Number(editForm.cleanerGain) || 0,
+    });
+    setBusy(false);
+    if (res.error) { setActionError(res.error); return; }
+    setEditOpen(false);
+    onRefresh();
+  }
+
+  async function handleDelete() {
+    if (!user) return;
+    if (!confirm('Supprimer définitivement cette mission ?')) return;
+    setBusy(true); setActionError('');
+    const res = await deleteMissionDB(mission.id, { id: user.id, role: 'admin' });
+    setBusy(false);
+    if (res.error) { setActionError(res.error); return; }
+    onRefresh();
   }
 
   async function handleAssign() {
@@ -233,25 +280,88 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
       </div>
 
       {/* ── Actions */}
-      {!isTerminal && (
-        <div className="px-5 pb-4 border-t pt-3 space-y-2" style={{ borderColor: '#F2EFE9' }}>
-          {/* Assign / réassigner */}
-          {assignOpen ? (
-            <div className="flex gap-2">
-              <select value={newCleaner} onChange={e => setNewCleaner(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
-                style={{ ...inputStyle, color: newCleaner ? '#1A1A1A' : '#A8A09A' }}>
-                <option value="">Choisir un cleaner</option>
-                {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
-              </select>
-              <button onClick={handleAssign} disabled={!newCleaner || busy}
-                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
-                style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-              <button onClick={() => { setAssignOpen(false); setNewCleaner(''); }}
-                className="px-3 py-2 rounded-xl text-sm"
-                style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+      <div className="px-5 pb-4 border-t pt-3 space-y-2" style={{ borderColor: '#F2EFE9' }}>
+        {actionError && (
+          <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{actionError}</p>
+        )}
+
+        {isTerminal ? (
+          /* Mission clôturée → verrouillée : consultation + facturation uniquement */
+          <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
+            <span className="text-xs" style={{ color: '#7A7068' }}>
+              {mission.status === 'completed' ? '🔒 Mission terminée — verrouillée' : '🔒 Mission annulée — verrouillée'}
+            </span>
+            {mission.status === 'completed' && (
+              <a href="/admin/facturation" className="text-xs font-semibold shrink-0" style={{ color: '#C9A84C' }}>Facturation →</a>
+            )}
+          </div>
+        ) : editOpen ? (
+          /* Formulaire de modification (admin) */
+          <div className="space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
+                <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Heure</label>
+                <input type="time" value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Durée (h)</label>
+                <input type="number" min="0" step="0.5" value={editForm.duration} onChange={e => setEditForm(f => ({ ...f, duration: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type</label>
+                <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value as MissionType }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                  <option value="regular">Ménage</option>
+                  <option value="checkout">Check-out</option>
+                  <option value="checkin">Check-in</option>
+                  <option value="deep_clean">Grand ménage</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prix client (€)</label>
+                <input type="number" min="0" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Gain cleaner (€)</label>
+                <input type="number" min="0" value={editForm.cleanerGain} onChange={e => setEditForm(f => ({ ...f, cleanerGain: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+              </div>
             </div>
-          ) : (
+            <div className="flex gap-2">
+              <button onClick={saveEdit} disabled={busy}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                {busy ? '...' : 'Enregistrer'}
+              </button>
+              <button onClick={() => { setEditOpen(false); setActionError(''); }} disabled={busy}
+                className="px-4 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+            </div>
+          </div>
+        ) : assignOpen ? (
+          /* Assigner / réassigner un cleaner */
+          <div className="flex gap-2">
+            <select value={newCleaner} onChange={e => setNewCleaner(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
+              style={{ ...inputStyle, color: newCleaner ? '#1A1A1A' : '#A8A09A' }}>
+              <option value="">Choisir un cleaner</option>
+              {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
+            </select>
+            <button onClick={handleAssign} disabled={!newCleaner || busy}
+              className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
+              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
+            <button onClick={() => { setAssignOpen(false); setNewCleaner(''); }}
+              className="px-3 py-2 rounded-xl text-sm"
+              style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+          </div>
+        ) : (
+          <>
             <div className="flex gap-2 flex-wrap">
               {/* Statut suivant logique */}
               {mission.status === 'pending' && (
@@ -289,16 +399,30 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
                   ✓ Terminer
                 </button>
               )}
-              {/* Annuler toujours dispo */}
+              {/* Annuler (transition de statut) toujours dispo */}
               <button onClick={() => changeStatus('cancelled')} disabled={busy}
                 className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
                 style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
                 Annuler
               </button>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Modifier / Supprimer (créateur = admin ici) */}
+            <div className="flex gap-2">
+              <button onClick={openEdit} disabled={busy}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50"
+                style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                Modifier
+              </button>
+              <button onClick={handleDelete} disabled={busy}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50"
+                style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
+                Supprimer
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -306,6 +430,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function MissionsPage() {
+  const { user } = useAuth();
   const [tab, setTab] = useState<typeof TABS[number]>('Annonces hôtel');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
@@ -313,6 +438,7 @@ export default function MissionsPage() {
   const [hotels, setHotels] = useState<any[]>([]);
   const [airbnbs, setAirbnbs] = useState<Apartment[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [range, setRange] = useState<DateRange>(() => presetRange('today'));
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [loading, setLoading] = useState(true);
@@ -445,6 +571,8 @@ export default function MissionsPage() {
       partnerId: apt?.partnerId,
       nextArrival: form.nextArrival || undefined,
       nextArrivalTime: form.nextArrivalTime || undefined,
+      createdBy: user?.id,
+      createdByRole: 'admin',
     });
 
     if (result.error) {
@@ -472,9 +600,15 @@ export default function MissionsPage() {
     { value: 'cancelled',   label: 'Annulées' },
   ];
 
+  // 1) on restreint à la période, 2) puis au statut sélectionné
+  const dateScoped = missions.filter(m => inRange(m.date, range));
   const filtered = filter === 'all'
-    ? missions
-    : missions.filter(m => m.status === filter);
+    ? dateScoped
+    : dateScoped.filter(m => m.status === filter);
+
+  // Bornes (1re → dernière mission) pour le bouton « voir toutes les dates »
+  const allDates = missions.map(m => m.date).filter(Boolean).sort();
+  const outOfRangeCount = missions.length - dateScoped.length;
 
   if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
@@ -559,7 +693,15 @@ export default function MissionsPage() {
       {/* ── MISSIONS ── */}
       {tab === 'Missions' && (
         <>
-          {/* Filtres */}
+          {/* Filtre par période */}
+          <DateRangeFilter
+            start={range.start}
+            end={range.end}
+            onChange={setRange}
+            className="mb-4"
+          />
+
+          {/* Filtres statut (comptes calculés sur la période sélectionnée) */}
           <div className="flex gap-2 mb-6 flex-wrap">
             {FILTERS.map(({ value, label }) => (
               <button key={value} onClick={() => setFilter(value)}
@@ -570,11 +712,9 @@ export default function MissionsPage() {
                   border: `1px solid ${filter === value ? '#C9A84C' : '#E8E4DC'}`,
                 }}>
                 {label}
-                {value !== 'all' && (
-                  <span className="ml-1.5 opacity-60">
-                    {missions.filter(m => value === 'all' || m.status === value).length}
-                  </span>
-                )}
+                <span className="ml-1.5 opacity-60">
+                  {value === 'all' ? dateScoped.length : dateScoped.filter(m => m.status === value).length}
+                </span>
               </button>
             ))}
           </div>
@@ -587,7 +727,13 @@ export default function MissionsPage() {
           {/* Cartes */}
           {filtered.length === 0 ? (
             <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-              <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune mission pour ce filtre</p>
+              <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune mission pour cette période</p>
+              {outOfRangeCount > 0 && allDates.length > 0 && (
+                <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}
+                  className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  Voir les {outOfRangeCount} mission{outOfRangeCount > 1 ? 's' : ''} sur d'autres dates →
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">

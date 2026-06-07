@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getHotelRequestsForHotelDB, getHotelByUserId } from '@/lib/db';
 import type { HotelAnnounce } from '@/lib/types';
+import DateRangeFilter from '@/components/DateRangeFilter';
+import { presetRange, overlapsRange, type DateRange } from '@/lib/dateRange';
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   pending:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A12' },
@@ -18,6 +20,7 @@ const TYPE_LABEL: Record<string, string> = { menage: 'Ménage courant', checkin:
 export default function HotelHistoriquePage() {
   const { user } = useAuth();
   const [announces, setAnnounces] = useState<HotelAnnounce[]>([]);
+  const [range, setRange] = useState<DateRange>(() => presetRange('today'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,28 +35,44 @@ export default function HotelHistoriquePage() {
 
   if (!user || loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
-  const pendingCount = announces.filter(a => a.status === 'pending').length;
-  const validatedCount = announces.filter(a => ['validated', 'in_progress', 'completed'].includes(a.status)).length;
+  // Annonces dont la période chevauche la période sélectionnée
+  const filtered = announces.filter(a => overlapsRange(a.date, a.dateEnd, range));
+  const pendingCount = filtered.filter(a => a.status === 'pending').length;
+  const validatedCount = filtered.filter(a => ['validated', 'in_progress', 'completed'].includes(a.status)).length;
+
+  // Bornes (1re → dernière annonce) pour le bouton « voir toutes les dates »
+  const allDates = announces.flatMap(a => [a.date, a.dateEnd ?? a.date]).filter(Boolean).sort();
+  const outOfRangeCount = announces.length - filtered.length;
 
   return (
     <div className="p-5">
-      <div className="mb-6 pt-2">
+      <div className="mb-5 pt-2">
         <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Mes annonces</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{announces.length} annonce{announces.length > 1 ? 's' : ''}</p>
+        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{filtered.length} annonce{filtered.length > 1 ? 's' : ''}</p>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {pendingCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#C48A2A12', color: '#C48A2A' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{pendingCount} en attente</div>}
-        {validatedCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{validatedCount} validée{validatedCount > 1 ? 's' : ''}</div>}
-      </div>
+      <DateRangeFilter start={range.start} end={range.end} onChange={setRange} className="mb-5" />
 
-      {announces.length === 0 ? (
+      {(pendingCount > 0 || validatedCount > 0) && (
+        <div className="flex gap-2 mb-6">
+          {pendingCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#C48A2A12', color: '#C48A2A' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{pendingCount} en attente</div>}
+          {validatedCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{validatedCount} validée{validatedCount > 1 ? 's' : ''}</div>}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
         <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune annonce pour l'instant</p>
+          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune annonce sur cette période</p>
+          {outOfRangeCount > 0 && allDates.length > 0 && (
+            <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}
+              className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+              Voir mes {outOfRangeCount} annonce{outOfRangeCount > 1 ? 's' : ''} sur d'autres dates →
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {announces.map(a => {
+          {filtered.map(a => {
             const st = STATUS[a.status];
             return (
               <div key={a.id} className="rounded-2xl border overflow-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>

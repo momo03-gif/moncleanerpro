@@ -1,5 +1,23 @@
 import { supabase, hashPassword } from './supabase';
-import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord } from './types';
+import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role } from './types';
+
+// ── VERROUILLAGE DES MISSIONS ───────────────────────────────────────────────
+// Une mission terminée ou annulée est verrouillée : plus aucune modification ni
+// suppression possible (donnée de référence pour le suivi et la facturation).
+
+export type MissionActor = { id: string; role: Role };
+
+// Statuts (app) verrouillés. Côté DB : 'done' et 'cancelled'.
+export function isMissionLocked(status: MissionStatus): boolean {
+  return status === 'completed' || status === 'cancelled';
+}
+
+// Message explicite renvoyé quand une action est refusée.
+export function missionLockMessage(status: MissionStatus, action: 'modifier' | 'supprimer'): string {
+  const state = status === 'completed' ? 'terminée' : 'annulée';
+  const verb = action === 'supprimer' ? 'supprimée' : 'modifiée';
+  return `Cette mission est ${state} et ne peut plus être ${verb}.`;
+}
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 
@@ -291,6 +309,7 @@ function rowToMission(row: any): Mission {
     source: (row.source as MissionSource) ?? 'hotel',
     requestedBy: row.client_name,
     notes,
+    instructionsRaw: row.instructions ?? undefined,
     partnerId: row.partner_id ?? undefined,
     partnerName: row.airbnbs?.partner_name ?? undefined,
     airbnbId: row.airbnb_id ?? undefined,
@@ -358,6 +377,8 @@ export async function createAirbnbMissionDB(fields: {
     type: 'regular',
     source: 'airbnb',
     partner_id: fields.partnerId,
+    created_by: fields.partnerId,
+    created_by_role: 'airbnb',
     airbnb_id: fields.airbnbId,
     date_from: fields.dateFrom,
     time_from: fields.timeFrom || null,
@@ -392,6 +413,7 @@ export async function createMissionDB(fields: {
   price: number; cleanerGain: number; instructions?: string;
   airbnbId?: string; partnerId?: string;
   nextArrival?: string; nextArrivalTime?: string;
+  createdBy?: string; createdByRole?: string;
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
   const cleanerIdToStore: string | null = fields.cleanerId || null;
@@ -404,6 +426,8 @@ export async function createMissionDB(fields: {
     source: fields.source,
     airbnb_id: fields.airbnbId || null,
     partner_id: fields.partnerId || null,
+    created_by: fields.createdBy || null,
+    created_by_role: fields.createdByRole || 'admin',
     property_name: linked ? null : fields.propertyName,
     address: linked ? null : fields.address,
     date_from: fields.dateFrom,
@@ -455,6 +479,146 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
   // Renseigne le gain cleaner s'il n'avait pas été fixé (missions créées par un partenaire)
   if (gain != null && gain > 0) patch.cleaner_gain = gain;
   await supabase.from('missions').update(patch).eq('id', missionId);
+}
+
+// ── MODIFICATION / SUPPRESSION SÉCURISÉES ──────────────────────────────────────
+// La règle est appliquée ICI (logique métier = source de vérité), pas seulement
+// dans l'UI : on relit le statut + le créateur en base avant toute mutation, on
+// vérifie les droits, puis on applique une garde atomique au niveau de la requête
+// (.not status in done/cancelled) pour bloquer toute course / contournement.
+
+// Relit la mission pour l'autorisation. Tolère l'absence des colonnes created_by
+// (migration_mission_owner.sql non encore appliquée) en retombant sur partner_id.
+async function loadMissionForAuth(missionId: string) {
+  const full = await supabase
+    .from('missions')
+    .select('id, status, partner_id, created_by, created_by_role')
+    .eq('id', missionId)
+    .single();
+  if (!full.error) return { data: full.data as any, error: null };
+
+  const min = await supabase.from('missions').select('id, status, partner_id').eq('id', missionId).single();
+  if (min.error || !min.data) return { data: null, error: min.error };
+  return { data: { ...min.data, created_by: null, created_by_role: null } as any, error: null };
+}
+
+// Vérifie droits + statut. Renvoie un message d'erreur explicite si refusé.
+async function authorizeMissionMutation(
+  missionId: string,
+  actor: MissionActor,
+  action: 'modifier' | 'supprimer',
+): Promise<{ ok: true; row: any } | { ok: false; error: string }> {
+  const { data: row } = await loadMissionForAuth(missionId);
+  if (!row) return { ok: false, error: 'Mission introuvable.' };
+
+  // 1) Statut verrouillé (terminée / annulée) → refus, quel que soit le rôle
+  const appStatus = mapMissionStatus(row.status);
+  if (isMissionLocked(appStatus)) {
+    return { ok: false, error: missionLockMessage(appStatus, action) };
+  }
+
+  // 2) Droits : admin autorisé ; sinon doit être le créateur de la mission
+  const isAdmin = actor.role === 'admin';
+  const isCreator = !!actor.id && (row.created_by === actor.id || row.partner_id === actor.id);
+  if (!isAdmin && !isCreator) {
+    return { ok: false, error: "Vous n'êtes pas autorisé à modifier cette mission." };
+  }
+
+  return { ok: true, row };
+}
+
+// Champs modifiables. Le créateur (partenaire) ne touche que l'opérationnel ;
+// l'admin peut aussi modifier cleaner / prix / gain / statut.
+export interface MissionUpdateFields {
+  // opérationnel (créateur + admin)
+  dateFrom?: string;
+  timeFrom?: string;
+  duration?: number;
+  type?: string;
+  airbnbId?: string | null;
+  propertyName?: string;
+  address?: string;
+  instructions?: string;
+  nextArrival?: string | null;
+  nextArrivalTime?: string | null;
+  // réservé à l'admin
+  cleanerId?: string | null;
+  cleanerName?: string | null;
+  price?: number;
+  cleanerGain?: number;
+  status?: MissionStatus;
+}
+
+export async function updateMissionDB(
+  missionId: string,
+  actor: MissionActor,
+  fields: MissionUpdateFields,
+): Promise<{ error: string | null }> {
+  const auth = await authorizeMissionMutation(missionId, actor, 'modifier');
+  if (!auth.ok) return { error: auth.error };
+
+  const isAdmin = actor.role === 'admin';
+  const patch: Record<string, unknown> = {};
+
+  // Champs opérationnels — créateur et admin
+  if (fields.dateFrom !== undefined) patch.date_from = fields.dateFrom;
+  if (fields.timeFrom !== undefined) patch.time_from = fields.timeFrom || null;
+  if (fields.duration !== undefined) patch.hours_worked = fields.duration;
+  if (fields.type !== undefined) patch.type = fields.type;
+  if (fields.airbnbId !== undefined) patch.airbnb_id = fields.airbnbId || null;
+  if (fields.propertyName !== undefined) patch.property_name = fields.propertyName;
+  if (fields.address !== undefined) patch.address = fields.address;
+  if (fields.instructions !== undefined) patch.instructions = fields.instructions || null;
+  if (fields.nextArrival !== undefined) patch.next_arrival = fields.nextArrival || null;
+  if (fields.nextArrivalTime !== undefined) patch.next_arrival_time = fields.nextArrivalTime || null;
+
+  // Champs réservés à l'admin — ignorés en silence si l'acteur n'est pas admin
+  if (isAdmin) {
+    if (fields.cleanerId !== undefined) {
+      patch.cleaner_id = fields.cleanerId || null;
+      patch.cleaner_name = fields.cleanerName ?? null;
+    }
+    if (fields.price !== undefined) patch.price = fields.price;
+    if (fields.cleanerGain !== undefined) patch.cleaner_gain = fields.cleanerGain;
+    if (fields.status !== undefined) patch.status = toDbMissionStatus(fields.status);
+  }
+
+  if (Object.keys(patch).length === 0) return { error: null };
+
+  // Garde atomique : la requête elle-même refuse de toucher une mission clôturée.
+  const { data, error } = await supabase
+    .from('missions')
+    .update(patch)
+    .eq('id', missionId)
+    .not('status', 'in', '(done,cancelled)')
+    .select('id');
+
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) {
+    return { error: 'Cette mission est clôturée et ne peut plus être modifiée.' };
+  }
+  return { error: null };
+}
+
+export async function deleteMissionDB(
+  missionId: string,
+  actor: MissionActor,
+): Promise<{ error: string | null }> {
+  const auth = await authorizeMissionMutation(missionId, actor, 'supprimer');
+  if (!auth.ok) return { error: auth.error };
+
+  const { data, error } = await supabase
+    .from('missions')
+    .delete()
+    .eq('id', missionId)
+    .not('status', 'in', '(done,cancelled)')
+    .select('id');
+
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) {
+    return { error: 'Cette mission est clôturée et ne peut plus être supprimée.' };
+  }
+  return { error: null };
 }
 
 // ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────
@@ -547,6 +711,7 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
     const { error } = await supabase.from('missions').insert({
       type: req.type_prestation ?? 'regular',
       source: 'hotel',
+      created_by_role: 'admin',
       property_name: req.hotel_name ?? '',
       address: '',
       date_from: req.date_from,
@@ -731,6 +896,8 @@ export async function getCompanyInfoDB(): Promise<CompanyInfo> {
     vat: data.vat ?? undefined,
     email: data.email ?? undefined,
     phone: data.phone ?? undefined,
+    iban: data.iban ?? undefined,
+    bic: data.bic ?? undefined,
   };
 }
 
@@ -743,6 +910,8 @@ export async function saveCompanyInfoDB(fields: CompanyInfo): Promise<{ error: s
     vat: fields.vat || null,
     email: fields.email || null,
     phone: fields.phone || null,
+    iban: fields.iban || null,
+    bic: fields.bic || null,
     updated_at: new Date().toISOString(),
   });
   return { error: error?.message ?? null };

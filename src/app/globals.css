@@ -62,22 +62,40 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0px 1000px #1F1F1F inset;
 }
 
-/* ── Impression facture ── */
+/* ── Impression facture (rendu premium A4) ── */
+@page {
+  size: A4;
+  margin: 13mm;
+}
+
 @media print {
   body { background: #FFFFFF !important; }
   /* on masque tout sauf la facture */
   body * { visibility: hidden !important; }
   .invoice-print, .invoice-print * { visibility: visible !important; }
+
+  /* Conserver les fonds noir / doré / beige à l'impression */
+  .invoice-print, .invoice-print * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .invoice-print {
-    position: absolute; left: 0; top: 0; width: 100%;
-    padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important;
+    position: absolute; left: 0; top: 0; width: 100%; max-width: none !important;
+    margin: 0 !important; padding: 0 !important;
+    border: none !important; border-radius: 0 !important; box-shadow: none !important;
   }
   .print-hidden { display: none !important; }
+
   /* champs montants : enlever l'apparence input à l'impression */
   .invoice-print input {
     border: none !important; background: transparent !important; padding: 0 !important;
     -webkit-appearance: none; appearance: none; color: #1A1A1A !important;
+    font-weight: 700; text-align: right; width: auto !important;
   }
   .invoice-print input::-webkit-outer-spin-button,
   .invoice-print input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* éviter de couper une ligne de prestation entre deux pages */
+  .invoice-print tr { page-break-inside: avoid; }
 }

@@ -1,6 +1,8 @@
 'use client';
 
+import type React from 'react';
 import { useState, useEffect, useMemo } from 'react';
+import QRCode from 'qrcode';
 import { getMissionsDB, getCompanyInfoDB, saveCompanyInfoDB, getInvoicesDB, saveInvoiceDB } from '@/lib/db';
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
@@ -27,98 +29,203 @@ const TYPE_LABEL: Record<string, string> = {
   regular: 'Ménage', menage: 'Ménage', grand_menage: 'Grand ménage',
 };
 
-// ── Document facture (imprimable), partagé live / historique ────────────────────
-function InvoiceDoc({ company, number, partnerLabel, from, to, lines, total, editable, onAmount }: {
+const CLIENT_TYPE_LABEL: Record<string, string> = {
+  hotel: 'Hôtel', airbnb: 'Airbnb', conciergerie: 'Conciergerie', bureau: 'Bureau',
+};
+
+const STATUS_BADGE: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  pending: { label: 'En attente', color: '#A87B1E', bg: '#FBF4E2', border: '#EBD9A8' },
+  issued:  { label: 'En attente', color: '#A87B1E', bg: '#FBF4E2', border: '#EBD9A8' },
+  paid:    { label: 'Payée',      color: '#4E7D5E', bg: '#EAF3EC', border: '#BFD9C6' },
+  overdue: { label: 'En retard',  color: '#B85A50', bg: '#FBECEA', border: '#EAC4BE' },
+};
+
+function money(n: number) {
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// ── Document facture premium (imprimable), partagé live / historique ────────────
+function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount }: {
   company: CompanyInfo;
-  number: string; partnerLabel: string; from: string; to: string;
+  number: string; partnerLabel: string; partnerType?: string; status?: string;
+  from: string; to: string;
   lines: (InvoiceLine & { id?: string })[];
   total: number;
   editable?: boolean;
   onAmount?: (id: string, v: string) => void;
 }) {
+  const [qrSvg, setQrSvg] = useState('');
+
+  const vatApplicable = !!company.vat;
+  const totalTTC = total;                                    // montant facturé inchangé (logique conservée)
+  const subtotalHT = vatApplicable ? totalTTC / 1.2 : totalTTC;
+  const vatAmount = totalTTC - subtotalHT;
+
+  const badge = STATUS_BADGE[status ?? 'pending'] ?? STATUS_BADGE.pending;
+  const clientType = CLIENT_TYPE_LABEL[partnerType ?? ''] ?? 'Client';
+  const companyName = company.name || 'MonCleanerPro';
+  const genDate = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // QR de paiement SEPA (EPC) — généré uniquement si un IBAN est renseigné
+  useEffect(() => {
+    const iban = (company.iban ?? '').replace(/\s/g, '');
+    if (!iban) { setQrSvg(''); return; }
+    const epc = ['BCD', '002', '1', 'SCT', (company.bic ?? '').replace(/\s/g, ''), companyName,
+      iban, `EUR${totalTTC.toFixed(2)}`, '', '', number].join('\n');
+    let cancelled = false;
+    QRCode.toString(epc, { type: 'svg', margin: 0, color: { dark: '#1A1A1A', light: '#FFFFFF' } })
+      .then(svg => { if (!cancelled) setQrSvg(svg); })
+      .catch(() => { if (!cancelled) setQrSvg(''); });
+    return () => { cancelled = true; };
+  }, [company.iban, company.bic, companyName, totalTTC, number]);
+
+  // Styles réutilisés
+  const sectionLabel: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#B0A795' };
+  const metaKey: React.CSSProperties = { textAlign: 'right', padding: '2px 12px 2px 0', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B0A795', whiteSpace: 'nowrap' };
+  const metaVal: React.CSSProperties = { textAlign: 'right', fontWeight: 600, fontSize: 11.5, color: '#1A1A1A', whiteSpace: 'nowrap' };
+  const th: React.CSSProperties = { padding: '11px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#E9E2D2' };
+  const td: React.CSSProperties = { padding: '11px 12px', fontSize: 11.5, color: '#4A443D', verticalAlign: 'middle' };
+  const totRow: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B6259', padding: '4px 0' };
+  const payKey: React.CSSProperties = { display: 'inline-block', width: 42, fontSize: 9.5, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B0A795' };
+
   return (
-    <div className="invoice-print rounded-2xl border p-6 md:p-10" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-      {/* En-tête société */}
-      <div className="flex items-start justify-between mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl font-bold" style={{ color: '#C9A84C' }}>✦</span>
-            <span className="text-xl font-bold" style={{ color: '#1A1A1A' }}>{company.name || 'MonCleanerPro'}</span>
+    <div className="invoice-print" style={{
+      maxWidth: 840, margin: '0 auto', backgroundColor: '#FFFFFF', color: '#1A1A1A',
+      border: '1px solid #ECE7DC', borderRadius: 20, padding: '44px 48px',
+      boxShadow: '0 12px 40px rgba(26,22,15,0.06)',
+    }}>
+      {/* ── EN-TÊTE ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 28, paddingBottom: 26, borderBottom: '1px solid #ECE7DC' }}>
+        <div style={{ maxWidth: '56%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <span style={{ fontSize: 22, color: '#C9A84C', lineHeight: 1 }}>✦</span>
+            <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '0.14em', color: '#0D0D0D' }}>MONCLEANERPRO</span>
           </div>
-          {company.address && <p className="text-xs" style={{ color: '#7A7068' }}>{company.address}</p>}
-          <p className="text-xs" style={{ color: '#A8A09A' }}>
-            {[company.email, company.phone].filter(Boolean).join(' · ')}
-          </p>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>
-            {[company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join(' · ')}
-          </p>
+          <p style={{ margin: '7px 0 0 31px', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.34em', textTransform: 'uppercase', color: '#C9A84C' }}>Nettoyage Professionnel</p>
+          <div style={{ marginTop: 18, fontSize: 11, lineHeight: 1.85, color: '#6B6259' }}>
+            {company.address && <div>{company.address}</div>}
+            {(company.email || company.phone) && <div>{[company.email, company.phone].filter(Boolean).join('   ·   ')}</div>}
+            {(company.siret || company.vat) && <div>{[company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join('   ·   ')}</div>}
+          </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-lg font-bold" style={{ color: '#1A1A1A' }}>FACTURE</p>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>{number}</p>
-          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Émise le {fmtDateFR(new Date().toISOString().split('T')[0])}</p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap justify-between gap-4 mb-8">
-        <div>
-          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#A8A09A' }}>Facturé à</p>
-          <p className="text-base font-semibold" style={{ color: '#1A1A1A' }}>{partnerLabel}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#A8A09A' }}>Période</p>
-          <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{fmtDateFR(from)} → {fmtDateFR(to)}</p>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 29, fontWeight: 300, letterSpacing: '0.22em', color: '#0D0D0D', margin: 0 }}>FACTURE</p>
+          <p style={{ marginTop: 5, fontSize: 12, fontWeight: 700, color: '#C9A84C', letterSpacing: '0.04em' }}>{number}</p>
+          <table style={{ marginLeft: 'auto', marginTop: 16, borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr><td style={metaKey}>Émission</td><td style={metaVal}>{fmtDateFR(new Date().toISOString().split('T')[0])}</td></tr>
+              <tr><td style={metaKey}>Période</td><td style={metaVal}>{fmtDateFR(from)} – {fmtDateFR(to)}</td></tr>
+            </tbody>
+          </table>
+          <div style={{ marginTop: 13 }}>
+            <span style={{ display: 'inline-block', padding: '5px 14px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', color: badge.color, backgroundColor: badge.bg, border: `1px solid ${badge.border}` }}>
+              {badge.label}
+            </span>
+          </div>
         </div>
       </div>
 
-      <table className="w-full text-sm mb-6" style={{ borderCollapse: 'collapse' }}>
+      {/* ── CLIENT ── */}
+      <div style={{ marginTop: 26 }}>
+        <p style={sectionLabel}>Facturé à</p>
+        <div style={{ marginTop: 8, background: '#FAF8F3', border: '1px solid #EFE9DC', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <p style={{ fontSize: 15.5, fontWeight: 700, color: '#0D0D0D', margin: 0 }}>{partnerLabel}</p>
+            <p style={{ fontSize: 11, color: '#8A8178', margin: '3px 0 0' }}>Client {clientType.toLowerCase()}</p>
+          </div>
+          <span style={{ padding: '5px 13px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9A7B22', background: '#F4E9CB', border: '1px solid #E7D6A6' }}>
+            {clientType}
+          </span>
+        </div>
+      </div>
+
+      {/* ── TABLEAU DES PRESTATIONS ── */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 26 }}>
         <thead>
-          <tr style={{ borderBottom: '2px solid #E8E4DC' }}>
-            <th className="text-left py-2 font-semibold" style={{ color: '#7A7068' }}>Date</th>
-            <th className="text-left py-2 font-semibold" style={{ color: '#7A7068' }}>Prestation</th>
-            <th className="text-right py-2 font-semibold" style={{ color: '#7A7068' }}>Montant</th>
+          <tr style={{ backgroundColor: '#0D0D0D' }}>
+            <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 10 }}>Date</th>
+            <th style={{ ...th, textAlign: 'left' }}>Appartement / Chambre</th>
+            <th style={{ ...th, textAlign: 'left' }}>Prestation</th>
+            <th style={{ ...th, textAlign: 'left' }}>Cleaner</th>
+            <th style={{ ...th, textAlign: 'center' }}>Durée</th>
+            <th style={{ ...th, textAlign: 'right' }}>P.U.</th>
+            <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 10 }}>Montant</th>
           </tr>
         </thead>
         <tbody>
           {lines.map((l, i) => (
-            <tr key={l.id ?? i} style={{ borderBottom: '1px solid #F2EFE9' }}>
-              <td className="py-2.5" style={{ color: '#1A1A1A' }}>{fmtDateFR(l.date)}</td>
-              <td className="py-2.5" style={{ color: '#1A1A1A' }}>
-                {l.label}<span className="text-xs ml-2" style={{ color: '#A8A09A' }}>{TYPE_LABEL[l.type] ?? l.type}</span>
-              </td>
-              <td className="py-2.5 text-right">
+            <tr key={l.id ?? i} style={{ borderBottom: '1px solid #F0EBE0' }}>
+              <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateFR(l.date)}</td>
+              <td style={{ ...td, fontWeight: 600, color: '#1A1A1A' }}>{l.apartment || l.label}</td>
+              <td style={td}>{TYPE_LABEL[l.type] ?? l.type}</td>
+              <td style={td}>{l.cleaner || '—'}</td>
+              <td style={{ ...td, textAlign: 'center' }}>{l.duration ? `${l.duration} h` : '—'}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{l.unitPrice != null ? money(l.unitPrice) : '—'}</td>
+              <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#1A1A1A' }}>
                 {editable && onAmount && l.id ? (
-                  <span className="inline-flex items-center gap-1">
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <input type="number" min="0" step="0.01" value={String(l.amount)}
                       onChange={e => onAmount(l.id!, e.target.value)}
-                      className="w-20 text-right px-2 py-1 rounded-lg border"
-                      style={{ borderColor: '#E8E4DC', color: '#1A1A1A', outline: 'none' }} />
-                    <span style={{ color: '#1A1A1A' }}>€</span>
+                      style={{ width: 72, textAlign: 'right', padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' }} />
+                    <span>€</span>
                   </span>
-                ) : (
-                  <span style={{ color: '#1A1A1A' }}>{l.amount.toFixed(2)} €</span>
-                )}
+                ) : money(l.amount)}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <div className="flex justify-end">
-        <div className="w-full max-w-xs">
-          <div className="flex justify-between py-2 text-sm" style={{ color: '#7A7068' }}>
-            <span>{lines.length} mission{lines.length > 1 ? 's' : ''}</span><span />
+      {/* ── PAIEMENT + TOTAUX ── */}
+      <div style={{ display: 'flex', gap: 24, marginTop: 28, alignItems: 'flex-start' }}>
+        {/* Paiement */}
+        <div style={{ flex: 1 }}>
+          <p style={sectionLabel}>Coordonnées de paiement</p>
+          <div style={{ marginTop: 10, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            {qrSvg
+              ? <div style={{ width: 92, height: 92, padding: 6, background: '#FFFFFF', border: '1px solid #EFE9DC', borderRadius: 12, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: qrSvg }} />
+              : <div style={{ width: 92, height: 92, background: '#FAF8F3', border: '1px dashed #DAD2C2', borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, textAlign: 'center', color: '#B0A795', lineHeight: 1.4, padding: 8 }}>QR de paiement</div>}
+            <div style={{ fontSize: 11.5, lineHeight: 1.95, color: '#4A443D' }}>
+              {company.iban && <div><span style={payKey}>IBAN</span> <span style={{ fontFamily: 'ui-monospace, monospace', letterSpacing: '0.02em' }}>{company.iban}</span></div>}
+              {company.bic && <div><span style={payKey}>BIC</span> {company.bic}</div>}
+              <div style={{ marginTop: 8, fontSize: 10.5, color: '#8A8178' }}>
+                Règlement par virement sous 30 jours.<br />Merci d'indiquer <strong style={{ color: '#6B6259' }}>{number}</strong> en référence.
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between py-3 border-t" style={{ borderColor: '#1A1A1A' }}>
-            <span className="font-bold" style={{ color: '#1A1A1A' }}>Total</span>
-            <span className="font-bold text-lg" style={{ color: '#1A1A1A' }}>{total.toFixed(2)} €</span>
+        </div>
+
+        {/* Totaux */}
+        <div style={{ width: 268, flexShrink: 0 }}>
+          <div style={{ background: '#FAF8F3', border: '1px solid #EFE9DC', borderRadius: 14, padding: '14px 18px' }}>
+            <div style={totRow}><span>Sous-total HT</span><span style={{ fontWeight: 600, color: '#1A1A1A' }}>{money(subtotalHT)}</span></div>
+            <div style={totRow}>
+              <span>{vatApplicable ? 'TVA 20 %' : 'TVA'}</span>
+              <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{vatApplicable ? money(vatAmount) : 'Non applicable'}</span>
+            </div>
           </div>
+          <div style={{ marginTop: 10, background: '#C9A84C', borderRadius: 14, padding: '15px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 6px 16px rgba(201,168,76,0.28)' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#1A1A1A' }}>Total TTC</span>
+            <span style={{ fontSize: 22, fontWeight: 800, color: '#1A1A1A' }}>{money(totalTTC)}</span>
+          </div>
+          {!vatApplicable && <p style={{ fontSize: 9, color: '#B0A795', margin: '8px 2px 0', textAlign: 'right' }}>TVA non applicable — art. 293 B du CGI</p>}
         </div>
       </div>
 
-      <p className="text-xs mt-10 pt-4 border-t" style={{ color: '#A8A09A', borderColor: '#F2EFE9' }}>
-        Merci de votre confiance. — {company.name || 'MonCleanerPro'}
-      </p>
+      {/* ── REMERCIEMENT ── */}
+      <div style={{ marginTop: 30, padding: '18px 24px', background: '#0D0D0D', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Merci pour votre confiance.</p>
+          <p style={{ fontSize: 10.5, color: '#A99F8C', margin: '4px 0 0' }}>L'équipe {companyName}</p>
+        </div>
+        <span style={{ fontSize: 24, color: '#C9A84C' }}>✦</span>
+      </div>
+
+      {/* ── PIED DE PAGE ── */}
+      <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid #ECE7DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 9, color: '#B0A795', letterSpacing: '0.02em' }}>
+        <span>{companyName}{(company.email || company.phone) ? ` · ${[company.email, company.phone].filter(Boolean).join(' · ')}` : ''}{company.siret ? ` · SIRET ${company.siret}` : ''}</span>
+        <span style={{ whiteSpace: 'nowrap' }}>Générée le {genDate} · Page 1/1</span>
+      </div>
     </div>
   );
 }
@@ -174,7 +281,14 @@ export default function FacturationPage() {
     return m.price || 0;
   }
   const liveLines = selMissions.map(m => ({
-    id: m.id, date: m.date, label: m.property || TYPE_LABEL[m.type] || 'Ménage', type: m.type, amount: amountOf(m),
+    id: m.id, date: m.date,
+    label: m.property || TYPE_LABEL[m.type] || 'Ménage',
+    type: m.type,
+    apartment: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
+    cleaner: m.cleanerName || '—',
+    duration: m.duration || 0,
+    unitPrice: amountOf(m),
+    amount: amountOf(m),
   }));
   const total = liveLines.reduce((s, l) => s + l.amount, 0);
   const partnerType = selMissions[0]?.source ?? 'airbnb';
@@ -194,25 +308,48 @@ export default function FacturationPage() {
     return head + body + foot;
   }
   function buildHtml(): string {
-    const info = [company.address, [company.email, company.phone].filter(Boolean).join(' · '),
-      [company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join(' · ')]
-      .filter(Boolean).map(x => `<div style="color:#7A7068;font-size:12px">${x}</div>`).join('');
-    const rows = liveLines.map(l =>
-      `<tr><td style="padding:6px 0;border-bottom:1px solid #F2EFE9">${fmtDateFR(l.date)}</td>
-        <td style="padding:6px 0;border-bottom:1px solid #F2EFE9">${l.label}</td>
-        <td style="padding:6px 0;border-bottom:1px solid #F2EFE9;text-align:right">${l.amount.toFixed(2)} €</td></tr>`).join('');
-    return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;color:#1A1A1A">
-      <div style="font-size:20px;font-weight:bold"><span style="color:#C9A84C">✦</span> ${company.name || 'MonCleanerPro'}</div>
-      ${info}
-      <p style="margin:18px 0 4px"><strong>FACTURE ${invoiceNo}</strong></p>
-      <p style="margin:0 0 2px">Facturé à : <strong>${partner}</strong></p>
-      <p style="margin:0 0 14px;color:#7A7068">Période : ${fmtDateFR(from)} → ${fmtDateFR(to)}</p>
-      <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr style="border-bottom:2px solid #E8E4DC"><th style="text-align:left;padding:6px 0">Date</th><th style="text-align:left;padding:6px 0">Prestation</th><th style="text-align:right;padding:6px 0">Montant</th></tr>
-        ${rows}
-      </table>
-      <p style="text-align:right;font-size:16px;margin-top:14px"><strong>Total : ${total.toFixed(2)} €</strong></p>
-      <p style="color:#A8A09A;font-size:12px;margin-top:24px">Merci de votre confiance. — ${company.name || 'MonCleanerPro'}</p>
+    const companyName = company.name || 'MonCleanerPro';
+    const info = [company.address, [company.email, company.phone].filter(Boolean).join('  ·  '),
+      [company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join('  ·  ')]
+      .filter(Boolean).map(x => `<div style="color:#B8AE9E;font-size:11px;line-height:1.7">${x}</div>`).join('');
+    const rows = liveLines.map((l, i) =>
+      `<tr style="background:${i % 2 ? '#FAF8F3' : '#FFFFFF'}">
+        <td style="padding:10px 12px;font-size:13px;color:#4A443D;border-bottom:1px solid #F0EBE0">${fmtDateFR(l.date)}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#1A1A1A;font-weight:600;border-bottom:1px solid #F0EBE0">${l.apartment || l.label}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#4A443D;border-bottom:1px solid #F0EBE0">${TYPE_LABEL[l.type] ?? l.type}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#1A1A1A;font-weight:700;text-align:right;border-bottom:1px solid #F0EBE0">${money(l.amount)}</td></tr>`).join('');
+    return `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid #ECE7DC;border-radius:16px;overflow:hidden">
+      <div style="background:#0D0D0D;padding:26px 30px">
+        <div style="font-size:18px;font-weight:800;letter-spacing:0.12em;color:#FFFFFF"><span style="color:#C9A84C">✦</span> MONCLEANERPRO</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:#C9A84C;margin-top:5px;margin-left:24px">Nettoyage Professionnel</div>
+      </div>
+      <div style="padding:28px 30px">
+        ${info}
+        <p style="margin:20px 0 2px;font-size:20px;font-weight:300;letter-spacing:0.16em;color:#0D0D0D">FACTURE <span style="font-weight:700;font-size:14px;color:#C9A84C">${invoiceNo}</span></p>
+        <p style="margin:6px 0 2px;font-size:13px">Facturé à : <strong>${partner}</strong></p>
+        <p style="margin:0 0 16px;color:#8A8178;font-size:12px">Période : ${fmtDateFR(from)} – ${fmtDateFR(to)}</p>
+        <table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden">
+          <tr style="background:#0D0D0D">
+            <th style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#E9E2D2">Date</th>
+            <th style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#E9E2D2">Appartement</th>
+            <th style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#E9E2D2">Prestation</th>
+            <th style="text-align:right;padding:10px 12px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#E9E2D2">Montant</th>
+          </tr>
+          ${rows}
+        </table>
+        <table style="width:100%;margin-top:18px"><tr>
+          <td></td>
+          <td style="width:220px">
+            <div style="background:#C9A84C;border-radius:12px;padding:14px 18px;text-align:right">
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#1A1A1A">Total TTC</span>
+              <div style="font-size:21px;font-weight:800;color:#1A1A1A;margin-top:2px">${money(total)}</div>
+            </div>
+          </td>
+        </tr></table>
+        ${company.iban ? `<p style="margin:18px 0 0;font-size:12px;color:#4A443D">Paiement par virement — IBAN <strong style="font-family:monospace">${company.iban}</strong>${company.bic ? ` · BIC ${company.bic}` : ''}</p>` : ''}
+        <p style="margin:22px 0 0;font-size:14px;font-weight:700;color:#0D0D0D">Merci pour votre confiance.</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#8A8178">L'équipe ${companyName}</p>
+      </div>
     </div>`;
   }
 
@@ -242,7 +379,8 @@ export default function FacturationPage() {
   function sendWhatsApp() { window.open(`https://wa.me/?text=${encodeURIComponent(buildText())}`, '_blank'); }
 
   async function handleSaveInvoice() {
-    const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount }) => ({ date, label, type, amount }));
+    const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, duration, unitPrice }) =>
+      ({ date, label, type, amount, apartment, cleaner, duration, unitPrice }));
     const res = await saveInvoiceDB({ number: invoiceNo, partnerLabel: partner, partnerType, periodFrom: from, periodTo: to, total, lines });
     if (res.error) { setSavedMsg('Erreur : ' + res.error); return; }
     setSavedMsg('Facture enregistrée dans l\'historique ✓');
@@ -268,6 +406,8 @@ export default function FacturationPage() {
     { label: 'N° TVA', key: 'vat', placeholder: 'FR12345678901' },
     { label: 'Email', key: 'email', placeholder: 'contact@moncleanerpro.com' },
     { label: 'Téléphone', key: 'phone', placeholder: '06 12 34 56 78' },
+    { label: 'IBAN', key: 'iban', placeholder: 'FR76 1234 5678 9012 3456 7890 123' },
+    { label: 'BIC', key: 'bic', placeholder: 'AGRIFRPP123' },
   ];
 
   return (
@@ -399,8 +539,8 @@ export default function FacturationPage() {
 
       {/* ── Rendu facture ── */}
       {tab === 'new' && partner && liveLines.length > 0 && (
-        <InvoiceDoc company={company} number={invoiceNo} partnerLabel={partner} from={from} to={to}
-          lines={liveLines} total={total} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
+        <InvoiceDoc company={company} number={invoiceNo} partnerLabel={partner} partnerType={partnerType} status="pending"
+          from={from} to={to} lines={liveLines} total={total} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
       )}
       {tab === 'new' && (!partner || liveLines.length === 0) && (
         <div className="rounded-2xl p-10 text-center border print-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
@@ -411,6 +551,7 @@ export default function FacturationPage() {
       )}
       {tab === 'history' && viewing && (
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel}
+          partnerType={viewing.partnerType} status={viewing.status}
           from={viewing.periodFrom} to={viewing.periodTo} lines={viewing.lines} total={viewing.total} />
       )}
     </div>

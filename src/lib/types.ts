@@ -39,6 +39,7 @@ export interface Mission {
   source?: MissionSource;
   requestedBy?: string;
   notes?: string;
+  instructionsRaw?: string;
   partnerId?: string;
   partnerName?: string;
   airbnbId?: string;
@@ -112,6 +113,8 @@ export interface CompanyInfo {
   vat?: string;
   email?: string;
   phone?: string;
+  iban?: string;
+  bic?: string;
 }
 
 export interface InvoiceLine {
@@ -119,6 +122,11 @@ export interface InvoiceLine {
   label: string;
   type: string;
   amount: number;
+  // Champs enrichis (facultatifs — absents sur les anciennes factures archivées)
+  apartment?: string;
+  cleaner?: string;
+  duration?: number;
+  unitPrice?: number;
 }
 
 export interface InvoiceRecord {
