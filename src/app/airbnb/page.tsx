@@ -200,7 +200,7 @@ export default function AirbnbApartmentsPage() {
 
       {visible.length === 0 ? (
         <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-xl mb-3">🏠</p>
+          <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucun appartement</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Ajoutez votre premier logement</p>
         </div>
@@ -226,7 +226,7 @@ export default function AirbnbApartmentsPage() {
                 )}
                 {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
                   <p className="text-xs">
-                    {apt.bedrooms != null && <>🛏 {apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
+                    {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
                     {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
                     {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
                     {apt.beds != null && apt.sofaBeds != null && ' · '}

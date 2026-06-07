@@ -255,7 +255,7 @@ export default function AirbnbPage() {
                 )}
                 {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
                   <p className="text-xs" style={{ color: '#7A7068' }}>
-                    {apt.bedrooms != null && <>🛏 {apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
+                    {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
                     {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
                     {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
                     {apt.beds != null && apt.sofaBeds != null && ' · '}

@@ -19,8 +19,8 @@ export default function MapsModal({ address, onClose }: { address: string; onClo
         </div>
         <div className="p-3 space-y-2">
           {[
-            { href: `https://maps.google.com/?q=${encoded}`, icon: '🗺', label: 'Ouvrir dans Google Maps' },
-            { href: `https://maps.apple.com/?q=${encoded}`, icon: '📍', label: 'Ouvrir dans Plans (Apple Maps)' },
+            { href: `https://maps.google.com/?q=${encoded}`, icon: '◎', label: 'Ouvrir dans Google Maps' },
+            { href: `https://maps.apple.com/?q=${encoded}`, icon: '◎', label: 'Ouvrir dans Plans (Apple Maps)' },
           ].map(({ href, icon, label }) => (
             <a key={href} href={href} target="_blank" rel="noopener noreferrer" onClick={onClose}
               className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"

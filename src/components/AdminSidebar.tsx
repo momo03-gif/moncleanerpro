@@ -11,7 +11,7 @@ const navItems = [
   { href: '/admin/cleaners', label: 'Cleaners', icon: '◉' },
   { href: '/admin/airbnb', label: 'Airbnb', icon: '⬡' },
   { href: '/admin/comptes', label: 'Comptes', icon: '◻' },
-  { href: '/admin/facturation', label: 'Facturation', icon: '🧾' },
+  { href: '/admin/facturation', label: 'Facturation', icon: '▤' },
   { href: '/admin/stats', label: 'Statistiques', icon: '◈' },
   { href: '/admin/comptabilite', label: 'Comptabilité', icon: '◇' },
 ];

@@ -189,7 +189,7 @@ export default function CleanersPage() {
                     <button onClick={() => (managing === cleaner.id ? setManaging(null) : openManage(cleaner))}
                       className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold border transition-all"
                       style={{ borderColor: managing === cleaner.id ? '#C9A84C' : '#E8E4DC', backgroundColor: managing === cleaner.id ? '#C9A84C12' : '#FAFAF8', color: managing === cleaner.id ? '#C9A84C' : '#7A7068' }}>
-                      {managing === cleaner.id ? '✕ Fermer' : '⚙ Gérer'}
+                      {managing === cleaner.id ? 'Fermer' : 'Gérer'}
                     </button>
                   </div>
 
@@ -261,7 +261,7 @@ export default function CleanersPage() {
                         </button>
                         <button onClick={() => handleDeleteCleaner(cleaner.id, cleaner.name)} className="px-4 py-2 rounded-xl text-xs font-semibold border"
                           style={{ borderColor: '#B85A5040', backgroundColor: '#B85A5010', color: '#B85A50' }}>
-                          🗑 Supprimer définitivement
+                          Supprimer définitivement
                         </button>
                       </div>
                     </div>

@@ -149,15 +149,15 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
 
         {/* Date / heure / durée */}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
-          <span>📅 {formatDate(mission.date)}</span>
+          <span>{formatDate(mission.date)}</span>
           {mission.time && <span>◷ {mission.time}</span>}
           {mission.duration > 0 && <span>⟳ {mission.duration}h</span>}
         </div>
 
         {mission.nextArrival && (
           mission.nextArrival === mission.date ? (
-            <div className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-              <span>⚠️</span><span>Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}</span>
+            <div className="px-3 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
             </div>
           ) : (
             <p className="text-xs" style={{ color: '#7A7068' }}>
@@ -386,11 +386,11 @@ export default function MissionsPage() {
     if (!cleanerId || !date) return null;
     const c = cleaners.find(x => x.id === cleanerId);
     if (!c) return null;
-    if (c.status === 'offline') return '⚠️ Ce cleaner est hors ligne. Vous pouvez quand même assigner.';
+    if (c.status === 'offline') return 'Ce cleaner est hors ligne. Vous pouvez quand même assigner.';
     if (c.status === 'busy') return 'ℹ️ Ce cleaner est actuellement en mission.';
     if (c.available_days?.length > 0) {
       const day = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-      if (!c.available_days.includes(day)) return `⚠️ Ce cleaner n'est pas disponible ce jour-là. Vous pouvez quand même assigner.`;
+      if (!c.available_days.includes(day)) return `Ce cleaner n'est pas disponible ce jour-là. Vous pouvez quand même assigner.`;
     }
     return null;
   }
@@ -523,8 +523,8 @@ export default function MissionsPage() {
                 </div>
                 <div className="px-5 py-4">
                   <div className="flex flex-wrap gap-4 mb-3">
-                    <span className="text-xs" style={{ color: '#7A7068' }}>👥 {a.guestCount} personne{a.guestCount > 1 ? 's' : ''}</span>
-                    {a.cleanerName && <span className="text-xs" style={{ color: '#C9A84C' }}>👤 {a.cleanerName}</span>}
+                    <span className="text-xs" style={{ color: '#7A7068' }}>{a.guestCount} personne{a.guestCount > 1 ? 's' : ''}</span>
+                    {a.cleanerName && <span className="text-xs" style={{ color: '#C9A84C' }}>{a.cleanerName}</span>}
                   </div>
                   {a.instructions && <p className="text-xs mb-3 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{a.instructions}</p>}
                   {isPending && (assigningId === a.id ? (
@@ -614,7 +614,7 @@ export default function MissionsPage() {
                 <button key={s} type="button" onClick={() => setForm({ ...emptyForm, source: s })}
                   className="flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all"
                   style={{ borderColor: form.source === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.source === s ? '#C9A84C12' : '#FFFFFF', color: form.source === s ? '#C9A84C' : '#7A7068' }}>
-                  {s === 'hotel' ? '🏨 Hôtel' : '🏠 Airbnb'}
+                  {s === 'hotel' ? 'Hôtel' : 'Airbnb'}
                 </button>
               ))}
             </div>
@@ -760,7 +760,7 @@ export default function MissionsPage() {
                 </div>
                 {form.nextArrival && form.date && form.nextArrival === form.date && (
                   <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-                    ⚠️ Arrivée le jour même du ménage — turnover urgent
+                    Arrivée le jour même du ménage — turnover urgent
                   </p>
                 )}
               </div>

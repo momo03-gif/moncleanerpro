@@ -280,7 +280,7 @@ export default function FacturationPage() {
             <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Factures des missions réalisées pour vos partenaires</p>
           </div>
           <button onClick={() => setShowSettings(s => !s)} className="px-4 py-2.5 rounded-xl text-sm font-semibold border shrink-0" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-            ⚙ Mes informations
+            Mes informations
           </button>
         </div>
 
@@ -346,8 +346,8 @@ export default function FacturationPage() {
             {partner && liveLines.length > 0 && (
               <div className="pt-1 space-y-3">
                 <div className="flex flex-wrap gap-2 items-center">
-                  <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>🖨 Imprimer / PDF</button>
-                  <button onClick={handleSaveInvoice} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#C9A84C', color: '#C9A84C' }}>💾 Enregistrer</button>
+                  <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Imprimer / PDF</button>
+                  <button onClick={handleSaveInvoice} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#C9A84C', color: '#C9A84C' }}>Enregistrer</button>
                   <button onClick={sendWhatsApp} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#5A8A6A' }}>WhatsApp</button>
                   {savedMsg && <span className="text-xs font-medium" style={{ color: '#5A8A6A' }}>{savedMsg}</span>}
                 </div>
@@ -357,7 +357,7 @@ export default function FacturationPage() {
                     placeholder="email du partenaire" className="flex-1 min-w-[200px] px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
                     onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                   <button onClick={sendInvoiceEmail} disabled={sending} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#1A1A1A', color: '#FFFFFF' }}>
-                    {sending ? 'Envoi...' : '✉ Envoyer la facture'}
+                    {sending ? 'Envoi...' : 'Envoyer la facture'}
                   </button>
                   {sendMsg && <span className="text-xs font-medium" style={{ color: sendMsg.startsWith('Erreur') ? '#B85A50' : '#5A8A6A' }}>{sendMsg}</span>}
                 </div>
@@ -392,7 +392,7 @@ export default function FacturationPage() {
         {tab === 'history' && viewing && (
           <div className="flex flex-wrap gap-2 mb-6 items-center">
             <button onClick={() => setViewing(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>← Retour</button>
-            <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>🖨 Imprimer / PDF</button>
+            <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Imprimer / PDF</button>
           </div>
         )}
       </div>
@@ -404,7 +404,7 @@ export default function FacturationPage() {
       )}
       {tab === 'new' && (!partner || liveLines.length === 0) && (
         <div className="rounded-2xl p-10 text-center border print-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-2xl mb-3">🧾</p>
+          <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Choisissez une période puis un partenaire</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>La facture des missions terminées s'affichera ici</p>
         </div>

@@ -157,7 +157,7 @@ export default function AirbnbMissionsPage() {
                   {a.clientPrice != null && <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{a.clientPrice}€ / ménage</p>}
                   {(a.bedrooms != null || a.beds != null || a.sofaBeds != null) && (
                     <p className="text-xs">
-                      {a.bedrooms != null && <>🛏 {a.bedrooms} ch.</>}
+                      {a.bedrooms != null && <>{a.bedrooms} ch.</>}
                       {a.bedrooms != null && (a.beds != null || a.sofaBeds != null) && ' · '}
                       {a.beds != null && <>{a.beds} lit{a.beds > 1 ? 's' : ''}</>}
                       {a.beds != null && a.sofaBeds != null && ' · '}
@@ -199,7 +199,7 @@ export default function AirbnbMissionsPage() {
               </div>
               {nextArrival && date && nextArrival === date && (
                 <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-                  ⚠️ Arrivée le jour même du ménage — turnover urgent
+                  Arrivée le jour même du ménage — turnover urgent
                 </p>
               )}
             </div>
@@ -233,7 +233,7 @@ export default function AirbnbMissionsPage() {
       {tab === 'track' && (
         missions.length === 0 ? (
           <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-            <p className="text-xl mb-3">📋</p>
+            <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
             <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission</p>
             <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Créez votre première mission</p>
           </div>
@@ -250,13 +250,13 @@ export default function AirbnbMissionsPage() {
                   <div className="px-5 py-4">
                     {m.address && <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>◎ {m.address}</p>}
                     <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
-                      <span>📅 {formatDate(m.date)}</span>
+                      <span>{formatDate(m.date)}</span>
                       {m.time && <span>◷ {m.time}</span>}
                     </div>
                     {m.nextArrival && (
                       m.nextArrival === m.date ? (
                         <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-                          ⚠️ Arrivée client le jour même{m.nextArrivalTime ? ` à ${m.nextArrivalTime}` : ''}
+                          Arrivée client le jour même{m.nextArrivalTime ? ` à ${m.nextArrivalTime}` : ''}
                         </p>
                       ) : (
                         <p className="mt-2 text-xs" style={{ color: '#7A7068' }}>

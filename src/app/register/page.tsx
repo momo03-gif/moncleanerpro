@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 const OPTIONS = [
   {
     type: 'hotel',
-    icon: '🏨',
+    icon: '◫',
     title: 'Hôtel',
     desc: 'Résidence ou hôtel — déposez vos demandes de ménage.',
     href: '/register/hotel',
   },
   {
     type: 'airbnb',
-    icon: '🏠',
+    icon: '⬡',
     title: 'Airbnb / Conciergerie',
     desc: 'Gérez vos appartements et créez vos missions de nettoyage.',
     href: '/register/airbnb',
