@@ -1,23 +1,18 @@
-const CACHE = 'mcp-v2';
+const CACHE = 'mcp-v3';
 const OFFLINE_URL = '/offline';
 
-const PRECACHE = [
-  '/',
-  '/login',
-  '/offline',
-  '/cleaner',
-  '/hotel',
-  '/admin',
-];
+// On ne précache que la page hors-ligne. On NE met PLUS le HTML des pages en
+// cache : cela évite qu'une ancienne « coquille » périmée (référençant d'anciens
+// fichiers JS supprimés après un déploiement) ne bloque l'ouverture de l'app.
+const PRECACHE = ['/offline'];
 
-// Install — précache les routes principales
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
 });
 
-// Activate — nettoie les anciens caches
+// Active immédiatement la nouvelle version et purge tous les anciens caches
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
@@ -26,18 +21,21 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch — stratégie hybride
+self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('fetch', e => {
   const { request } = e;
   const url = new URL(request.url);
 
-  // Ne pas intercepter les appels Supabase / API externes
-  if (url.hostname !== location.hostname) return;
+  if (url.hostname !== location.hostname) return; // pas Supabase / externes
   if (request.method !== 'GET') return;
-  if (url.pathname.startsWith('/_next/')) {
-    // Static assets : cache first
+
+  // Assets immuables de Next (hashés) : cache-first, sans risque de péremption
+  if (url.pathname.startsWith('/_next/static/')) {
     e.respondWith(
-      caches.match(request).then(cached => cached ?? fetch(request).then(res => {
+      caches.match(request).then(cached => cached || fetch(request).then(res => {
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(request, clone));
         return res;
@@ -46,16 +44,15 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Pages : network first, fallback cache puis offline
-  e.respondWith(
-    fetch(request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(request, clone));
-        return res;
-      })
-      .catch(() => caches.match(request).then(cached => cached ?? caches.match(OFFLINE_URL)))
-  );
+  // Navigations (pages HTML) : toujours le réseau ; repli = page hors-ligne.
+  // Jamais de HTML mis en cache → jamais d'app bloquée par une version périmée.
+  if (request.mode === 'navigate') {
+    e.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+    return;
+  }
+
+  // Autres requêtes GET same-origin : réseau, repli cache si présent
+  e.respondWith(fetch(request).catch(() => caches.match(request)));
 });
 
 // ── Push : afficher la notification système (sonnerie/vibration gérées par l'OS) ──
