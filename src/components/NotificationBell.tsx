@@ -69,6 +69,9 @@ export default function NotificationBell({ light = false }: { light?: boolean })
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [pushBusy, setPushBusy] = useState(false);
   const firstLoad = useRef(true);
+  // Identifiant unique par instance : évite la collision de canaux temps réel
+  // quand la cloche est rendue plusieurs fois (ex. sidebar admin desktop + mobile).
+  const channelId = useRef(Math.random().toString(36).slice(2));
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -84,17 +87,22 @@ export default function NotificationBell({ light = false }: { light?: boolean })
   useEffect(() => {
     if (!user) return;
     load();
-    const ch = supabase
-      .channel(`notif-${user.id}`)
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => {
-          if (!firstLoad.current) alertUser();
-          load();
-        })
-      .subscribe();
+    let ch: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      ch = supabase
+        .channel(`notif-${user.id}-${channelId.current}`)
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          () => {
+            if (!firstLoad.current) alertUser();
+            load();
+          })
+        .subscribe();
+    } catch (e) {
+      console.error('notif realtime:', e);
+    }
     firstLoad.current = false;
-    return () => { supabase.removeChannel(ch); };
+    return () => { if (ch) { try { supabase.removeChannel(ch); } catch { /* ignore */ } } };
   }, [user, load]);
 
   async function handleOpen() {
