@@ -142,6 +142,23 @@ export interface InvoiceRecord {
   createdAt: string;
 }
 
+export type NotificationType =
+  | 'mission_created' | 'mission_new' | 'mission_modified'
+  | 'mission_cancelled' | 'mission_completed'
+  | 'reminder_today' | 'reminder_tomorrow';
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  role: string;
+  title: string;
+  message: string;
+  type: NotificationType | string;
+  missionId?: string;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface FinancialEntry {
   id: string;
   date: string;

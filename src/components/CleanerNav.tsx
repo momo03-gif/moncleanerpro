@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
   { href: '/cleaner', label: "Aujourd'hui", icon: '◈' },
@@ -25,7 +26,8 @@ export default function CleanerNav() {
           <span className="text-lg" style={{ color: '#C9A84C' }}>✦</span>
           <span className="font-bold text-sm" style={{ color: '#1A1A1A' }}>MonCleanerPro</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <NotificationBell />
           <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{user?.name?.split(' ')[0]}</span>
           <button onClick={handleLogout} className="text-xs px-3 py-2 rounded-xl min-h-[36px]" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
             Sortir

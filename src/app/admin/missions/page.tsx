@@ -96,7 +96,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
 
   async function changeStatus(s: MissionStatus) {
     setBusy(true);
-    await updateMissionStatusDB(mission.id, s);
+    await updateMissionStatusDB(mission.id, s, { id: user?.id ?? '', role: 'admin' });
     onRefresh();
     setBusy(false);
   }

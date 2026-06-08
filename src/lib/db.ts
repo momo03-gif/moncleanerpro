@@ -1,5 +1,9 @@
 import { supabase, hashPassword } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role } from './types';
+import {
+  notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
+  notifyMissionCancelled, notifyMissionCompleted,
+} from './notifications';
 
 // ── VERROUILLAGE DES MISSIONS ───────────────────────────────────────────────
 // Une mission terminée ou annulée est verrouillée : plus aucune modification ni
@@ -369,11 +373,11 @@ export async function getPendingMissionsDB(): Promise<Mission[]> {
 // Création d'une mission par un partenaire Airbnb : liée à un appartement,
 // sans cleaner assigné (status 'pending' → « À assigner » côté admin).
 export async function createAirbnbMissionDB(fields: {
-  partnerId: string; airbnbId: string;
+  partnerId: string; partnerName?: string; airbnbId: string;
   dateFrom: string; timeFrom: string; instructions?: string; price?: number;
   nextArrival?: string; nextArrivalTime?: string;
 }): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('missions').insert({
+  const { data, error } = await supabase.from('missions').insert({
     type: 'regular',
     source: 'airbnb',
     partner_id: fields.partnerId,
@@ -387,11 +391,13 @@ export async function createAirbnbMissionDB(fields: {
     next_arrival: fields.nextArrival || null,
     next_arrival_time: fields.nextArrivalTime || null,
     status: 'pending',
-  });
+  }).select('id').single();
   if (error) {
     console.error('createAirbnbMissionDB error:', error);
     return { error: error.message };
   }
+  // Notif admin : nouvelle mission créée par un partenaire
+  await notifyPartnerCreatedMission(fields.partnerName ?? 'Un partenaire Airbnb', fields.dateFrom, fields.timeFrom, data?.id);
   return { error: null };
 }
 
@@ -421,7 +427,7 @@ export async function createMissionDB(fields: {
   // nom/adresse : ils sont récupérés depuis la fiche appartement (join).
   const linked = !!fields.airbnbId;
 
-  const { error } = await supabase.from('missions').insert({
+  const { data, error } = await supabase.from('missions').insert({
     type: fields.type,
     source: fields.source,
     airbnb_id: fields.airbnbId || null,
@@ -443,12 +449,14 @@ export async function createMissionDB(fields: {
     next_arrival: fields.nextArrival || null,
     next_arrival_time: fields.nextArrivalTime || null,
     status: cleanerIdToStore ? 'assigned' : 'pending',
-  });
+  }).select('id').single();
 
   if (error) {
     console.error('createMissionDB error:', error);
     return { error: error.message };
   }
+  // Si assignée dès la création → notif cleaner
+  if (cleanerIdToStore && data?.id) await notifyCleanerNewMission(data.id);
   return { error: null };
 }
 
@@ -465,8 +473,11 @@ function toDbMissionStatus(appStatus: MissionStatus): string {
   return map[appStatus] ?? appStatus;
 }
 
-export async function updateMissionStatusDB(id: string, status: MissionStatus): Promise<void> {
+export async function updateMissionStatusDB(id: string, status: MissionStatus, actor?: MissionActor): Promise<void> {
   await supabase.from('missions').update({ status: toDbMissionStatus(status) }).eq('id', id);
+  // Notifications selon le nouveau statut
+  if (status === 'cancelled') await notifyMissionCancelled(id, actor?.role ?? '', actor?.id ?? '');
+  else if (status === 'completed') await notifyMissionCompleted(id);
 }
 
 export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string, gain?: number): Promise<void> {
@@ -479,6 +490,8 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
   // Renseigne le gain cleaner s'il n'avait pas été fixé (missions créées par un partenaire)
   if (gain != null && gain > 0) patch.cleaner_gain = gain;
   await supabase.from('missions').update(patch).eq('id', missionId);
+  // Notif cleaner : nouvelle mission
+  await notifyCleanerNewMission(missionId);
 }
 
 // ── MODIFICATION / SUPPRESSION SÉCURISÉES ──────────────────────────────────────
@@ -597,6 +610,8 @@ export async function updateMissionDB(
   if (!data || data.length === 0) {
     return { error: 'Cette mission est clôturée et ne peut plus être modifiée.' };
   }
+  // Notif : mission modifiée (admin + cleaner si assignée)
+  await notifyMissionModified(missionId, actor.role, actor.id);
   return { error: null };
 }
 
@@ -606,6 +621,9 @@ export async function deleteMissionDB(
 ): Promise<{ error: string | null }> {
   const auth = await authorizeMissionMutation(missionId, actor, 'supprimer');
   if (!auth.ok) return { error: auth.error };
+
+  // Notif AVANT suppression (le contexte de la mission disparaît ensuite)
+  await notifyMissionCancelled(missionId, actor.role, actor.id);
 
   const { data, error } = await supabase
     .from('missions')
@@ -689,7 +707,9 @@ export async function createHotelRequestDB(fields: {
     instructions: fields.instructions || null,
     status: 'pending',
   });
-  if (error) console.error('createHotelRequestDB error:', error);
+  if (error) { console.error('createHotelRequestDB error:', error); return; }
+  // Notif admin : nouvelle mission créée par un hôtel
+  await notifyPartnerCreatedMission(fields.hotelName, fields.dateFrom, fields.timeFrom, null);
 }
 
 export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string) {
@@ -707,11 +727,15 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
     const hours = 2;
     const gain = (Number(cleaner?.hourly_rate_hotel) || 0) * hours;
 
+    // Créateur = l'hôtel (pour la notif « mission terminée » au client)
+    const { data: hotel } = await supabase.from('hotels').select('user_id').eq('id', req.hotel_id).single();
+
     // cleanerId is cleaners.id (from dropdown) — store directly (FK to cleaners.id)
-    const { error } = await supabase.from('missions').insert({
+    const { data: created, error } = await supabase.from('missions').insert({
       type: req.type_prestation ?? 'regular',
       source: 'hotel',
-      created_by_role: 'admin',
+      created_by: hotel?.user_id ?? null,
+      created_by_role: 'hotel',
       property_name: req.hotel_name ?? '',
       address: '',
       date_from: req.date_from,
@@ -725,9 +749,11 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
       cleaner_gain: gain,
       instructions: req.instructions ?? null,
       status: 'assigned',
-    });
+    }).select('id').single();
 
     if (error) console.error('validateRequestDB - mission insert error:', error);
+    // Notif cleaner : nouvelle mission
+    else if (created?.id) await notifyCleanerNewMission(created.id);
   }
 }
 

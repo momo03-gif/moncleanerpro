@@ -241,6 +241,7 @@ export default function AirbnbMissionsPage() {
     const apt = apartments.find(a => a.id === airbnbId);
     const res = await createAirbnbMissionDB({
       partnerId: user.id,
+      partnerName: user.name,
       airbnbId,
       dateFrom: date,
       timeFrom: time,

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
   { href: '/admin', label: 'Tableau de bord', icon: '◈' },
@@ -59,9 +60,12 @@ export default function AdminSidebar() {
       {/* ── DESKTOP SIDEBAR ── */}
       <aside className="hidden md:flex flex-col w-64 min-h-screen border-r shrink-0" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <div className="px-6 py-6 border-b" style={{ borderColor: '#E8E4DC' }}>
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold" style={{ color: '#C9A84C' }}>✦</span>
-            <span className="font-bold text-base" style={{ color: '#1A1A1A' }}>MonCleanerPro</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold" style={{ color: '#C9A84C' }}>✦</span>
+              <span className="font-bold text-base" style={{ color: '#1A1A1A' }}>MonCleanerPro</span>
+            </div>
+            <NotificationBell />
           </div>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Administration</p>
         </div>
@@ -89,19 +93,22 @@ export default function AdminSidebar() {
           <span style={{ color: '#C9A84C' }}>✦</span>
           <span className="font-bold text-sm" style={{ color: '#1A1A1A' }}>MonCleanerPro</span>
         </div>
-        {/* Hamburger */}
-        <button
-          onClick={() => setMobileOpen(o => !o)}
-          className="w-10 h-10 flex items-center justify-center rounded-xl transition-all"
-          style={{ backgroundColor: mobileOpen ? '#C9A84C12' : 'transparent' }}
-          aria-label="Menu"
-        >
-          <div className="space-y-1.5">
-            <span className="block w-5 h-0.5 rounded transition-all" style={{ backgroundColor: '#1A1A1A', transform: mobileOpen ? 'rotate(45deg) translate(2px, 2px)' : 'none' }} />
-            <span className="block w-5 h-0.5 rounded transition-all" style={{ backgroundColor: '#1A1A1A', opacity: mobileOpen ? 0 : 1 }} />
-            <span className="block w-5 h-0.5 rounded transition-all" style={{ backgroundColor: '#1A1A1A', transform: mobileOpen ? 'rotate(-45deg) translate(2px, -2px)' : 'none' }} />
-          </div>
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          {/* Hamburger */}
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            className="w-10 h-10 flex items-center justify-center rounded-xl transition-all"
+            style={{ backgroundColor: mobileOpen ? '#C9A84C12' : 'transparent' }}
+            aria-label="Menu"
+          >
+            <div className="space-y-1.5">
+              <span className="block w-5 h-0.5 rounded transition-all" style={{ backgroundColor: '#1A1A1A', transform: mobileOpen ? 'rotate(45deg) translate(2px, 2px)' : 'none' }} />
+              <span className="block w-5 h-0.5 rounded transition-all" style={{ backgroundColor: '#1A1A1A', opacity: mobileOpen ? 0 : 1 }} />
+              <span className="block w-5 h-0.5 rounded transition-all" style={{ backgroundColor: '#1A1A1A', transform: mobileOpen ? 'rotate(-45deg) translate(2px, -2px)' : 'none' }} />
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* ── MOBILE DRAWER OVERLAY ── */}

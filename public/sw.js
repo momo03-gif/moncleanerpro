@@ -1,4 +1,4 @@
-const CACHE = 'mcp-v1';
+const CACHE = 'mcp-v2';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE = [
@@ -55,5 +55,39 @@ self.addEventListener('fetch', e => {
         return res;
       })
       .catch(() => caches.match(request).then(cached => cached ?? caches.match(OFFLINE_URL)))
+  );
+});
+
+// ── Push : afficher la notification système (sonnerie/vibration gérées par l'OS) ──
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch { data = { title: 'MonCleanerPro', body: e.data ? e.data.text() : '' }; }
+  const title = data.title || 'MonCleanerPro';
+  const options = {
+    body: data.body || '',
+    icon: '/icon/192',
+    badge: '/icon/96',
+    tag: data.tag || undefined,
+    renotify: !!data.tag,
+    vibrate: [120, 60, 120],
+    data: { url: data.url || '/' },
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ── Clic sur la notification : ouvrir / focus l'app sur la bonne page ──
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if ('focus' in client) {
+          client.navigate(target).catch(() => {});
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
   );
 });
