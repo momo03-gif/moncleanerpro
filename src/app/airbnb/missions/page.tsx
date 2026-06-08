@@ -97,7 +97,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
       </div>
 
       <div className="px-5 py-4">
-        {mission.address && <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>◎ {mission.address}</p>}
+        {mission.address && <p className="text-xs mb-2 truncate" style={{ color: '#A8A09A' }}>◎ {mission.address}</p>}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
           {mission.time && <span>◷ {mission.time}</span>}
@@ -133,7 +133,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
                 {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
                 <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
@@ -147,7 +147,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
             </div>
             <div>
               <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prochaine arrivée — optionnel</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                 <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(f => ({ ...f, nextArrival: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
                 <input type="time" value={form.nextArrivalTime} onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}

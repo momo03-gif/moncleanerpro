@@ -62,6 +62,17 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0px 1000px #1F1F1F inset;
 }
 
+/* ── Carte facture (aperçu écran) ── */
+.invoice-doc {
+  border: 1px solid #ECE7DC;
+  border-radius: 20px;
+  padding: 24px 18px;
+  box-shadow: 0 12px 40px rgba(26, 22, 15, 0.06);
+}
+@media (min-width: 640px) {
+  .invoice-doc { padding: 44px 48px; }
+}
+
 /* ── Impression facture (rendu premium A4) ── */
 @page {
   size: A4;

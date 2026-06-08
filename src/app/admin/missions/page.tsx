@@ -180,16 +180,16 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
       {/* ── Corps */}
       <div className="px-5 py-4 space-y-3">
         {/* Nom + adresse */}
-        <div>
-          <h3 className="font-semibold text-base" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-base truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
           {mission.address && (
             <button onClick={() => setMapsOpen(true)}
-              className="flex items-center gap-1 mt-0.5 text-left transition-colors"
+              className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full min-w-0"
               style={{ color: '#A8A09A' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
               onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
               <span className="text-xs shrink-0">◎</span>
-              <span className="text-xs">{mission.address}</span>
+              <span className="text-xs truncate">{mission.address}</span>
             </button>
           )}
         </div>
@@ -298,7 +298,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
         ) : editOpen ? (
           /* Formulaire de modification (admin) */
           <div className="space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
                 <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
@@ -805,7 +805,7 @@ export default function MissionsPage() {
                   {cleanerWarning(form.cleanerId, form.date)}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</label>
                   <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
@@ -896,7 +896,7 @@ export default function MissionsPage() {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée client — optionnel</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                   <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(p => ({ ...p, nextArrival: e.target.value }))}
                     className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                     onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />

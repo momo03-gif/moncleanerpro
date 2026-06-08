@@ -89,14 +89,12 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
   const payKey: React.CSSProperties = { display: 'inline-block', width: 42, fontSize: 9.5, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B0A795' };
 
   return (
-    <div className="invoice-print" style={{
+    <div className="invoice-print invoice-doc" style={{
       maxWidth: 840, margin: '0 auto', backgroundColor: '#FFFFFF', color: '#1A1A1A',
-      border: '1px solid #ECE7DC', borderRadius: 20, padding: '44px 48px',
-      boxShadow: '0 12px 40px rgba(26,22,15,0.06)',
     }}>
       {/* ── EN-TÊTE ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 28, paddingBottom: 26, borderBottom: '1px solid #ECE7DC' }}>
-        <div style={{ maxWidth: '56%' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, paddingBottom: 26, borderBottom: '1px solid #ECE7DC' }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <span style={{ fontSize: 22, color: '#C9A84C', lineHeight: 1 }}>✦</span>
             <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '0.14em', color: '#0D0D0D' }}>MONCLEANERPRO</span>
@@ -108,7 +106,7 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
             {(company.siret || company.vat) && <div>{[company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join('   ·   ')}</div>}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
           <p style={{ fontSize: 29, fontWeight: 300, letterSpacing: '0.22em', color: '#0D0D0D', margin: 0 }}>FACTURE</p>
           <p style={{ marginTop: 5, fontSize: 12, fontWeight: 700, color: '#C9A84C', letterSpacing: '0.04em' }}>{number}</p>
           <table style={{ marginLeft: 'auto', marginTop: 16, borderCollapse: 'collapse' }}>
@@ -140,52 +138,52 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
       </div>
 
       {/* ── TABLEAU DES PRESTATIONS ── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 26 }}>
-        <thead>
-          <tr style={{ backgroundColor: '#0D0D0D' }}>
-            <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 10 }}>Date</th>
-            <th style={{ ...th, textAlign: 'left' }}>Appartement / Chambre</th>
-            <th style={{ ...th, textAlign: 'left' }}>Prestation</th>
-            <th style={{ ...th, textAlign: 'left' }}>Cleaner</th>
-            <th style={{ ...th, textAlign: 'center' }}>Durée</th>
-            <th style={{ ...th, textAlign: 'right' }}>P.U.</th>
-            <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 10 }}>Montant</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((l, i) => (
-            <tr key={l.id ?? i} style={{ borderBottom: '1px solid #F0EBE0' }}>
-              <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateFR(l.date)}</td>
-              <td style={{ ...td, fontWeight: 600, color: '#1A1A1A' }}>{l.apartment || l.label}</td>
-              <td style={td}>{TYPE_LABEL[l.type] ?? l.type}</td>
-              <td style={td}>{l.cleaner || '—'}</td>
-              <td style={{ ...td, textAlign: 'center' }}>{l.duration ? `${l.duration} h` : '—'}</td>
-              <td style={{ ...td, textAlign: 'right' }}>{l.unitPrice != null ? money(l.unitPrice) : '—'}</td>
-              <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#1A1A1A' }}>
-                {editable && onAmount && l.id ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <input type="number" min="0" step="0.01" value={String(l.amount)}
-                      onChange={e => onAmount(l.id!, e.target.value)}
-                      style={{ width: 72, textAlign: 'right', padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' }} />
-                    <span>€</span>
-                  </span>
-                ) : money(l.amount)}
-              </td>
+      <div style={{ marginTop: 26, overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#0D0D0D' }}>
+              <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 10 }}>Date</th>
+              <th style={{ ...th, textAlign: 'left' }}>Appartement / Chambre</th>
+              <th style={{ ...th, textAlign: 'left' }}>Prestation</th>
+              <th style={{ ...th, textAlign: 'center' }}>Durée</th>
+              <th style={{ ...th, textAlign: 'right' }}>P.U.</th>
+              <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 10 }}>Montant</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {lines.map((l, i) => (
+              <tr key={l.id ?? i} style={{ borderBottom: '1px solid #F0EBE0', backgroundColor: i % 2 ? '#FBF9F4' : '#FFFFFF' }}>
+                <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateFR(l.date)}</td>
+                <td style={{ ...td, fontWeight: 600, color: '#1A1A1A' }}>{l.apartment || l.label}</td>
+                <td style={td}>{TYPE_LABEL[l.type] ?? l.type}</td>
+                <td style={{ ...td, textAlign: 'center', whiteSpace: 'nowrap' }}>{l.duration ? `${l.duration} h` : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{l.unitPrice != null ? money(l.unitPrice) : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap' }}>
+                  {editable && onAmount && l.id ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <input type="number" min="0" step="0.01" value={String(l.amount)}
+                        onChange={e => onAmount(l.id!, e.target.value)}
+                        style={{ width: 72, textAlign: 'right', padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' }} />
+                      <span>€</span>
+                    </span>
+                  ) : money(l.amount)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* ── PAIEMENT + TOTAUX ── */}
-      <div style={{ display: 'flex', gap: 24, marginTop: 28, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, marginTop: 28, alignItems: 'flex-start' }}>
         {/* Paiement */}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <p style={sectionLabel}>Coordonnées de paiement</p>
           <div style={{ marginTop: 10, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             {qrSvg
               ? <div style={{ width: 92, height: 92, padding: 6, background: '#FFFFFF', border: '1px solid #EFE9DC', borderRadius: 12, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: qrSvg }} />
               : <div style={{ width: 92, height: 92, background: '#FAF8F3', border: '1px dashed #DAD2C2', borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, textAlign: 'center', color: '#B0A795', lineHeight: 1.4, padding: 8 }}>QR de paiement</div>}
-            <div style={{ fontSize: 11.5, lineHeight: 1.95, color: '#4A443D' }}>
+            <div style={{ fontSize: 11.5, lineHeight: 1.95, color: '#4A443D', minWidth: 0, overflowWrap: 'anywhere' }}>
               {company.iban && <div><span style={payKey}>IBAN</span> <span style={{ fontFamily: 'ui-monospace, monospace', letterSpacing: '0.02em' }}>{company.iban}</span></div>}
               {company.bic && <div><span style={payKey}>BIC</span> {company.bic}</div>}
               <div style={{ marginTop: 8, fontSize: 10.5, color: '#8A8178' }}>
@@ -196,7 +194,7 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
         </div>
 
         {/* Totaux */}
-        <div style={{ width: 268, flexShrink: 0 }}>
+        <div style={{ flex: '1 1 240px', minWidth: 220 }}>
           <div style={{ background: '#FAF8F3', border: '1px solid #EFE9DC', borderRadius: 14, padding: '14px 18px' }}>
             <div style={totRow}><span>Sous-total HT</span><span style={{ fontWeight: 600, color: '#1A1A1A' }}>{money(subtotalHT)}</span></div>
             <div style={totRow}>
