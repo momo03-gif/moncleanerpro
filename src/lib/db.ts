@@ -1,5 +1,7 @@
 import { supabase, hashPassword } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role } from './types';
+import { computeCleanerGain } from './pay';
+import { clusterApartments } from './zones';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
   notifyMissionCancelled, notifyMissionCompleted,
@@ -75,7 +77,7 @@ export async function getCleaners() {
   const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate_hotel: 0, rate_airbnb: 0, status: u.status ?? 'active',
+    hourly_rate: 0, status: u.status ?? 'active',
   }));
 }
 
@@ -87,13 +89,13 @@ export async function getActiveCleanersDB() {
   const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner').eq('status', 'active');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate_hotel: 0, rate_airbnb: 0, status: 'active',
+    hourly_rate: 0, status: 'active',
   }));
 }
 
 export async function createCleaner(fields: {
   name: string; email: string; phone?: string;
-  password: string; hourlyRateHotel?: number; rateAirbnb?: number;
+  password: string; hourlyRate?: number;
 }) {
   const hash = await hashPassword(fields.password || 'cleaner123');
   const { data: user, error: userError } = await supabase
@@ -112,8 +114,7 @@ export async function createCleaner(fields: {
     name: fields.name,
     email: fields.email,
     phone: fields.phone ?? null,
-    hourly_rate_hotel: fields.hourlyRateHotel ?? 0,
-    rate_airbnb: fields.rateAirbnb ?? 0,
+    hourly_rate: fields.hourlyRate ?? 0,
     status: 'active',
   });
 
@@ -151,8 +152,8 @@ export async function deleteCleanerDB(id: string) {
   await supabase.from('users').delete().eq('id', userId);
 }
 
-export async function updateCleanerRatesDB(id: string, hotelRate: number, airbnbRate: number) {
-  await supabase.from('cleaners').update({ hourly_rate_hotel: hotelRate, rate_airbnb: airbnbRate }).eq('id', id);
+export async function updateCleanerHourlyRateDB(id: string, hourlyRate: number) {
+  await supabase.from('cleaners').update({ hourly_rate: hourlyRate }).eq('id', id);
 }
 
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
@@ -187,7 +188,13 @@ function rowToApartment(a: any): Apartment {
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
     clientPrice: a.client_price != null ? Number(a.client_price) : undefined,
+    estimatedCleaningMinutes: a.estimated_cleaning_minutes != null ? Number(a.estimated_cleaning_minutes) : undefined,
     cleanerGain: 0,
+    latitude: a.latitude != null ? Number(a.latitude) : undefined,
+    longitude: a.longitude != null ? Number(a.longitude) : undefined,
+    zoneId: a.zone_id ?? undefined,
+    zoneColor: a.zone_color ?? undefined,
+    zoneName: a.zone_name ?? undefined,
     partnerId: a.partner_id ?? undefined,
     partnerName: a.partner_name ?? undefined,
     bedrooms: a.bedrooms ?? undefined,
@@ -217,9 +224,10 @@ export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]>
 export async function createAirbnb(fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
   entryDirectives: string; partnerId?: string; partnerName?: string;
-  bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number; notes?: string;
-}) {
-  const { error } = await supabase.from('airbnbs').insert({
+  bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
+  estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
+}): Promise<string | null> {
+  const { data, error } = await supabase.from('airbnbs').insert({
     name: fields.name,
     address: fields.address,
     code_portail: fields.portalCode || null,
@@ -231,15 +239,20 @@ export async function createAirbnb(fields: {
     beds: fields.beds ?? null,
     sofa_beds: fields.sofaBeds ?? null,
     client_price: fields.clientPrice ?? null,
+    estimated_cleaning_minutes: fields.estimatedCleaningMinutes ?? 60,
+    zone_color: fields.zoneColor || null,
+    zone_name: fields.zoneName || null,
     notes: fields.notes || null,
-  });
-  if (error) console.error('createAirbnb error:', error.code, error.message);
+  }).select('id').single();
+  if (error) { console.error('createAirbnb error:', error.code, error.message); return null; }
+  return data?.id ?? null;
 }
 
 export async function updateAirbnb(id: string, fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
   entryDirectives: string; partnerName?: string;
-  bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number; notes?: string;
+  bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
+  estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
 }) {
   const { error } = await supabase.from('airbnbs').update({
     name: fields.name,
@@ -252,6 +265,9 @@ export async function updateAirbnb(id: string, fields: {
     beds: fields.beds ?? null,
     sofa_beds: fields.sofaBeds ?? null,
     client_price: fields.clientPrice ?? null,
+    estimated_cleaning_minutes: fields.estimatedCleaningMinutes ?? 60,
+    zone_color: fields.zoneColor || null,
+    zone_name: fields.zoneName || null,
     notes: fields.notes || null,
   }).eq('id', id);
   if (error) console.error('updateAirbnb error:', error.code, error.message);
@@ -267,6 +283,39 @@ export async function assignAirbnbCleaner(airbnbId: string, cleanerId: string | 
   await supabase.from('airbnbs').update({ cleaner_id: cleanerId }).eq('id', airbnbId);
 }
 
+// ── ZONES GÉOGRAPHIQUES ─────────────────────────────────────────────────────────
+
+// Enregistre les coordonnées géocodées d'un appartement.
+export async function setAirbnbCoordsDB(id: string, lat: number, lng: number) {
+  const { error } = await supabase.from('airbnbs').update({ latitude: lat, longitude: lng }).eq('id', id);
+  if (error) console.error('setAirbnbCoordsDB error:', error.code, error.message);
+}
+
+// Recalcule les zones de tous les appartements géolocalisés (clustering 2 km)
+// et persiste zone_id / zone_color / zone_name. Renvoie le nombre de zones.
+export async function regenerateZonesDB(): Promise<{ zones: number; assigned: number }> {
+  const { data } = await supabase.from('airbnbs').select('id, latitude, longitude');
+  const apts = (data ?? []).map((a: any) => ({
+    id: a.id,
+    latitude: a.latitude != null ? Number(a.latitude) : null,
+    longitude: a.longitude != null ? Number(a.longitude) : null,
+  }));
+  const assignment = clusterApartments(apts);
+
+  // Écrit chaque appartement (ceux sans coords sont remis à zone nulle).
+  await Promise.all(apts.map(a => {
+    const z = assignment.get(a.id);
+    return supabase.from('airbnbs').update({
+      zone_id: z?.zoneId ?? null,
+      zone_color: z?.zoneColor ?? null,
+      zone_name: z?.zoneName ?? null,
+    }).eq('id', a.id);
+  }));
+
+  const zoneIds = new Set(Array.from(assignment.values()).map(z => z.zoneId));
+  return { zones: zoneIds.size, assigned: assignment.size };
+}
+
 // ── MISSIONS ──────────────────────────────────────────────────────────────────
 
 // Trim time to HH:mm (DB sometimes stores HH:mm:ss)
@@ -276,7 +325,7 @@ function trimTime(t: string | null | undefined): string {
 
 // Sélection commune : on joint l'appartement lié pour les missions Airbnb
 // afin d'en récupérer adresse + accès sans dupliquer l'info dans la mission.
-const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes)';
+const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes, estimated_cleaning_minutes, zone_id, zone_color, zone_name)';
 
 function rowToMission(row: any): Mission {
   let property = row.property_name ?? '';
@@ -297,18 +346,30 @@ function rowToMission(row: any): Mission {
     notes = parts.length > 0 ? parts.join(' · ') : undefined;
   }
 
+  // Durée de paie : minutes = source de vérité ; heures dérivées pour les agrégations existantes.
+  const minutes = row.mission_duration_minutes != null
+    ? Number(row.mission_duration_minutes)
+    : Math.round((Number(row.hours_worked) || 0) * 60);
+
   return {
     id: row.id,
     property,
     address,
     date: row.date_from ?? '',
     time: trimTime(row.time_from),
-    duration: Number(row.hours_worked) || 0,
+    duration: Math.round((minutes / 60) * 100) / 100,
     status: mapMissionStatus(row.status),
     cleanerId: row.cleaner_id,
     cleanerName: row.cleaner_name,
     price: Number(row.price) || 0,
     cleanerGain: Number(row.cleaner_gain) || 0,
+    missionDurationMinutes: minutes,
+    cleanerHourlyRateSnapshot: row.cleaner_hourly_rate_snapshot != null ? Number(row.cleaner_hourly_rate_snapshot) : undefined,
+    apartmentDefaultDurationSnapshot: row.apartment_default_duration_snapshot != null ? Number(row.apartment_default_duration_snapshot) : undefined,
+    // Zone dérivée de l'appartement lié (join), toujours à jour.
+    zoneId: apt?.zone_id ?? undefined,
+    zoneColor: apt?.zone_color ?? undefined,
+    zoneName: apt?.zone_name ?? undefined,
     type: (row.type as MissionType) ?? 'regular',
     source: (row.source as MissionSource) ?? 'hotel',
     requestedBy: row.client_name,
@@ -377,6 +438,12 @@ export async function createAirbnbMissionDB(fields: {
   dateFrom: string; timeFrom: string; instructions?: string; price?: number;
   nextArrival?: string; nextArrivalTime?: string;
 }): Promise<{ error: string | null }> {
+  // Durée de nettoyage par défaut reprise de l'appartement (base du gain cleaner,
+  // calculé plus tard à l'assignation d'un cleaner par l'admin).
+  const { data: apt } = await supabase
+    .from('airbnbs').select('estimated_cleaning_minutes').eq('id', fields.airbnbId).single();
+  const defaultMinutes = apt?.estimated_cleaning_minutes != null ? Number(apt.estimated_cleaning_minutes) : 60;
+
   const { data, error } = await supabase.from('missions').insert({
     type: 'regular',
     source: 'airbnb',
@@ -387,7 +454,9 @@ export async function createAirbnbMissionDB(fields: {
     date_from: fields.dateFrom,
     time_from: fields.timeFrom || null,
     instructions: fields.instructions || null,
-    price: fields.price ?? 0,  // prix repris depuis la fiche appartement (comptabilité)
+    price: fields.price ?? 0,  // prix CLIENT repris depuis la fiche appartement (facturation)
+    mission_duration_minutes: defaultMinutes,
+    apartment_default_duration_snapshot: defaultMinutes,
     next_arrival: fields.nextArrival || null,
     next_arrival_time: fields.nextArrivalTime || null,
     status: 'pending',
@@ -414,9 +483,10 @@ export async function acceptMissionDB(missionId: string, userId: string): Promis
 
 export async function createMissionDB(fields: {
   type: string; source: string; propertyName: string; address: string;
-  dateFrom: string; timeTo: string; timeFrom: string; duration: number;
+  dateFrom: string; timeTo: string; timeFrom: string;
+  missionDurationMinutes: number; cleanerHourlyRate?: number; apartmentDefaultDuration?: number;
   cleanerId?: string; cleanerName?: string; clientName?: string;
-  price: number; cleanerGain: number; instructions?: string;
+  price: number; instructions?: string;
   airbnbId?: string; partnerId?: string;
   nextArrival?: string; nextArrivalTime?: string;
   createdBy?: string; createdByRole?: string;
@@ -426,6 +496,11 @@ export async function createMissionDB(fields: {
   // Quand la mission est liée à un appartement, on ne duplique pas
   // nom/adresse : ils sont récupérés depuis la fiche appartement (join).
   const linked = !!fields.airbnbId;
+
+  // Paiement cleaner : taux horaire × durée / 60 (indépendant du prix client).
+  const minutes = Number(fields.missionDurationMinutes) || 0;
+  const rate = Number(fields.cleanerHourlyRate) || 0;
+  const gain = cleanerIdToStore ? computeCleanerGain(rate, minutes) : 0;
 
   const { data, error } = await supabase.from('missions').insert({
     type: fields.type,
@@ -439,12 +514,15 @@ export async function createMissionDB(fields: {
     date_from: fields.dateFrom,
     time_from: fields.timeFrom || null,
     time_to: fields.timeTo || null,
-    hours_worked: fields.duration,
+    hours_worked: Math.round((minutes / 60) * 100) / 100,
+    mission_duration_minutes: minutes,
     cleaner_id: cleanerIdToStore,
     cleaner_name: fields.cleanerName || null,
     client_name: fields.clientName || null,
-    price: fields.price,
-    cleaner_gain: fields.cleanerGain,
+    price: fields.price,  // prix CLIENT (facturation) — indépendant du gain cleaner
+    cleaner_gain: gain,
+    cleaner_hourly_rate_snapshot: cleanerIdToStore ? rate : null,
+    apartment_default_duration_snapshot: fields.apartmentDefaultDuration ?? null,
     instructions: fields.instructions || null,
     next_arrival: fields.nextArrival || null,
     next_arrival_time: fields.nextArrivalTime || null,
@@ -480,18 +558,41 @@ export async function updateMissionStatusDB(id: string, status: MissionStatus, a
   else if (status === 'completed') await notifyMissionCompleted(id);
 }
 
-export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string, gain?: number): Promise<void> {
-  // cleanerId is already cleaners.id (from the dropdown) — store directly
-  const patch: Record<string, unknown> = {
+export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string): Promise<void> {
+  // cleanerId is already cleaners.id (from the dropdown) — store directly.
+  // Gain cleaner recalculé : taux horaire du cleaner × durée de la mission / 60.
+  const [{ data: cleaner }, { data: mission }] = await Promise.all([
+    supabase.from('cleaners').select('hourly_rate').eq('id', cleanerId).single(),
+    supabase.from('missions').select('mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)').eq('id', missionId).single(),
+  ]);
+  const rate = Number(cleaner?.hourly_rate) || 0;
+  const aptDefault = (mission as any)?.airbnbs?.estimated_cleaning_minutes
+    ?? (mission as any)?.apartment_default_duration_snapshot
+    ?? null;
+  const minutes = (mission as any)?.mission_duration_minutes != null
+    ? Number((mission as any).mission_duration_minutes)
+    : (aptDefault != null ? Number(aptDefault) : 60);
+
+  await supabase.from('missions').update({
     cleaner_id: cleanerId,
     cleaner_name: cleanerName,
     status: 'assigned',
-  };
-  // Renseigne le gain cleaner s'il n'avait pas été fixé (missions créées par un partenaire)
-  if (gain != null && gain > 0) patch.cleaner_gain = gain;
-  await supabase.from('missions').update(patch).eq('id', missionId);
+    cleaner_gain: computeCleanerGain(rate, minutes),
+    cleaner_hourly_rate_snapshot: rate,
+    mission_duration_minutes: minutes,
+    apartment_default_duration_snapshot: aptDefault != null ? Number(aptDefault) : null,
+    hours_worked: Math.round((minutes / 60) * 100) / 100,
+  }).eq('id', missionId);
   // Notif cleaner : nouvelle mission
   await notifyCleanerNewMission(missionId);
+}
+
+// Assignation groupée d'un même cleaner à plusieurs missions (tournée par zone).
+// Réutilise la logique unitaire → le gain de chaque mission est recalculé.
+export async function assignCleanerToMissionsDB(missionIds: string[], cleanerId: string, cleanerName: string): Promise<void> {
+  for (const id of missionIds) {
+    await assignCleanerToMissionDB(id, cleanerId, cleanerName);
+  }
 }
 
 // ── MODIFICATION / SUPPRESSION SÉCURISÉES ──────────────────────────────────────
@@ -546,7 +647,6 @@ export interface MissionUpdateFields {
   // opérationnel (créateur + admin)
   dateFrom?: string;
   timeFrom?: string;
-  duration?: number;
   type?: string;
   airbnbId?: string | null;
   propertyName?: string;
@@ -557,8 +657,8 @@ export interface MissionUpdateFields {
   // réservé à l'admin
   cleanerId?: string | null;
   cleanerName?: string | null;
-  price?: number;
-  cleanerGain?: number;
+  missionDurationMinutes?: number;  // durée de paie (recalcule le gain cleaner)
+  price?: number;                   // prix CLIENT (facturation) — indépendant du gain
   status?: MissionStatus;
 }
 
@@ -576,7 +676,6 @@ export async function updateMissionDB(
   // Champs opérationnels — créateur et admin
   if (fields.dateFrom !== undefined) patch.date_from = fields.dateFrom;
   if (fields.timeFrom !== undefined) patch.time_from = fields.timeFrom || null;
-  if (fields.duration !== undefined) patch.hours_worked = fields.duration;
   if (fields.type !== undefined) patch.type = fields.type;
   if (fields.airbnbId !== undefined) patch.airbnb_id = fields.airbnbId || null;
   if (fields.propertyName !== undefined) patch.property_name = fields.propertyName;
@@ -591,9 +690,53 @@ export async function updateMissionDB(
       patch.cleaner_id = fields.cleanerId || null;
       patch.cleaner_name = fields.cleanerName ?? null;
     }
-    if (fields.price !== undefined) patch.price = fields.price;
-    if (fields.cleanerGain !== undefined) patch.cleaner_gain = fields.cleanerGain;
+    if (fields.price !== undefined) patch.price = fields.price;  // prix CLIENT uniquement
     if (fields.status !== undefined) patch.status = toDbMissionStatus(fields.status);
+
+    // ── Recalcul du gain cleaner ──────────────────────────────────────────
+    // Déclenché si l'admin change le cleaner, l'appartement ou la durée.
+    // gain = taux horaire du cleaner × durée de la mission / 60.
+    const touchesPay = fields.cleanerId !== undefined
+      || fields.airbnbId !== undefined
+      || fields.missionDurationMinutes !== undefined;
+    if (touchesPay) {
+      const { data: current } = await supabase
+        .from('missions')
+        .select('cleaner_id, mission_duration_minutes, apartment_default_duration_snapshot')
+        .eq('id', missionId).single();
+
+      const cleanerId = fields.cleanerId !== undefined ? fields.cleanerId : current?.cleaner_id;
+
+      // Durée par défaut de l'appartement (si l'appart change ou pour fallback).
+      let aptDefault: number | null = current?.apartment_default_duration_snapshot ?? null;
+      if (fields.airbnbId !== undefined && fields.airbnbId) {
+        const { data: apt } = await supabase.from('airbnbs')
+          .select('estimated_cleaning_minutes').eq('id', fields.airbnbId).single();
+        if (apt?.estimated_cleaning_minutes != null) aptDefault = Number(apt.estimated_cleaning_minutes);
+      }
+
+      // Durée retenue : explicite > durée courante > défaut appart > 60.
+      const minutes = fields.missionDurationMinutes !== undefined
+        ? Number(fields.missionDurationMinutes) || 0
+        : (current?.mission_duration_minutes != null
+            ? Number(current.mission_duration_minutes)
+            : (aptDefault ?? 60));
+
+      patch.mission_duration_minutes = minutes;
+      patch.hours_worked = Math.round((minutes / 60) * 100) / 100;
+      if (aptDefault != null) patch.apartment_default_duration_snapshot = aptDefault;
+
+      if (cleanerId) {
+        const { data: cleaner } = await supabase.from('cleaners')
+          .select('hourly_rate').eq('id', cleanerId).single();
+        const rate = Number(cleaner?.hourly_rate) || 0;
+        patch.cleaner_gain = computeCleanerGain(rate, minutes);
+        patch.cleaner_hourly_rate_snapshot = rate;
+      } else {
+        patch.cleaner_gain = 0;
+        patch.cleaner_hourly_rate_snapshot = null;
+      }
+    }
   }
 
   if (Object.keys(patch).length === 0) return { error: null };
@@ -722,10 +865,11 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
   }).eq('id', id);
 
   if (req) {
-    // Gain cleaner = tarif horaire hôtel × durée (par défaut 2h)
-    const { data: cleaner } = await supabase.from('cleaners').select('hourly_rate_hotel').eq('id', cleanerId).single();
-    const hours = 2;
-    const gain = (Number(cleaner?.hourly_rate_hotel) || 0) * hours;
+    // Gain cleaner = taux horaire du cleaner × durée (par défaut 2 h = 120 min) / 60.
+    const { data: cleaner } = await supabase.from('cleaners').select('hourly_rate').eq('id', cleanerId).single();
+    const minutes = 120;
+    const rate = Number(cleaner?.hourly_rate) || 0;
+    const gain = computeCleanerGain(rate, minutes);
 
     // Créateur = l'hôtel (pour la notif « mission terminée » au client)
     const { data: hotel } = await supabase.from('hotels').select('user_id').eq('id', req.hotel_id).single();
@@ -741,12 +885,14 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
       date_from: req.date_from,
       time_from: req.time_from || null,
       time_to: req.time_to || null,
-      hours_worked: hours,
+      hours_worked: minutes / 60,
+      mission_duration_minutes: minutes,
       cleaner_id: cleanerId,
       cleaner_name: cleanerName,
       client_name: req.hotel_name ?? '',
-      price: 0,
+      price: 0,  // prix CLIENT hôtel géré par ailleurs (facturation) — pas le gain cleaner
       cleaner_gain: gain,
+      cleaner_hourly_rate_snapshot: rate,
       instructions: req.instructions ?? null,
       status: 'assigned',
     }).select('id').single();

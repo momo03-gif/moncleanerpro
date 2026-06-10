@@ -75,7 +75,7 @@ export default function ProposedMissionsPage() {
                   {[
                     { label: 'Date', value: m.date.split('-').slice(1).join('/') },
                     { label: 'Heure', value: m.time || '—' },
-                    { label: 'Durée', value: `${m.duration}h` },
+                    { label: 'Durée', value: `${m.missionDurationMinutes ?? 0} min` },
                   ].map(s => (
                     <div key={s.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: '#F8F6F2' }}>
                       <p className="text-xs" style={{ color: '#A8A09A' }}>{s.label}</p>

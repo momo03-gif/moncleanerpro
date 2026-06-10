@@ -119,10 +119,10 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
               <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.time}</span>
             </div>
           )}
-          {mission.duration > 0 && (
+          {(mission.missionDurationMinutes ?? 0) > 0 && (
             <div className="flex items-center gap-1.5">
               <span style={{ color: '#C9A84C' }}>⟳</span>
-              <span className="text-sm" style={{ color: '#7A7068' }}>{mission.duration}h</span>
+              <span className="text-sm" style={{ color: '#7A7068' }}>{mission.missionDurationMinutes} min</span>
             </div>
           )}
           <span className="text-xs px-2 py-0.5 rounded"

@@ -11,6 +11,7 @@ const navItems = [
   { href: '/admin/missions', label: 'Missions', icon: '◎' },
   { href: '/admin/cleaners', label: 'Cleaners', icon: '◉' },
   { href: '/admin/airbnb', label: 'Airbnb', icon: '⬡' },
+  { href: '/admin/carte', label: 'Carte', icon: '◍' },
   { href: '/admin/comptes', label: 'Comptes', icon: '◻' },
   { href: '/admin/facturation', label: 'Facturation', icon: '▤' },
   { href: '/admin/stats', label: 'Statistiques', icon: '◈' },

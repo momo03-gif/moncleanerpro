@@ -95,7 +95,7 @@ export default function ComptabilitePage() {
               <div>
                 <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{s.cleaner.name}</p>
                 <p className="text-xs" style={{ color: '#A8A09A' }}>
-                  {s.cleaner.hourly_rate_hotel ? `${s.cleaner.hourly_rate_hotel}€/h` : ''}{s.cleaner.hourly_rate_hotel && s.cleaner.rate_airbnb ? ' · ' : ''}{s.cleaner.rate_airbnb ? `${s.cleaner.rate_airbnb}€/apt` : ''}
+                  {s.cleaner.hourly_rate ? `${s.cleaner.hourly_rate}€/h` : ''}
                 </p>
               </div>
             </div>
@@ -120,7 +120,7 @@ export default function ComptabilitePage() {
           <div key={m.id} className={`px-5 py-4 flex flex-col md:grid md:grid-cols-5 gap-1 md:gap-0 md:items-center ${i < completedMissions.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
             <div className="md:col-span-2">
               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.property}</p>
-              <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.duration}h</p>
+              <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.missionDurationMinutes ?? 0} min</p>
             </div>
             <p className="text-sm" style={{ color: m.cleanerName ? '#1A1A1A' : '#A8A09A' }}>{m.cleanerName ?? '—'}</p>
             <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{m.price}€</p>

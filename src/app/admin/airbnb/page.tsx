@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB } from '@/lib/db';
+import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB, setAirbnbCoordsDB } from '@/lib/db';
+import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 
 const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
-  entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '', notes: '',
+  entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
+  estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
 };
 type FormState = typeof emptyForm;
 
@@ -24,6 +26,9 @@ function aptToForm(a: Apartment): FormState {
     beds: a.beds != null ? String(a.beds) : '',
     sofaBeds: a.sofaBeds != null ? String(a.sofaBeds) : '',
     clientPrice: a.clientPrice != null ? String(a.clientPrice) : '',
+    estimatedMinutes: a.estimatedCleaningMinutes != null ? String(a.estimatedCleaningMinutes) : '60',
+    zoneColor: a.zoneColor ?? '',
+    zoneName: a.zoneName ?? '',
     notes: a.notes ?? '',
   };
 }
@@ -87,10 +92,20 @@ export default function AirbnbPage() {
       beds: form.beds ? Number(form.beds) : undefined,
       sofaBeds: form.sofaBeds ? Number(form.sofaBeds) : undefined,
       clientPrice: form.clientPrice ? Number(form.clientPrice) : undefined,
+      estimatedCleaningMinutes: form.estimatedMinutes ? Number(form.estimatedMinutes) : 60,
+      zoneColor: form.zoneColor || undefined,
+      zoneName: form.zoneName || undefined,
       notes: form.notes || undefined,
     };
-    if (editingId) await updateAirbnb(editingId, payload);
-    else await createAirbnb(payload);
+
+    // Identifiant de l'appartement (existant ou nouvellement créé) pour le géocodage.
+    const aptId = editingId ? (await updateAirbnb(editingId, payload), editingId) : await createAirbnb(payload);
+    // Géocode l'adresse → lat/long (zone calculée ensuite via « Générer les zones »).
+    if (aptId) {
+      const geo = await geocodeAddress(form.address);
+      if (geo) await setAirbnbCoordsDB(aptId, geo.lat, geo.lon);
+    }
+
     await load();
     closeForm();
     setSaving(false);
@@ -161,11 +176,35 @@ export default function AirbnbPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix par ménage (€)</label>
-              <input type="number" min="0" step="0.01" value={form.clientPrice} onChange={e => setForm(p => ({ ...p, clientPrice: e.target.value }))}
-                placeholder="Ex : 45" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client / ménage (€)</label>
+                <input type="number" min="0" step="0.01" value={form.clientPrice} onChange={e => setForm(p => ({ ...p, clientPrice: e.target.value }))}
+                  placeholder="Ex : 45" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps estimé de nettoyage (min)</label>
+                <input required type="number" min="5" step="5" value={form.estimatedMinutes} onChange={e => setForm(p => ({ ...p, estimatedMinutes: e.target.value }))}
+                  placeholder="60" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Zone couleur — optionnel (sinon calculée automatiquement par proximité)</label>
+              <div className="flex flex-wrap gap-2 items-center">
+                <button type="button" onClick={() => setForm(p => ({ ...p, zoneColor: '', zoneName: '' }))}
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium border transition-all"
+                  style={{ borderColor: !form.zoneColor ? '#C9A84C' : '#E8E4DC', backgroundColor: !form.zoneColor ? '#C9A84C12' : '#FFFFFF', color: !form.zoneColor ? '#C9A84C' : '#7A7068' }}>
+                  Auto
+                </button>
+                {ZONE_PALETTE.map(z => (
+                  <button key={z.key} type="button" onClick={() => setForm(p => ({ ...p, zoneColor: z.hex, zoneName: z.name }))}
+                    title={z.name}
+                    className="w-7 h-7 rounded-full transition-all"
+                    style={{ backgroundColor: z.hex, outline: form.zoneColor === z.hex ? '2px solid #1A1A1A' : '2px solid transparent', outlineOffset: 2 }} />
+                ))}
+              </div>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Directives d'entrée</label>
@@ -242,17 +281,30 @@ export default function AirbnbPage() {
                     <button onClick={() => handleDelete(apt.id)} className="text-xs px-2.5 py-1.5 rounded-lg" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>✕</button>
                   </div>
                 </div>
-                {apt.partnerName && (
-                  <span className="inline-block mt-2 text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#C9A84C15', color: '#C9A84C' }}>
-                    {apt.partnerName}
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {apt.partnerName && (
+                    <span className="inline-block text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#C9A84C15', color: '#C9A84C' }}>
+                      {apt.partnerName}
+                    </span>
+                  )}
+                  {apt.zoneName && (
+                    <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: apt.zoneColor ?? '#9CA3AF' }} />
+                      {apt.zoneName}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="px-5 py-4 space-y-3">
-                {apt.clientPrice != null && (
-                  <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>/ ménage</span></p>
-                )}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {apt.clientPrice != null && (
+                    <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>/ ménage</span></p>
+                  )}
+                  {apt.estimatedCleaningMinutes != null && (
+                    <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{apt.estimatedCleaningMinutes} min <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>de ménage</span></p>
+                  )}
+                </div>
                 {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
                   <p className="text-xs" style={{ color: '#7A7068' }}>
                     {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}

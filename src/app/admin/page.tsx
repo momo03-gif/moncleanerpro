@@ -124,7 +124,7 @@ export default function AdminDashboard() {
               <div key={m.id} className={`px-5 py-4 flex items-center gap-4 ${i < recent.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
-                  <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{m.date} · {m.time} · {m.duration}h</p>
+                  <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{m.date} · {m.time} · {m.missionDurationMinutes ?? 0} min</p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.price}€</span>
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{c.name}</p>
-                  <p className="text-xs" style={{ color: '#A8A09A' }}>{c.hourly_rate_hotel}€/h hôtel</p>
+                  <p className="text-xs" style={{ color: '#A8A09A' }}>{c.hourly_rate ?? 0}€/h</p>
                 </div>
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.status === 'active' ? '#5A8A6A' : '#A8A09A' }} />
               </div>

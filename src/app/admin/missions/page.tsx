@@ -5,12 +5,13 @@ import {
   getMissionsDB, getHotelRequestsDB, getActiveCleanersDB,
   createMissionDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
-  updateMissionStatusDB, assignCleanerToMissionDB,
+  updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
   updateMissionDB, deleteMissionDB, isMissionLocked,
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { Mission, HotelAnnounce, MissionType, MissionSource, Apartment, MissionStatus } from '@/lib/types';
+import { computeCleanerGain, DURATION_PRESETS } from '@/lib/pay';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 import DateRangeFilter from '@/components/DateRangeFilter';
@@ -60,7 +61,7 @@ const emptyForm = {
   hotelId: '', airbnbId: '',
   property: '', address: '',
   cleanerId: '', date: '', time: '',
-  duration: '2', price: '', cleanerGain: '',
+  durationMinutes: '60', price: '',
   nextArrival: '', nextArrivalTime: '',
 };
 
@@ -71,12 +72,31 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+// ── Encart « gain cleaner » calculé en direct ─────────────────────────────────
+function GainPreview({ gain, cleaner, minutes }: { gain: number; cleaner: any; minutes: string }) {
+  const rate = cleaner?.hourly_rate ?? 0;
+  return (
+    <div className="md:col-span-2 rounded-xl px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#C9A84C12', border: '1px solid #C9A84C40' }}>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Gain cleaner (auto)</p>
+        <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>
+          {cleaner ? `${rate}€/h × ${minutes || 0} min ÷ 60` : 'Sélectionnez un cleaner pour calculer le gain'}
+        </p>
+      </div>
+      <span className="text-xl font-bold" style={{ color: '#C9A84C' }}>{gain}€</span>
+    </div>
+  );
+}
+
 // ── Carte mission admin ───────────────────────────────────────────────────────
 
-function AdminMissionCard({ mission, cleaners, onRefresh }: {
+function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, onToggleSelect }: {
   mission: Mission;
   cleaners: any[];
   onRefresh: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
   const { user } = useAuth();
   const [assignOpen, setAssignOpen] = useState(false);
@@ -87,8 +107,9 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
   const [editOpen, setEditOpen] = useState(false);
   const [actionError, setActionError] = useState('');
   const [editForm, setEditForm] = useState({
-    date: mission.date, time: mission.time, duration: String(mission.duration || 2),
-    type: mission.type, price: String(mission.price ?? 0), cleanerGain: String(mission.cleanerGain ?? 0),
+    date: mission.date, time: mission.time,
+    durationMinutes: String(mission.missionDurationMinutes ?? 60),
+    type: mission.type, price: String(mission.price ?? 0),
   });
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
@@ -103,12 +124,17 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
 
   function openEdit() {
     setEditForm({
-      date: mission.date, time: mission.time, duration: String(mission.duration || 2),
-      type: mission.type, price: String(mission.price ?? 0), cleanerGain: String(mission.cleanerGain ?? 0),
+      date: mission.date, time: mission.time,
+      durationMinutes: String(mission.missionDurationMinutes ?? 60),
+      type: mission.type, price: String(mission.price ?? 0),
     });
     setActionError('');
     setEditOpen(true);
   }
+
+  // Aperçu du gain recalculé en direct dans le formulaire d'édition.
+  const editCleaner = cleaners.find(c => c.id === mission.cleanerId);
+  const editGainPreview = computeCleanerGain(editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0, Number(editForm.durationMinutes) || 0);
 
   async function saveEdit() {
     if (!user) return;
@@ -116,10 +142,9 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
     const res = await updateMissionDB(mission.id, { id: user.id, role: 'admin' }, {
       dateFrom: editForm.date,
       timeFrom: editForm.time,
-      duration: Number(editForm.duration) || 0,
+      missionDurationMinutes: Number(editForm.durationMinutes) || 0,
       type: editForm.type,
-      price: Number(editForm.price) || 0,
-      cleanerGain: Number(editForm.cleanerGain) || 0,
+      price: Number(editForm.price) || 0,  // prix CLIENT uniquement
     });
     setBusy(false);
     if (res.error) { setActionError(res.error); return; }
@@ -140,15 +165,9 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
   async function handleAssign() {
     if (!newCleaner) return;
     const c = cleaners.find(x => x.id === newCleaner);
-    // Calcule le gain cleaner si la mission n'en avait pas (créée par un partenaire)
-    let gain: number | undefined = mission.cleanerGain && mission.cleanerGain > 0 ? mission.cleanerGain : undefined;
-    if (!gain && c) {
-      gain = mission.source === 'airbnb'
-        ? Number(c.rate_airbnb) || 0
-        : (Number(c.hourly_rate_hotel) || 0) * (mission.duration || 2);
-    }
+    // Le gain cleaner est recalculé côté serveur : taux horaire × durée mission / 60.
     setBusy(true);
-    await assignCleanerToMissionDB(mission.id, newCleaner, c?.name ?? '', gain);
+    await assignCleanerToMissionDB(mission.id, newCleaner, c?.name ?? '');
     setAssignOpen(false);
     setNewCleaner('');
     onRefresh();
@@ -165,11 +184,24 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
       {/* ── Header : source + type / statut */}
       <div className="px-5 py-3.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
         <div className="flex items-center gap-2">
+          {selectable && (
+            <button onClick={() => onToggleSelect?.(mission.id)} aria-label="Sélectionner"
+              className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
+              style={{ borderColor: selected ? '#C9A84C' : '#C8C2BA', backgroundColor: selected ? '#C9A84C' : '#FFFFFF' }}>
+              {selected && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
+            </button>
+          )}
           <span className="text-xs px-2.5 py-1 rounded-lg font-semibold"
             style={{ backgroundColor: source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
             {SOURCE_LABEL[source]}
           </span>
           <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>
+          {mission.zoneName && (
+            <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: '#7A7068' }} title={mission.zoneName}>
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: mission.zoneColor ?? '#9CA3AF' }} />
+              {mission.zoneName}
+            </span>
+          )}
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
           style={{ backgroundColor: st.bg, color: st.color }}>
@@ -198,7 +230,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
           {mission.time && <span>◷ {mission.time}</span>}
-          {mission.duration > 0 && <span>⟳ {mission.duration}h</span>}
+          {(mission.missionDurationMinutes ?? 0) > 0 && <span>⟳ {mission.missionDurationMinutes} min</span>}
         </div>
 
         {mission.nextArrival && (
@@ -213,8 +245,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
           )
         )}
 
-        {/* Cleaner + Prix */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        {/* Cleaner + durée + taux + prix client + gain cleaner */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Cleaner</p>
             <p className="text-sm font-medium" style={{ color: mission.cleanerName ? '#1A1A1A' : '#C48A2A' }}>
@@ -227,6 +259,14 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.requestedBy}</p>
             </div>
           )}
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Durée</p>
+            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.missionDurationMinutes ?? 0} min</p>
+          </div>
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Taux cleaner</p>
+            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.cleanerHourlyRateSnapshot != null ? `${mission.cleanerHourlyRateSnapshot}€/h` : '—'}</p>
+          </div>
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Prix client</p>
             <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{mission.price}€</p>
@@ -310,8 +350,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Durée (h)</label>
-                <input type="number" min="0" step="0.5" value={editForm.duration} onChange={e => setEditForm(f => ({ ...f, duration: e.target.value }))}
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Temps de nettoyage (min)</label>
+                <input type="number" min="5" step="5" value={editForm.durationMinutes} onChange={e => setEditForm(f => ({ ...f, durationMinutes: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
@@ -330,11 +370,15 @@ function AdminMissionCard({ mission, cleaners, onRefresh }: {
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Gain cleaner (€)</label>
-                <input type="number" min="0" value={editForm.cleanerGain} onChange={e => setEditForm(f => ({ ...f, cleanerGain: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Gain cleaner (auto)</label>
+                <div className="w-full px-3 py-2 rounded-lg text-sm border font-semibold" style={{ ...inputStyle, color: '#C9A84C' }}>
+                  {editGainPreview}€
+                </div>
               </div>
             </div>
+            <p className="text-[11px]" style={{ color: '#A8A09A' }}>
+              Gain = taux cleaner {editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0}€/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.
+            </p>
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={busy}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -438,6 +482,10 @@ export default function MissionsPage() {
   const [hotels, setHotels] = useState<any[]>([]);
   const [airbnbs, setAirbnbs] = useState<Apartment[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [zoneFilter, setZoneFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCleaner, setBulkCleaner] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
@@ -488,25 +536,14 @@ export default function MissionsPage() {
       property: a?.name ?? '',
       address: a?.address ?? '',
       cleanerId: matchedCleaner?.id ?? '',
-      price: a?.clientPrice ? String(a.clientPrice) : p.price,
-      cleanerGain: a?.cleanerGain ? String(a.cleanerGain) : p.cleanerGain,
+      price: a?.clientPrice != null ? String(a.clientPrice) : p.price,  // prix CLIENT (facturation)
+      durationMinutes: a?.estimatedCleaningMinutes != null ? String(a.estimatedCleaningMinutes) : p.durationMinutes,
     }));
   }
 
-  function calcGain(patch: Partial<typeof form>) {
-    const next = { ...form, ...patch };
-    const c = cleaners.find(x => x.id === next.cleanerId);
-    if (c && next.source === 'hotel') {
-      const dur = Number(next.duration) || 0;
-      if (dur > 0) {
-        next.cleanerGain = String((c.hourly_rate_hotel ?? 0) * dur);
-        if (!next.price) next.price = String(dur * 40);
-      }
-    } else if (c && next.source === 'airbnb') {
-      next.cleanerGain = String(c.rate_airbnb ?? 0);
-    }
-    setForm(next);
-  }
+  // Gain cleaner calculé en direct : taux horaire × durée mission / 60.
+  const formCleaner = cleaners.find(c => c.id === form.cleanerId);
+  const formGain = computeCleanerGain(formCleaner?.hourly_rate ?? 0, Number(form.durationMinutes) || 0);
 
   function cleanerWarning(cleanerId: string, date: string): string | null {
     if (!cleanerId || !date) return null;
@@ -562,11 +599,12 @@ export default function MissionsPage() {
       dateFrom: form.date,
       timeFrom: form.time,
       timeTo: '',
-      duration: Number(form.duration) || 2,
+      missionDurationMinutes: Number(form.durationMinutes) || 60,
+      cleanerHourlyRate: c?.hourly_rate ?? 0,
+      apartmentDefaultDuration: apt?.estimatedCleaningMinutes,
       cleanerId: form.cleanerId || undefined,
       cleanerName: c?.name,
-      price: Number(form.price) || 0,
-      cleanerGain: Number(form.cleanerGain) || 0,
+      price: Number(form.price) || 0,  // prix CLIENT (facturation)
       airbnbId: apt?.id,
       partnerId: apt?.partnerId,
       nextArrival: form.nextArrival || undefined,
@@ -600,11 +638,41 @@ export default function MissionsPage() {
     { value: 'cancelled',   label: 'Annulées' },
   ];
 
-  // 1) on restreint à la période, 2) puis au statut sélectionné
+  // 1) on restreint à la période, 2) au statut, 3) à la zone sélectionnée
   const dateScoped = missions.filter(m => inRange(m.date, range));
-  const filtered = filter === 'all'
-    ? dateScoped
-    : dateScoped.filter(m => m.status === filter);
+  const statusScoped = filter === 'all' ? dateScoped : dateScoped.filter(m => m.status === filter);
+  const filtered = zoneFilter === 'all' ? statusScoped : statusScoped.filter(m => (m.zoneName ?? '') === zoneFilter);
+
+  // Zones présentes dans les missions de la période (pour le filtre).
+  const zonesInScope = (() => {
+    const map = new Map<string, string>(); // name → color
+    dateScoped.forEach(m => { if (m.zoneName) map.set(m.zoneName, m.zoneColor ?? '#9CA3AF'); });
+    return Array.from(map.entries()).map(([name, color]) => ({ name, color }));
+  })();
+
+  // ── Sélection groupée (tournée par zone) ──
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function selectAllVisible() {
+    setSelectedIds(new Set(filtered.filter(m => m.status !== 'completed' && m.status !== 'cancelled').map(m => m.id)));
+  }
+  function clearSelection() { setSelectedIds(new Set()); }
+
+  async function handleBulkAssign() {
+    if (!bulkCleaner || selectedIds.size === 0) return;
+    const c = cleaners.find(x => x.id === bulkCleaner);
+    setBulkBusy(true);
+    await assignCleanerToMissionsDB(Array.from(selectedIds), bulkCleaner, c?.name ?? '');
+    setBulkBusy(false);
+    clearSelection();
+    setBulkCleaner('');
+    await load();
+  }
 
   // Bornes (1re → dernière mission) pour le bouton « voir toutes les dates »
   const allDates = missions.map(m => m.date).filter(Boolean).sort();
@@ -719,10 +787,51 @@ export default function MissionsPage() {
             ))}
           </div>
 
-          {/* Compteur */}
-          <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>
-            {filtered.length} mission{filtered.length > 1 ? 's' : ''}
-          </p>
+          {/* Filtre par zone */}
+          {zonesInScope.length > 0 && (
+            <div className="flex gap-2 mb-4 flex-wrap items-center">
+              <span className="text-xs font-semibold uppercase tracking-wider mr-1" style={{ color: '#A8A09A' }}>Zone</span>
+              <button onClick={() => setZoneFilter('all')}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                style={{ backgroundColor: zoneFilter === 'all' ? '#C9A84C' : '#FFFFFF', color: zoneFilter === 'all' ? '#1A1A1A' : '#7A7068', border: `1px solid ${zoneFilter === 'all' ? '#C9A84C' : '#E8E4DC'}` }}>
+                Toutes
+              </button>
+              {zonesInScope.map(z => (
+                <button key={z.name} onClick={() => setZoneFilter(z.name)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                  style={{ backgroundColor: zoneFilter === z.name ? '#C9A84C' : '#FFFFFF', color: zoneFilter === z.name ? '#1A1A1A' : '#7A7068', border: `1px solid ${zoneFilter === z.name ? '#C9A84C' : '#E8E4DC'}` }}>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: z.color }} />
+                  {z.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Barre d'assignation groupée (tournée) */}
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <p className="text-xs" style={{ color: '#A8A09A' }}>
+              {filtered.length} mission{filtered.length > 1 ? 's' : ''}
+            </p>
+            <button onClick={selectAllVisible} className="text-xs font-medium" style={{ color: '#C9A84C' }}>
+              Tout sélectionner (assignables)
+            </button>
+          </div>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 mb-4 p-3 rounded-xl flex-wrap" style={{ backgroundColor: '#C9A84C12', border: '1px solid #C9A84C40' }}>
+              <span className="text-sm font-semibold" style={{ color: '#7A6030' }}>{selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}</span>
+              <select value={bulkCleaner} onChange={e => setBulkCleaner(e.target.value)}
+                className="flex-1 min-w-[160px] px-3 py-2 rounded-xl text-sm border appearance-none"
+                style={{ ...inputStyle, color: bulkCleaner ? '#1A1A1A' : '#A8A09A' }}>
+                <option value="">Choisir un cleaner</option>
+                {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <button onClick={handleBulkAssign} disabled={!bulkCleaner || bulkBusy}
+                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                {bulkBusy ? '...' : `Assigner ${selectedIds.size}`}
+              </button>
+              <button onClick={clearSelection} className="px-3 py-2 rounded-xl text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+            </div>
+          )}
 
           {/* Cartes */}
           {filtered.length === 0 ? (
@@ -740,7 +849,10 @@ export default function MissionsPage() {
               {filtered
                 .sort((a, b) => b.date.localeCompare(a.date) || (a.time ?? '').localeCompare(b.time ?? ''))
                 .map(m => (
-                  <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load} />
+                  <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
+                    selectable={m.status !== 'completed' && m.status !== 'cancelled'}
+                    selected={selectedIds.has(m.id)}
+                    onToggleSelect={toggleSelect} />
                 ))}
             </div>
           )}
@@ -793,7 +905,7 @@ export default function MissionsPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Cleaner</label>
-                <select value={form.cleanerId} onChange={e => calcGain({ cleanerId: e.target.value })}
+                <select value={form.cleanerId} onChange={e => setForm(p => ({ ...p, cleanerId: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Assigner plus tard</option>
@@ -820,29 +932,27 @@ export default function MissionsPage() {
                 </div>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Durée</label>
-                <div className="flex gap-2">
-                  {['1', '2', '3', '4', '5'].map(d => (
-                    <button key={d} type="button" onClick={() => calcGain({ duration: d })}
-                      className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all"
-                      style={{ borderColor: form.duration === d ? '#C9A84C' : '#E8E4DC', backgroundColor: form.duration === d ? '#C9A84C' : '#FFFFFF', color: form.duration === d ? '#1A1A1A' : '#A8A09A' }}>
-                      {d}h
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps de nettoyage (minutes)</label>
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {DURATION_PRESETS.map(d => (
+                    <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutes: String(d) }))}
+                      className="px-3 py-2 rounded-xl text-sm font-semibold border transition-all"
+                      style={{ borderColor: form.durationMinutes === String(d) ? '#C9A84C' : '#E8E4DC', backgroundColor: form.durationMinutes === String(d) ? '#C9A84C' : '#FFFFFF', color: form.durationMinutes === String(d) ? '#1A1A1A' : '#A8A09A' }}>
+                      {d} min
                     </button>
                   ))}
                 </div>
+                <input type="number" min="5" step="5" value={form.durationMinutes} onChange={e => setForm(p => ({ ...p, durationMinutes: e.target.value }))}
+                  placeholder="Durée en minutes" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€) — facturation</label>
                 <input type="number" min="0" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
                   placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Gain cleaner (€)</label>
-                <input type="number" min="0" value={form.cleanerGain} onChange={e => setForm(p => ({ ...p, cleanerGain: e.target.value }))}
-                  placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-              </div>
+              <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} />
             </>)}
 
             {/* ── AIRBNB ── */}
@@ -860,6 +970,11 @@ export default function MissionsPage() {
                 const apt = airbnbs.find(a => a.id === form.airbnbId);
                 return (
                   <div className="md:col-span-2 rounded-xl p-4 space-y-1.5" style={{ backgroundColor: '#F8F6F2' }}>
+                    {apt?.zoneName && (
+                      <p className="text-sm flex items-center gap-2"><span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#A8A09A' }}>Zone</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: apt.zoneColor ?? '#9CA3AF' }} />{apt.zoneName}</span>
+                      </p>
+                    )}
                     {form.property && <p className="text-sm"><span className="text-xs font-semibold uppercase tracking-wide mr-2" style={{ color: '#A8A09A' }}>Propriété</span>{form.property}</p>}
                     {form.address && <p className="text-sm" style={{ color: '#7A7068' }}><span className="text-xs font-semibold uppercase tracking-wide mr-2" style={{ color: '#A8A09A' }}>Adresse</span>{form.address}</p>}
                     {apt?.portalCode && <p className="text-sm font-mono"><span className="text-xs font-semibold uppercase tracking-wide mr-2 font-sans" style={{ color: '#A8A09A' }}>Code portail</span>{apt.portalCode}</p>}
@@ -870,7 +985,7 @@ export default function MissionsPage() {
               })()}
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Cleaner</label>
-                <select value={form.cleanerId} onChange={e => calcGain({ cleanerId: e.target.value })}
+                <select value={form.cleanerId} onChange={e => setForm(p => ({ ...p, cleanerId: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Assigner plus tard</option>
@@ -910,12 +1025,28 @@ export default function MissionsPage() {
                   </p>
                 )}
               </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Gain cleaner (€)</label>
-                <input type="number" min="0" value={form.cleanerGain} onChange={e => setForm(p => ({ ...p, cleanerGain: e.target.value }))}
-                  placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps de nettoyage (minutes)</label>
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {DURATION_PRESETS.map(d => (
+                    <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutes: String(d) }))}
+                      className="px-3 py-2 rounded-xl text-sm font-semibold border transition-all"
+                      style={{ borderColor: form.durationMinutes === String(d) ? '#C9A84C' : '#E8E4DC', backgroundColor: form.durationMinutes === String(d) ? '#C9A84C' : '#FFFFFF', color: form.durationMinutes === String(d) ? '#1A1A1A' : '#A8A09A' }}>
+                      {d} min
+                    </button>
+                  ))}
+                </div>
+                <input type="number" min="5" step="5" value={form.durationMinutes} onChange={e => setForm(p => ({ ...p, durationMinutes: e.target.value }))}
+                  placeholder="Durée en minutes" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Pré-rempli depuis l'appartement — modifiable si plus sale que prévu.</p>
               </div>
+              {form.price && (
+                <div className="md:col-span-2 px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
+                  Prix client (facturation) repris de l'appartement : <span style={{ color: '#5A8A6A', fontWeight: 600 }}>{form.price}€</span>
+                </div>
+              )}
+              <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} />
             </>)}
           </div>
 

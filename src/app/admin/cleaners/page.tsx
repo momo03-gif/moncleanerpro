@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerRatesDB, updateCleanerPasswordDB, updateCleanerInfoDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
 
-const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRateHotel: '', rateAirbnb: '' };
+const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
 export default function CleanersPage() {
@@ -18,7 +18,7 @@ export default function CleanersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [managing, setManaging] = useState<string | null>(null);
-  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRateHotel: '', rateAirbnb: '', password: '' });
+  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '' });
   const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
@@ -42,7 +42,7 @@ export default function CleanersPage() {
     setManaging(c.id);
     setManageForm({
       name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '',
-      hourlyRateHotel: String(c.hourly_rate_hotel ?? ''), rateAirbnb: String(c.rate_airbnb ?? ''),
+      hourlyRate: String(c.hourly_rate ?? ''),
       password: '',
     });
   }
@@ -52,7 +52,7 @@ export default function CleanersPage() {
     if (!manageForm.name.trim() || !manageForm.email.trim()) return;
     setSaving(true);
     await updateCleanerInfoDB(id, { name: manageForm.name.trim(), email: manageForm.email.trim(), phone: manageForm.phone.trim() || undefined });
-    await updateCleanerRatesDB(id, Number(manageForm.hourlyRateHotel) || 0, Number(manageForm.rateAirbnb) || 0);
+    await updateCleanerHourlyRateDB(id, Number(manageForm.hourlyRate) || 0);
     if (manageForm.password.trim()) await updateCleanerPasswordDB(id, manageForm.password.trim());
     setManaging(null);
     await load();
@@ -72,8 +72,7 @@ export default function CleanersPage() {
       name: form.name, email: form.email,
       phone: form.phone || undefined,
       password: form.password || 'cleaner123',
-      hourlyRateHotel: form.hourlyRateHotel ? Number(form.hourlyRateHotel) : undefined,
-      rateAirbnb: form.rateAirbnb ? Number(form.rateAirbnb) : undefined,
+      hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : undefined,
     });
     await load();
     setForm(emptyForm);
@@ -143,19 +142,12 @@ export default function CleanersPage() {
                       onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                   </div>
                 ))}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Taux hôtel (€/h)</label>
-                    <input type="number" min="0" value={form.hourlyRateHotel} onChange={e => setForm(p => ({ ...p, hourlyRateHotel: e.target.value }))}
-                      placeholder="10" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                      onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix Airbnb (€/apt)</label>
-                    <input type="number" min="0" value={form.rateAirbnb} onChange={e => setForm(p => ({ ...p, rateAirbnb: e.target.value }))}
-                      placeholder="15" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                      onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Taux horaire cleaner (€ / heure)</label>
+                  <input type="number" min="0" step="0.5" value={form.hourlyRate} onChange={e => setForm(p => ({ ...p, hourlyRate: e.target.value }))}
+                    placeholder="12" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                  <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Gain par mission = taux horaire × durée du ménage ÷ 60</p>
                 </div>
               </div>
               <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -204,17 +196,10 @@ export default function CleanersPage() {
 
                   {managing !== cleaner.id ? (
                     <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Tarification</p>
-                      <div className="flex gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs" style={{ color: '#A8A09A' }}>Hôtel</span>
-                          <span className="text-sm font-semibold" style={{ color: cleaner.hourly_rate_hotel ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate_hotel ? `${cleaner.hourly_rate_hotel}€/h` : '—'}</span>
-                        </div>
-                        <div className="w-px" style={{ backgroundColor: '#E8E4DC' }} />
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs" style={{ color: '#A8A09A' }}>Airbnb</span>
-                          <span className="text-sm font-semibold" style={{ color: cleaner.rate_airbnb ? '#1A1A1A' : '#A8A09A' }}>{cleaner.rate_airbnb ? `${cleaner.rate_airbnb}€/apt` : '—'}</span>
-                        </div>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Taux horaire</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold" style={{ color: cleaner.hourly_rate ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate ? `${cleaner.hourly_rate}€` : '—'}</span>
+                        {cleaner.hourly_rate ? <span className="text-xs" style={{ color: '#A8A09A' }}>/ heure</span> : null}
                       </div>
                     </div>
                   ) : (
@@ -236,14 +221,8 @@ export default function CleanersPage() {
                           </div>
                         ))}
                         <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Tarif hôtel (€/h)</label>
-                          <input type="number" min="0" value={manageForm.hourlyRateHotel} onChange={e => setManageForm(p => ({ ...p, hourlyRateHotel: e.target.value }))}
-                            className="w-full px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
-                            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Prix Airbnb (€/apt)</label>
-                          <input type="number" min="0" value={manageForm.rateAirbnb} onChange={e => setManageForm(p => ({ ...p, rateAirbnb: e.target.value }))}
+                          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Taux horaire cleaner (€ / heure)</label>
+                          <input type="number" min="0" step="0.5" value={manageForm.hourlyRate} onChange={e => setManageForm(p => ({ ...p, hourlyRate: e.target.value }))}
                             className="w-full px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
                             onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                         </div>
@@ -307,7 +286,7 @@ export default function CleanersPage() {
                           <div key={m.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
                             <div>
                               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.property}</p>
-                              <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.duration}h · {m.type}</p>
+                              <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.missionDurationMinutes ?? 0} min · {m.type}</p>
                             </div>
                             <span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{m.cleanerGain ?? 0}€</span>
                           </div>

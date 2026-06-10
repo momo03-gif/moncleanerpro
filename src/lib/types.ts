@@ -14,8 +14,6 @@ export interface User {
   completedMissions?: number;
   status?: 'available' | 'busy' | 'offline';
   isActive?: boolean;
-  hourlyRateHotel?: number;
-  rateAirbnb?: number;
   pendingStatus?: PendingStatus;
 }
 
@@ -35,6 +33,14 @@ export interface Mission {
   cleanerName?: string;
   price: number;
   cleanerGain?: number;
+  // Paiement cleaner (taux horaire × durée). Indépendant du prix client.
+  missionDurationMinutes?: number;
+  cleanerHourlyRateSnapshot?: number;
+  apartmentDefaultDurationSnapshot?: number;
+  // Zone de l'appartement lié (dérivée du join, lecture seule).
+  zoneId?: string;
+  zoneColor?: string;
+  zoneName?: string;
   type: MissionType;
   source?: MissionSource;
   requestedBy?: string;
@@ -76,7 +82,14 @@ export interface Apartment {
   cleanerId?: string;
   cleanerName?: string;
   clientPrice?: number;
+  estimatedCleaningMinutes?: number;
   cleanerGain?: number;
+  // Zone géographique (proximité). Coordonnées géocodées depuis l'adresse.
+  latitude?: number;
+  longitude?: number;
+  zoneId?: string;
+  zoneColor?: string;
+  zoneName?: string;
   partnerId?: string;
   partnerName?: string;
   bedrooms?: number;
@@ -101,6 +114,8 @@ export interface CleanerRow {
   name: string;
   email: string;
   phone?: string | null;
+  hourly_rate?: number;
+  // Anciens tarifs — conservés en base, plus utilisés par la logique de paie.
   hourly_rate_hotel?: number;
   rate_airbnb?: number;
   status: string;
