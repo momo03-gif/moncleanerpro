@@ -44,7 +44,7 @@ export default function ZonesMap({ apartments, missionCounts = {} }: Props) {
         const color = a.zoneColor ?? '#9CA3AF';
         const count = missionCounts[a.id] ?? 0;
         const marker = L.circleMarker([a.latitude as number, a.longitude as number], {
-          radius: 9, color: '#FFFFFF', weight: 2, fillColor: color, fillOpacity: 1,
+          radius: 9, color: '#6B7280', weight: 2, fillColor: color, fillOpacity: 1,
         }).addTo(map);
         marker.bindPopup(`
           <div style="min-width:170px;font-family:inherit">

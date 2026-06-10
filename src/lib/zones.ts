@@ -6,6 +6,7 @@
 export const ZONE_RADIUS_KM = 1;
 
 // 1 zone = 1 couleur. Palette ordonnée (hex pour l'affichage, key stable, nom lisible).
+// 16 couleurs distinctes → chaque zone a sa propre couleur (pas de « 2 »).
 export const ZONE_PALETTE = [
   { key: 'red',    hex: '#E5484D', name: 'Zone rouge' },
   { key: 'blue',   hex: '#3E63DD', name: 'Zone bleue' },
@@ -15,6 +16,14 @@ export const ZONE_PALETTE = [
   { key: 'teal',   hex: '#12A594', name: 'Zone turquoise' },
   { key: 'pink',   hex: '#E54690', name: 'Zone rose' },
   { key: 'brown',  hex: '#AD7F58', name: 'Zone marron' },
+  { key: 'yellow', hex: '#F5D90A', name: 'Zone jaune' },
+  { key: 'gray',   hex: '#8B8D98', name: 'Zone grise' },
+  { key: 'black',  hex: '#1A1A1A', name: 'Zone noire' },
+  { key: 'white',  hex: '#FFFFFF', name: 'Zone blanche' },
+  { key: 'cyan',   hex: '#00B4D8', name: 'Zone cyan' },
+  { key: 'lime',   hex: '#84CC16', name: 'Zone citron' },
+  { key: 'indigo', hex: '#4F46E5', name: 'Zone indigo' },
+  { key: 'amber',  hex: '#D97706', name: 'Zone ambre' },
 ] as const;
 
 export interface ZoneAssign { zoneId: string; zoneColor: string; zoneName: string; }
