@@ -3,7 +3,7 @@
 // d'un même secteur au même cleaner.
 
 // Rayon de regroupement. SEUL endroit à modifier pour ajuster la proximité.
-export const ZONE_RADIUS_KM = 2;
+export const ZONE_RADIUS_KM = 1;
 
 // 1 zone = 1 couleur. Palette ordonnée (hex pour l'affichage, key stable, nom lisible).
 export const ZONE_PALETTE = [
