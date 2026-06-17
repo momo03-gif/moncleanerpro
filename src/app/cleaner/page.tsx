@@ -134,9 +134,6 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
           <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
             {TYPE_LABEL[mission.type] ?? mission.type}
           </span>
-          <span className="ml-auto text-base font-bold" style={{ color: '#1A1A1A' }}>
-            {mission.cleanerGain ?? mission.price}€
-          </span>
         </div>
 
         {mission.requestedBy && (
@@ -253,9 +250,7 @@ export default function CleanerDashboard() {
     missions.filter(m => m.date >= dateStart && m.date <= dateEnd && m.status !== 'cancelled')
   );
 
-  const completedGain = filteredMissions
-    .filter(m => m.status === 'completed')
-    .reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+  const completedCount = filteredMissions.filter(m => m.status === 'completed').length;
 
   function getPeriodLabel() {
     if (isToday) return "Missions d'aujourd'hui";
@@ -346,8 +341,8 @@ export default function CleanerDashboard() {
           </p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{completedGain}€</p>
-          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Gain terminé</p>
+          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{completedCount}</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Terminée{completedCount > 1 ? 's' : ''}</p>
         </div>
       </div>
 

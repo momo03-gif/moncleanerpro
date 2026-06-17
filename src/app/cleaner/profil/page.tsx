@@ -51,7 +51,6 @@ export default function CleanerProfil() {
   const completed = missions.filter(m => m.status === 'completed');
   const hotelHoursMonth = completed.filter(m => m.source === 'hotel' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
   const completedMonth = completed.filter(m => m.date.startsWith(month)).length;
-  const totalEarned = completed.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
 
   async function handleStatusChange(value: string) {
     if (statusSaving) return;
@@ -97,11 +96,10 @@ export default function CleanerProfil() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Heures hôtel', value: `${hotelHoursMonth}h`, gold: true, sub: 'ce mois' },
             { label: 'Missions',     value: completedMonth,         gold: false, sub: 'ce mois' },
-            { label: 'Gains',        value: `${totalEarned}€`,      gold: false, sub: 'total' },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center" style={{ backgroundColor: '#F8F6F2' }}>
               <p className="text-xl font-bold" style={{ color: s.gold ? '#C9A84C' : '#1A1A1A' }}>{s.value}</p>
@@ -198,9 +196,6 @@ export default function CleanerProfil() {
                 <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
                 <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.time}</p>
               </div>
-              <span className="text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>
-                {m.cleanerGain ?? m.price}€
-              </span>
             </div>
           ))
         )}

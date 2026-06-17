@@ -69,7 +69,6 @@ export default function ProposedMissionsPage() {
                     <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{m.property}</h3>
                     <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>{m.address}</p>
                   </div>
-                  <span className="text-lg font-bold ml-4 shrink-0" style={{ color: '#C9A84C' }}>{m.cleanerGain ?? m.price}€</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-4">
