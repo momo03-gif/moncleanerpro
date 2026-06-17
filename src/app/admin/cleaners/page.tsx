@@ -5,6 +5,7 @@ import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerAct
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
+import { formatDuration } from '@/lib/format';
 
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
@@ -286,7 +287,7 @@ export default function CleanersPage() {
                           <div key={m.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
                             <div>
                               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.property}</p>
-                              <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.missionDurationMinutes ?? 0} min · {m.type}</p>
+                              <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {formatDuration(m.missionDurationMinutes)} · {m.type}</p>
                             </div>
                             <span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{m.cleanerGain ?? 0}€</span>
                           </div>

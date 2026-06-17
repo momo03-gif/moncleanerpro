@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, updateMissionStatusDB } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Mission, MissionStatus } from '@/lib/types';
+import { sortMissionsByPriority } from '@/lib/missionOrder';
+import { formatDuration, formatHour } from '@/lib/format';
 import MapsModal from '@/components/MapsModal';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -104,11 +106,11 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
         {mission.nextArrival && (
           mission.nextArrival === mission.date ? (
             <div className="px-3 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''} — terminer à temps
+              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''} — terminer à temps
             </div>
           ) : (
             <p className="text-xs" style={{ color: '#7A7068' }}>
-              Prochaine arrivée : {new Date(mission.nextArrival + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+              Prochaine arrivée : {new Date(mission.nextArrival + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </p>
           )
         )}
@@ -116,13 +118,13 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
           {mission.time && (
             <div className="flex items-center gap-1.5">
               <span style={{ color: '#C9A84C' }}>◷</span>
-              <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.time}</span>
+              <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatHour(mission.time)}</span>
             </div>
           )}
           {(mission.missionDurationMinutes ?? 0) > 0 && (
             <div className="flex items-center gap-1.5">
               <span style={{ color: '#C9A84C' }}>⟳</span>
-              <span className="text-sm" style={{ color: '#7A7068' }}>{mission.missionDurationMinutes} min</span>
+              <span className="text-sm" style={{ color: '#7A7068' }}>{formatDuration(mission.missionDurationMinutes)}</span>
             </div>
           )}
           <span className="text-xs px-2 py-0.5 rounded"
@@ -247,9 +249,9 @@ export default function CleanerDashboard() {
   const tomorrow = toDateStr(new Date(Date.now() + 86400000));
   const { start: weekStart, end: weekEnd } = getWeekBounds();
 
-  const filteredMissions = missions
-    .filter(m => m.date >= dateStart && m.date <= dateEnd && m.status !== 'cancelled')
-    .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? ''));
+  const filteredMissions = sortMissionsByPriority(
+    missions.filter(m => m.date >= dateStart && m.date <= dateEnd && m.status !== 'cancelled')
+  );
 
   const completedGain = filteredMissions
     .filter(m => m.status === 'completed')

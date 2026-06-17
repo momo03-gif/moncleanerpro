@@ -12,6 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { Mission, HotelAnnounce, MissionType, MissionSource, Apartment, MissionStatus } from '@/lib/types';
 import { computeCleanerGain, DURATION_PRESETS } from '@/lib/pay';
+import { groupMissionsByCleaner } from '@/lib/missionOrder';
+import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 import DateRangeFilter from '@/components/DateRangeFilter';
@@ -229,18 +231,18 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
         {/* Date / heure / durée */}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
-          {mission.time && <span>◷ {mission.time}</span>}
-          {(mission.missionDurationMinutes ?? 0) > 0 && <span>⟳ {mission.missionDurationMinutes} min</span>}
+          {mission.time && <span>{source === 'airbnb' ? 'Départ ' : '◷ '}{formatHour(mission.time)}</span>}
+          {(mission.missionDurationMinutes ?? 0) > 0 && <span>⟳ {formatDuration(mission.missionDurationMinutes)}</span>}
         </div>
 
         {mission.nextArrival && (
           mission.nextArrival === mission.date ? (
             <div className="px-3 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </div>
           ) : (
             <p className="text-xs" style={{ color: '#7A7068' }}>
-              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </p>
           )
         )}
@@ -261,7 +263,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           )}
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Durée</p>
-            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.missionDurationMinutes ?? 0} min</p>
+            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatDuration(mission.missionDurationMinutes)}</p>
           </div>
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Taux cleaner</p>
@@ -345,9 +347,17 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Heure</label>
-                <input type="time" value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{source === 'airbnb' ? 'Heure départ clients' : 'Heure'}</label>
+                {source === 'airbnb' ? (
+                  <select value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                    <option value="">Choisir</option>
+                    {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                  </select>
+                ) : (
+                  <input type="time" value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                )}
               </div>
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Temps de nettoyage (min)</label>
@@ -845,15 +855,29 @@ export default function MissionsPage() {
               )}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-              {filtered
-                .sort((a, b) => b.date.localeCompare(a.date) || (a.time ?? '').localeCompare(b.time ?? ''))
-                .map(m => (
-                  <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
-                    selectable={m.status !== 'completed' && m.status !== 'cancelled'}
-                    selected={selectedIds.has(m.id)}
-                    onToggleSelect={toggleSelect} />
-                ))}
+            <div className="space-y-8">
+              {groupMissionsByCleaner(filtered).map(group => (
+                <section key={group.cleanerId ?? '__unassigned__'}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-semibold text-base"
+                      style={{ color: group.cleanerId ? '#1A1A1A' : '#C48A2A' }}>
+                      {group.cleanerName}
+                    </h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+                      {group.missions.length}
+                    </span>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {group.missions.map(m => (
+                      <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
+                        selectable={m.status !== 'completed' && m.status !== 'cancelled'}
+                        selected={selectedIds.has(m.id)}
+                        onToggleSelect={toggleSelect} />
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
           )}
         </>
@@ -938,7 +962,7 @@ export default function MissionsPage() {
                     <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutes: String(d) }))}
                       className="px-3 py-2 rounded-xl text-sm font-semibold border transition-all"
                       style={{ borderColor: form.durationMinutes === String(d) ? '#C9A84C' : '#E8E4DC', backgroundColor: form.durationMinutes === String(d) ? '#C9A84C' : '#FFFFFF', color: form.durationMinutes === String(d) ? '#1A1A1A' : '#A8A09A' }}>
-                      {d} min
+                      {formatDuration(d)}
                     </button>
                   ))}
                 </div>
@@ -1005,9 +1029,12 @@ export default function MissionsPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure départ clients</label>
-                <input required type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <select required value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: form.time ? '#1A1A1A' : '#A8A09A' }}>
+                  <option value="">Choisir</option>
+                  {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée client — optionnel</label>
@@ -1015,9 +1042,12 @@ export default function MissionsPage() {
                   <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(p => ({ ...p, nextArrival: e.target.value }))}
                     className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                     onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                  <input type="time" value={form.nextArrivalTime} onChange={e => setForm(p => ({ ...p, nextArrivalTime: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                  <select value={form.nextArrivalTime} onChange={e => setForm(p => ({ ...p, nextArrivalTime: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                    style={{ ...inputStyle, color: form.nextArrivalTime ? '#1A1A1A' : '#A8A09A' }}>
+                    <option value="">Heure d&apos;arrivée</option>
+                    {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                  </select>
                 </div>
                 {form.nextArrival && form.date && form.nextArrival === form.date && (
                   <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
@@ -1032,7 +1062,7 @@ export default function MissionsPage() {
                     <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutes: String(d) }))}
                       className="px-3 py-2 rounded-xl text-sm font-semibold border transition-all"
                       style={{ borderColor: form.durationMinutes === String(d) ? '#C9A84C' : '#E8E4DC', backgroundColor: form.durationMinutes === String(d) ? '#C9A84C' : '#FFFFFF', color: form.durationMinutes === String(d) ? '#1A1A1A' : '#A8A09A' }}>
-                      {d} min
+                      {formatDuration(d)}
                     </button>
                   ))}
                 </div>

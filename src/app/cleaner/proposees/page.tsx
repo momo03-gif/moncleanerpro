@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPendingMissionsDB, acceptMissionDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
+import { formatDuration, formatHour } from '@/lib/format';
 
 const typeLabel: Record<string, string> = {
   checkout: 'Check-out', checkin: 'Check-in',
@@ -74,8 +75,8 @@ export default function ProposedMissionsPage() {
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {[
                     { label: 'Date', value: m.date.split('-').slice(1).join('/') },
-                    { label: 'Heure', value: m.time || '—' },
-                    { label: 'Durée', value: `${m.missionDurationMinutes ?? 0} min` },
+                    { label: 'Heure', value: m.time ? formatHour(m.time) : '—' },
+                    { label: 'Durée', value: formatDuration(m.missionDurationMinutes ?? 0) },
                   ].map(s => (
                     <div key={s.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: '#F8F6F2' }}>
                       <p className="text-xs" style={{ color: '#A8A09A' }}>{s.label}</p>

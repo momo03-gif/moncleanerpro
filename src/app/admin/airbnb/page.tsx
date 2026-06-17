@@ -5,6 +5,7 @@ import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB
 import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
+import { formatDuration } from '@/lib/format';
 import MapsModal from '@/components/MapsModal';
 
 const emptyForm = {
@@ -302,7 +303,7 @@ export default function AirbnbPage() {
                     <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>/ ménage</span></p>
                   )}
                   {apt.estimatedCleaningMinutes != null && (
-                    <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{apt.estimatedCleaningMinutes} min <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>de ménage</span></p>
+                    <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{formatDuration(apt.estimatedCleaningMinutes)} <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>de ménage</span></p>
                   )}
                 </div>
                 {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (

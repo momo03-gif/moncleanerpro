@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import { getMissionsDB, getCompanyInfoDB, saveCompanyInfoDB, getInvoicesDB, saveInvoiceDB } from '@/lib/db';
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
+import { formatDuration } from '@/lib/format';
 
 function partnerLabel(m: Mission): string {
   if (m.source === 'airbnb') return m.partnerName || 'Airbnb (sans partenaire)';
@@ -156,7 +157,7 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
                 <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateFR(l.date)}</td>
                 <td style={{ ...td, fontWeight: 600, color: '#1A1A1A' }}>{l.apartment || l.label}</td>
                 <td style={td}>{TYPE_LABEL[l.type] ?? l.type}</td>
-                <td style={{ ...td, textAlign: 'center', whiteSpace: 'nowrap' }}>{l.duration ? `${l.duration} h` : '—'}</td>
+                <td style={{ ...td, textAlign: 'center', whiteSpace: 'nowrap' }}>{l.duration ? formatDuration(Math.round(l.duration * 60)) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{l.unitPrice != null ? money(l.unitPrice) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap' }}>
                   {editable && onAmount && l.id ? (

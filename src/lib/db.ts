@@ -380,6 +380,7 @@ function rowToMission(row: any): Mission {
     airbnbId: row.airbnb_id ?? undefined,
     nextArrival: row.next_arrival ?? undefined,
     nextArrivalTime: row.next_arrival_time ? trimTime(row.next_arrival_time) : undefined,
+    createdAt: row.created_at ?? undefined,
   };
 }
 

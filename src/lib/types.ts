@@ -51,6 +51,8 @@ export interface Mission {
   airbnbId?: string;
   nextArrival?: string;
   nextArrivalTime?: string;
+  // Horodatage de création — sert de proxy pour l'ordre d'attribution des missions.
+  createdAt?: string;
 }
 
 export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed';

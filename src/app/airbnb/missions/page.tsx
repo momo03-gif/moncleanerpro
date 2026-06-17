@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import type { Apartment, Mission } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
+import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 const today = new Date().toISOString().split('T')[0];
@@ -100,16 +101,16 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
         {mission.address && <p className="text-xs mb-2 truncate" style={{ color: '#A8A09A' }}>◎ {mission.address}</p>}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
-          {mission.time && <span>◷ {mission.time}</span>}
+          {mission.time && <span>Départ {formatHour(mission.time)}</span>}
         </div>
         {mission.nextArrival && (
           mission.nextArrival === mission.date ? (
             <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </p>
           ) : (
             <p className="mt-2 text-xs" style={{ color: '#7A7068' }}>
-              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${mission.nextArrivalTime}` : ''}
+              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </p>
           )
         )}
@@ -140,9 +141,12 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Heure</label>
-                <input type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Heure départ clients</label>
+                <select value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                  <option value="">Choisir</option>
+                  {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                </select>
               </div>
             </div>
             <div>
@@ -150,8 +154,11 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
               <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                 <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(f => ({ ...f, nextArrival: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                <input type="time" value={form.nextArrivalTime} onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <select value={form.nextArrivalTime} onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                  <option value="">Heure d&apos;arrivée</option>
+                  {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                </select>
               </div>
             </div>
             <div>
@@ -339,10 +346,13 @@ export default function AirbnbMissionsPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure</label>
-                <input type="time" value={time} required onChange={e => setTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure départ clients</label>
+                <select value={time} required onChange={e => setTime(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: time ? '#1A1A1A' : '#A8A09A' }}>
+                  <option value="">Choisir</option>
+                  {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                </select>
               </div>
             </div>
 
@@ -352,9 +362,12 @@ export default function AirbnbMissionsPage() {
                 <input type="date" value={nextArrival} min={date || today} onChange={e => setNextArrival(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                <input type="time" value={nextArrivalTime} onChange={e => setNextArrivalTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <select value={nextArrivalTime} onChange={e => setNextArrivalTime(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: nextArrivalTime ? '#1A1A1A' : '#A8A09A' }}>
+                  <option value="">Heure d&apos;arrivée</option>
+                  {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
+                </select>
               </div>
               {nextArrival && date && nextArrival === date && (
                 <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>

@@ -8,6 +8,7 @@ import {
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
 } from '@/lib/db';
 import type { Mission } from '@/lib/types';
+import { formatDuration, formatHour } from '@/lib/format';
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
   return (
@@ -124,7 +125,7 @@ export default function AdminDashboard() {
               <div key={m.id} className={`px-5 py-4 flex items-center gap-4 ${i < recent.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
-                  <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{m.date} · {m.time} · {m.missionDurationMinutes ?? 0} min</p>
+                  <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{m.date} · {formatHour(m.time)} · {formatDuration(m.missionDurationMinutes)}</p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.price}€</span>
