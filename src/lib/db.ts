@@ -539,6 +539,58 @@ export async function createMissionDB(fields: {
   return { error: null };
 }
 
+// Création groupée : une mission INDIVIDUELLE par appartement sélectionné,
+// en un seul insert. Date / heure / cleaner partagés ; prix et durée repris
+// de chaque fiche appartement. Ne crée jamais une mission unique fusionnée.
+export async function createMissionsBatchDB(params: {
+  apartments: { airbnbId: string; partnerId?: string; price: number; durationMinutes: number; defaultDuration?: number }[];
+  dateFrom: string; timeFrom: string;
+  cleanerId?: string; cleanerName?: string; cleanerHourlyRate?: number;
+  createdBy?: string; createdByRole?: string;
+}): Promise<{ error: string | null; count: number }> {
+  if (params.apartments.length === 0) return { error: 'Aucun appartement sélectionné.', count: 0 };
+
+  const cleanerIdToStore: string | null = params.cleanerId || null;
+  const rate = Number(params.cleanerHourlyRate) || 0;
+
+  const rows = params.apartments.map(a => {
+    const minutes = Number(a.durationMinutes) || 0;
+    return {
+      type: 'regular',
+      source: 'airbnb',
+      airbnb_id: a.airbnbId,
+      partner_id: a.partnerId || null,
+      created_by: params.createdBy || null,
+      created_by_role: params.createdByRole || 'admin',
+      property_name: null,           // repris de la fiche appartement (join)
+      address: null,
+      date_from: params.dateFrom,
+      time_from: params.timeFrom || null,
+      time_to: null,
+      hours_worked: Math.round((minutes / 60) * 100) / 100,
+      mission_duration_minutes: minutes,
+      cleaner_id: cleanerIdToStore,
+      cleaner_name: params.cleanerName || null,
+      price: a.price,                // prix CLIENT repris de la fiche appartement
+      cleaner_gain: cleanerIdToStore ? computeCleanerGain(rate, minutes) : 0,
+      cleaner_hourly_rate_snapshot: cleanerIdToStore ? rate : null,
+      apartment_default_duration_snapshot: a.defaultDuration ?? null,
+      status: cleanerIdToStore ? 'assigned' : 'pending',
+    };
+  });
+
+  const { data, error } = await supabase.from('missions').insert(rows).select('id');
+  if (error) {
+    console.error('createMissionsBatchDB error:', error);
+    return { error: error.message, count: 0 };
+  }
+  // Notif cleaner pour chaque mission assignée dès la création.
+  if (cleanerIdToStore && data) {
+    for (const r of data) await notifyCleanerNewMission(r.id);
+  }
+  return { error: null, count: data?.length ?? 0 };
+}
+
 // Maps app-level MissionStatus → DB status string
 function toDbMissionStatus(appStatus: MissionStatus): string {
   const map: Record<MissionStatus, string> = {
