@@ -520,7 +520,8 @@ export default function MissionsPage() {
       getApprovedHotelsDB(), getAirbnbs(),
     ]);
     setMissions(m); setRequests(r); setCleaners(c);
-    setHotels(h); setAirbnbs(a);
+    // Appartements triés par ordre alphabétique (listes de sélection).
+    setHotels(h); setAirbnbs([...a].sort((x, y) => x.name.localeCompare(y.name, 'fr', { sensitivity: 'base', numeric: true })));
     setLoading(false);
   }, []);
 
