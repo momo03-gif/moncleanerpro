@@ -30,8 +30,8 @@ export default function ResetPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8', padding: 24 }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 32, color: '#C9A84C', marginBottom: 12 }}>✦</div>
-        <p style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>MonCleanerPro</p>
+        <div style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#1A1A1A', color: '#C9A84C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 22, margin: '0 auto 12px' }}>M</div>
+        <p style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>MonCleaner<span style={{ color: '#C9A84C' }}>Pro</span></p>
         <p style={{ fontSize: 13, color: '#7A7068', marginTop: 10 }}>{msg}</p>
       </div>
     </div>

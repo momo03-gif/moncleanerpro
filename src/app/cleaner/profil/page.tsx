@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, updateCleanerAvailableDaysDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
+import Icon from '@/components/Icon';
 
 const AVAIL_STATUSES = [
   { value: 'available', label: 'Disponible',  color: '#5A8A6A' },
@@ -189,8 +190,8 @@ export default function CleanerProfil() {
               className={`px-5 py-4 flex items-center gap-3 ${i < Math.min(missions.length, 5) - 1 ? 'border-b' : ''}`}
               style={{ borderColor: '#F2EFE9' }}>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: m.status === 'completed' ? '#5A8A6A15' : '#C9A84C12' }}>
-                <span className="text-xs" style={{ color: m.status === 'completed' ? '#5A8A6A' : '#C9A84C' }}>✦</span>
+                style={{ backgroundColor: m.status === 'completed' ? '#5A8A6A15' : '#C9A84C12', color: m.status === 'completed' ? '#5A8A6A' : '#C9A84C' }}>
+                <Icon name={m.status === 'completed' ? 'check' : 'missions'} size={15} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>

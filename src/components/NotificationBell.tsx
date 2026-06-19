@@ -8,13 +8,15 @@ import {
   markAllNotificationsReadDB, savePushSubscriptionDB,
 } from '@/lib/notifications';
 import type { AppNotification } from '@/lib/types';
+import Icon, { type IconName } from '@/components/Icon';
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-const TYPE_ICON: Record<string, string> = {
-  mission_created: '✦', mission_new: '◎', mission_modified: '✎',
-  mission_cancelled: '✕', mission_completed: '✓',
-  reminder_today: '☀', reminder_tomorrow: '☾',
+const TYPE_ICON: Record<string, IconName> = {
+  mission_created: 'request', mission_new: 'missions', mission_modified: 'missions',
+  mission_cancelled: 'close', mission_completed: 'check',
+  reminder_today: 'today', reminder_tomorrow: 'today',
+  extra_time_requested: 'history', extra_time_resolved: 'check',
 };
 
 function timeAgo(iso: string): string {
@@ -158,8 +160,8 @@ export default function NotificationBell({ light = false }: { light?: boolean })
     <div className="relative">
       <button onClick={handleOpen} aria-label="Notifications"
         className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-95"
-        style={{ backgroundColor: open ? '#C9A84C18' : 'transparent' }}>
-        <span style={{ fontSize: 18, color: bellColor }}>🔔</span>
+        style={{ backgroundColor: open ? '#C9A84C18' : 'transparent', color: bellColor }}>
+        <Icon name="bell" size={19} />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
             style={{ backgroundColor: '#E5484D', color: '#FFFFFF' }}>
@@ -186,7 +188,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
               <button onClick={enablePush} disabled={pushBusy}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-left border-b transition-colors"
                 style={{ borderColor: '#F2EFE9', backgroundColor: '#FAF8F3' }}>
-                <span style={{ color: '#C9A84C' }}>🔔</span>
+                <span style={{ color: '#C9A84C' }} className="flex items-center shrink-0"><Icon name="bell" size={16} /></span>
                 <span className="text-xs font-medium" style={{ color: '#7A7068' }}>
                   {pushBusy ? 'Activation…' : permission === 'denied'
                     ? 'Notifications bloquées — autorisez-les dans les réglages du navigateur'
@@ -198,8 +200,8 @@ export default function NotificationBell({ light = false }: { light?: boolean })
             {/* Liste */}
             <div className="max-h-[60vh] overflow-y-auto">
               {items.length === 0 ? (
-                <div className="px-4 py-10 text-center">
-                  <p className="text-2xl mb-2" style={{ color: '#C9A84C' }}>✦</p>
+                <div className="px-4 py-10 flex flex-col items-center text-center">
+                  <span className="mb-2" style={{ color: '#D4CEC4' }}><Icon name="bell" size={26} /></span>
                   <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune notification</p>
                 </div>
               ) : (
@@ -207,9 +209,9 @@ export default function NotificationBell({ light = false }: { light?: boolean })
                   <button key={n.id} onClick={() => markRead(n)}
                     className="w-full text-left flex gap-3 px-4 py-3 border-b transition-colors"
                     style={{ borderColor: '#F4F1EB', backgroundColor: n.read ? '#FFFFFF' : '#FBF7EC' }}>
-                    <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm"
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                       style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>
-                      {TYPE_ICON[n.type] ?? '•'}
+                      <Icon name={TYPE_ICON[n.type] ?? 'bell'} size={16} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">

@@ -10,6 +10,7 @@ import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
+import Icon from '@/components/Icon';
 
 // Incréments proposés pour une demande de temps supplémentaire (minutes).
 const EXTRA_TIME_OPTIONS = [15, 30, 45, 60];
@@ -374,7 +375,7 @@ export default function CleanerDashboard() {
       {/* Greeting */}
       <div className="mb-5 pt-2">
         <p className="text-sm" style={{ color: '#A8A09A' }}>{greeting},</p>
-        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{user.name.split(' ')[0]} ✦</h1>
+        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{user.name.split(' ')[0]}</h1>
       </div>
 
       {/* Filtre par date */}
@@ -446,8 +447,8 @@ export default function CleanerDashboard() {
       <h2 className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>{getPeriodLabel()}</h2>
 
       {filteredMissions.length === 0 ? (
-        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
+        <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="today" size={30} /></span>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission prévue</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>pour cette période</p>
           {outOfRangeCount > 0 && (

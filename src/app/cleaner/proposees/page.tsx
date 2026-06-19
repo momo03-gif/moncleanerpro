@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPendingMissionsDB, acceptMissionDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { formatDuration, formatHour } from '@/lib/format';
+import Icon from '@/components/Icon';
 
 const typeLabel: Record<string, string> = {
   checkout: 'Check-out', checkin: 'Check-in',
@@ -54,8 +55,8 @@ export default function ProposedMissionsPage() {
       </div>
 
       {visible.length === 0 ? (
-        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-2xl mb-3">✦</p>
+        <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="inbox" size={30} /></span>
           <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>Aucune mission disponible</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Revenez plus tard</p>
         </div>

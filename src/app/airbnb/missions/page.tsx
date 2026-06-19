@@ -8,6 +8,7 @@ import type { Apartment, Mission } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
+import Icon from '@/components/Icon';
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 const today = new Date().toISOString().split('T')[0];
@@ -268,8 +269,8 @@ export default function AirbnbMissionsPage() {
 
   if (submitted) return (
     <div className="p-5 flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>
-        <span className="text-xl">✦</span>
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+        <Icon name="check" size={24} />
       </div>
       <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Mission créée</h2>
       <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Elle sera assignée à un cleaner par l'équipe.</p>
@@ -417,8 +418,8 @@ export default function AirbnbMissionsPage() {
           </p>
 
           {visibleMissions.length === 0 ? (
-            <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-              <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
+            <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+              <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="missions" size={30} /></span>
               <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission sur cette période</p>
               {outOfRangeCount > 0 && allDates.length > 0 ? (
                 <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}

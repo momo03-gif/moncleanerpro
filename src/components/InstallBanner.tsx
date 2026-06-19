@@ -43,7 +43,7 @@ export default function InstallBanner() {
   // Android / Chrome: native install
   if (prompt) return (
     <div className="fixed bottom-20 left-4 right-4 z-50 rounded-2xl p-4 shadow-lg flex items-center gap-3" style={{ backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg" style={{ backgroundColor: '#C9A84C' }}>✦</div>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-lg" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>M</div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold" style={{ color: '#F5F5F5' }}>Installer l'app</p>
         <p className="text-xs" style={{ color: '#6A6058' }}>Accès rapide depuis votre écran</p>

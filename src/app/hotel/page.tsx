@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createHotelRequestDB, getHotelByUserId } from '@/lib/db';
 import type { AnnounceType } from '@/lib/types';
+import Icon from '@/components/Icon';
 
 const TYPES: { value: AnnounceType; label: string; desc: string }[] = [
   { value: 'menage', label: 'Ménage courant', desc: 'Nettoyage régulier des chambres' },
@@ -55,8 +56,8 @@ export default function HotelDemandePage() {
   if (submitted) return (
     <div className="p-5 flex flex-col items-center justify-center min-h-[60vh]">
       <div className="text-center">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>
-          <span className="text-xl">✦</span>
+        <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+          <Icon name="check" size={24} />
         </div>
         <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Annonce envoyée</h2>
         <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Vous serez notifié une fois validée.</p>

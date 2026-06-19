@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, redirectPathForRole } from '@/contexts/AuthContext';
+import Logo from '@/components/Logo';
 
 const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', color: '#F5F5F5', outline: 'none' };
 
@@ -34,12 +35,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm px-6">
 
         {/* Logo */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <span className="text-3xl font-bold" style={{ color: '#C9A84C' }}>✦</span>
-            <h1 className="text-2xl font-bold tracking-wide" style={{ color: '#F5F5F5' }}>MonCleanerPro</h1>
-          </div>
-          <p className="text-sm mt-1" style={{ color: '#5A5550' }}>Plateforme professionnelle de nettoyage</p>
+        <div className="mb-10 flex flex-col items-center text-center">
+          <Logo size={40} tone="dark" />
+          <p className="text-sm mt-3" style={{ color: '#5A5550' }}>Plateforme professionnelle de nettoyage</p>
         </div>
 
         {/* Login card */}

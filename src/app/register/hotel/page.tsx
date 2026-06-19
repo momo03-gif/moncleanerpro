@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerHotelDB } from '@/lib/db';
+import Logo from '@/components/Logo';
+import Icon from '@/components/Icon';
 
 const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', color: '#F5F5F5', outline: 'none' };
 
@@ -33,7 +35,7 @@ export default function RegisterHotelPage() {
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0D0D0D' }}>
       <div className="w-full max-w-sm px-6 text-center">
         <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>
-          <span className="text-xl">✦</span>
+          <Icon name="check" size={24} />
         </div>
         <h2 className="text-xl font-bold mb-2" style={{ color: '#F5F5F5' }}>Demande envoyée</h2>
         <p className="text-sm mb-6" style={{ color: '#6A6058' }}>Votre compte est en attente de validation. Vous serez notifié une fois activé.</p>
@@ -48,8 +50,8 @@ export default function RegisterHotelPage() {
     <div className="login-page min-h-screen flex items-center justify-center py-10" style={{ backgroundColor: '#0D0D0D' }}>
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
-          <span className="text-3xl font-bold" style={{ color: '#C9A84C' }}>✦</span>
-          <h1 className="text-xl font-bold mt-2 tracking-wide" style={{ color: '#F5F5F5' }}>Compte partenaire hôtel</h1>
+          <div className="flex justify-center mb-3"><Logo size={36} tone="dark" showWordmark={false} /></div>
+          <h1 className="text-xl font-bold tracking-wide" style={{ color: '#F5F5F5' }}>Compte partenaire hôtel</h1>
           <p className="text-sm mt-1" style={{ color: '#5A5550' }}>Votre compte sera activé après validation</p>
         </div>
 

@@ -7,6 +7,7 @@ import { getMissionsDB, getCompanyInfoDB, saveCompanyInfoDB, getInvoicesDB, save
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
+import Icon from '@/components/Icon';
 
 function partnerLabel(m: Mission): string {
   if (m.source === 'airbnb') return m.partnerName || 'Airbnb (sans partenaire)';
@@ -97,7 +98,7 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, paddingBottom: 26, borderBottom: '1px solid #ECE7DC' }}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <span style={{ fontSize: 22, color: '#C9A84C', lineHeight: 1 }}>✦</span>
+            <span style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#0D0D0D', color: '#C9A84C', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>M</span>
             <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '0.14em', color: '#0D0D0D' }}>MONCLEANERPRO</span>
           </div>
           <p style={{ margin: '7px 0 0 31px', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.34em', textTransform: 'uppercase', color: '#C9A84C' }}>Nettoyage Professionnel</p>
@@ -217,7 +218,7 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
           <p style={{ fontSize: 14.5, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Merci pour votre confiance.</p>
           <p style={{ fontSize: 10.5, color: '#A99F8C', margin: '4px 0 0' }}>L'équipe {companyName}</p>
         </div>
-        <span style={{ fontSize: 24, color: '#C9A84C' }}>✦</span>
+        <span style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: '#C9A84C', color: '#0D0D0D', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 15 }}>M</span>
       </div>
 
       {/* ── PIED DE PAGE ── */}
@@ -319,7 +320,7 @@ export default function FacturationPage() {
         <td style="padding:10px 12px;font-size:13px;color:#1A1A1A;font-weight:700;text-align:right;border-bottom:1px solid #F0EBE0">${money(l.amount)}</td></tr>`).join('');
     return `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid #ECE7DC;border-radius:16px;overflow:hidden">
       <div style="background:#0D0D0D;padding:26px 30px">
-        <div style="font-size:18px;font-weight:800;letter-spacing:0.12em;color:#FFFFFF"><span style="color:#C9A84C">✦</span> MONCLEANERPRO</div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:0.12em;color:#FFFFFF"><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:#C9A84C;color:#0D0D0D;font-weight:800;text-align:center;line-height:24px;font-size:13px;margin-right:6px;vertical-align:middle">M</span>MONCLEANERPRO</div>
         <div style="font-size:10px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:#C9A84C;margin-top:5px;margin-left:24px">Nettoyage Professionnel</div>
       </div>
       <div style="padding:28px 30px">
@@ -542,8 +543,8 @@ export default function FacturationPage() {
           from={from} to={to} lines={liveLines} total={total} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
       )}
       {tab === 'new' && (!partner || liveLines.length === 0) && (
-        <div className="rounded-2xl p-10 text-center border print-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-2xl mb-3" style={{ color: '#C9A84C' }}>✦</p>
+        <div className="rounded-2xl p-10 flex flex-col items-center text-center border print-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="invoice" size={30} /></span>
           <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Choisissez une période puis un partenaire</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>La facture des missions terminées s'affichera ici</p>
         </div>

@@ -5,6 +5,7 @@ import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
 } from '@/lib/db';
+import Icon from '@/components/Icon';
 
 type PartnerKind = 'hotel' | 'airbnb';
 interface PendingPartner {
@@ -59,8 +60,8 @@ export default function ComptesPage() {
       </div>
 
       {active.length === 0 && processed.length === 0 && (
-        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-2xl mb-3">✦</p>
+        <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="accounts" size={30} /></span>
           <p className="font-medium" style={{ color: '#1A1A1A' }}>Aucune demande en attente</p>
           <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Toutes les demandes ont été traitées</p>
         </div>
