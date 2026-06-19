@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleanerDB, updateMissionStatusDB, requestExtraTimeDB } from '@/lib/db';
+import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, requestExtraTimeDB } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import type { Mission, MissionStatus } from '@/lib/types';
+import type { Mission } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { formatDuration, formatHour } from '@/lib/format';
+import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 
@@ -68,17 +69,31 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   const [extraMinutes, setExtraMinutes] = useState(30);
   const [extraReason, setExtraReason] = useState('');
   const [extraError, setExtraError] = useState('');
+  const [geoError, setGeoError] = useState('');
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const canStart  = mission.status === 'accepted' || mission.status === 'validated' || mission.status === 'pending';
   const canFinish = mission.status === 'in_progress';
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
   const notesIsLong = extra.length > 120;
 
-  async function act(status: MissionStatus) {
-    setBusy(true);
-    await updateMissionStatusDB(mission.id, status);
-    onUpdate();
+  // Pointage : on capture une position approximative (best-effort) au démarrage
+  // et à la fin. Le cleaner ne voit ni chrono ni durée réelle.
+  async function start() {
+    setBusy(true); setGeoError('');
+    const pos = await getApproxPosition();
+    const res = await startMissionDB(mission.id, userId, pos);
     setBusy(false);
+    if (res.error) { setGeoError(res.error); return; }
+    onUpdate();
+  }
+
+  async function finish() {
+    setBusy(true); setGeoError('');
+    const pos = await getApproxPosition();
+    const res = await finishMissionDB(mission.id, userId, pos);
+    setBusy(false);
+    if (res.error) { setGeoError(res.error); return; }
+    onUpdate();
   }
 
   async function submitExtra() {
@@ -267,16 +282,19 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
 
       {/* Actions */}
       {(canStart || canFinish) && (
-        <div className="px-5 pb-5">
+        <div className="px-5 pb-5 space-y-2">
+          {geoError && (
+            <p className="text-xs px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{geoError}</p>
+          )}
           {canStart && (
-            <button onClick={() => act('in_progress')} disabled={busy}
+            <button onClick={start} disabled={busy}
               className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
               style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
               {busy ? '...' : 'Démarrer la mission'}
             </button>
           )}
           {canFinish && (
-            <button onClick={() => act('completed')} disabled={busy}
+            <button onClick={finish} disabled={busy}
               className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
               style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
               {busy ? '...' : '✓  Terminer la mission'}

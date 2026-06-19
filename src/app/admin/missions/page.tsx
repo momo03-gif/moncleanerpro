@@ -75,6 +75,12 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+// Heure (HH:mm) d'un horodatage de pointage, au fuseau Europe/Paris.
+function formatClock(iso: string | undefined): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+}
+
 // ── Encart « gain cleaner » calculé en direct ─────────────────────────────────
 function GainPreview({ gain, cleaner, minutes }: { gain: number; cleaner: any; minutes: string }) {
   const rate = cleaner?.hourly_rate ?? 0;
@@ -329,6 +335,49 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             )}
           </>
         )}
+
+        {/* Pointage : temps réel vs prévu (admin uniquement) */}
+        {mission.startedAt && (() => {
+          const planned = mission.missionDurationMinutes ?? 0;
+          const real = mission.actualDurationMinutes;
+          const ecart = real != null ? real - planned : null;
+          const ecartColor = ecart == null ? '#A8A09A' : ecart > 5 ? '#B85A50' : ecart < -5 ? '#5A8A6A' : '#7A7068';
+          return (
+            <div className="rounded-xl p-3" style={{ backgroundColor: '#F4F6FA', border: '1px solid #DfE3EC' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: '#5B6EF5' }}>⏱ Pointage</p>
+              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                <div>
+                  <p className="text-[11px]" style={{ color: '#A8A09A' }}>Début</p>
+                  <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatClock(mission.startedAt)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px]" style={{ color: '#A8A09A' }}>Fin</p>
+                  <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatClock(mission.endedAt)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px]" style={{ color: '#A8A09A' }}>Temps réel</p>
+                  <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{real != null ? formatDuration(real) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px]" style={{ color: '#A8A09A' }}>Temps prévu</p>
+                  <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatDuration(planned)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px]" style={{ color: '#A8A09A' }}>Écart</p>
+                  <p className="text-sm font-semibold" style={{ color: ecartColor }}>
+                    {ecart == null ? '—' : `${ecart > 0 ? '+' : ''}${ecart} min`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px]" style={{ color: '#A8A09A' }}>Localisation</p>
+                  <p className="text-sm font-medium" style={{ color: mission.endLat != null ? '#5A8A6A' : '#A8A09A' }}>
+                    {mission.startLat != null ? (mission.endLat != null ? 'Vérifiée' : 'Début') : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Demande de temps supplémentaire du cleaner */}
         {mission.extraTimeStatus === 'pending' && (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getMissionsDB, getCleaners } from '@/lib/db';
 import type { Mission } from '@/lib/types';
+import { formatDuration } from '@/lib/format';
 
 export default function StatsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -30,6 +31,32 @@ export default function StatsPage() {
     checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
     regular: 'Régulier', menage: 'Ménage', grand_menage: 'Grand ménage',
   };
+
+  // ── Pointage : temps réel vs prévu ──────────────────────────────────────────
+  const tracked = missions.filter(m => m.actualDurationMinutes != null);
+  const sumReal = tracked.reduce((s, m) => s + (m.actualDurationMinutes ?? 0), 0);
+  const sumPlanned = tracked.reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
+  const avgReal = tracked.length > 0 ? Math.round(sumReal / tracked.length) : 0;
+  const avgPlanned = tracked.length > 0 ? Math.round(sumPlanned / tracked.length) : 0;
+
+  // Moyenne réelle par appartement (nom de propriété).
+  const byApt = new Map<string, { sum: number; n: number }>();
+  tracked.forEach(m => {
+    const key = m.property || 'Sans nom';
+    const e = byApt.get(key) ?? { sum: 0, n: 0 };
+    e.sum += m.actualDurationMinutes ?? 0; e.n += 1;
+    byApt.set(key, e);
+  });
+  const aptAverages = Array.from(byApt.entries())
+    .map(([name, e]) => ({ name, avg: Math.round(e.sum / e.n), n: e.n }))
+    .sort((a, b) => b.n - a.n).slice(0, 8);
+
+  // Moyenne réelle par cleaner.
+  const cleanerAverages = cleaners.map(c => {
+    const ms = tracked.filter(m => m.cleanerId === c.id);
+    const sum = ms.reduce((s, m) => s + (m.actualDurationMinutes ?? 0), 0);
+    return { name: c.name, avg: ms.length > 0 ? Math.round(sum / ms.length) : 0, n: ms.length };
+  }).filter(c => c.n > 0).sort((a, b) => b.n - a.n);
 
   const topCleaner = cleaners.length > 0 ? cleaners.reduce((best, c) => {
     const count = missions.filter(m => m.cleanerId === c.id && m.status === 'completed').length;
@@ -119,6 +146,64 @@ export default function StatsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Pointage : temps réel vs prévu ─────────────────────────────────── */}
+      <div className="mt-8">
+        <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Pointage — temps réel</h2>
+        <p className="text-sm mb-5" style={{ color: '#A8A09A' }}>D'après les missions démarrées et terminées par les cleaners.</p>
+
+        {tracked.length === 0 ? (
+          <div className="rounded-2xl p-6 border text-sm" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', color: '#A8A09A' }}>
+            Aucune mission pointée pour le moment.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: 'Missions pointées', value: String(tracked.length) },
+                { label: 'Temps réel moyen', value: formatDuration(avgReal) },
+                { label: 'Temps prévu moyen', value: formatDuration(avgPlanned) },
+                { label: 'Écart moyen', value: `${avgReal - avgPlanned > 0 ? '+' : ''}${avgReal - avgPlanned} min`, accent: true },
+              ].map(kpi => (
+                <div key={kpi.label} className="rounded-2xl p-5 border" style={{ backgroundColor: kpi.accent ? '#5B6EF512' : '#FFFFFF', borderColor: kpi.accent ? '#5B6EF540' : '#E8E4DC' }}>
+                  <p className="text-2xl font-bold" style={{ color: kpi.accent ? '#5B6EF5' : '#1A1A1A' }}>{kpi.value}</p>
+                  <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{kpi.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="rounded-2xl p-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+                <h3 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>Temps réel moyen par appartement</h3>
+                <div className="space-y-3">
+                  {aptAverages.map(a => (
+                    <div key={a.name} className="flex items-center justify-between">
+                      <span className="text-sm truncate pr-3" style={{ color: '#7A7068' }}>{a.name}</span>
+                      <span className="text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>{formatDuration(a.avg)} <span style={{ color: '#A8A09A', fontWeight: 400 }}>· {a.n}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-6 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+                <h3 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>Temps réel moyen par cleaner</h3>
+                {cleanerAverages.length === 0 ? (
+                  <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune donnée</p>
+                ) : (
+                  <div className="space-y-3">
+                    {cleanerAverages.map(c => (
+                      <div key={c.name} className="flex items-center justify-between">
+                        <span className="text-sm truncate pr-3" style={{ color: '#7A7068' }}>{c.name}</span>
+                        <span className="text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>{formatDuration(c.avg)} <span style={{ color: '#A8A09A', fontWeight: 400 }}>· {c.n}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

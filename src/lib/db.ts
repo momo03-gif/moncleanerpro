@@ -2,6 +2,7 @@ import { supabase, hashPassword } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role } from './types';
 import { computeCleanerGain } from './pay';
 import { clusterApartments } from './zones';
+import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, type GeoPoint } from './geo';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
   notifyMissionCancelled, notifyMissionCompleted,
@@ -386,6 +387,13 @@ function rowToMission(row: any): Mission {
     extraTimeReason: row.extra_time_reason ?? undefined,
     extraTimeStatus: row.extra_time_status ?? undefined,
     extraTimeRequestedAt: row.extra_time_requested_at ?? undefined,
+    startedAt: row.started_at ?? undefined,
+    endedAt: row.ended_at ?? undefined,
+    actualDurationMinutes: row.actual_duration_minutes != null ? Number(row.actual_duration_minutes) : undefined,
+    startLat: row.start_lat != null ? Number(row.start_lat) : undefined,
+    startLng: row.start_lng != null ? Number(row.start_lng) : undefined,
+    endLat: row.end_lat != null ? Number(row.end_lat) : undefined,
+    endLng: row.end_lng != null ? Number(row.end_lng) : undefined,
   };
 }
 
@@ -731,6 +739,67 @@ export async function resolveExtraTimeDB(
   const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
   if (error) return { error: error.message };
   await notifyExtraTimeResolved(missionId, true);
+  return { error: null };
+}
+
+// ── POINTAGE AUTOMATIQUE (début / fin + géolocalisation) ────────────────────────
+// Discret côté cleaner : il ne voit que « Démarrer » / « Terminer ». Le système
+// enregistre l'heure et UNE position à chaque étape (pas de suivi continu), calcule
+// la durée réelle à la fin et vérifie la proximité début ↔ fin. Données réservées
+// à l'admin (temps réel, écart, statistiques).
+
+// Démarrage : horodatage + statut « en cours » + position de départ (best-effort).
+export async function startMissionDB(
+  missionId: string, userId: string, coords?: GeoPoint | null,
+): Promise<{ error: string | null }> {
+  const cleanerTableId = await resolveToCleanerTableId(userId);
+  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
+
+  const patch: Record<string, unknown> = {
+    status: 'inprogress',
+    started_at: new Date().toISOString(),
+  };
+  if (coords) { patch.start_lat = coords.lat; patch.start_lng = coords.lng; }
+
+  const { data, error } = await supabase.from('missions').update(patch)
+    .eq('id', missionId).eq('cleaner_id', cleanerTableId)
+    .not('status', 'in', '(done,cancelled)').select('id');
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: 'Action impossible sur cette mission.' };
+  return { error: null };
+}
+
+// Fin : vérifie la proximité (si les deux positions existent), calcule la durée
+// réelle, horodate la fin et clôture la mission. Renvoie tooFar si trop éloigné.
+export async function finishMissionDB(
+  missionId: string, userId: string, coords?: GeoPoint | null,
+): Promise<{ error: string | null; tooFar?: boolean }> {
+  const cleanerTableId = await resolveToCleanerTableId(userId);
+  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
+
+  const { data: m } = await supabase.from('missions')
+    .select('started_at, start_lat, start_lng, cleaner_id, status')
+    .eq('id', missionId).single();
+  if (!m || m.cleaner_id !== cleanerTableId) return { error: 'Mission introuvable.' };
+  if (m.status === 'done' || m.status === 'cancelled') return { error: 'Mission déjà clôturée.' };
+
+  // Contrôle de proximité — uniquement si on dispose des deux positions.
+  if (coords && m.start_lat != null && m.start_lng != null) {
+    const d = distanceMeters({ lat: Number(m.start_lat), lng: Number(m.start_lng) }, coords);
+    if (d > TRACKING_TOLERANCE_METERS) return { error: PROXIMITY_ERROR, tooFar: true };
+  }
+
+  const now = new Date();
+  const patch: Record<string, unknown> = { status: 'done', ended_at: now.toISOString() };
+  if (m.started_at) {
+    const mins = Math.max(0, Math.round((now.getTime() - new Date(m.started_at).getTime()) / 60000));
+    patch.actual_duration_minutes = mins;
+  }
+  if (coords) { patch.end_lat = coords.lat; patch.end_lng = coords.lng; }
+
+  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
+  if (error) return { error: error.message };
+  await notifyMissionCompleted(missionId);
   return { error: null };
 }
 

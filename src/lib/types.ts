@@ -59,6 +59,14 @@ export interface Mission {
   extraTimeReason?: string;
   extraTimeStatus?: ExtraTimeStatus;
   extraTimeRequestedAt?: string;
+  // Pointage automatique (admin uniquement). Le cleaner ne voit jamais ces champs.
+  startedAt?: string;
+  endedAt?: string;
+  actualDurationMinutes?: number;
+  startLat?: number;
+  startLng?: number;
+  endLat?: number;
+  endLng?: number;
 }
 
 // ── Photos avant/après des missions (références ; images dans Storage) ──────────
