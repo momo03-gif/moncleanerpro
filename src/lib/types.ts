@@ -53,7 +53,29 @@ export interface Mission {
   nextArrivalTime?: string;
   // Horodatage de création — sert de proxy pour l'ordre d'attribution des missions.
   createdAt?: string;
+  // Demande de temps supplémentaire (cleaner → admin). Indépendant de la durée payée
+  // tant que l'admin n'a pas approuvé.
+  extraTimeMinutes?: number;
+  extraTimeReason?: string;
+  extraTimeStatus?: ExtraTimeStatus;
+  extraTimeRequestedAt?: string;
 }
+
+// ── Photos avant/après des missions (références ; images dans Storage) ──────────
+export type MissionPhotoKind = 'before' | 'after';
+
+export interface MissionPhoto {
+  id: string;
+  missionId: string;
+  kind: MissionPhotoKind;
+  url: string;
+  storagePath: string;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
+// État d'une demande de temps supplémentaire faite par le cleaner.
+export type ExtraTimeStatus = 'pending' | 'approved' | 'refused';
 
 export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed';
 export type AnnounceType = 'menage' | 'checkin' | 'checkout' | 'grand_menage';

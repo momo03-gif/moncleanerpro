@@ -5,6 +5,7 @@ import { clusterApartments } from './zones';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
   notifyMissionCancelled, notifyMissionCompleted,
+  notifyExtraTimeRequested, notifyExtraTimeResolved,
 } from './notifications';
 
 // ── VERROUILLAGE DES MISSIONS ───────────────────────────────────────────────
@@ -381,6 +382,10 @@ function rowToMission(row: any): Mission {
     nextArrival: row.next_arrival ?? undefined,
     nextArrivalTime: row.next_arrival_time ? trimTime(row.next_arrival_time) : undefined,
     createdAt: row.created_at ?? undefined,
+    extraTimeMinutes: row.extra_time_minutes != null ? Number(row.extra_time_minutes) : undefined,
+    extraTimeReason: row.extra_time_reason ?? undefined,
+    extraTimeStatus: row.extra_time_status ?? undefined,
+    extraTimeRequestedAt: row.extra_time_requested_at ?? undefined,
   };
 }
 
@@ -646,6 +651,87 @@ export async function assignCleanerToMissionsDB(missionIds: string[], cleanerId:
   for (const id of missionIds) {
     await assignCleanerToMissionDB(id, cleanerId, cleanerName);
   }
+}
+
+// ── TEMPS SUPPLÉMENTAIRE (cleaner → admin) ──────────────────────────────────────
+// Chaque ménage a une durée définie. Si l'appartement est très sale (photos « avant »
+// à l'appui), le cleaner peut demander du temps en plus. La demande reste « pending »
+// jusqu'à décision de l'admin : à l'approbation, la durée de la mission est augmentée
+// et le gain cleaner recalculé ; au refus, la durée ne bouge pas.
+
+// Demande faite par le cleaner connecté (userId = users.id).
+export async function requestExtraTimeDB(params: {
+  missionId: string; minutes: number; reason?: string; userId: string;
+}): Promise<{ error: string | null }> {
+  const minutes = Math.max(0, Math.round(Number(params.minutes) || 0));
+  if (minutes <= 0) return { error: 'Durée supplémentaire invalide.' };
+
+  // Le cleaner ne peut agir que sur sa propre mission, non clôturée.
+  const cleanerTableId = await resolveToCleanerTableId(params.userId);
+  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
+
+  const { data, error } = await supabase
+    .from('missions')
+    .update({
+      extra_time_minutes: minutes,
+      extra_time_reason: params.reason || null,
+      extra_time_status: 'pending',
+      extra_time_requested_at: new Date().toISOString(),
+    })
+    .eq('id', params.missionId)
+    .eq('cleaner_id', cleanerTableId)
+    .not('status', 'in', '(done,cancelled)')
+    .select('id');
+
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: 'Demande impossible sur cette mission.' };
+
+  await notifyExtraTimeRequested(params.missionId, minutes);
+  return { error: null };
+}
+
+// Décision admin : approuver (ajoute le temps + recalcule le gain) ou refuser.
+export async function resolveExtraTimeDB(
+  missionId: string,
+  approve: boolean,
+  actor: MissionActor,
+): Promise<{ error: string | null }> {
+  if (actor.role !== 'admin') return { error: "Action réservée à l'administrateur." };
+
+  const { data: m } = await supabase
+    .from('missions')
+    .select('cleaner_id, mission_duration_minutes, extra_time_minutes, extra_time_status')
+    .eq('id', missionId).single();
+  if (!m) return { error: 'Mission introuvable.' };
+  if (m.extra_time_status !== 'pending') return { error: 'Aucune demande en attente.' };
+
+  if (!approve) {
+    const { error } = await supabase.from('missions')
+      .update({ extra_time_status: 'refused' }).eq('id', missionId);
+    if (error) return { error: error.message };
+    await notifyExtraTimeResolved(missionId, false);
+    return { error: null };
+  }
+
+  // Approbation : la durée payée augmente du temps demandé, gain recalculé.
+  const extra = Math.max(0, Math.round(Number(m.extra_time_minutes) || 0));
+  const newMinutes = (Number(m.mission_duration_minutes) || 0) + extra;
+  const patch: Record<string, unknown> = {
+    extra_time_status: 'approved',
+    mission_duration_minutes: newMinutes,
+    hours_worked: Math.round((newMinutes / 60) * 100) / 100,
+  };
+  if (m.cleaner_id) {
+    const { data: cleaner } = await supabase.from('cleaners')
+      .select('hourly_rate').eq('id', m.cleaner_id).single();
+    const rate = Number(cleaner?.hourly_rate) || 0;
+    patch.cleaner_gain = computeCleanerGain(rate, newMinutes);
+    patch.cleaner_hourly_rate_snapshot = rate;
+  }
+  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
+  if (error) return { error: error.message };
+  await notifyExtraTimeResolved(missionId, true);
+  return { error: null };
 }
 
 // ── MODIFICATION / SUPPRESSION SÉCURISÉES ──────────────────────────────────────

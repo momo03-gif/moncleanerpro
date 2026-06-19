@@ -182,6 +182,36 @@ export async function notifyMissionCompleted(missionId: string) {
   } catch (e) { console.error('notifyMissionCompleted:', e); }
 }
 
+// F. Le cleaner demande du temps supplémentaire → admin
+export async function notifyExtraTimeRequested(missionId: string, minutes: number) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx) return;
+    const admins = await adminUserIds();
+    const message = `${ctx.cleanerName ?? 'Un cleaner'} demande +${minutes} min pour ${ctx.place} (${fmtDate(ctx.date)}).`;
+    await dispatch(admins.map(id => ({
+      userId: id, role: 'admin' as const,
+      title: 'Demande de temps', message, type: 'extra_time_requested', missionId,
+    })));
+  } catch (e) { console.error('notifyExtraTimeRequested:', e); }
+}
+
+// G. L'admin approuve / refuse la demande → cleaner
+export async function notifyExtraTimeResolved(missionId: string, approved: boolean) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx || !ctx.cleanerUserId) return;
+    const message = approved
+      ? `Votre demande de temps supplémentaire pour ${ctx.place} a été acceptée.`
+      : `Votre demande de temps supplémentaire pour ${ctx.place} a été refusée.`;
+    await dispatch([{
+      userId: ctx.cleanerUserId, role: 'cleaner',
+      title: approved ? 'Temps accordé' : 'Temps refusé',
+      message, type: 'extra_time_resolved', missionId,
+    }]);
+  } catch (e) { console.error('notifyExtraTimeResolved:', e); }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  CLOCHE IN-APP (lecture / statut lu)
 // ════════════════════════════════════════════════════════════════════════════

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendPushToUser } from '@/lib/webpush';
+import { deleteExpiredMissionPhotosDB } from '@/lib/missionPhotos';
 
 export const runtime = 'nodejs';
 
@@ -60,5 +61,14 @@ export async function GET(req: NextRequest) {
     results.push({ cleaner: c.name, count: n });
   }
 
-  return NextResponse.json({ ok: true, when, date, notified: results.length, results });
+  // Purge quotidienne des photos expirées, branchée sur le run « today » pour
+  // rester dans la limite de 2 crons de l'offre gratuite Vercel. Best-effort :
+  // un échec de purge ne doit pas casser l'envoi des rappels.
+  let photosDeleted = 0;
+  if (when === 'today') {
+    try { photosDeleted = (await deleteExpiredMissionPhotosDB()).deleted; }
+    catch (e) { console.error('cleanup photos (piggyback):', e); }
+  }
+
+  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted });
 }

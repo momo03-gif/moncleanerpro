@@ -6,7 +6,7 @@ import {
   createMissionDB, createMissionsBatchDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
-  updateMissionDB, deleteMissionDB, isMissionLocked,
+  updateMissionDB, deleteMissionDB, isMissionLocked, resolveExtraTimeDB,
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -16,6 +16,7 @@ import { groupMissionsByCleaner } from '@/lib/missionOrder';
 import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
+import MissionPhotos from '@/components/MissionPhotos';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 
@@ -176,6 +177,15 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     setBusy(false);
   }
 
+  async function resolveExtra(approve: boolean) {
+    if (!user) return;
+    setBusy(true); setActionError('');
+    const res = await resolveExtraTimeDB(mission.id, approve, { id: user.id, role: 'admin' });
+    setBusy(false);
+    if (res.error) { setActionError(res.error); return; }
+    onRefresh();
+  }
+
   const isTerminal = mission.status === 'completed' || mission.status === 'cancelled';
   const source = mission.source ?? 'hotel';
 
@@ -319,6 +329,39 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             )}
           </>
         )}
+
+        {/* Demande de temps supplémentaire du cleaner */}
+        {mission.extraTimeStatus === 'pending' && (
+          <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: '#C9A84C12', border: '1px solid #E7D9A8' }}>
+            <p className="text-xs font-semibold" style={{ color: '#C48A2A' }}>
+              ⏱ Demande de +{mission.extraTimeMinutes} min
+            </p>
+            {mission.extraTimeReason && (
+              <p className="text-xs" style={{ color: '#7A7068' }}>« {mission.extraTimeReason} »</p>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => resolveExtra(true)} disabled={busy}
+                className="flex-1 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+                style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
+                ✓ Accorder
+              </button>
+              <button onClick={() => resolveExtra(false)} disabled={busy}
+                className="flex-1 py-2 rounded-lg text-xs font-semibold border disabled:opacity-50"
+                style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
+                Refuser
+              </button>
+            </div>
+          </div>
+        )}
+        {mission.extraTimeStatus === 'approved' && (
+          <p className="text-xs" style={{ color: '#5A8A6A' }}>⏱ Temps supplémentaire accordé (+{mission.extraTimeMinutes} min, inclus dans la durée).</p>
+        )}
+        {mission.extraTimeStatus === 'refused' && (
+          <p className="text-xs" style={{ color: '#A8A09A' }}>⏱ Demande de temps refusée.</p>
+        )}
+
+        {/* Photos avant/après (consultation, zoom, téléchargement) */}
+        <MissionPhotos missionId={mission.id} mode="viewer" />
       </div>
 
       {/* ── Actions */}

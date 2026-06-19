@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleanerDB, updateMissionStatusDB } from '@/lib/db';
+import { getMissionsForCleanerDB, updateMissionStatusDB, requestExtraTimeDB } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Mission, MissionStatus } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { formatDuration, formatHour } from '@/lib/format';
 import MapsModal from '@/components/MapsModal';
+import MissionPhotos from '@/components/MissionPhotos';
+
+// Incréments proposés pour une demande de temps supplémentaire (minutes).
+const EXTRA_TIME_OPTIONS = [15, 30, 45, 60];
 
 const TYPE_LABEL: Record<string, string> = {
   checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
@@ -56,10 +60,14 @@ function getWeekBounds() {
 
 // ── Carte mission ─────────────────────────────────────────────────────────────
 
-function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => void }) {
+function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: string; onUpdate: () => void }) {
   const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [extraMinutes, setExtraMinutes] = useState(30);
+  const [extraReason, setExtraReason] = useState('');
+  const [extraError, setExtraError] = useState('');
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const canStart  = mission.status === 'accepted' || mission.status === 'validated' || mission.status === 'pending';
   const canFinish = mission.status === 'in_progress';
@@ -72,6 +80,17 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
     onUpdate();
     setBusy(false);
   }
+
+  async function submitExtra() {
+    setBusy(true); setExtraError('');
+    const res = await requestExtraTimeDB({ missionId: mission.id, minutes: extraMinutes, reason: extraReason, userId });
+    setBusy(false);
+    if (res.error) { setExtraError(res.error); return; }
+    setExtraOpen(false); setExtraReason('');
+    onUpdate();
+  }
+
+  const extraStatus = mission.extraTimeStatus;
 
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
@@ -186,6 +205,65 @@ function MissionCard({ mission, onUpdate }: { mission: Mission; onUpdate: () => 
           </>
         )}
       </div>
+
+      {/* Photos avant/après + demande de temps supplémentaire */}
+      {mission.status !== 'cancelled' && (
+        <div className="px-5 pb-4 space-y-3">
+          <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
+
+          {/* Temps supplémentaire : utile si l'appartement est très sale (photos avant). */}
+          {extraStatus === 'pending' ? (
+            <div className="px-3 py-2.5 rounded-xl text-xs" style={{ backgroundColor: '#C9A84C15', color: '#C48A2A' }}>
+              Demande de +{mission.extraTimeMinutes} min envoyée — en attente de validation.
+            </div>
+          ) : extraStatus === 'approved' ? (
+            <div className="px-3 py-2.5 rounded-xl text-xs font-medium" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+              Temps supplémentaire accordé (+{mission.extraTimeMinutes} min).
+            </div>
+          ) : extraStatus === 'refused' ? (
+            <div className="px-3 py-2.5 rounded-xl text-xs" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>
+              Demande de temps supplémentaire refusée.
+            </div>
+          ) : !extraOpen ? (
+            <button onClick={() => setExtraOpen(true)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold border"
+              style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              ⏱ Demander plus de temps
+            </button>
+          ) : (
+            <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+              <p className="text-[11px]" style={{ color: '#7A7068' }}>
+                Appartement très sale ? Ajoutez des photos « avant » et demandez du temps en plus.
+              </p>
+              <div className="flex gap-1.5">
+                {EXTRA_TIME_OPTIONS.map(opt => (
+                  <button key={opt} onClick={() => setExtraMinutes(opt)}
+                    className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+                    style={{ backgroundColor: extraMinutes === opt ? '#C9A84C' : '#FFFFFF', color: extraMinutes === opt ? '#1A1A1A' : '#7A7068', border: '1px solid #E8E4DC' }}>
+                    +{opt}
+                  </button>
+                ))}
+              </div>
+              <input value={extraReason} onChange={e => setExtraReason(e.target.value)}
+                placeholder="Motif (facultatif)"
+                className="w-full px-3 py-2 rounded-lg text-sm border"
+                style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+              {extraError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{extraError}</p>}
+              <div className="flex gap-2">
+                <button onClick={submitExtra} disabled={busy}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  {busy ? '...' : `Demander +${extraMinutes} min`}
+                </button>
+                <button onClick={() => { setExtraOpen(false); setExtraError(''); }} disabled={busy}
+                  className="px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       {(canStart || canFinish) && (
@@ -363,7 +441,7 @@ export default function CleanerDashboard() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredMissions.map(m => <MissionCard key={m.id} mission={m} onUpdate={load} />)}
+          {filteredMissions.map(m => <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} />)}
         </div>
       )}
     </div>
