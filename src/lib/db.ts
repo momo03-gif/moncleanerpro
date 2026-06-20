@@ -2,6 +2,7 @@ import { supabase, hashPassword } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role } from './types';
 import { computeCleanerGain } from './pay';
 import { clusterApartments } from './zones';
+import { getBlockingFormationsDB } from './formation';
 import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, type GeoPoint } from './geo';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
@@ -383,6 +384,7 @@ function rowToMission(row: any): Mission {
     nextArrival: row.next_arrival ?? undefined,
     nextArrivalTime: row.next_arrival_time ? trimTime(row.next_arrival_time) : undefined,
     createdAt: row.created_at ?? undefined,
+    manualOrder: row.manual_order != null ? Number(row.manual_order) : undefined,
     extraTimeMinutes: row.extra_time_minutes != null ? Number(row.extra_time_minutes) : undefined,
     extraTimeReason: row.extra_time_reason ?? undefined,
     extraTimeStatus: row.extra_time_status ?? undefined,
@@ -419,13 +421,18 @@ export async function getMissionsForCleanerDB(userId: string): Promise<Mission[]
   // missions.cleaner_id is a FK to cleaners.id — resolve users.id → cleaners.id
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return [];
+  return getMissionsByCleanerTableIdDB(cleanerTableId);
+}
 
+// Missions d'un cleaner identifié par cleaners.id (pas users.id) — utilisé par le
+// moteur RH, qui raisonne directement en cleaners.id (= missions.cleaner_id).
+export async function getMissionsByCleanerTableIdDB(cleanerTableId: string): Promise<Mission[]> {
   const { data, error } = await supabase
     .from('missions')
     .select(MISSION_SELECT)
     .eq('cleaner_id', cleanerTableId)
     .order('date_from', { ascending: false });
-  if (error) console.error('getMissionsForCleanerDB:', error.code, error.message);
+  if (error) console.error('getMissionsByCleanerTableIdDB:', error.code, error.message);
   return (data ?? []).map(rowToMission);
 }
 
@@ -484,15 +491,24 @@ export async function createAirbnbMissionDB(fields: {
   return { error: null };
 }
 
-export async function acceptMissionDB(missionId: string, userId: string): Promise<void> {
+export async function acceptMissionDB(missionId: string, userId: string): Promise<{ error: string | null }> {
   // userId is users.id — resolve to cleaners.id (FK constraint)
   const { data: cleanerRow } = await supabase.from('cleaners').select('id, name').eq('user_id', userId).single();
-  if (!cleanerRow) return;
-  await supabase.from('missions').update({
+  if (!cleanerRow) return { error: 'Cleaner introuvable.' };
+
+  // Blocage formation (LOT 7bis) : une formation obligatoire « à faire » empêche
+  // d'accepter une nouvelle mission tant qu'elle n'est pas terminée.
+  const blocking = await getBlockingFormationsDB(cleanerRow.id);
+  if (blocking.length > 0) {
+    return { error: 'Termine ta formation obligatoire pour débloquer tes missions.' };
+  }
+
+  const { error } = await supabase.from('missions').update({
     cleaner_id: cleanerRow.id,
     cleaner_name: cleanerRow.name,
     status: 'assigned',
   }).eq('id', missionId);
+  return { error: error?.message ?? null };
 }
 
 export async function createMissionDB(fields: {
@@ -653,6 +669,14 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
   await notifyCleanerNewMission(missionId);
 }
 
+// Ordre manuel des missions (par cleaner) fixé par l'admin. On persiste le rang
+// `manual_order` de chaque mission ; le tri partagé (missionOrder.ts) l'applique
+// à date égale, côté admin ET côté cleaner.
+export async function updateMissionsOrderDB(orders: { id: string; order: number }[]): Promise<void> {
+  await Promise.all(orders.map(o =>
+    supabase.from('missions').update({ manual_order: o.order }).eq('id', o.id)));
+}
+
 // Assignation groupée d'un même cleaner à plusieurs missions (tournée par zone).
 // Réutilise la logique unitaire → le gain de chaque mission est recalculé.
 export async function assignCleanerToMissionsDB(missionIds: string[], cleanerId: string, cleanerName: string): Promise<void> {
@@ -800,6 +824,27 @@ export async function finishMissionDB(
   const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
   if (error) return { error: error.message };
   await notifyMissionCompleted(missionId);
+  return { error: null };
+}
+
+// Désistement du cleaner : il renonce à SA mission non clôturée → statut 'annulée'
+// (DB 'cancelled'), visible côté admin (liste missions + notification). Garde
+// atomique : impossible sur une mission déjà terminée/annulée.
+export async function withdrawMissionDB(
+  missionId: string, userId: string,
+): Promise<{ error: string | null }> {
+  const cleanerTableId = await resolveToCleanerTableId(userId);
+  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
+
+  const { data, error } = await supabase.from('missions')
+    .update({ status: 'cancelled' })
+    .eq('id', missionId).eq('cleaner_id', cleanerTableId)
+    .not('status', 'in', '(done,cancelled)').select('id');
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: 'Désistement impossible sur cette mission.' };
+
+  // Notifie l'admin du désistement (réutilise la notif d'annulation existante).
+  await notifyMissionCancelled(missionId, 'cleaner', userId);
   return { error: null };
 }
 
@@ -1113,6 +1158,22 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
 
 export async function refuseRequestDB(id: string) {
   await supabase.from('hotel_requests').update({ status: 'refused' }).eq('id', id);
+}
+
+// Classement mensuel par nombre de missions terminées — AGRÉGAT SANS MONTANT.
+// Ne sélectionne ni price ni cleaner_gain : sûr à exposer côté cleaner (LOT 6).
+export async function getMonthlyRankingDB(period: string): Promise<{ cleanerId: string; name: string; count: number }[]> {
+  const { data, error } = await supabase
+    .from('missions').select('cleaner_id, status, date_from, cleaners(name)')
+    .eq('status', 'done').like('date_from', `${period}%`);
+  if (error) { console.error('getMonthlyRankingDB:', error.code, error.message); return []; }
+  const map = new Map<string, { name: string; count: number }>();
+  (data ?? []).forEach((r: any) => {
+    if (!r.cleaner_id) return;
+    const e = map.get(r.cleaner_id) ?? { name: r.cleaners?.name ?? 'Cleaner', count: 0 };
+    e.count += 1; map.set(r.cleaner_id, e);
+  });
+  return Array.from(map.entries()).map(([cleanerId, v]) => ({ cleanerId, ...v })).sort((a, b) => b.count - a.count);
 }
 
 // ── HOTELS / ACCOUNTS ─────────────────────────────────────────────────────────

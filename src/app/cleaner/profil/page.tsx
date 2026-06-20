@@ -6,6 +6,7 @@ import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, upd
 import type { Mission } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import Icon from '@/components/Icon';
+import MotivationPanel from './MotivationPanel';
 
 const AVAIL_STATUSES = [
   { value: 'available', label: 'Disponible',  color: '#5A8A6A' },
@@ -110,6 +111,9 @@ export default function CleanerProfil() {
           ))}
         </div>
       </div>
+
+      {/* ── Badges, niveau & classement (motivation) */}
+      <MotivationPanel userId={user.id} userName={user.name} />
 
       {/* ── Disponibilité (boutons cliquables) */}
       <div className="rounded-2xl p-5 border mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>

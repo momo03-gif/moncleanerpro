@@ -2,17 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { getMissionsDB, getCleaners } from '@/lib/db';
+import { getDepensesDB, type Depense } from '@/lib/depensesApi';
 import type { Mission } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
+import RhPerfPanel from './RhPerfPanel';
 
 export default function StatsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
+  const [depenses, setDepenses] = useState<Depense[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getMissionsDB(), getCleaners()]).then(([m, c]) => {
-      setMissions(m); setCleaners(c); setLoading(false);
+    Promise.all([getMissionsDB(), getCleaners(), getDepensesDB()]).then(([m, c, d]) => {
+      setMissions(m); setCleaners(c); setDepenses(d); setLoading(false);
     });
   }, []);
 
@@ -23,6 +26,11 @@ export default function StatsPage() {
   const pending = missions.filter(m => m.status === 'pending').length;
   const revenue = missions.filter(m => m.status === 'completed').reduce((s, m) => s + m.price, 0);
   const avgPrice = total > 0 ? Math.round(missions.reduce((s, m) => s + m.price, 0) / total) : 0;
+
+  // Bénéfice net tout compris = revenus − salaires cleaners − dépenses (TTC).
+  const salariesAll = missions.filter(m => m.status === 'completed').reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+  const depensesAll = depenses.reduce((s, d) => s + d.montantTtc, 0);
+  const netAllIn = Math.round((revenue - salariesAll - depensesAll) * 100) / 100;
 
   const byType: Record<string, number> = {};
   missions.forEach(m => { byType[m.type] = (byType[m.type] ?? 0) + 1; });
@@ -84,6 +92,15 @@ export default function StatsPage() {
             <p className="text-xs mt-1" style={{ color: kpi.accent ? '#7A6030' : '#A8A09A' }}>{kpi.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Bénéfice net tout compris (revenus − salaires − dépenses) */}
+      <div className="rounded-2xl p-5 border mb-8 flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
+        <div>
+          <p className="text-xs uppercase tracking-wider" style={{ color: '#7A7068' }}>Bénéfice net (tout compris)</p>
+          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Revenus {revenue}€ − salaires {Math.round(salariesAll)}€ − dépenses {Math.round(depensesAll)}€</p>
+        </div>
+        <p className="text-3xl font-bold" style={{ color: netAllIn >= 0 ? '#5A8A6A' : '#B85A50' }}>{netAllIn}€</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -205,6 +222,8 @@ export default function StatsPage() {
           </>
         )}
       </div>
+
+      <RhPerfPanel />
     </div>
   );
 }

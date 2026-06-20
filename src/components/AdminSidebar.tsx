@@ -15,9 +15,11 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/airbnb', label: 'Appartements', icon: 'building' },
   { href: '/admin/carte', label: 'Carte', icon: 'map' },
   { href: '/admin/comptes', label: 'Comptes', icon: 'accounts' },
-  { href: '/admin/facturation', label: 'Facturation', icon: 'invoice' },
+  { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
   { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
   { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
+  { href: '/admin/rh', label: 'Règles RH', icon: 'award' },
+  { href: '/admin/formation', label: 'Formation', icon: 'book' },
 ];
 
 export default function AdminSidebar() {

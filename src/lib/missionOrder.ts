@@ -26,6 +26,15 @@ export function compareMissionPriority(a: Mission, b: Mission): number {
   const byDate = (a.date ?? '').localeCompare(b.date ?? '');
   if (byDate !== 0) return byDate;
 
+  // Priorité 0 : ordre MANUEL fixé par l'admin (à date égale). Prime sur tout le
+  // reste — l'admin classe ses missions « comme il veut » et le cleaner voit le
+  // même ordre. Les missions sans rang manuel passent après celles qui en ont un.
+  const ma = a.manualOrder;
+  const mb = b.manualOrder;
+  if (ma != null && mb != null && ma !== mb) return ma - mb;
+  if (ma != null && mb == null) return -1;
+  if (ma == null && mb != null) return 1;
+
   // Priorité 1 : relocation le jour même en tête.
   const aTurn = isSameDayTurnover(a);
   const bTurn = isSameDayTurnover(b);

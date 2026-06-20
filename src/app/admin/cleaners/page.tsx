@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
+import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
+import Icon from '@/components/Icon';
 
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
@@ -244,6 +246,8 @@ export default function CleanersPage() {
                           Supprimer définitivement
                         </button>
                       </div>
+
+                      <IncidentPanel cleanerId={cleaner.id} />
                     </div>
                   )}
                 </div>
@@ -320,6 +324,93 @@ export default function CleanersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Incidents RH (admin) : signaler + historique. Réservé à l'admin. ────────────
+const INCIDENT_TYPES: RhIncidentType[] = ['retour_negatif', 'oubli_majeur', 'degradation_non_signalee'];
+
+function IncidentPanel({ cleanerId }: { cleanerId: string }) {
+  const [incidents, setIncidents] = useState<RhIncident[]>([]);
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<RhIncidentType>('retour_negatif');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setIncidents(await getIncidentsForCleanerDB(cleanerId));
+  }, [cleanerId]);
+  useEffect(() => { load(); }, [load]);
+
+  async function submit() {
+    setBusy(true);
+    await createIncidentDB({ cleanerId, type, note: note.trim() || undefined });
+    setNote(''); setOpen(false); setBusy(false);
+    await load();
+  }
+  async function remove(inc: RhIncident) {
+    await deleteIncidentDB(inc.id, cleanerId);
+    await load();
+  }
+
+  return (
+    <div className="pt-3 border-t" style={{ borderColor: '#F2EFE9' }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>
+          Incidents {incidents.length > 0 && <span style={{ color: '#B85A50' }}>· {incidents.length}</span>}
+        </p>
+        {!open && (
+          <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border"
+            style={{ borderColor: '#B85A5040', backgroundColor: '#B85A5010', color: '#B85A50' }}>
+            <Icon name="plus" size={14} /> Signaler un incident
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="rounded-xl p-3 mb-3 space-y-3" style={{ backgroundColor: '#F8F6F2' }}>
+          <div className="flex flex-wrap gap-1.5">
+            {INCIDENT_TYPES.map(t => (
+              <button key={t} onClick={() => setType(t)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{ backgroundColor: type === t ? '#B85A50' : '#FFFFFF', color: type === t ? '#FFFFFF' : '#7A7068', border: '1px solid #E8E4DC' }}>
+                {INCIDENT_LABEL[t]}
+              </button>
+            ))}
+          </div>
+          <input value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Note (facultatif)"
+            className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+          <div className="flex gap-2">
+            <button onClick={submit} disabled={busy}
+              className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+              style={{ backgroundColor: '#B85A50', color: '#FFFFFF' }}>
+              {busy ? '...' : 'Enregistrer l’incident'}
+            </button>
+            <button onClick={() => { setOpen(false); setNote(''); }}
+              className="px-4 py-2 rounded-lg text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
+      {incidents.length > 0 && (
+        <div className="space-y-1.5">
+          {incidents.map(inc => (
+            <div key={inc.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ backgroundColor: '#FAFAF8' }}>
+              <div className="min-w-0">
+                <p className="text-xs font-medium" style={{ color: '#1A1A1A' }}>{INCIDENT_LABEL[inc.type]}</p>
+                <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{inc.date}{inc.note ? ` · ${inc.note}` : ''}</p>
+              </div>
+              <button onClick={() => remove(inc)} style={{ color: '#A8A09A' }} aria-label="Supprimer l’incident">
+                <Icon name="close" size={14} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

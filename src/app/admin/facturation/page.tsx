@@ -8,6 +8,7 @@ import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/typ
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
+import DevisPanel from './DevisPanel';
 
 function partnerLabel(m: Mission): string {
   if (m.source === 'airbnb') return m.partnerName || 'Airbnb (sans partenaire)';
@@ -47,7 +48,9 @@ function money(n: number) {
 }
 
 // ── Document facture premium (imprimable), partagé live / historique ────────────
-function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount }: {
+// Réutilisé tel quel pour les DEVIS (LOT 8) via docLabel / validUntil — même
+// identité visuelle, aucune duplication du gabarit.
+export function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil }: {
   company: CompanyInfo;
   number: string; partnerLabel: string; partnerType?: string; status?: string;
   from: string; to: string;
@@ -55,6 +58,8 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
   total: number;
   editable?: boolean;
   onAmount?: (id: string, v: string) => void;
+  docLabel?: string;
+  validUntil?: string;
 }) {
   const [qrSvg, setQrSvg] = useState('');
 
@@ -109,12 +114,14 @@ function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, 
           </div>
         </div>
         <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
-          <p style={{ fontSize: 29, fontWeight: 300, letterSpacing: '0.22em', color: '#0D0D0D', margin: 0 }}>FACTURE</p>
+          <p style={{ fontSize: 29, fontWeight: 300, letterSpacing: '0.22em', color: '#0D0D0D', margin: 0 }}>{docLabel}</p>
           <p style={{ marginTop: 5, fontSize: 12, fontWeight: 700, color: '#C9A84C', letterSpacing: '0.04em' }}>{number}</p>
           <table style={{ marginLeft: 'auto', marginTop: 16, borderCollapse: 'collapse' }}>
             <tbody>
               <tr><td style={metaKey}>Émission</td><td style={metaVal}>{fmtDateFR(new Date().toISOString().split('T')[0])}</td></tr>
-              <tr><td style={metaKey}>Période</td><td style={metaVal}>{fmtDateFR(from)} – {fmtDateFR(to)}</td></tr>
+              {validUntil
+                ? <tr><td style={metaKey}>Validité</td><td style={metaVal}>{fmtDateFR(validUntil)}</td></tr>
+                : <tr><td style={metaKey}>Période</td><td style={metaVal}>{fmtDateFR(from)} – {fmtDateFR(to)}</td></tr>}
             </tbody>
           </table>
           <div style={{ marginTop: 13 }}>
@@ -236,7 +243,7 @@ export default function FacturationPage() {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState<'new' | 'history'>('new');
+  const [tab, setTab] = useState<'new' | 'history' | 'devis'>('new');
   const [viewing, setViewing] = useState<InvoiceRecord | null>(null);
 
   const init = monthBounds();
@@ -446,13 +453,15 @@ export default function FacturationPage() {
 
         {/* Onglets */}
         <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-          {([['new', 'Nouvelle facture'], ['history', `Historique (${invoices.length})`]] as const).map(([v, label]) => (
+          {([['new', 'Nouvelle facture'], ['history', `Historique (${invoices.length})`], ['devis', 'Devis']] as const).map(([v, label]) => (
             <button key={v} onClick={() => { setTab(v); setViewing(null); }} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
               style={{ backgroundColor: tab === v ? '#FFFFFF' : 'transparent', color: tab === v ? '#1A1A1A' : '#A8A09A', boxShadow: tab === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
               {label}
             </button>
           ))}
         </div>
+
+        {tab === 'devis' && <DevisPanel company={company} />}
 
         {/* ── NOUVELLE FACTURE : contrôles ── */}
         {tab === 'new' && (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, requestExtraTimeDB } from '@/lib/db';
+import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, requestExtraTimeDB, withdrawMissionDB } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Mission } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
@@ -92,6 +92,15 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     setBusy(true); setGeoError('');
     const pos = await getApproxPosition();
     const res = await finishMissionDB(mission.id, userId, pos);
+    setBusy(false);
+    if (res.error) { setGeoError(res.error); return; }
+    onUpdate();
+  }
+
+  async function withdraw() {
+    if (!confirm('Se désister de cette mission ? Elle sera annulée et l’administrateur en sera informé.')) return;
+    setBusy(true); setGeoError('');
+    const res = await withdrawMissionDB(mission.id, userId);
     setBusy(false);
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
@@ -301,6 +310,11 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
               {busy ? '...' : '✓  Terminer la mission'}
             </button>
           )}
+          <button onClick={withdraw} disabled={busy}
+            className="w-full py-2 rounded-xl text-xs font-medium disabled:opacity-50 transition-all"
+            style={{ color: '#B85A50' }}>
+            Se désister
+          </button>
         </div>
       )}
     </div>

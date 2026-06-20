@@ -9,7 +9,7 @@ export type IconName =
   | 'dashboard' | 'missions' | 'cleaners' | 'building' | 'map'
   | 'accounts' | 'invoice' | 'stats' | 'wallet'
   | 'today' | 'inbox' | 'user' | 'request' | 'history'
-  | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check';
+  | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -94,6 +94,18 @@ const PATHS: Record<IconName, React.ReactNode> = {
   </>),
   plus: (<><path d="M12 5v14M5 12h14" /></>),
   check: (<><path d="M20 6 9 17l-5-5" /></>),
+  award: (<>
+    <circle cx="12" cy="9" r="6" />
+    <path d="M8.5 13.5 7 21l5-3 5 3-1.5-7.5" />
+  </>),
+  book: (<>
+    <path d="M4 4.5A2 2 0 0 1 6 2.5h12a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z" />
+    <path d="M4 18.5a2 2 0 0 1 2-1.5h13" />
+  </>),
+  play: (<>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M10 8.5 16 12l-6 3.5z" />
+  </>),
   menu: (<><path d="M4 6h16M4 12h16M4 18h16" /></>),
   close: (<><path d="M6 6l12 12M18 6 6 18" /></>),
 };

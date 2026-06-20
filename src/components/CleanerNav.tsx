@@ -10,6 +10,7 @@ import Logo from '@/components/Logo';
 const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/cleaner', label: "Aujourd'hui", icon: 'today' },
   { href: '/cleaner/proposees', label: 'Proposées', icon: 'inbox' },
+  { href: '/cleaner/formation', label: 'Formation', icon: 'play' },
   { href: '/cleaner/profil', label: 'Profil', icon: 'user' },
 ];
 

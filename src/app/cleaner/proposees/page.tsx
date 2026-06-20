@@ -20,6 +20,7 @@ export default function ProposedMissionsPage() {
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [declined, setDeclined] = useState<Set<string>>(new Set());
   const [accepting, setAccepting] = useState<string | null>(null);
+  const [blockMsg, setBlockMsg] = useState('');
 
   const load = useCallback(async () => {
     const m = await getPendingMissionsDB();
@@ -32,9 +33,11 @@ export default function ProposedMissionsPage() {
   async function accept(id: string) {
     if (!user) return;
     setAccepting(id);
-    await acceptMissionDB(id, user.id);
-    setAccepted(prev => new Set(prev).add(id));
+    const res = await acceptMissionDB(id, user.id);
     setAccepting(null);
+    if (res.error) { setBlockMsg(res.error); return; }
+    setBlockMsg('');
+    setAccepted(prev => new Set(prev).add(id));
     // Reload to remove this mission from the list
     await load();
   }
@@ -53,6 +56,12 @@ export default function ProposedMissionsPage() {
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Missions proposées</h1>
         <p className="text-sm mt-1" style={{ color: '#9CA3AF' }}>{visible.length} disponible{visible.length > 1 ? 's' : ''}</p>
       </div>
+
+      {blockMsg && (
+        <div className="rounded-2xl px-4 py-3 mb-4 text-sm font-medium" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+          {blockMsg}
+        </div>
+      )}
 
       {visible.length === 0 ? (
         <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>

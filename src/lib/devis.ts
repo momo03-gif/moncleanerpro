@@ -1,0 +1,119 @@
+import { supabase } from './supabase';
+import { saveInvoiceDB } from './db';
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  Module Devis + Grille tarifaire (LOT 8 / 8A / 8B) — couche d'accès données.
+//  Réutilise saveInvoiceDB pour la conversion devis → facture (pas de duplication).
+// ══════════════════════════════════════════════════════════════════════════════
+
+export type TarifUnite = 'forfait' | 'm2' | 'heure' | 'piece';
+export const UNITE_LABEL: Record<TarifUnite, string> = { forfait: 'Forfait', m2: 'au m²', heure: 'par heure', piece: 'par pièce' };
+
+export interface Tarif { id: string; nom: string; unite: TarifUnite; prix: number; actif: boolean; }
+export interface DevisLine { nom: string; quantite: number; prix_unitaire: number; total: number; }
+export type DevisStatus = 'brouillon' | 'envoye' | 'accepte' | 'refuse';
+export interface Devis {
+  id: string; number: string; partnerLabel: string; partnerType?: string;
+  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  lines: DevisLine[]; total: number; status: DevisStatus; validUntil?: string;
+  publicToken: string; source: 'admin' | 'public'; invoiceId?: string; createdAt?: string;
+}
+
+const toTarif = (r: any): Tarif => ({ id: r.id, nom: r.nom_prestation, unite: r.unite, prix: Number(r.prix_unitaire) || 0, actif: !!r.actif });
+const toDevis = (r: any): Devis => ({
+  id: r.id, number: r.number ?? '', partnerLabel: r.partner_label ?? '', partnerType: r.partner_type ?? undefined,
+  clientName: r.client_name ?? undefined, clientEmail: r.client_email ?? undefined, clientAddress: r.client_address ?? undefined,
+  description: r.description ?? undefined, lines: Array.isArray(r.lines) ? r.lines : [], total: Number(r.total) || 0,
+  status: r.status ?? 'brouillon', validUntil: r.valid_until ?? undefined, publicToken: r.public_token,
+  source: r.source ?? 'admin', invoiceId: r.invoice_id ?? undefined, createdAt: r.created_at ?? undefined,
+});
+
+// ── TARIFS ────────────────────────────────────────────────────────────────────
+export async function getTarifsDB(activeOnly = false): Promise<Tarif[]> {
+  let q = supabase.from('tarifs').select('*').order('created_at');
+  if (activeOnly) q = q.eq('actif', true);
+  const { data, error } = await q;
+  if (error) { console.error('getTarifsDB:', error.code, error.message); return []; }
+  return (data ?? []).map(toTarif);
+}
+export async function createTarifDB(f: { nom: string; unite: TarifUnite; prix: number }) {
+  const { error } = await supabase.from('tarifs').insert({ nom_prestation: f.nom, unite: f.unite, prix_unitaire: f.prix });
+  return { error: error?.message ?? null };
+}
+export async function updateTarifDB(id: string, f: { nom?: string; unite?: TarifUnite; prix?: number; actif?: boolean }) {
+  const patch: Record<string, unknown> = {};
+  if (f.nom !== undefined) patch.nom_prestation = f.nom;
+  if (f.unite !== undefined) patch.unite = f.unite;
+  if (f.prix !== undefined) patch.prix_unitaire = f.prix;
+  if (f.actif !== undefined) patch.actif = f.actif;
+  const { error } = await supabase.from('tarifs').update(patch).eq('id', id);
+  return { error: error?.message ?? null };
+}
+export async function deleteTarifDB(id: string) {
+  const { error } = await supabase.from('tarifs').delete().eq('id', id);
+  return { error: error?.message ?? null };
+}
+
+// ── DEVIS ─────────────────────────────────────────────────────────────────────
+export async function getDevisListDB(): Promise<Devis[]> {
+  const { data, error } = await supabase.from('devis').select('*').order('created_at', { ascending: false });
+  if (error) { console.error('getDevisListDB:', error.code, error.message); return []; }
+  return (data ?? []).map(toDevis);
+}
+export async function getDevisByTokenDB(token: string): Promise<Devis | null> {
+  const { data } = await supabase.from('devis').select('*').eq('public_token', token).single();
+  return data ? toDevis(data) : null;
+}
+
+// Numéro auto DEV-AAAA-0001 (incrément annuel).
+export async function nextDevisNumberDB(): Promise<string> {
+  const year = new Date().getFullYear();
+  const { data } = await supabase.from('devis').select('number').like('number', `DEV-${year}-%`);
+  const max = (data ?? []).reduce((m, r: any) => {
+    const n = parseInt(String(r.number).split('-')[2] ?? '0', 10);
+    return Number.isFinite(n) && n > m ? n : m;
+  }, 0);
+  return `DEV-${year}-${String(max + 1).padStart(4, '0')}`;
+}
+
+export async function saveDevisDB(f: {
+  number: string; partnerLabel: string; partnerType?: string;
+  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  lines: DevisLine[]; total: number; validUntil?: string; status?: DevisStatus; source?: 'admin' | 'public';
+}): Promise<{ error: string | null; id: string | null }> {
+  const { data, error } = await supabase.from('devis').insert({
+    number: f.number, partner_label: f.partnerLabel, partner_type: f.partnerType || null,
+    client_name: f.clientName || null, client_email: f.clientEmail || null, client_address: f.clientAddress || null,
+    description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
+    status: f.status ?? 'brouillon', source: f.source ?? 'admin',
+  }).select('id').single();
+  if (error) { console.error('saveDevisDB:', error.code, error.message); return { error: error.message, id: null }; }
+  return { error: null, id: data?.id ?? null };
+}
+
+export async function setDevisStatusDB(id: string, status: DevisStatus): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('devis').update({ status }).eq('id', id);
+  return { error: error?.message ?? null };
+}
+export async function setDevisStatusByTokenDB(token: string, status: DevisStatus): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('devis').update({ status }).eq('public_token', token);
+  return { error: error?.message ?? null };
+}
+
+// Conversion d'un devis ACCEPTÉ en facture (réutilise saveInvoiceDB → table invoices).
+export async function convertDevisToInvoiceDB(devis: Devis): Promise<{ error: string | null; number: string | null }> {
+  const today = new Date();
+  const invoiceNo = `FAC-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}-${(devis.partnerLabel || 'DEVIS').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() || 'XXXX'}`;
+  const dateStr = today.toISOString().split('T')[0];
+  const res = await saveInvoiceDB({
+    number: invoiceNo,
+    partnerLabel: devis.partnerLabel || devis.clientName || 'Client',
+    partnerType: devis.partnerType || 'devis',
+    periodFrom: dateStr, periodTo: dateStr,
+    total: devis.total,
+    lines: devis.lines.map(l => ({ date: dateStr, label: l.nom, type: 'devis', amount: l.total, unitPrice: l.prix_unitaire })),
+  });
+  if (res.error) return { error: res.error, number: null };
+  await supabase.from('devis').update({ status: 'accepte' }).eq('id', devis.id);
+  return { error: null, number: invoiceNo };
+}

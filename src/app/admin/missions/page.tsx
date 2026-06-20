@@ -7,6 +7,7 @@ import {
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
   updateMissionDB, deleteMissionDB, isMissionLocked, resolveExtraTimeDB,
+  updateMissionsOrderDB,
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -99,13 +100,19 @@ function GainPreview({ gain, cleaner, minutes }: { gain: number; cleaner: any; m
 
 // ── Carte mission admin ───────────────────────────────────────────────────────
 
-function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, onToggleSelect }: {
+function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, onToggleSelect,
+  position, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: {
   mission: Mission;
   cleaners: any[];
   onRefresh: () => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
+  position?: number;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const { user } = useAuth();
   const [assignOpen, setAssignOpen] = useState(false);
@@ -198,6 +205,21 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
       {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
+
+      {/* ── Ordre manuel (classement par cleaner) ── */}
+      {position != null && (onMoveUp || onMoveDown) && (
+        <div className="px-3 py-1.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
+          <span className="inline-flex items-center justify-center text-xs font-bold rounded-md w-6 h-6" style={{ backgroundColor: '#C9A84C18', color: '#C48A2A' }}>{position}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={onMoveUp} disabled={!canMoveUp} aria-label="Monter"
+              className="w-7 h-7 rounded-lg text-sm font-bold disabled:opacity-30 transition-all"
+              style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#7A7068' }}>↑</button>
+            <button onClick={onMoveDown} disabled={!canMoveDown} aria-label="Descendre"
+              className="w-7 h-7 rounded-lg text-sm font-bold disabled:opacity-30 transition-all"
+              style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#7A7068' }}>↓</button>
+          </div>
+        </div>
+      )}
 
       {/* ── Header : source + type / statut */}
       <div className="px-5 py-3.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
@@ -831,6 +853,19 @@ export default function MissionsPage() {
   }
   function clearSelection() { setSelectedIds(new Set()); }
 
+  // Réordonne les missions d'un groupe cleaner et persiste le rang manuel (0..n).
+  // Le tri partagé applique ensuite cet ordre côté admin ET côté cleaner.
+  async function reorderGroup(missionsOfGroup: Mission[], index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= missionsOfGroup.length) return;
+    const arr = [...missionsOfGroup];
+    [arr[index], arr[target]] = [arr[target], arr[index]];
+    // Mise à jour optimiste : on reflète le nouvel ordre tout de suite.
+    const orderById = new Map(arr.map((m, i) => [m.id, i]));
+    setMissions(prev => prev.map(m => orderById.has(m.id) ? { ...m, manualOrder: orderById.get(m.id) } : m));
+    await updateMissionsOrderDB(arr.map((m, i) => ({ id: m.id, order: i })));
+  }
+
   async function handleBulkAssign() {
     if (!bulkCleaner || selectedIds.size === 0) return;
     const c = cleaners.find(x => x.id === bulkCleaner);
@@ -1027,11 +1062,16 @@ export default function MissionsPage() {
                     </span>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
-                    {group.missions.map(m => (
+                    {group.missions.map((m, i) => (
                       <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
                         selected={selectedIds.has(m.id)}
-                        onToggleSelect={toggleSelect} />
+                        onToggleSelect={toggleSelect}
+                        position={group.missions.length > 1 ? i + 1 : undefined}
+                        canMoveUp={i > 0}
+                        canMoveDown={i < group.missions.length - 1}
+                        onMoveUp={group.missions.length > 1 ? () => reorderGroup(group.missions, i, -1) : undefined}
+                        onMoveDown={group.missions.length > 1 ? () => reorderGroup(group.missions, i, 1) : undefined} />
                     ))}
                   </div>
                 </section>

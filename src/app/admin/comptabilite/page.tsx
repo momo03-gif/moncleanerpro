@@ -5,8 +5,31 @@ import { getMissionsDB, getCleaners, getPaymentsDB } from '@/lib/db';
 import type { Mission, Payment } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
+import PayrollPanel from './PayrollPanel';
+import DepensesPanel from './DepensesPanel';
 
 export default function ComptabilitePage() {
+  const [tab, setTab] = useState<'global' | 'paie' | 'depenses'>('global');
+  return (
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Comptabilité</h1>
+        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue financière globale &amp; fiches de paie</p>
+      </div>
+      <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
+        {([['global', 'Vue globale'], ['paie', 'Fiches de paie'], ['depenses', 'Dépenses & TVA']] as const).map(([v, label]) => (
+          <button key={v} onClick={() => setTab(v)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ backgroundColor: tab === v ? '#FFFFFF' : 'transparent', color: tab === v ? '#1A1A1A' : '#A8A09A', boxShadow: tab === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'global' ? <GlobalView /> : tab === 'paie' ? <PayrollPanel /> : <DepensesPanel />}
+    </div>
+  );
+}
+
+function GlobalView() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -41,12 +64,7 @@ export default function ComptabilitePage() {
   });
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Comptabilité</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue financière globale</p>
-      </div>
-
+    <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>Revenus totaux</p>
@@ -129,6 +147,6 @@ export default function ComptabilitePage() {
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

@@ -53,6 +53,8 @@ export interface Mission {
   nextArrivalTime?: string;
   // Horodatage de création — sert de proxy pour l'ordre d'attribution des missions.
   createdAt?: string;
+  // Ordre manuel fixé par l'admin (par cleaner, à date égale). Prime sur le tri auto.
+  manualOrder?: number;
   // Demande de temps supplémentaire (cleaner → admin). Indépendant de la durée payée
   // tant que l'admin n'a pas approuvé.
   extraTimeMinutes?: number;
