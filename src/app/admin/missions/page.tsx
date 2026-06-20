@@ -969,11 +969,22 @@ export default function MissionsPage() {
     await updateMissionsOrderDB(arr.map((m, i) => ({ id: m.id, order: i })));
   }
 
+  // Personnes éligibles à l'assignation groupée : doivent pouvoir réaliser le
+  // service de CHAQUE mission cochée (livraisons → livreurs ; ménages → cleaners ;
+  // sélection mixte → polyvalents). Libellé adapté à la nature de la sélection.
+  const selectedMissionsList = missions.filter(m => selectedIds.has(m.id));
+  const bulkServices = new Set(selectedMissionsList.map(m => m.service ?? 'cleaning'));
+  const bulkEligible = cleaners.filter(c => selectedMissionsList.every(m => canCleanerDoService(c, m.service)));
+  const bulkRoleLabel = bulkServices.size === 1 && bulkServices.has('delivery')
+    ? 'livreur'
+    : bulkServices.has('delivery') ? 'cleaner polyvalent' : 'cleaner';
+
   async function handleBulkAssign() {
     if (!bulkCleaner || selectedIds.size === 0) return;
-    const c = cleaners.find(x => x.id === bulkCleaner);
+    const c = bulkEligible.find(x => x.id === bulkCleaner);
+    if (!c) return;  // garde-fou : la personne doit pouvoir faire tous les services cochés
     setBulkBusy(true);
-    await assignCleanerToMissionsDB(Array.from(selectedIds), bulkCleaner, c?.name ?? '');
+    await assignCleanerToMissionsDB(Array.from(selectedIds), bulkCleaner, c.name ?? '');
     setBulkBusy(false);
     clearSelection();
     setBulkCleaner('');
@@ -1128,13 +1139,18 @@ export default function MissionsPage() {
               <select value={bulkCleaner} onChange={e => setBulkCleaner(e.target.value)}
                 className="flex-1 min-w-[160px] px-3 py-2 rounded-xl text-sm border appearance-none"
                 style={{ ...inputStyle, color: bulkCleaner ? '#1A1A1A' : '#A8A09A' }}>
-                <option value="">Choisir un cleaner</option>
-                {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value="">Choisir un {bulkRoleLabel}</option>
+                {bulkEligible.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <button onClick={handleBulkAssign} disabled={!bulkCleaner || bulkBusy}
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                 {bulkBusy ? '...' : `Assigner ${selectedIds.size}`}
               </button>
+              {bulkEligible.length === 0 && (
+                <span className="text-xs w-full" style={{ color: '#B85A50' }}>
+                  Aucun {bulkRoleLabel} disponible pour cette sélection (vérifiez les capacités des cleaners).
+                </span>
+              )}
               <button onClick={clearSelection} className="px-3 py-2 rounded-xl text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
             </div>
           )}
