@@ -6,6 +6,7 @@ import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, requestExtraT
 import { supabase } from '@/lib/supabase';
 import type { Mission } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
+import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
@@ -175,9 +176,18 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
             style={{ backgroundColor: mission.source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: mission.source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
             {mission.source === 'airbnb' ? 'Airbnb' : 'Hôtel'}
           </span>
-          <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
-            {TYPE_LABEL[mission.type] ?? mission.type}
+          {/* Prestation à réaliser — toujours visible et explicite pour le cleaner. */}
+          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded font-semibold"
+            style={{ backgroundColor: SERVICE_BADGE[mission.service ?? 'cleaning'].bg, color: SERVICE_BADGE[mission.service ?? 'cleaning'].color }}>
+            {serviceParts(mission.service).delivery && <Icon name="delivery" size={12} />}
+            {serviceLabel(mission.service)}
           </span>
+          {/* Type de ménage : pertinent uniquement si la prestation inclut le nettoyage. */}
+          {serviceParts(mission.service).cleaning && (
+            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+              {TYPE_LABEL[mission.type] ?? mission.type}
+            </span>
+          )}
         </div>
 
         {mission.requestedBy && (
@@ -228,6 +238,16 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
               </div>
             )}
           </>
+        )}
+
+        {/* Consignes de livraison — affichées quand la mission inclut une livraison. */}
+        {serviceParts(mission.service).delivery && mission.deliveryInstructions && (
+          <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#C48A2A12' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1 flex items-center gap-1.5" style={{ color: '#C48A2A' }}>
+              <Icon name="delivery" size={14} /> Livraison
+            </p>
+            <p className="text-sm leading-snug" style={{ color: '#7A7068' }}>{mission.deliveryInstructions}</p>
+          </div>
         )}
       </div>
 

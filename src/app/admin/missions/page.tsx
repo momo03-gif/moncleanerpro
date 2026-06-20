@@ -6,12 +6,14 @@ import {
   createMissionDB, createMissionsBatchDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
-  updateMissionDB, deleteMissionDB, isMissionLocked, resolveExtraTimeDB,
+  updateMissionDB, deleteMissionDB, deleteMissionGroupDB, isMissionLocked, resolveExtraTimeDB,
   updateMissionsOrderDB,
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import type { Mission, HotelAnnounce, MissionType, MissionSource, Apartment, MissionStatus } from '@/lib/types';
+import type { Mission, HotelAnnounce, MissionType, MissionSource, MissionService, Apartment, MissionStatus } from '@/lib/types';
+import { serviceLabel, SERVICE_LABEL, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
+import Icon from '@/components/Icon';
 import { computeCleanerGain, DURATION_PRESETS } from '@/lib/pay';
 import { groupMissionsByCleaner } from '@/lib/missionOrder';
 import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
@@ -62,10 +64,15 @@ const TABS = ['Annonces hôtel', 'Missions', 'Créer'] as const;
 
 const emptyForm = {
   source: 'hotel' as MissionSource,
+  service: 'cleaning' as MissionService,
   hotelId: '', airbnbId: '',
   property: '', address: '',
   cleanerId: '', date: '', time: '',
   durationMinutes: '60', price: '',
+  deliveryInstructions: '',
+  // Commande « Nettoyage + livraison » à deux personnes : partie livraison.
+  splitAssignees: false,
+  cleanerIdDelivery: '', durationMinutesDelivery: '30', priceDelivery: '',
   nextArrival: '', nextArrivalTime: '',
 };
 
@@ -126,6 +133,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     date: mission.date, time: mission.time,
     durationMinutes: String(mission.missionDurationMinutes ?? 60),
     type: mission.type, price: String(mission.price ?? 0),
+    service: mission.service ?? 'cleaning' as MissionService,
+    deliveryInstructions: mission.deliveryInstructions ?? '',
   });
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
@@ -143,6 +152,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
       date: mission.date, time: mission.time,
       durationMinutes: String(mission.missionDurationMinutes ?? 60),
       type: mission.type, price: String(mission.price ?? 0),
+      service: mission.service ?? 'cleaning',
+      deliveryInstructions: mission.deliveryInstructions ?? '',
     });
     setActionError('');
     setEditOpen(true);
@@ -160,6 +171,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
       timeFrom: editForm.time,
       missionDurationMinutes: Number(editForm.durationMinutes) || 0,
       type: editForm.type,
+      service: editForm.service,
+      deliveryInstructions: serviceParts(editForm.service).delivery ? editForm.deliveryInstructions : '',
       price: Number(editForm.price) || 0,  // prix CLIENT uniquement
     });
     setBusy(false);
@@ -170,9 +183,32 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
   async function handleDelete() {
     if (!user) return;
+    const actor = { id: user.id, role: 'admin' as const };
+
+    // Mission liée (commande ménage + livraison à 2 personnes) : proposer de
+    // supprimer aussi la mission liée pour ne pas laisser une moitié orpheline.
+    if (mission.groupId) {
+      if (!confirm('Supprimer cette mission ?')) return;
+      const alsoLinked = confirm('Cette mission fait partie d’une commande liée (ménage + livraison). Supprimer aussi la mission liée ?');
+      setBusy(true); setActionError('');
+      if (alsoLinked) {
+        const res = await deleteMissionGroupDB(mission.groupId, actor);
+        setBusy(false);
+        if (res.error && res.deleted === 0) { setActionError(res.error); return; }
+        if (res.skipped > 0) { setActionError(`Mission liée conservée : ${res.error ?? 'verrouillée'}.`); }
+        onRefresh();
+        return;
+      }
+      const res = await deleteMissionDB(mission.id, actor);
+      setBusy(false);
+      if (res.error) { setActionError(res.error); return; }
+      onRefresh();
+      return;
+    }
+
     if (!confirm('Supprimer définitivement cette mission ?')) return;
     setBusy(true); setActionError('');
-    const res = await deleteMissionDB(mission.id, { id: user.id, role: 'admin' });
+    const res = await deleteMissionDB(mission.id, actor);
     setBusy(false);
     if (res.error) { setActionError(res.error); return; }
     onRefresh();
@@ -236,6 +272,17 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             {SOURCE_LABEL[source]}
           </span>
           <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>
+          {serviceParts(mission.service).delivery && (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg font-semibold"
+              style={{ backgroundColor: SERVICE_BADGE[mission.service ?? 'cleaning'].bg, color: SERVICE_BADGE[mission.service ?? 'cleaning'].color }}>
+              <Icon name="delivery" size={12} /> {serviceLabel(mission.service)}
+            </span>
+          )}
+          {mission.groupId && (
+            <span className="inline-flex items-center gap-1 text-xs" style={{ color: '#A8A09A' }} title="Commande liée : ménage + livraison">
+              <Icon name="link" size={12} /> Liée
+            </span>
+          )}
           {mission.zoneName && (
             <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: '#7A7068' }} title={mission.zoneName}>
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: mission.zoneColor ?? '#9CA3AF' }} />
@@ -489,6 +536,15 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                 </select>
               </div>
               <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prestation</label>
+                <select value={editForm.service} onChange={e => setEditForm(f => ({ ...f, service: e.target.value as MissionService }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                  <option value="cleaning">Nettoyage</option>
+                  <option value="delivery">Livraison</option>
+                  <option value="cleaning_delivery">Nettoyage + livraison</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prix client (€)</label>
                 <input type="number" min="0" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
@@ -500,6 +556,13 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                 </div>
               </div>
             </div>
+            {serviceParts(editForm.service).delivery && (
+              <div>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Consignes de livraison</label>
+                <textarea value={editForm.deliveryInstructions} onChange={e => setEditForm(f => ({ ...f, deliveryInstructions: e.target.value }))}
+                  rows={2} className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
+              </div>
+            )}
             <p className="text-[11px]" style={{ color: '#A8A09A' }}>
               Gain = taux cleaner {editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0}€/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.
             </p>
@@ -519,7 +582,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
               style={{ ...inputStyle, color: newCleaner ? '#1A1A1A' : '#A8A09A' }}>
               <option value="">Choisir un cleaner</option>
-              {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
+              {cleaners.filter(c => canCleanerDoService(c, mission.service)).map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
             </select>
             <button onClick={handleAssign} disabled={!newCleaner || busy}
               className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
@@ -680,6 +743,14 @@ export default function MissionsPage() {
   const formCleaner = cleaners.find(c => c.id === form.cleanerId);
   const formGain = computeCleanerGain(formCleaner?.hourly_rate ?? 0, Number(form.durationMinutes) || 0);
 
+  // Service de la prestation PRINCIPALE (champ cleaner/durée/prix du haut) :
+  // pour « ménage + livraison à 2 personnes », le haut = la partie ménage.
+  const mainService: MissionService = form.service === 'delivery'
+    ? 'delivery'
+    : (form.service === 'cleaning_delivery' && form.splitAssignees ? 'cleaning' : form.service);
+  const deliveryCleaner = cleaners.find(c => c.id === form.cleanerIdDelivery);
+  const deliveryGain = computeCleanerGain(deliveryCleaner?.hourly_rate ?? 0, Number(form.durationMinutesDelivery) || 0);
+
   function cleanerWarning(cleanerId: string, date: string): string | null {
     if (!cleanerId || !date) return null;
     const c = cleaners.find(x => x.id === cleanerId);
@@ -719,34 +790,66 @@ export default function MissionsPage() {
       return;
     }
 
-    const c = cleaners.find(x => x.id === form.cleanerId);
     const type: MissionType = form.source === 'airbnb' ? 'regular' : 'checkout';
 
     // Mission Airbnb : on la lie à l'appartement (source de vérité pour
     // l'adresse et les codes d'accès) et au partenaire propriétaire s'il existe.
     const apt = form.source === 'airbnb' ? airbnbs.find(a => a.id === form.airbnbId) : undefined;
 
-    setCreateError('');
-    const result = await createMissionDB({
-      type, source: form.source,
+    // Champs partagés par les missions de la commande (ménage et/ou livraison).
+    const common = {
+      source: form.source,
       propertyName: form.property,
       address: form.address,
       dateFrom: form.date,
       timeFrom: form.time,
       timeTo: '',
-      missionDurationMinutes: Number(form.durationMinutes) || 60,
-      cleanerHourlyRate: c?.hourly_rate ?? 0,
       apartmentDefaultDuration: apt?.estimatedCleaningMinutes,
-      cleanerId: form.cleanerId || undefined,
-      cleanerName: c?.name,
-      price: Number(form.price) || 0,  // prix CLIENT (facturation)
       airbnbId: apt?.id,
       partnerId: apt?.partnerId,
       nextArrival: form.nextArrival || undefined,
       nextArrivalTime: form.nextArrivalTime || undefined,
       createdBy: user?.id,
-      createdByRole: 'admin',
-    });
+      createdByRole: 'admin' as const,
+    };
+
+    setCreateError('');
+    let result: { error: string | null };
+
+    if (form.service === 'cleaning_delivery' && form.splitAssignees) {
+      // Deux personnes → deux missions LIÉES (même group_id) : 1 ménage + 1 livraison.
+      // Chacune garde son assigné, son statut et sa paie (réutilise tout l'existant).
+      const groupId = crypto.randomUUID();
+      const cClean = cleaners.find(x => x.id === form.cleanerId);
+      const cDeliv = cleaners.find(x => x.id === form.cleanerIdDelivery);
+      const r1 = await createMissionDB({
+        ...common, type, service: 'cleaning', groupId,
+        missionDurationMinutes: Number(form.durationMinutes) || 60,
+        cleanerHourlyRate: cClean?.hourly_rate ?? 0,
+        cleanerId: form.cleanerId || undefined, cleanerName: cClean?.name,
+        price: Number(form.price) || 0,
+      });
+      const r2 = await createMissionDB({
+        ...common, type: 'regular', service: 'delivery', groupId,
+        deliveryInstructions: form.deliveryInstructions,
+        missionDurationMinutes: Number(form.durationMinutesDelivery) || 30,
+        cleanerHourlyRate: cDeliv?.hourly_rate ?? 0,
+        cleanerId: form.cleanerIdDelivery || undefined, cleanerName: cDeliv?.name,
+        price: Number(form.priceDelivery) || 0,
+      });
+      result = { error: r1.error ?? r2.error };
+    } else {
+      // Une seule mission : ménage seul, livraison seule, ou ménage+livraison même personne.
+      const c = cleaners.find(x => x.id === form.cleanerId);
+      result = await createMissionDB({
+        ...common, type, service: form.service,
+        deliveryInstructions: serviceParts(form.service).delivery ? form.deliveryInstructions : undefined,
+        missionDurationMinutes: Number(form.durationMinutes) || 60,
+        cleanerHourlyRate: c?.hourly_rate ?? 0,
+        cleanerId: form.cleanerId || undefined, cleanerName: c?.name,
+        price: Number(form.price) || 0,  // prix CLIENT (facturation)
+      });
+    }
 
     if (result.error) {
       setCreateError(`Erreur Supabase : ${result.error}`);
@@ -1113,6 +1216,54 @@ export default function MissionsPage() {
             </div>
           </div>
 
+          {/* Service (nettoyage par défaut) */}
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Prestation</label>
+            <div className="flex gap-2 flex-wrap">
+              {(['cleaning', 'delivery', 'cleaning_delivery'] as MissionService[]).map(s => (
+                <button key={s} type="button"
+                  onClick={() => setForm(p => ({ ...p, service: s, cleanerId: '', cleanerIdDelivery: '', splitAssignees: s === 'cleaning_delivery' ? p.splitAssignees : false }))}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all"
+                  style={{ borderColor: form.service === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.service === s ? '#C9A84C12' : '#FFFFFF', color: form.service === s ? '#C9A84C' : '#7A7068' }}>
+                  {SERVICE_LABEL[s]}
+                </button>
+              ))}
+            </div>
+
+            {/* Ménage + livraison : une seule personne (1 mission) ou deux (2 missions liées). */}
+            {form.service === 'cleaning_delivery' && (
+              <div className="mt-3">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Qui réalise ?</label>
+                <div className="flex gap-2">
+                  {([[false, 'Une seule personne'], [true, 'Deux personnes']] as const).map(([v, label]) => (
+                    <button key={label} type="button"
+                      onClick={() => setForm(p => ({ ...p, splitAssignees: v, cleanerId: '', cleanerIdDelivery: '' }))}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
+                      style={{ borderColor: form.splitAssignees === v ? '#C9A84C' : '#E8E4DC', backgroundColor: form.splitAssignees === v ? '#C9A84C12' : '#FFFFFF', color: form.splitAssignees === v ? '#C9A84C' : '#7A7068' }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>
+                  {form.splitAssignees
+                    ? 'Crée 2 missions liées : une pour le ménage, une pour la livraison, assignées séparément.'
+                    : 'Une seule mission : le même cleaner réalise le ménage et la livraison.'}
+                </p>
+              </div>
+            )}
+
+            {/* Consignes de livraison (cas mono-mission : livraison seule, ou ménage+livraison 1 personne). */}
+            {(form.service === 'delivery' || (form.service === 'cleaning_delivery' && !form.splitAssignees)) && (
+              <div className="mt-3">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Consignes de livraison</label>
+                <textarea value={form.deliveryInstructions} onChange={e => setForm(p => ({ ...p, deliveryInstructions: e.target.value }))}
+                  rows={2} placeholder="Ex : déposer le linge propre dans le placard de l'entrée, récupérer le linge sale."
+                  className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+            )}
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4 mb-6">
 
             {/* ── HÔTEL ── */}
@@ -1144,7 +1295,7 @@ export default function MissionsPage() {
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Assigner plus tard</option>
-                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
+                  {cleaners.filter(c => canCleanerDoService(c, mainService)).map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
                 </select>
               </div>
               {cleanerWarning(form.cleanerId, form.date) && (
@@ -1224,7 +1375,7 @@ export default function MissionsPage() {
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.cleanerId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Assigner plus tard</option>
-                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
+                  {cleaners.filter(c => canCleanerDoService(c, mainService)).map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
                 </select>
               </div>
               {cleanerWarning(form.cleanerId, form.date) && (
@@ -1290,6 +1441,56 @@ export default function MissionsPage() {
               <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} />
             </>)}
           </div>
+
+          {/* ── Sous-carte LIVRAISON (mission liée, assignée à une autre personne) ── */}
+          {form.service === 'cleaning_delivery' && form.splitAssignees && (
+            <div className="mb-6 rounded-2xl border-2 p-5" style={{ borderColor: '#C48A2A40', backgroundColor: '#C48A2A08' }}>
+              <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: '#1A1A1A' }}>
+                <Icon name="delivery" size={18} /> Livraison — mission liée
+              </h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Livreur</label>
+                  <select value={form.cleanerIdDelivery} onChange={e => setForm(p => ({ ...p, cleanerIdDelivery: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                    style={{ ...inputStyle, color: form.cleanerIdDelivery ? '#1A1A1A' : '#A8A09A' }}>
+                    <option value="">Assigner plus tard</option>
+                    {cleaners.filter(c => canCleanerDoService(c, 'delivery')).map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
+                  </select>
+                  <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Seuls les cleaners habilités à la livraison apparaissent.</p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Durée livraison (minutes)</label>
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {DURATION_PRESETS.map(d => (
+                      <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutesDelivery: String(d) }))}
+                        className="px-3 py-2 rounded-xl text-sm font-semibold border transition-all"
+                        style={{ borderColor: form.durationMinutesDelivery === String(d) ? '#C9A84C' : '#E8E4DC', backgroundColor: form.durationMinutesDelivery === String(d) ? '#C9A84C' : '#FFFFFF', color: form.durationMinutesDelivery === String(d) ? '#1A1A1A' : '#A8A09A' }}>
+                        {formatDuration(d)}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="number" min="5" step="5" value={form.durationMinutesDelivery} onChange={e => setForm(p => ({ ...p, durationMinutesDelivery: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client livraison (€)</label>
+                  <input type="number" min="0" value={form.priceDelivery} onChange={e => setForm(p => ({ ...p, priceDelivery: e.target.value }))}
+                    placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+                <GainPreview gain={deliveryGain} cleaner={deliveryCleaner} minutes={form.durationMinutesDelivery} />
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Consignes de livraison</label>
+                  <textarea value={form.deliveryInstructions} onChange={e => setForm(p => ({ ...p, deliveryInstructions: e.target.value }))}
+                    rows={2} placeholder="Ex : déposer le linge propre dans le placard de l'entrée, récupérer le linge sale."
+                    className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {createError && (
             <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>

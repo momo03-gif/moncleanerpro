@@ -1,6 +1,7 @@
 import { supabase, hashPassword } from './supabase';
-import type { User, Mission, MissionStatus, MissionType, MissionSource, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
+import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
 import { computeCleanerGain } from './pay';
+import { canCleanerDoService } from './service';
 import { clusterApartments } from './zones';
 import { getBlockingFormationsDB } from './formation';
 import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, type GeoPoint } from './geo';
@@ -80,7 +81,7 @@ export async function getCleaners() {
   const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate: 0, status: u.status ?? 'active',
+    hourly_rate: 0, status: u.status ?? 'active', can_clean: true, can_deliver: false,
   }));
 }
 
@@ -92,13 +93,14 @@ export async function getActiveCleanersDB() {
   const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner').eq('status', 'active');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate: 0, status: 'active',
+    hourly_rate: 0, status: 'active', can_clean: true, can_deliver: false,
   }));
 }
 
 export async function createCleaner(fields: {
   name: string; email: string; phone?: string;
   password: string; hourlyRate?: number;
+  canClean?: boolean; canDeliver?: boolean;
 }) {
   const hash = await hashPassword(fields.password || 'cleaner123');
   const { data: user, error: userError } = await supabase
@@ -118,6 +120,8 @@ export async function createCleaner(fields: {
     email: fields.email,
     phone: fields.phone ?? null,
     hourly_rate: fields.hourlyRate ?? 0,
+    can_clean: fields.canClean ?? true,
+    can_deliver: fields.canDeliver ?? false,
     status: 'active',
   });
 
@@ -157,6 +161,11 @@ export async function deleteCleanerDB(id: string) {
 
 export async function updateCleanerHourlyRateDB(id: string, hourlyRate: number) {
   await supabase.from('cleaners').update({ hourly_rate: hourlyRate }).eq('id', id);
+}
+
+// Capacités du cleaner : peut faire du nettoyage / de la livraison.
+export async function updateCleanerCapabilitiesDB(id: string, caps: { canClean: boolean; canDeliver: boolean }) {
+  await supabase.from('cleaners').update({ can_clean: caps.canClean, can_deliver: caps.canDeliver }).eq('id', id);
 }
 
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
@@ -374,6 +383,9 @@ function rowToMission(row: any): Mission {
     zoneColor: apt?.zone_color ?? undefined,
     zoneName: apt?.zone_name ?? undefined,
     type: (row.type as MissionType) ?? 'regular',
+    service: (row.service as MissionService) ?? 'cleaning',
+    deliveryInstructions: row.delivery_instructions ?? undefined,
+    groupId: row.group_id ?? undefined,
     source: (row.source as MissionSource) ?? 'hotel',
     requestedBy: row.client_name,
     notes,
@@ -493,8 +505,15 @@ export async function createAirbnbMissionDB(fields: {
 
 export async function acceptMissionDB(missionId: string, userId: string): Promise<{ error: string | null }> {
   // userId is users.id — resolve to cleaners.id (FK constraint)
-  const { data: cleanerRow } = await supabase.from('cleaners').select('id, name').eq('user_id', userId).single();
+  const { data: cleanerRow } = await supabase.from('cleaners').select('id, name, can_clean, can_deliver').eq('user_id', userId).single();
   if (!cleanerRow) return { error: 'Cleaner introuvable.' };
+
+  // Garde-fou prestation : le cleaner doit savoir réaliser le service de la mission
+  // (nettoyage et/ou livraison). Empêche un « nettoyage seul » de prendre une livraison.
+  const { data: missionRow } = await supabase.from('missions').select('service').eq('id', missionId).single();
+  if (!canCleanerDoService(cleanerRow, (missionRow?.service as MissionService) ?? 'cleaning')) {
+    return { error: "Cette mission requiert une prestation que tu n'effectues pas." };
+  }
 
   // Blocage formation (LOT 7bis) : une formation obligatoire « à faire » empêche
   // d'accepter une nouvelle mission tant qu'elle n'est pas terminée.
@@ -519,6 +538,7 @@ export async function createMissionDB(fields: {
   price: number; instructions?: string;
   airbnbId?: string; partnerId?: string;
   nextArrival?: string; nextArrivalTime?: string;
+  service?: MissionService; deliveryInstructions?: string; groupId?: string;
   createdBy?: string; createdByRole?: string;
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
@@ -535,6 +555,9 @@ export async function createMissionDB(fields: {
   const { data, error } = await supabase.from('missions').insert({
     type: fields.type,
     source: fields.source,
+    service: fields.service ?? 'cleaning',
+    delivery_instructions: fields.deliveryInstructions || null,
+    group_id: fields.groupId || null,
     airbnb_id: fields.airbnbId || null,
     partner_id: fields.partnerId || null,
     created_by: fields.createdBy || null,
@@ -901,6 +924,8 @@ export interface MissionUpdateFields {
   dateFrom?: string;
   timeFrom?: string;
   type?: string;
+  service?: MissionService;
+  deliveryInstructions?: string;
   airbnbId?: string | null;
   propertyName?: string;
   address?: string;
@@ -930,6 +955,8 @@ export async function updateMissionDB(
   if (fields.dateFrom !== undefined) patch.date_from = fields.dateFrom;
   if (fields.timeFrom !== undefined) patch.time_from = fields.timeFrom || null;
   if (fields.type !== undefined) patch.type = fields.type;
+  if (fields.service !== undefined) patch.service = fields.service;
+  if (fields.deliveryInstructions !== undefined) patch.delivery_instructions = fields.deliveryInstructions || null;
   if (fields.airbnbId !== undefined) patch.airbnb_id = fields.airbnbId || null;
   if (fields.propertyName !== undefined) patch.property_name = fields.propertyName;
   if (fields.address !== undefined) patch.address = fields.address;
@@ -1033,6 +1060,24 @@ export async function deleteMissionDB(
     return { error: 'Cette mission est clôturée et ne peut plus être supprimée.' };
   }
   return { error: null };
+}
+
+// Supprime toutes les missions d'une commande liée (ménage + livraison partageant
+// le même group_id). Chaque mission passe par deleteMissionDB → les missions
+// clôturées (terminées/annulées) sont conservées et signalées via `skipped`.
+export async function deleteMissionGroupDB(
+  groupId: string,
+  actor: MissionActor,
+): Promise<{ error: string | null; deleted: number; skipped: number }> {
+  const { data } = await supabase.from('missions').select('id').eq('group_id', groupId);
+  let deleted = 0, skipped = 0;
+  let firstError: string | null = null;
+  for (const m of data ?? []) {
+    const res = await deleteMissionDB(m.id, actor);
+    if (res.error) { skipped++; if (!firstError) firstError = res.error; }
+    else deleted++;
+  }
+  return { error: firstError, deleted, skipped };
 }
 
 // ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────
@@ -1504,7 +1549,6 @@ export async function getAllReservations(): Promise<Reservation[]> {
   if (error) console.error('getAllReservations:', error.code, error.message);
   return (data ?? []).map(rowToReservation);
 }
-
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
 

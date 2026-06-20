@@ -21,6 +21,10 @@ export type MissionStatus = 'pending' | 'accepted' | 'validated' | 'in_progress'
 export type MissionType = 'checkout' | 'checkin' | 'deep_clean' | 'regular';
 export type MissionSource = 'hotel' | 'airbnb';
 
+// Prestation portée par la mission. Le nettoyage est le défaut historique ;
+// la livraison s'ajoute sans système séparé. Orthogonal à MissionType.
+export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery';
+
 export interface Mission {
   id: string;
   property: string;
@@ -42,6 +46,12 @@ export interface Mission {
   zoneColor?: string;
   zoneName?: string;
   type: MissionType;
+  // Prestation : nettoyage (défaut), livraison, ou les deux.
+  service?: MissionService;
+  // Consignes de livraison (quoi livrer / où déposer) — affichées au cleaner.
+  deliveryInstructions?: string;
+  // Lien entre missions d'une même commande (ménage + livraison à 2 personnes).
+  groupId?: string;
   source?: MissionSource;
   requestedBy?: string;
   notes?: string;
@@ -153,6 +163,9 @@ export interface CleanerRow {
   hourly_rate_hotel?: number;
   rate_airbnb?: number;
   status: string;
+  // Capacités : peut faire du nettoyage / de la livraison. Défaut : nettoyage seul.
+  can_clean?: boolean;
+  can_deliver?: boolean;
 }
 
 export interface CompanyInfo {

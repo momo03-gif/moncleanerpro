@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPendingMissionsDB, acceptMissionDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { formatDuration, formatHour } from '@/lib/format';
+import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
 
 const typeLabel: Record<string, string> = {
@@ -94,8 +95,15 @@ export default function ProposedMissionsPage() {
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>{typeLabel[m.type] ?? m.type}</span>
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-semibold"
+                    style={{ backgroundColor: SERVICE_BADGE[m.service ?? 'cleaning'].bg, color: SERVICE_BADGE[m.service ?? 'cleaning'].color }}>
+                    {serviceParts(m.service).delivery && <Icon name="delivery" size={12} />}
+                    {serviceLabel(m.service)}
+                  </span>
+                  {serviceParts(m.service).cleaning && (
+                    <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>{typeLabel[m.type] ?? m.type}</span>
+                  )}
                   {m.requestedBy && (
                     <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: '#C9A84C12', color: '#C9A84C' }}>{m.requestedBy}</span>
                   )}
@@ -108,6 +116,15 @@ export default function ProposedMissionsPage() {
 
                 {m.notes && (
                   <p className="text-xs px-3 py-2 rounded-xl mb-4" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{m.notes}</p>
+                )}
+
+                {serviceParts(m.service).delivery && m.deliveryInstructions && (
+                  <div className="px-3 py-2 rounded-xl mb-4" style={{ backgroundColor: '#C48A2A12' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-1 flex items-center gap-1.5" style={{ color: '#C48A2A' }}>
+                      <Icon name="delivery" size={13} /> Livraison
+                    </p>
+                    <p className="text-xs" style={{ color: '#7A7068' }}>{m.deliveryInstructions}</p>
+                  </div>
                 )}
 
                 <div className="flex gap-3">

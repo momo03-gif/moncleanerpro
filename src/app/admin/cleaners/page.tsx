@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
+import { capabilitiesLabel } from '@/lib/service';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
 
-const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '' };
+const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
 export default function CleanersPage() {
@@ -21,7 +22,7 @@ export default function CleanersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [managing, setManaging] = useState<string | null>(null);
-  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '' });
+  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '', canClean: true, canDeliver: false });
   const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
@@ -47,6 +48,7 @@ export default function CleanersPage() {
       name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '',
       hourlyRate: String(c.hourly_rate ?? ''),
       password: '',
+      canClean: c.can_clean ?? true, canDeliver: c.can_deliver ?? false,
     });
   }
 
@@ -56,6 +58,7 @@ export default function CleanersPage() {
     setSaving(true);
     await updateCleanerInfoDB(id, { name: manageForm.name.trim(), email: manageForm.email.trim(), phone: manageForm.phone.trim() || undefined });
     await updateCleanerHourlyRateDB(id, Number(manageForm.hourlyRate) || 0);
+    await updateCleanerCapabilitiesDB(id, { canClean: manageForm.canClean, canDeliver: manageForm.canDeliver });
     if (manageForm.password.trim()) await updateCleanerPasswordDB(id, manageForm.password.trim());
     setManaging(null);
     await load();
@@ -76,6 +79,7 @@ export default function CleanersPage() {
       phone: form.phone || undefined,
       password: form.password || 'cleaner123',
       hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : undefined,
+      canClean: form.canClean, canDeliver: form.canDeliver,
     });
     await load();
     setForm(emptyForm);
@@ -152,6 +156,8 @@ export default function CleanersPage() {
                     onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                   <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Gain par mission = taux horaire × durée du ménage ÷ 60</p>
                 </div>
+                <CapabilityToggles canClean={form.canClean} canDeliver={form.canDeliver}
+                  onChange={caps => setForm(p => ({ ...p, ...caps }))} />
               </div>
               <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                 {saving ? 'Création...' : 'Ajouter le cleaner'}
@@ -176,6 +182,11 @@ export default function CleanersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{cleaner.name}</h3>
+                        {cleaner.can_deliver && (
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#C48A2A15', color: '#C48A2A' }}>
+                            <Icon name="delivery" size={12} /> {capabilitiesLabel(cleaner)}
+                          </span>
+                        )}
                         {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
@@ -229,6 +240,8 @@ export default function CleanersPage() {
                             className="w-full px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
                             onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                         </div>
+                        <CapabilityToggles canClean={manageForm.canClean} canDeliver={manageForm.canDeliver}
+                          onChange={caps => setManageForm(p => ({ ...p, ...caps }))} />
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => handleSaveManage(cleaner.id)} disabled={saving || !manageForm.name.trim() || !manageForm.email.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -326,6 +339,38 @@ export default function CleanersPage() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Capacités d'un cleaner : nettoyage / livraison ──────────────────────────────
+// Détermine les missions qu'on peut lui attribuer. Défaut : nettoyage seul.
+function CapabilityToggles({ canClean, canDeliver, onChange }: {
+  canClean: boolean; canDeliver: boolean;
+  onChange: (caps: { canClean: boolean; canDeliver: boolean }) => void;
+}) {
+  return (
+    <div className="md:col-span-2">
+      <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prestations</label>
+      <div className="flex gap-2 flex-wrap">
+        <button type="button" onClick={() => onChange({ canClean: !canClean, canDeliver })}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
+          style={{ borderColor: canClean ? '#C9A84C' : '#E8E4DC', backgroundColor: canClean ? '#C9A84C12' : '#FFFFFF', color: canClean ? '#C9A84C' : '#7A7068' }}>
+          <span className="w-4 h-4 rounded flex items-center justify-center" style={{ color: '#1A1A1A', backgroundColor: canClean ? '#C9A84C' : '#E8E4DC' }}>
+            {canClean && <Icon name="check" size={11} />}
+          </span>
+          Nettoyage
+        </button>
+        <button type="button" onClick={() => onChange({ canClean, canDeliver: !canDeliver })}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
+          style={{ borderColor: canDeliver ? '#C9A84C' : '#E8E4DC', backgroundColor: canDeliver ? '#C9A84C12' : '#FFFFFF', color: canDeliver ? '#C9A84C' : '#7A7068' }}>
+          <span className="w-4 h-4 rounded flex items-center justify-center" style={{ color: '#1A1A1A', backgroundColor: canDeliver ? '#C9A84C' : '#E8E4DC' }}>
+            {canDeliver && <Icon name="check" size={11} />}
+          </span>
+          Livraison
+        </button>
+      </div>
+      <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Ce que ce cleaner peut réaliser. Détermine les missions qu&apos;on peut lui attribuer.</p>
     </div>
   );
 }
