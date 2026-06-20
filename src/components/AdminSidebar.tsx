@@ -13,6 +13,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/missions', label: 'Missions', icon: 'missions' },
   { href: '/admin/cleaners', label: 'Cleaners', icon: 'cleaners' },
   { href: '/admin/airbnb', label: 'Appartements', icon: 'building' },
+  { href: '/admin/reservations', label: 'Réservations', icon: 'sync' },
   { href: '/admin/carte', label: 'Carte', icon: 'map' },
   { href: '/admin/comptes', label: 'Comptes', icon: 'accounts' },
   { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendPushToUser } from '@/lib/webpush';
 import { deleteExpiredMissionPhotosDB } from '@/lib/missionPhotos';
+import { runReservationSync } from '@/lib/reservationSync';
 
 export const runtime = 'nodejs';
 
@@ -70,5 +71,17 @@ export async function GET(req: NextRequest) {
     catch (e) { console.error('cleanup photos (piggyback):', e); }
   }
 
-  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted });
+  // Synchronisation des réservations (piggyback : 2 crons gratuits déjà utilisés).
+  // Importe les iCal des conciergeries/partenaires Airbnb et crée les missions de
+  // ménage des départs. Best-effort : un échec ne casse pas l'envoi des rappels.
+  let reservationsSync: { imported: number; missionsCreated: number } | null = null;
+  try {
+    const r = await runReservationSync();
+    reservationsSync = {
+      imported: r.feeds.reduce((s, f) => s + f.imported, 0),
+      missionsCreated: r.materialized.created,
+    };
+  } catch (e) { console.error('reservation sync (piggyback):', e); }
+
+  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted, reservationsSync });
 }

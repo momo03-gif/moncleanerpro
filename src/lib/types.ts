@@ -216,3 +216,59 @@ export interface FinancialEntry {
   type: 'income' | 'expense';
   category: string;
 }
+
+// ── SYNCHRONISATION DES RÉSERVATIONS (conciergeries / partenaires Airbnb) ────────
+// Périmètre : appartements Airbnb uniquement. Les hôtels ne sont pas concernés.
+
+// Plateformes de réservation supportées. Toutes exposent un export iCal par
+// logement ; les API natives pourront être branchées par plateforme plus tard.
+export type ReservationPlatform =
+  | 'airbnb' | 'booking' | 'guesty' | 'hostaway' | 'lodgify'
+  | 'smoobu' | 'beds24' | 'amenitiz' | 'ical' | 'other';
+
+// État d'une réservation importée (domaine distinct des statuts de mission).
+export type ReservationStatus = 'confirmed' | 'cancelled' | 'tentative' | 'blocked';
+
+// Un flux = un calendrier iCal rattaché à un appartement (un appart peut en avoir
+// plusieurs : Airbnb + Booking sur la même annonce).
+export interface ReservationFeed {
+  id: string;
+  airbnbId: string;
+  apartmentName?: string;     // dérivé du join (lecture seule)
+  partnerId?: string;
+  platform: ReservationPlatform;
+  icalUrl: string;
+  label?: string;
+  active: boolean;
+  lastSyncAt?: string;
+  lastSyncStatus?: 'ok' | 'error';
+  lastError?: string;
+  createdAt?: string;
+}
+
+export interface Reservation {
+  id: string;
+  feedId?: string;
+  airbnbId: string;
+  apartmentName?: string;     // dérivé du join (lecture seule)
+  partnerId?: string;
+  platform: ReservationPlatform;
+  externalUid: string;
+  guestName?: string;
+  status: ReservationStatus;
+  checkIn: string;            // YYYY-MM-DD (arrivée)
+  checkOut: string;           // YYYY-MM-DD (départ = jour du ménage)
+  checkInTime?: string;       // HH:mm si disponible
+  checkOutTime?: string;      // HH:mm si disponible
+  missionId?: string;         // mission ménage créée pour ce départ
+  missionCreatedAt?: string;
+  createdAt?: string;
+}
+
+// État d'occupation d'un appartement (vue admin), dérivé des réservations.
+export type ApartmentOccupancyState =
+  | 'occupied'        // un voyageur est actuellement présent
+  | 'leaving_soon'    // départ dans les prochains jours
+  | 'needs_cleaning'  // départ détecté, ménage à prévoir (pas encore de mission)
+  | 'mission_created' // départ détecté et mission déjà créée
+  | 'free';           // ni occupé ni départ imminent
