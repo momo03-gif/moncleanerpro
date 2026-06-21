@@ -1147,7 +1147,14 @@ export async function createHotelRequestDB(fields: {
   await notifyPartnerCreatedMission(fields.hotelName, fields.dateFrom, fields.timeFrom, null);
 }
 
-export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string) {
+// Minutes entre deux heures 'HH:mm[:ss]' (>= 0).
+function minutesBetween(from?: string | null, to?: string | null): number {
+  const toMin = (t?: string | null) => { const [h, m] = (t ?? '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+  const d = toMin(to) - toMin(from);
+  return d > 0 ? d : 0;
+}
+
+export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string, durationMinutesOverride?: number) {
   const { data: req } = await supabase.from('hotel_requests').select('*').eq('id', id).single();
 
   await supabase.from('hotel_requests').update({
@@ -1157,14 +1164,21 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
   }).eq('id', id);
 
   if (req) {
-    // Gain cleaner = taux horaire du cleaner × durée (par défaut 2 h = 120 min) / 60.
+    // Durée = heures saisies sur l'annonce (time_from→time_to), ou override admin,
+    // sinon 120 min par défaut. C'est elle qui sert au gain ET à la facturation hôtel.
+    const minutes = durationMinutesOverride && durationMinutesOverride > 0
+      ? durationMinutesOverride
+      : (minutesBetween(req.time_from, req.time_to) || 120);
+
+    // Gain cleaner = taux horaire du cleaner × durée / 60.
     const { data: cleaner } = await supabase.from('cleaners').select('hourly_rate').eq('id', cleanerId).single();
-    const minutes = 120;
     const rate = Number(cleaner?.hourly_rate) || 0;
     const gain = computeCleanerGain(rate, minutes);
 
-    // Créateur = l'hôtel (pour la notif « mission terminée » au client)
-    const { data: hotel } = await supabase.from('hotels').select('user_id').eq('id', req.hotel_id).single();
+    // Créateur = l'hôtel + son TAUX HORAIRE FACTURÉ → prix client = taux × heures.
+    const { data: hotel } = await supabase.from('hotels').select('user_id, billing_hourly_rate').eq('id', req.hotel_id).single();
+    const hotelRate = Number(hotel?.billing_hourly_rate) || 0;
+    const price = Math.round(hotelRate * (minutes / 60) * 100) / 100;
 
     // cleanerId is cleaners.id (from dropdown) — store directly (FK to cleaners.id)
     const { data: created, error } = await supabase.from('missions').insert({
@@ -1182,7 +1196,7 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
       cleaner_id: cleanerId,
       cleaner_name: cleanerName,
       client_name: req.hotel_name ?? '',
-      price: 0,  // prix CLIENT hôtel géré par ailleurs (facturation) — pas le gain cleaner
+      price,  // CA hôtel = taux horaire de l'hôtel × heures (remonte en stats/compta/facture)
       cleaner_gain: gain,
       cleaner_hourly_rate_snapshot: rate,
       instructions: req.instructions ?? null,
@@ -1264,6 +1278,11 @@ export async function registerHotelDB(fields: {
 export async function getApprovedHotelsDB() {
   const { data } = await supabase.from('hotels').select('*').eq('status_account', 'approved').order('hotel_name');
   return data ?? [];
+}
+
+// Taux horaire FACTURÉ à un hôtel (€/h) — propre à chaque hôtel, réglé par l'admin.
+export async function updateHotelRateDB(hotelId: string, rate: number) {
+  await supabase.from('hotels').update({ billing_hourly_rate: rate }).eq('id', hotelId);
 }
 
 export async function getHotelByUserId(userId: string) {

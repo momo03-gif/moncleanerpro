@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
+  getApprovedHotelsDB, updateHotelRateDB,
 } from '@/lib/db';
+import { inputStyle } from '@/lib/ui';
 import Icon from '@/components/Icon';
 
 type PartnerKind = 'hotel' | 'airbnb';
@@ -22,20 +24,33 @@ const KIND_LABEL: Record<PartnerKind, string> = { hotel: 'Hôtel', airbnb: 'Airb
 
 export default function ComptesPage() {
   const [pending, setPending] = useState<PendingPartner[]>([]);
+  const [hotels, setHotels] = useState<any[]>([]);
+  const [rates, setRates] = useState<Record<string, string>>({});
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
 
   async function load() {
-    const [hotels, partners] = await Promise.all([getPendingHotelsDB(), getPendingAirbnbPartnersDB()]);
+    const [pendHotels, partners, approvedHotels] = await Promise.all([
+      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getApprovedHotelsDB(),
+    ]);
     const list: PendingPartner[] = [
-      ...hotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
+      ...pendHotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
       ...partners.map((p: any) => ({ ...p, kind: 'airbnb' as const })),
     ];
     setPending(list);
+    setHotels(approvedHotels);
+    setRates(Object.fromEntries(approvedHotels.map((h: any) => [h.id, h.billing_hourly_rate != null ? String(h.billing_hourly_rate) : ''])));
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
+
+  async function saveRate(hotelId: string) {
+    await updateHotelRateDB(hotelId, Number(rates[hotelId]) || 0);
+    setSavedId(hotelId);
+    setTimeout(() => setSavedId(s => (s === hotelId ? null : s)), 1500);
+  }
 
   async function handleApprove(p: PendingPartner) {
     if (p.kind === 'hotel') await approveHotelDB(p.id); else await approveAirbnbPartnerDB(p.id);
@@ -117,6 +132,36 @@ export default function ComptesPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Hôtels validés : taux horaire FACTURÉ (propre à chaque hôtel). */}
+      {hotels.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Hôtels partenaires — taux horaire facturé</h2>
+          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Ce qu'on facture à l'hôtel, par heure. Le CA hôtel = taux × heures réalisées.</p>
+          <div className="space-y-3">
+            {hotels.map((h: any) => (
+              <div key={h.id} className="rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.hotel_name}</p>
+                  {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <input type="number" min="0" step="0.5" value={rates[h.id] ?? ''}
+                      onChange={e => setRates(r => ({ ...r, [h.id]: e.target.value }))}
+                      placeholder="0" className="w-24 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
+                    <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
+                  </div>
+                  <button onClick={() => saveRate(h.id)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: savedId === h.id ? '#5A8A6A' : '#C9A84C', color: savedId === h.id ? '#FFFFFF' : '#1A1A1A' }}>
+                    {savedId === h.id ? '✓ Enregistré' : 'Enregistrer'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
