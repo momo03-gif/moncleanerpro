@@ -7,6 +7,7 @@ import { getMissionsDB, getCompanyInfoDB, saveCompanyInfoDB, getInvoicesDB, save
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
+import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import Icon from '@/components/Icon';
 import DevisPanel from './DevisPanel';
 
@@ -27,10 +28,7 @@ function fmtDateFR(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
-  regular: 'Ménage', menage: 'Ménage', grand_menage: 'Grand ménage',
-};
+const TYPE_LABEL = MISSION_TYPE_LABEL;
 
 const CLIENT_TYPE_LABEL: Record<string, string> = {
   hotel: 'Hôtel', airbnb: 'Airbnb', conciergerie: 'Conciergerie', bureau: 'Bureau',
