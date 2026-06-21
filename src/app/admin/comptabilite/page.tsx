@@ -5,6 +5,7 @@ import { getMissionsDB, getCleaners, getPaymentsDB } from '@/lib/db';
 import type { Mission, Payment } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
+import { loadPayrollDB, type PayrollRow } from '@/lib/payrollApi';
 import PayrollPanel from './PayrollPanel';
 import DepensesPanel from './DepensesPanel';
 
@@ -33,17 +34,26 @@ function GlobalView() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [payroll, setPayroll] = useState<PayrollRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB()]).then(([m, c, p]) => {
-      setMissions(m); setCleaners(c); setPayments(p); setLoading(false);
+    Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB(), loadPayrollDB(currentMonth())]).then(([m, c, p, pay]) => {
+      setMissions(m); setCleaners(c); setPayments(p);
+      setPayroll(pay.rows ?? []);
+      setLoading(false);
     });
   }, []);
 
   if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
 
   const month = currentMonth();
+
+  // Charges salariales RÉELLES du mois (fiches de paie) : primes + déplacements,
+  // en plus du salaire de base. Le bénéfice « ce mois » les déduit pour refléter
+  // le vrai coût employeur (avant : seul le salaire de base était compté).
+  const primesMonth = Math.round(payroll.reduce((s, r) => s + r.payslip.primes.reduce((a, p) => a + p.montant, 0), 0) * 100) / 100;
+  const travelMonth = Math.round(payroll.reduce((s, r) => s + (r.payslip.travelAmount ?? 0), 0) * 100) / 100;
   const completedMissions = missions.filter(m => m.status === 'completed');
   const totalRevenue = completedMissions.reduce((s, m) => s + m.price, 0);
   const totalSalaries = completedMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
@@ -52,7 +62,9 @@ function GlobalView() {
   const thisMonthMissions = completedMissions.filter(m => m.date.startsWith(month));
   const revenueMonth = thisMonthMissions.reduce((s, m) => s + m.price, 0);
   const salariesMonth = thisMonthMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
-  const profitMonth = revenueMonth - salariesMonth;
+  // Coût employeur total du mois = base + primes + déplacements.
+  const laborMonth = Math.round((salariesMonth + primesMonth + travelMonth) * 100) / 100;
+  const profitMonth = Math.round((revenueMonth - laborMonth) * 100) / 100;
 
   const cleanerStats = cleaners.map(c => {
     const cm = completedMissions.filter(m => m.cleanerId === c.id);
@@ -85,20 +97,31 @@ function GlobalView() {
 
       <div className="rounded-2xl border p-5 mb-8" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#7A7068' }}>Ce mois — {month}</p>
-        <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Revenus</p>
             <p className="text-xl font-bold" style={{ color: '#5A8A6A' }}>{revenueMonth}€</p>
           </div>
           <div>
-            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Salaires</p>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Salaires base</p>
             <p className="text-xl font-bold" style={{ color: '#B85A50' }}>{salariesMonth}€</p>
           </div>
           <div>
-            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Bénéfice</p>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Primes</p>
+            <p className="text-xl font-bold" style={{ color: '#C48A2A' }}>{primesMonth}€</p>
+          </div>
+          <div>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Déplacements</p>
+            <p className="text-xl font-bold" style={{ color: '#8B7A62' }}>{travelMonth}€</p>
+          </div>
+          <div>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Bénéfice net</p>
             <p className="text-xl font-bold" style={{ color: '#C9A84C' }}>{profitMonth}€</p>
           </div>
         </div>
+        <p className="text-[11px] mt-3" style={{ color: '#A8A09A' }}>
+          Bénéfice = revenus − (salaires base + primes + déplacements). Coût employeur total ce mois : {laborMonth}€.
+        </p>
       </div>
 
       <h2 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>Par cleaner</h2>
