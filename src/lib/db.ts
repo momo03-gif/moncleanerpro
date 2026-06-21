@@ -1078,24 +1078,6 @@ export async function deleteMissionDB(
   return { error: null };
 }
 
-// Supprime toutes les missions d'une commande liée (ménage + livraison partageant
-// le même group_id). Chaque mission passe par deleteMissionDB → les missions
-// clôturées (terminées/annulées) sont conservées et signalées via `skipped`.
-export async function deleteMissionGroupDB(
-  groupId: string,
-  actor: MissionActor,
-): Promise<{ error: string | null; deleted: number; skipped: number }> {
-  const { data } = await supabase.from('missions').select('id').eq('group_id', groupId);
-  let deleted = 0, skipped = 0;
-  let firstError: string | null = null;
-  for (const m of data ?? []) {
-    const res = await deleteMissionDB(m.id, actor);
-    if (res.error) { skipped++; if (!firstError) firstError = res.error; }
-    else deleted++;
-  }
-  return { error: firstError, deleted, skipped };
-}
-
 // ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────
 
 export async function updateCleanerStatusDB(userId: string, status: 'available' | 'busy' | 'offline'): Promise<boolean> {
