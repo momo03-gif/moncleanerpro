@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, updateCleanerAvailableDaysDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
+import { serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
 import MotivationPanel from './MotivationPanel';
 
@@ -53,6 +54,9 @@ export default function CleanerProfil() {
   const completed = missions.filter(m => m.status === 'completed');
   const hotelHoursMonth = completed.filter(m => m.source === 'hotel' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
   const completedMonth = completed.filter(m => m.date.startsWith(month)).length;
+  // Nombre de livraisons effectuées ce mois (aucun montant affiché côté cleaner).
+  const deliveriesMonth = completed.filter(m => m.date.startsWith(month) && serviceParts(m.service).delivery).length;
+  const showDeliveries = (cleanerRow?.can_deliver ?? false) || deliveriesMonth > 0;
 
   async function handleStatusChange(value: string) {
     if (statusSaving) return;
@@ -102,6 +106,7 @@ export default function CleanerProfil() {
           {[
             { label: 'Heures hôtel', value: `${hotelHoursMonth}h`, gold: true, sub: 'ce mois' },
             { label: 'Missions',     value: completedMonth,         gold: false, sub: 'ce mois' },
+            ...(showDeliveries ? [{ label: 'Livraisons', value: deliveriesMonth, gold: false, sub: 'ce mois' }] : []),
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center" style={{ backgroundColor: '#F8F6F2' }}>
               <p className="text-xl font-bold" style={{ color: s.gold ? '#C9A84C' : '#1A1A1A' }}>{s.value}</p>

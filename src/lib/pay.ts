@@ -5,6 +5,9 @@
 // À NE PAS confondre avec la facturation client (missions.price / airbnbs.client_price),
 // qui reste indépendante.
 
+import type { MissionService } from './types';
+import { serviceParts } from './service';
+
 // Durées proposées en raccourci sur les formulaires (minutes).
 export const DURATION_PRESETS = [15, 20, 30, 45, 60, 90, 120];
 
@@ -13,4 +16,21 @@ export function computeCleanerGain(hourlyRate: number, durationMinutes: number):
   const rate = Number(hourlyRate) || 0;
   const minutes = Number(durationMinutes) || 0;
   return Math.round((rate * minutes / 60) * 100) / 100;
+}
+
+// Gain d'une mission selon sa prestation :
+//   ménage   → taux horaire × durée / 60
+//   livraison → montant fixe par livraison (delivery_rate)
+//   ménage + livraison (même personne) → les deux s'additionnent
+export function computeMissionGain(params: {
+  service?: MissionService | null;
+  hourlyRate: number;
+  deliveryRate: number;
+  durationMinutes: number;
+}): number {
+  const parts = serviceParts(params.service);
+  let gain = 0;
+  if (parts.cleaning) gain += (Number(params.hourlyRate) || 0) * (Number(params.durationMinutes) || 0) / 60;
+  if (parts.delivery) gain += Number(params.deliveryRate) || 0;
+  return Math.round(gain * 100) / 100;
 }

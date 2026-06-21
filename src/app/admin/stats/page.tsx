@@ -5,6 +5,7 @@ import { getMissionsDB, getCleaners } from '@/lib/db';
 import { getDepensesDB, type Depense } from '@/lib/depensesApi';
 import type { Mission } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
+import { serviceParts } from '@/lib/service';
 import RhPerfPanel from './RhPerfPanel';
 
 export default function StatsPage() {
@@ -31,6 +32,12 @@ export default function StatsPage() {
   const salariesAll = missions.filter(m => m.status === 'completed').reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
   const depensesAll = depenses.reduce((s, d) => s + d.montantTtc, 0);
   const netAllIn = Math.round((revenue - salariesAll - depensesAll) * 100) / 100;
+
+  // ── Livraisons : nombre effectué + coût (gain livreur). Le coût est déjà inclus
+  // dans les salaires ; on l'isole ici pour le suivi.
+  const deliveryDone = missions.filter(m => m.status === 'completed' && serviceParts(m.service).delivery);
+  const deliveriesCount = deliveryDone.length;
+  const deliveriesCost = Math.round(deliveryDone.reduce((s, m) => s + (m.cleanerGain ?? 0), 0) * 100) / 100;
 
   const byType: Record<string, number> = {};
   missions.forEach(m => { byType[m.type] = (byType[m.type] ?? 0) + 1; });
@@ -101,6 +108,15 @@ export default function StatsPage() {
           <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Revenus {revenue}€ − salaires {Math.round(salariesAll)}€ − dépenses {Math.round(depensesAll)}€</p>
         </div>
         <p className="text-3xl font-bold" style={{ color: netAllIn >= 0 ? '#5A8A6A' : '#B85A50' }}>{netAllIn}€</p>
+      </div>
+
+      {/* Suivi des livraisons */}
+      <div className="rounded-2xl p-5 border mb-8 flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        <div>
+          <p className="text-xs uppercase tracking-wider" style={{ color: '#7A7068' }}>Livraisons effectuées</p>
+          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Coût livreurs (montant fixe par livraison) : {deliveriesCost}€</p>
+        </div>
+        <p className="text-3xl font-bold" style={{ color: '#C48A2A' }}>{deliveriesCount}</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

@@ -1,6 +1,6 @@
 import { supabase, hashPassword } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
-import { computeCleanerGain } from './pay';
+import { computeCleanerGain, computeMissionGain } from './pay';
 import { canCleanerDoService } from './service';
 import { clusterApartments } from './zones';
 import { getBlockingFormationsDB } from './formation';
@@ -81,7 +81,7 @@ export async function getCleaners() {
   const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate: 0, status: u.status ?? 'active', can_clean: true, can_deliver: false,
+    hourly_rate: 0, status: u.status ?? 'active', can_clean: true, can_deliver: false, delivery_rate: 0,
   }));
 }
 
@@ -93,14 +93,14 @@ export async function getActiveCleanersDB() {
   const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner').eq('status', 'active');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate: 0, status: 'active', can_clean: true, can_deliver: false,
+    hourly_rate: 0, status: 'active', can_clean: true, can_deliver: false, delivery_rate: 0,
   }));
 }
 
 export async function createCleaner(fields: {
   name: string; email: string; phone?: string;
   password: string; hourlyRate?: number;
-  canClean?: boolean; canDeliver?: boolean;
+  canClean?: boolean; canDeliver?: boolean; deliveryRate?: number;
 }) {
   const hash = await hashPassword(fields.password || 'cleaner123');
   const { data: user, error: userError } = await supabase
@@ -122,6 +122,7 @@ export async function createCleaner(fields: {
     hourly_rate: fields.hourlyRate ?? 0,
     can_clean: fields.canClean ?? true,
     can_deliver: fields.canDeliver ?? false,
+    delivery_rate: fields.deliveryRate ?? 0,
     status: 'active',
   });
 
@@ -166,6 +167,11 @@ export async function updateCleanerHourlyRateDB(id: string, hourlyRate: number) 
 // Capacités du cleaner : peut faire du nettoyage / de la livraison.
 export async function updateCleanerCapabilitiesDB(id: string, caps: { canClean: boolean; canDeliver: boolean }) {
   await supabase.from('cleaners').update({ can_clean: caps.canClean, can_deliver: caps.canDeliver }).eq('id', id);
+}
+
+// Montant fixe gagné par livraison (admin).
+export async function updateCleanerDeliveryRateDB(id: string, deliveryRate: number) {
+  await supabase.from('cleaners').update({ delivery_rate: deliveryRate }).eq('id', id);
 }
 
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
@@ -533,7 +539,7 @@ export async function acceptMissionDB(missionId: string, userId: string): Promis
 export async function createMissionDB(fields: {
   type: string; source: string; propertyName: string; address: string;
   dateFrom: string; timeTo: string; timeFrom: string;
-  missionDurationMinutes: number; cleanerHourlyRate?: number; apartmentDefaultDuration?: number;
+  missionDurationMinutes: number; cleanerHourlyRate?: number; cleanerDeliveryRate?: number; apartmentDefaultDuration?: number;
   cleanerId?: string; cleanerName?: string; clientName?: string;
   price: number; instructions?: string;
   airbnbId?: string; partnerId?: string;
@@ -547,10 +553,14 @@ export async function createMissionDB(fields: {
   // nom/adresse : ils sont récupérés depuis la fiche appartement (join).
   const linked = !!fields.airbnbId;
 
-  // Paiement cleaner : taux horaire × durée / 60 (indépendant du prix client).
+  // Paiement cleaner selon la prestation : ménage = taux horaire × durée / 60 ;
+  // livraison = montant fixe par livraison (indépendant du prix client).
   const minutes = Number(fields.missionDurationMinutes) || 0;
   const rate = Number(fields.cleanerHourlyRate) || 0;
-  const gain = cleanerIdToStore ? computeCleanerGain(rate, minutes) : 0;
+  const deliveryRate = Number(fields.cleanerDeliveryRate) || 0;
+  const gain = cleanerIdToStore
+    ? computeMissionGain({ service: fields.service, hourlyRate: rate, deliveryRate, durationMinutes: minutes })
+    : 0;
 
   const { data, error } = await supabase.from('missions').insert({
     type: fields.type,
@@ -667,10 +677,12 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
   // cleanerId is already cleaners.id (from the dropdown) — store directly.
   // Gain cleaner recalculé : taux horaire du cleaner × durée de la mission / 60.
   const [{ data: cleaner }, { data: mission }] = await Promise.all([
-    supabase.from('cleaners').select('hourly_rate').eq('id', cleanerId).single(),
-    supabase.from('missions').select('mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)').eq('id', missionId).single(),
+    supabase.from('cleaners').select('hourly_rate, delivery_rate').eq('id', cleanerId).single(),
+    supabase.from('missions').select('service, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)').eq('id', missionId).single(),
   ]);
   const rate = Number(cleaner?.hourly_rate) || 0;
+  const deliveryRate = Number(cleaner?.delivery_rate) || 0;
+  const service = (mission as any)?.service as MissionService | undefined;
   const aptDefault = (mission as any)?.airbnbs?.estimated_cleaning_minutes
     ?? (mission as any)?.apartment_default_duration_snapshot
     ?? null;
@@ -682,7 +694,7 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
     cleaner_id: cleanerId,
     cleaner_name: cleanerName,
     status: 'assigned',
-    cleaner_gain: computeCleanerGain(rate, minutes),
+    cleaner_gain: computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes }),
     cleaner_hourly_rate_snapshot: rate,
     mission_duration_minutes: minutes,
     apartment_default_duration_snapshot: aptDefault != null ? Number(aptDefault) : null,
@@ -755,7 +767,7 @@ export async function resolveExtraTimeDB(
 
   const { data: m } = await supabase
     .from('missions')
-    .select('cleaner_id, mission_duration_minutes, extra_time_minutes, extra_time_status')
+    .select('cleaner_id, service, mission_duration_minutes, extra_time_minutes, extra_time_status')
     .eq('id', missionId).single();
   if (!m) return { error: 'Mission introuvable.' };
   if (m.extra_time_status !== 'pending') return { error: 'Aucune demande en attente.' };
@@ -778,9 +790,10 @@ export async function resolveExtraTimeDB(
   };
   if (m.cleaner_id) {
     const { data: cleaner } = await supabase.from('cleaners')
-      .select('hourly_rate').eq('id', m.cleaner_id).single();
+      .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).single();
     const rate = Number(cleaner?.hourly_rate) || 0;
-    patch.cleaner_gain = computeCleanerGain(rate, newMinutes);
+    const deliveryRate = Number(cleaner?.delivery_rate) || 0;
+    patch.cleaner_gain = computeMissionGain({ service: (m as any).service, hourlyRate: rate, deliveryRate, durationMinutes: newMinutes });
     patch.cleaner_hourly_rate_snapshot = rate;
   }
   const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
@@ -974,18 +987,20 @@ export async function updateMissionDB(
     if (fields.status !== undefined) patch.status = toDbMissionStatus(fields.status);
 
     // ── Recalcul du gain cleaner ──────────────────────────────────────────
-    // Déclenché si l'admin change le cleaner, l'appartement ou la durée.
-    // gain = taux horaire du cleaner × durée de la mission / 60.
+    // Déclenché si l'admin change le cleaner, l'appartement, la durée ou la
+    // prestation. Ménage = taux horaire × durée / 60 ; livraison = montant fixe.
     const touchesPay = fields.cleanerId !== undefined
       || fields.airbnbId !== undefined
-      || fields.missionDurationMinutes !== undefined;
+      || fields.missionDurationMinutes !== undefined
+      || fields.service !== undefined;
     if (touchesPay) {
       const { data: current } = await supabase
         .from('missions')
-        .select('cleaner_id, mission_duration_minutes, apartment_default_duration_snapshot')
+        .select('cleaner_id, service, mission_duration_minutes, apartment_default_duration_snapshot')
         .eq('id', missionId).single();
 
       const cleanerId = fields.cleanerId !== undefined ? fields.cleanerId : current?.cleaner_id;
+      const service = (fields.service !== undefined ? fields.service : current?.service) as MissionService | undefined;
 
       // Durée par défaut de l'appartement (si l'appart change ou pour fallback).
       let aptDefault: number | null = current?.apartment_default_duration_snapshot ?? null;
@@ -1008,9 +1023,10 @@ export async function updateMissionDB(
 
       if (cleanerId) {
         const { data: cleaner } = await supabase.from('cleaners')
-          .select('hourly_rate').eq('id', cleanerId).single();
+          .select('hourly_rate, delivery_rate').eq('id', cleanerId).single();
         const rate = Number(cleaner?.hourly_rate) || 0;
-        patch.cleaner_gain = computeCleanerGain(rate, minutes);
+        const deliveryRate = Number(cleaner?.delivery_rate) || 0;
+        patch.cleaner_gain = computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes });
         patch.cleaner_hourly_rate_snapshot = rate;
       } else {
         patch.cleaner_gain = 0;

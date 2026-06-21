@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 import type { Mission, HotelAnnounce, MissionType, MissionSource, MissionService, Apartment, MissionStatus } from '@/lib/types';
 import { serviceLabel, SERVICE_LABEL, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
-import { computeCleanerGain, DURATION_PRESETS } from '@/lib/pay';
+import { computeCleanerGain, computeMissionGain, DURATION_PRESETS } from '@/lib/pay';
 import { groupMissionsByCleaner } from '@/lib/missionOrder';
 import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
@@ -90,14 +90,21 @@ function formatClock(iso: string | undefined): string {
 }
 
 // ── Encart « gain cleaner » calculé en direct ─────────────────────────────────
-function GainPreview({ gain, cleaner, minutes }: { gain: number; cleaner: any; minutes: string }) {
+function GainPreview({ gain, cleaner, minutes, service }: { gain: number; cleaner: any; minutes: string; service?: MissionService }) {
   const rate = cleaner?.hourly_rate ?? 0;
+  const deliveryRate = cleaner?.delivery_rate ?? 0;
+  const parts = serviceParts(service);
+  const formula = parts.cleaning && parts.delivery
+    ? `${rate}€/h × ${minutes || 0} min ÷ 60 + ${deliveryRate}€ livraison`
+    : parts.delivery
+      ? `${deliveryRate}€ par livraison (montant fixe)`
+      : `${rate}€/h × ${minutes || 0} min ÷ 60`;
   return (
     <div className="md:col-span-2 rounded-xl px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#C9A84C12', border: '1px solid #C9A84C40' }}>
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Gain cleaner (auto)</p>
         <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>
-          {cleaner ? `${rate}€/h × ${minutes || 0} min ÷ 60` : 'Sélectionnez un cleaner pour calculer le gain'}
+          {cleaner ? formula : 'Sélectionnez un cleaner pour calculer le gain'}
         </p>
       </div>
       <span className="text-xl font-bold" style={{ color: '#C9A84C' }}>{gain}€</span>
@@ -161,7 +168,12 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
   // Aperçu du gain recalculé en direct dans le formulaire d'édition.
   const editCleaner = cleaners.find(c => c.id === mission.cleanerId);
-  const editGainPreview = computeCleanerGain(editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0, Number(editForm.durationMinutes) || 0);
+  const editGainPreview = computeMissionGain({
+    service: editForm.service,
+    hourlyRate: editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0,
+    deliveryRate: editCleaner?.delivery_rate ?? 0,
+    durationMinutes: Number(editForm.durationMinutes) || 0,
+  });
 
   async function saveEdit() {
     if (!user) return;
@@ -739,17 +751,22 @@ export default function MissionsPage() {
     }));
   }
 
-  // Gain cleaner calculé en direct : taux horaire × durée mission / 60.
-  const formCleaner = cleaners.find(c => c.id === form.cleanerId);
-  const formGain = computeCleanerGain(formCleaner?.hourly_rate ?? 0, Number(form.durationMinutes) || 0);
-
   // Service de la prestation PRINCIPALE (champ cleaner/durée/prix du haut) :
   // pour « ménage + livraison à 2 personnes », le haut = la partie ménage.
   const mainService: MissionService = form.service === 'delivery'
     ? 'delivery'
     : (form.service === 'cleaning_delivery' && form.splitAssignees ? 'cleaning' : form.service);
+
+  // Gain cleaner calculé en direct, selon la prestation (ménage = horaire ; livraison = fixe).
+  const formCleaner = cleaners.find(c => c.id === form.cleanerId);
+  const formGain = computeMissionGain({
+    service: mainService,
+    hourlyRate: formCleaner?.hourly_rate ?? 0,
+    deliveryRate: formCleaner?.delivery_rate ?? 0,
+    durationMinutes: Number(form.durationMinutes) || 0,
+  });
   const deliveryCleaner = cleaners.find(c => c.id === form.cleanerIdDelivery);
-  const deliveryGain = computeCleanerGain(deliveryCleaner?.hourly_rate ?? 0, Number(form.durationMinutesDelivery) || 0);
+  const deliveryGain = Number(deliveryCleaner?.delivery_rate) || 0;  // montant fixe par livraison
 
   function cleanerWarning(cleanerId: string, date: string): string | null {
     if (!cleanerId || !date) return null;
@@ -834,6 +851,7 @@ export default function MissionsPage() {
         deliveryInstructions: form.deliveryInstructions,
         missionDurationMinutes: Number(form.durationMinutesDelivery) || 30,
         cleanerHourlyRate: cDeliv?.hourly_rate ?? 0,
+        cleanerDeliveryRate: cDeliv?.delivery_rate ?? 0,
         cleanerId: form.cleanerIdDelivery || undefined, cleanerName: cDeliv?.name,
         price: Number(form.priceDelivery) || 0,
       });
@@ -846,6 +864,7 @@ export default function MissionsPage() {
         deliveryInstructions: serviceParts(form.service).delivery ? form.deliveryInstructions : undefined,
         missionDurationMinutes: Number(form.durationMinutes) || 60,
         cleanerHourlyRate: c?.hourly_rate ?? 0,
+        cleanerDeliveryRate: c?.delivery_rate ?? 0,
         cleanerId: form.cleanerId || undefined, cleanerName: c?.name,
         price: Number(form.price) || 0,  // prix CLIENT (facturation)
       });
@@ -1354,7 +1373,7 @@ export default function MissionsPage() {
                   placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
-              <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} />
+              <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} service={mainService} />
             </>)}
 
             {/* ── AIRBNB ── */}
@@ -1454,7 +1473,7 @@ export default function MissionsPage() {
                   Prix client (facturation) repris de l'appartement : <span style={{ color: '#5A8A6A', fontWeight: 600 }}>{form.price}€</span>
                 </div>
               )}
-              <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} />
+              <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} service={mainService} />
             </>)}
           </div>
 
@@ -1496,7 +1515,7 @@ export default function MissionsPage() {
                     placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                     onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                 </div>
-                <GainPreview gain={deliveryGain} cleaner={deliveryCleaner} minutes={form.durationMinutesDelivery} />
+                <GainPreview gain={deliveryGain} cleaner={deliveryCleaner} minutes={form.durationMinutesDelivery} service="delivery" />
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Consignes de livraison</label>
                   <textarea value={form.deliveryInstructions} onChange={e => setForm(p => ({ ...p, deliveryInstructions: e.target.value }))}

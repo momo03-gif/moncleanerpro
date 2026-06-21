@@ -166,6 +166,8 @@ export interface CleanerRow {
   // Capacités : peut faire du nettoyage / de la livraison. Défaut : nettoyage seul.
   can_clean?: boolean;
   can_deliver?: boolean;
+  // Montant fixe gagné par livraison (indépendant de la durée).
+  delivery_rate?: number;
 }
 
 export interface CompanyInfo {

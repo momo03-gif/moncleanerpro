@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { capabilitiesLabel } from '@/lib/service';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
@@ -10,7 +10,7 @@ import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
 
-const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false };
+const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false, deliveryRate: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
 export default function CleanersPage() {
@@ -22,7 +22,7 @@ export default function CleanersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [managing, setManaging] = useState<string | null>(null);
-  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '', canClean: true, canDeliver: false });
+  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '', canClean: true, canDeliver: false, deliveryRate: '' });
   const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
@@ -49,6 +49,7 @@ export default function CleanersPage() {
       hourlyRate: String(c.hourly_rate ?? ''),
       password: '',
       canClean: c.can_clean ?? true, canDeliver: c.can_deliver ?? false,
+      deliveryRate: c.delivery_rate != null ? String(c.delivery_rate) : '',
     });
   }
 
@@ -59,6 +60,7 @@ export default function CleanersPage() {
     await updateCleanerInfoDB(id, { name: manageForm.name.trim(), email: manageForm.email.trim(), phone: manageForm.phone.trim() || undefined });
     await updateCleanerHourlyRateDB(id, Number(manageForm.hourlyRate) || 0);
     await updateCleanerCapabilitiesDB(id, { canClean: manageForm.canClean, canDeliver: manageForm.canDeliver });
+    await updateCleanerDeliveryRateDB(id, manageForm.canDeliver ? (Number(manageForm.deliveryRate) || 0) : 0);
     if (manageForm.password.trim()) await updateCleanerPasswordDB(id, manageForm.password.trim());
     setManaging(null);
     await load();
@@ -80,6 +82,7 @@ export default function CleanersPage() {
       password: form.password || 'cleaner123',
       hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : undefined,
       canClean: form.canClean, canDeliver: form.canDeliver,
+      deliveryRate: form.canDeliver ? (Number(form.deliveryRate) || 0) : 0,
     });
     await load();
     setForm(emptyForm);
@@ -157,7 +160,8 @@ export default function CleanersPage() {
                   <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Gain par mission = taux horaire × durée du ménage ÷ 60</p>
                 </div>
                 <CapabilityToggles canClean={form.canClean} canDeliver={form.canDeliver}
-                  onChange={caps => setForm(p => ({ ...p, ...caps }))} />
+                  onChange={caps => setForm(p => ({ ...p, ...caps }))}
+                  deliveryRate={form.deliveryRate} onRateChange={v => setForm(p => ({ ...p, deliveryRate: v }))} />
               </div>
               <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                 {saving ? 'Création...' : 'Ajouter le cleaner'}
@@ -210,10 +214,18 @@ export default function CleanersPage() {
 
                   {managing !== cleaner.id ? (
                     <div className="px-4 md:px-6 pb-5 border-t pt-4" style={{ borderColor: '#F2EFE9' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Taux horaire</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold" style={{ color: cleaner.hourly_rate ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate ? `${cleaner.hourly_rate}€` : '—'}</span>
-                        {cleaner.hourly_rate ? <span className="text-xs" style={{ color: '#A8A09A' }}>/ heure</span> : null}
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Tarifs</p>
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold" style={{ color: cleaner.hourly_rate ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate ? `${cleaner.hourly_rate}€` : '—'}</span>
+                          {cleaner.hourly_rate ? <span className="text-xs" style={{ color: '#A8A09A' }}>/ heure</span> : null}
+                        </div>
+                        {cleaner.can_deliver && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold" style={{ color: cleaner.delivery_rate ? '#C48A2A' : '#A8A09A' }}>{cleaner.delivery_rate ? `${cleaner.delivery_rate}€` : '—'}</span>
+                            <span className="text-xs" style={{ color: '#A8A09A' }}>/ livraison</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -241,7 +253,8 @@ export default function CleanersPage() {
                             onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                         </div>
                         <CapabilityToggles canClean={manageForm.canClean} canDeliver={manageForm.canDeliver}
-                          onChange={caps => setManageForm(p => ({ ...p, ...caps }))} />
+                          onChange={caps => setManageForm(p => ({ ...p, ...caps }))}
+                          deliveryRate={manageForm.deliveryRate} onRateChange={v => setManageForm(p => ({ ...p, deliveryRate: v }))} />
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => handleSaveManage(cleaner.id)} disabled={saving || !manageForm.name.trim() || !manageForm.email.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -345,9 +358,11 @@ export default function CleanersPage() {
 
 // ── Capacités d'un cleaner : nettoyage / livraison ──────────────────────────────
 // Détermine les missions qu'on peut lui attribuer. Défaut : nettoyage seul.
-function CapabilityToggles({ canClean, canDeliver, onChange }: {
+function CapabilityToggles({ canClean, canDeliver, onChange, deliveryRate, onRateChange }: {
   canClean: boolean; canDeliver: boolean;
   onChange: (caps: { canClean: boolean; canDeliver: boolean }) => void;
+  deliveryRate: string;
+  onRateChange: (v: string) => void;
 }) {
   return (
     <div className="md:col-span-2">
@@ -371,6 +386,17 @@ function CapabilityToggles({ canClean, canDeliver, onChange }: {
         </button>
       </div>
       <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Ce que ce cleaner peut réaliser. Détermine les missions qu&apos;on peut lui attribuer.</p>
+
+      {/* Montant par livraison — visible et modifiable par l'admin uniquement. */}
+      {canDeliver && (
+        <div className="mt-3">
+          <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Montant par livraison (€)</label>
+          <input type="number" min="0" step="0.5" value={deliveryRate} onChange={e => onRateChange(e.target.value)}
+            placeholder="Ex : 4" className="w-full md:w-48 px-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+          <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Gain fixe par mission de livraison, indépendant de la durée.</p>
+        </div>
+      )}
     </div>
   );
 }
