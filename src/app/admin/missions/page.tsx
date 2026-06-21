@@ -652,6 +652,7 @@ export default function MissionsPage() {
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCleaner, setBulkCleaner] = useState('');
+  const [bulkLivreur, setBulkLivreur] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
   const [assigningId, setAssigningId] = useState<string | null>(null);
@@ -943,6 +944,42 @@ export default function MissionsPage() {
     await load();
   }
 
+  // Livreurs disponibles (cleaners habilités livraison).
+  const livreurs = cleaners.filter((c: any) => c.can_deliver);
+  // Missions sélectionnées qui ne sont PAS déjà des livraisons → on peut leur
+  // ajouter une livraison (même appartement/adresse, même date).
+  const selectedForDelivery = selectedMissionsList.filter(m => (m.service ?? 'cleaning') !== 'delivery');
+
+  // Crée une mission de LIVRAISON pour chaque mission cochée et l'assigne au livreur.
+  // Évite les doublons : on saute si une livraison existe déjà pour le même
+  // appartement/propriété à la même date.
+  async function handleBulkCreateDelivery() {
+    if (!bulkLivreur || selectedForDelivery.length === 0) return;
+    const liv: any = livreurs.find((c: any) => c.id === bulkLivreur);
+    if (!liv) return;
+    setBulkBusy(true);
+    for (const m of selectedForDelivery) {
+      const exists = missions.some(x => (x.service === 'delivery') && x.date === m.date
+        && (m.airbnbId ? x.airbnbId === m.airbnbId : x.property === m.property));
+      if (exists) continue;
+      await createMissionDB({
+        type: 'regular', source: m.source ?? 'airbnb', service: 'delivery',
+        propertyName: m.property, address: m.address,
+        dateFrom: m.date, timeFrom: m.time || '', timeTo: '',
+        missionDurationMinutes: 30,
+        cleanerHourlyRate: liv.hourly_rate ?? 0, cleanerDeliveryRate: liv.delivery_rate ?? 0,
+        cleanerId: liv.id, cleanerName: liv.name,
+        price: 0,
+        airbnbId: m.airbnbId, partnerId: m.partnerId,
+        createdBy: user?.id, createdByRole: 'admin',
+      });
+    }
+    setBulkBusy(false);
+    clearSelection();
+    setBulkLivreur('');
+    await load();
+  }
+
   // Bornes (1re → dernière mission) pour le bouton « voir toutes les dates »
   const allDates = missions.map(m => m.date).filter(Boolean).sort();
   const outOfRangeCount = missions.length - dateScoped.length;
@@ -1086,24 +1123,49 @@ export default function MissionsPage() {
             </button>
           </div>
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2 mb-4 p-3 rounded-xl flex-wrap" style={{ backgroundColor: '#C9A84C12', border: '1px solid #C9A84C40' }}>
-              <span className="text-sm font-semibold" style={{ color: '#7A6030' }}>{selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}</span>
-              <select value={bulkCleaner} onChange={e => setBulkCleaner(e.target.value)}
-                className="flex-1 min-w-[160px] px-3 py-2 rounded-xl text-sm border appearance-none"
-                style={{ ...inputStyle, color: bulkCleaner ? '#1A1A1A' : '#A8A09A' }}>
-                <option value="">Choisir un {bulkRoleLabel}</option>
-                {bulkEligible.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <button onClick={handleBulkAssign} disabled={!bulkCleaner || bulkBusy}
-                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                {bulkBusy ? '...' : `Assigner ${selectedIds.size}`}
-              </button>
-              {bulkEligible.length === 0 && (
-                <span className="text-xs w-full" style={{ color: '#B85A50' }}>
-                  Aucun {bulkRoleLabel} disponible pour cette sélection (vérifiez les capacités des cleaners).
-                </span>
+            <div className="mb-4 p-3 rounded-xl space-y-2.5" style={{ backgroundColor: '#C9A84C12', border: '1px solid #C9A84C40' }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold" style={{ color: '#7A6030' }}>{selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}</span>
+                <button onClick={clearSelection} className="px-3 py-1.5 rounded-lg text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+              </div>
+
+              {/* Assigner la/les mission(s) à un cleaner (selon leur prestation). */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <select value={bulkCleaner} onChange={e => setBulkCleaner(e.target.value)}
+                  className="flex-1 min-w-[160px] px-3 py-2 rounded-xl text-sm border appearance-none"
+                  style={{ ...inputStyle, color: bulkCleaner ? '#1A1A1A' : '#A8A09A' }}>
+                  <option value="">Choisir un {bulkRoleLabel}</option>
+                  {bulkEligible.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <button onClick={handleBulkAssign} disabled={!bulkCleaner || bulkBusy}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  {bulkBusy ? '...' : 'Assigner'}
+                </button>
+              </div>
+
+              {/* Ajouter une LIVRAISON aux missions cochées et l'assigner à un livreur. */}
+              {selectedForDelivery.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t" style={{ borderColor: '#C9A84C30' }}>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#C48A2A' }}>
+                    <Icon name="delivery" size={14} /> Livraison
+                  </span>
+                  <select value={bulkLivreur} onChange={e => setBulkLivreur(e.target.value)}
+                    className="flex-1 min-w-[140px] px-3 py-2 rounded-xl text-sm border appearance-none"
+                    style={{ ...inputStyle, color: bulkLivreur ? '#1A1A1A' : '#A8A09A' }}>
+                    <option value="">Choisir un livreur</option>
+                    {livreurs.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <button onClick={handleBulkCreateDelivery} disabled={!bulkLivreur || bulkBusy}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C48A2A', color: '#FFFFFF' }}>
+                    {bulkBusy ? '...' : `Créer la livraison (${selectedForDelivery.length})`}
+                  </button>
+                  {livreurs.length === 0 && (
+                    <span className="text-xs w-full" style={{ color: '#B85A50' }}>
+                      Aucun livreur : activez la capacité « Livraison » sur un cleaner (Admin → Cleaners).
+                    </span>
+                  )}
+                </div>
               )}
-              <button onClick={clearSelection} className="px-3 py-2 rounded-xl text-sm" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
             </div>
           )}
 
