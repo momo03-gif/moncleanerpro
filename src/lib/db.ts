@@ -1154,6 +1154,19 @@ function minutesBetween(from?: string | null, to?: string | null): number {
   return d > 0 ? d : 0;
 }
 
+// Liste des dates 'YYYY-MM-DD' de `from` à `to` inclus (garde-fou 60 jours max).
+function eachDate(from: string, to?: string | null): string[] {
+  if (!from) return [];
+  const start = new Date(from + 'T00:00:00Z');
+  const end = new Date(((to || from) + 'T00:00:00Z'));
+  if (isNaN(start.getTime())) return [from];
+  const out: string[] = [];
+  for (let cur = start, i = 0; cur <= end && i < 60; cur = new Date(cur.getTime() + 86400000), i++) {
+    out.push(cur.toISOString().slice(0, 10));
+  }
+  return out.length > 0 ? out : [from];
+}
+
 export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string, durationMinutesOverride?: number) {
   const { data: req } = await supabase.from('hotel_requests').select('*').eq('id', id).single();
 
@@ -1180,32 +1193,33 @@ export async function validateRequestDB(id: string, cleanerId: string, cleanerNa
     const hotelRate = Number(hotel?.billing_hourly_rate) || 0;
     const price = Math.round(hotelRate * (minutes / 60) * 100) / 100;
 
-    // cleanerId is cleaners.id (from dropdown) — store directly (FK to cleaners.id)
-    const { data: created, error } = await supabase.from('missions').insert({
+    // Annonce hôtel = ménage CHAQUE JOUR de la période → une mission par jour.
+    const baseRow = {
       type: req.type_prestation ?? 'regular',
       source: 'hotel',
       created_by: hotel?.user_id ?? null,
       created_by_role: 'hotel',
       property_name: req.hotel_name ?? '',
       address: '',
-      date_from: req.date_from,
       time_from: req.time_from || null,
       time_to: req.time_to || null,
       hours_worked: minutes / 60,
       mission_duration_minutes: minutes,
-      cleaner_id: cleanerId,
+      cleaner_id: cleanerId,          // cleaners.id (FK)
       cleaner_name: cleanerName,
       client_name: req.hotel_name ?? '',
-      price,  // CA hôtel = taux horaire de l'hôtel × heures (remonte en stats/compta/facture)
+      price,  // CA hôtel = taux horaire de l'hôtel × heures (par jour)
       cleaner_gain: gain,
       cleaner_hourly_rate_snapshot: rate,
       instructions: req.instructions ?? null,
       status: 'assigned',
-    }).select('id').single();
+    };
+    const rows = eachDate(req.date_from, req.date_to).map(d => ({ ...baseRow, date_from: d }));
 
+    const { data: created, error } = await supabase.from('missions').insert(rows).select('id');
     if (error) console.error('validateRequestDB - mission insert error:', error);
-    // Notif cleaner : nouvelle mission
-    else if (created?.id) await notifyCleanerNewMission(created.id);
+    // Notif cleaner : une seule notif (il voit toutes ses missions dans l'app).
+    else if (created?.[0]?.id) await notifyCleanerNewMission(created[0].id);
   }
 }
 
