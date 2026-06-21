@@ -8,19 +8,13 @@ import type { Apartment, Mission } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
+import { MISSION_STATUS_CFG } from '@/lib/labels';
 import Icon from '@/components/Icon';
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 const today = new Date().toISOString().split('T')[0];
 
-const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'À assigner', color: '#6B7280', bg: '#6B728018' },
-  accepted:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A15' },
-  validated:   { label: 'Validée',    color: '#C9A84C', bg: '#C9A84C15' },
-  in_progress: { label: 'En cours',   color: '#5B6EF5', bg: '#5B6EF518' },
-  completed:   { label: 'Terminée',   color: '#5A8A6A', bg: '#5A8A6A15' },
-  cancelled:   { label: 'Annulée',    color: '#B85A50', bg: '#B85A5015' },
-};
+const STATUS_CFG = MISSION_STATUS_CFG;
 
 function formatDate(d: string) {
   if (!d) return '—';

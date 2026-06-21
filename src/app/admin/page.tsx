@@ -9,6 +9,7 @@ import {
 } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { formatDuration, formatHour } from '@/lib/format';
+import { missionStatusCfg } from '@/lib/labels';
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
   return (
@@ -19,9 +20,6 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
     </div>
   );
 }
-
-const STATUS_COLOR: Record<string, string> = { pending: '#6B7280', accepted: '#C48A2A', validated: '#C9A84C', in_progress: '#5B6EF5', completed: '#5A8A6A', cancelled: '#B85A50' };
-const STATUS_LABEL: Record<string, string> = { pending: 'À assigner', accepted: 'En attente', validated: 'Validée', in_progress: 'En cours', completed: 'Terminée', cancelled: 'Annulée' };
 
 export default function AdminDashboard() {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -129,8 +127,8 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.price}€</span>
-                  <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: `${STATUS_COLOR[m.status]}18`, color: STATUS_COLOR[m.status] }}>
-                    {STATUS_LABEL[m.status]}
+                  <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: missionStatusCfg(m.status).bg, color: missionStatusCfg(m.status).color }}>
+                    {missionStatusCfg(m.status).label}
                   </span>
                 </div>
               </div>

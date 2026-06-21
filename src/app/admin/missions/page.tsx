@@ -22,28 +22,19 @@ import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
+import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL } from '@/lib/labels';
 
-// ── Status config (cycle complet) ─────────────────────────────────────────────
-const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'À assigner', color: '#6B7280', bg: '#6B728018' },
-  accepted:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A15' },
-  validated:   { label: 'Validée',    color: '#C9A84C', bg: '#C9A84C15' },
-  in_progress: { label: 'En cours',   color: '#5B6EF5', bg: '#5B6EF518' },
-  completed:   { label: 'Terminée',   color: '#5A8A6A', bg: '#5A8A6A15' },
-  cancelled:   { label: 'Annulée',    color: '#B85A50', bg: '#B85A5015' },
-};
+// Libellés statuts/types des missions : centralisés (lib/labels.ts).
+const STATUS_CFG = MISSION_STATUS_CFG;
+const TYPE_LABEL = MISSION_TYPE_LABEL;
 
+// Statuts des DEMANDES hôtel (hotel_requests) — domaine distinct des missions.
 const ST_REQ: Record<string, { label: string; color: string }> = {
   pending:     { label: 'En attente', color: '#C48A2A' },
   validated:   { label: 'Validée',    color: '#C9A84C' },
   refused:     { label: 'Refusée',    color: '#B85A50' },
   in_progress: { label: 'En cours',   color: '#8B7A62' },
   completed:   { label: 'Terminée',   color: '#5A8A6A' },
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
-  regular: 'Ménage', menage: 'Ménage', grand_menage: 'Grand ménage',
 };
 
 function parseMissionNotes(notes: string | undefined | null) {
@@ -58,7 +49,7 @@ function parseMissionNotes(notes: string | undefined | null) {
   return { portalCode, keyboxCode, extra: text.replace(/·/g, '').trim() };
 }
 
-const SOURCE_LABEL: Record<string, string> = { hotel: 'Hôtel', airbnb: 'Airbnb' };
+const SOURCE_LABEL = MISSION_SOURCE_LABEL;
 
 const TABS = ['Annonces hôtel', 'Missions', 'Créer'] as const;
 
@@ -583,20 +574,6 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                 </button>
               )}
               {mission.status === 'accepted' && (
-                <>
-                  <button onClick={() => changeStatus('validated')} disabled={busy}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                    style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                    ✓ Valider
-                  </button>
-                  <button onClick={() => setAssignOpen(true)} disabled={busy}
-                    className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                    style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                    Réassigner
-                  </button>
-                </>
-              )}
-              {mission.status === 'validated' && (
                 <button onClick={() => setAssignOpen(true)} disabled={busy}
                   className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
                   style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
@@ -878,7 +855,6 @@ export default function MissionsPage() {
     { value: 'all',         label: 'Toutes' },
     { value: 'pending',     label: 'À assigner' },
     { value: 'accepted',    label: 'En attente' },
-    { value: 'validated',   label: 'Validées' },
     { value: 'in_progress', label: 'En cours' },
     { value: 'completed',   label: 'Terminées' },
     { value: 'cancelled',   label: 'Annulées' },

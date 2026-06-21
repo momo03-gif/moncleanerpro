@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import type { Mission } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
+import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
@@ -16,10 +17,7 @@ import Icon from '@/components/Icon';
 // Incréments proposés pour une demande de temps supplémentaire (minutes).
 const EXTRA_TIME_OPTIONS = [15, 30, 45, 60];
 
-const TYPE_LABEL: Record<string, string> = {
-  checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
-  regular: 'Ménage', menage: 'Ménage', grand_menage: 'Grand ménage',
-};
+const TYPE_LABEL = MISSION_TYPE_LABEL;
 
 function parseMissionNotes(notes: string | undefined | null) {
   if (!notes) return { portalCode: null, keyboxCode: null, extra: '' };
@@ -33,14 +31,7 @@ function parseMissionNotes(notes: string | undefined | null) {
   return { portalCode, keyboxCode, extra: text.replace(/·/g, '').trim() };
 }
 
-const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'À assigner', color: '#6B7280', bg: '#6B728018' },
-  accepted:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A15' },
-  validated:   { label: 'Validée',    color: '#C9A84C', bg: '#C9A84C15' },
-  in_progress: { label: 'En cours',   color: '#5B6EF5', bg: '#5B6EF518' },
-  completed:   { label: 'Terminée',   color: '#5A8A6A', bg: '#5A8A6A15' },
-  cancelled:   { label: 'Annulée',    color: '#B85A50', bg: '#B85A5015' },
-};
+const STATUS_CFG = MISSION_STATUS_CFG;
 
 function toDateStr(d: Date) {
   return d.toISOString().split('T')[0];
@@ -73,7 +64,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   const [extraError, setExtraError] = useState('');
   const [geoError, setGeoError] = useState('');
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
-  const canStart  = mission.status === 'accepted' || mission.status === 'validated' || mission.status === 'pending';
+  const canStart  = mission.status === 'accepted' || mission.status === 'pending';
   const canFinish = mission.status === 'in_progress';
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
   const notesIsLong = extra.length > 120;

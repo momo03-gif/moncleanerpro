@@ -391,7 +391,6 @@ function rowToMission(row: any): Mission {
     type: (row.type as MissionType) ?? 'regular',
     service: (row.service as MissionService) ?? 'cleaning',
     deliveryInstructions: row.delivery_instructions ?? undefined,
-    groupId: row.group_id ?? undefined,
     source: (row.source as MissionSource) ?? 'hotel',
     requestedBy: row.client_name,
     notes,
@@ -421,7 +420,6 @@ function mapMissionStatus(s: string): MissionStatus {
   const map: Record<string, MissionStatus> = {
     pending: 'pending',
     assigned: 'accepted',
-    validated: 'validated',
     inprogress: 'in_progress',
     done: 'completed',
     cancelled: 'cancelled',
@@ -544,7 +542,7 @@ export async function createMissionDB(fields: {
   price: number; instructions?: string;
   airbnbId?: string; partnerId?: string;
   nextArrival?: string; nextArrivalTime?: string;
-  service?: MissionService; deliveryInstructions?: string; groupId?: string;
+  service?: MissionService; deliveryInstructions?: string;
   createdBy?: string; createdByRole?: string;
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
@@ -567,7 +565,6 @@ export async function createMissionDB(fields: {
     source: fields.source,
     service: fields.service ?? 'cleaning',
     delivery_instructions: fields.deliveryInstructions || null,
-    group_id: fields.groupId || null,
     airbnb_id: fields.airbnbId || null,
     partner_id: fields.partnerId || null,
     created_by: fields.createdBy || null,
@@ -658,7 +655,6 @@ function toDbMissionStatus(appStatus: MissionStatus): string {
   const map: Record<MissionStatus, string> = {
     pending: 'pending',
     accepted: 'assigned',
-    validated: 'validated',
     in_progress: 'inprogress',
     completed: 'done',
     cancelled: 'cancelled',

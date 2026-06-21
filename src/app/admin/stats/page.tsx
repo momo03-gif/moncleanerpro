@@ -6,6 +6,7 @@ import { getDepensesDB, type Depense } from '@/lib/depensesApi';
 import type { Mission } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
+import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import RhPerfPanel from './RhPerfPanel';
 
 export default function StatsPage() {
@@ -41,11 +42,6 @@ export default function StatsPage() {
 
   const byType: Record<string, number> = {};
   missions.forEach(m => { byType[m.type] = (byType[m.type] ?? 0) + 1; });
-
-  const typeLabel: Record<string, string> = {
-    checkout: 'Check-out', checkin: 'Check-in', deep_clean: 'Grand ménage',
-    regular: 'Régulier', menage: 'Ménage', grand_menage: 'Grand ménage',
-  };
 
   // ── Pointage : temps réel vs prévu ──────────────────────────────────────────
   const tracked = missions.filter(m => m.actualDurationMinutes != null);

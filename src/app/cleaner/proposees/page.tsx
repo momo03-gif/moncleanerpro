@@ -6,13 +6,8 @@ import { getPendingMissionsDB, acceptMissionDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { formatDuration, formatHour } from '@/lib/format';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
+import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
-
-const typeLabel: Record<string, string> = {
-  checkout: 'Check-out', checkin: 'Check-in',
-  deep_clean: 'Grand ménage', regular: 'Régulier',
-  menage: 'Ménage', grand_menage: 'Grand ménage',
-};
 
 export default function ProposedMissionsPage() {
   const { user } = useAuth();
