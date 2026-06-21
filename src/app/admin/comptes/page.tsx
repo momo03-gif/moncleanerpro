@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
-  getApprovedHotelsDB, updateHotelRateDB,
+  getApprovedHotelsDB, updateHotelRateDB, getMissionsDB,
 } from '@/lib/db';
+import type { Mission } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
+import { currentMonth } from '@/lib/mockData';
 import Icon from '@/components/Icon';
 
 type PartnerKind = 'hotel' | 'airbnb';
@@ -25,14 +27,15 @@ const KIND_LABEL: Record<PartnerKind, string> = { hotel: 'Hôtel', airbnb: 'Airb
 export default function ComptesPage() {
   const [pending, setPending] = useState<PendingPartner[]>([]);
   const [hotels, setHotels] = useState<any[]>([]);
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [rates, setRates] = useState<Record<string, string>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
 
   async function load() {
-    const [pendHotels, partners, approvedHotels] = await Promise.all([
-      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getApprovedHotelsDB(),
+    const [pendHotels, partners, approvedHotels, allMissions] = await Promise.all([
+      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getApprovedHotelsDB(), getMissionsDB(),
     ]);
     const list: PendingPartner[] = [
       ...pendHotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
@@ -40,8 +43,19 @@ export default function ComptesPage() {
     ];
     setPending(list);
     setHotels(approvedHotels);
+    setMissions(allMissions);
     setRates(Object.fromEntries(approvedHotels.map((h: any) => [h.id, h.billing_hourly_rate != null ? String(h.billing_hourly_rate) : ''])));
     setLoading(false);
+  }
+
+  const month = currentMonth();
+  // Heures RÉALISÉES (missions terminées) pour un hôtel, ce mois — base de la facturation.
+  function hotelHoursThisMonth(hotelName: string): number {
+    const mins = missions
+      .filter(m => m.source === 'hotel' && (m.requestedBy ?? m.property) === hotelName
+        && m.status === 'completed' && m.date.startsWith(month))
+      .reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
+    return Math.round((mins / 60) * 100) / 100;
   }
 
   useEffect(() => { load(); }, []);
@@ -140,26 +154,38 @@ export default function ComptesPage() {
           <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Hôtels partenaires — taux horaire facturé</h2>
           <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Ce qu'on facture à l'hôtel, par heure. Le CA hôtel = taux × heures réalisées.</p>
           <div className="space-y-3">
-            {hotels.map((h: any) => (
-              <div key={h.id} className="rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.hotel_name}</p>
-                  {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <input type="number" min="0" step="0.5" value={rates[h.id] ?? ''}
-                      onChange={e => setRates(r => ({ ...r, [h.id]: e.target.value }))}
-                      placeholder="0" className="w-24 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
-                    <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
+            {hotels.map((h: any) => {
+              const hours = hotelHoursThisMonth(h.hotel_name);
+              const rate = Number(rates[h.id]) || 0;
+              const toBill = Math.round(hours * rate * 100) / 100;
+              return (
+              <div key={h.id} className="rounded-2xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.hotel_name}</p>
+                    {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
                   </div>
-                  <button onClick={() => saveRate(h.id)}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: savedId === h.id ? '#5A8A6A' : '#C9A84C', color: savedId === h.id ? '#FFFFFF' : '#1A1A1A' }}>
-                    {savedId === h.id ? '✓ Enregistré' : 'Enregistrer'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" min="0" step="0.5" value={rates[h.id] ?? ''}
+                        onChange={e => setRates(r => ({ ...r, [h.id]: e.target.value }))}
+                        placeholder="0" className="w-24 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
+                      <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
+                    </div>
+                    <button onClick={() => saveRate(h.id)}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: savedId === h.id ? '#5A8A6A' : '#C9A84C', color: savedId === h.id ? '#FFFFFF' : '#1A1A1A' }}>
+                      {savedId === h.id ? '✓ Enregistré' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </div>
+                {/* Heures réalisées ce mois + montant à facturer (heures × taux). */}
+                <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-x-6 gap-y-1" style={{ borderColor: '#F2EFE9' }}>
+                  <span className="text-xs" style={{ color: '#A8A09A' }}>Heures réalisées ce mois : <span className="font-semibold" style={{ color: '#1A1A1A' }}>{hours} h</span></span>
+                  <span className="text-xs" style={{ color: '#A8A09A' }}>À facturer ce mois : <span className="font-semibold" style={{ color: '#5A8A6A' }}>{toBill} €</span></span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
