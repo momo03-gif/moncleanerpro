@@ -343,7 +343,7 @@ function trimTime(t: string | null | undefined): string {
 
 // Sélection commune : on joint l'appartement lié pour les missions Airbnb
 // afin d'en récupérer adresse + accès sans dupliquer l'info dans la mission.
-const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes, estimated_cleaning_minutes, zone_id, zone_color, zone_name)';
+const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes, client_price, estimated_cleaning_minutes, zone_id, zone_color, zone_name)';
 
 function rowToMission(row: any): Mission {
   let property = row.property_name ?? '';
@@ -369,6 +369,15 @@ function rowToMission(row: any): Mission {
     ? Number(row.mission_duration_minutes)
     : Math.round((Number(row.hours_worked) || 0) * 60);
 
+  // Prix client : valeur stockée (snapshot). Pour une mission de MÉNAGE liée à un
+  // appartement dont le prix n'a pas été fixé (0), on le dérive EN DIRECT de la
+  // fiche appartement (comme l'adresse). La livraison n'est jamais facturée.
+  const storedPrice = Number(row.price) || 0;
+  const isDelivery = (row.service ?? 'cleaning') === 'delivery';
+  const price = (storedPrice === 0 && row.airbnb_id && apt?.client_price != null && !isDelivery)
+    ? Number(apt.client_price) || 0
+    : storedPrice;
+
   return {
     id: row.id,
     property,
@@ -379,7 +388,7 @@ function rowToMission(row: any): Mission {
     status: mapMissionStatus(row.status),
     cleanerId: row.cleaner_id,
     cleanerName: row.cleaner_name,
-    price: Number(row.price) || 0,
+    price,
     cleanerGain: Number(row.cleaner_gain) || 0,
     missionDurationMinutes: minutes,
     cleanerHourlyRateSnapshot: row.cleaner_hourly_rate_snapshot != null ? Number(row.cleaner_hourly_rate_snapshot) : undefined,
