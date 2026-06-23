@@ -1,4 +1,4 @@
-import { supabase, hashPassword } from './supabase';
+import { supabase } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
 import { computeCleanerGain, computeMissionGain } from './pay';
 import { canCleanerDoService } from './service';
@@ -10,6 +10,17 @@ import {
   notifyMissionCancelled, notifyMissionCompleted,
   notifyExtraTimeRequested, notifyExtraTimeResolved,
 } from './notifications';
+
+// Appel d'une route serveur : les opérations sensibles sur `users` (création de
+// compte, mot de passe, validation partenaire) ne se font plus avec la clé publique
+// mais via des routes serveur en service_role. La signature des fonctions ci-dessous
+// ne change pas → aucun appelant à modifier.
+async function postServer(url: string, body: unknown): Promise<any> {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+  return data;
+}
 
 // ── VERROUILLAGE DES MISSIONS ───────────────────────────────────────────────
 // Une mission terminée ou annulée est verrouillée : plus aucune modification ni
@@ -47,8 +58,9 @@ export async function getCleaners() {
   const { data: cleaners } = await supabase.from('cleaners').select('*').order('created_at');
   if (cleaners && cleaners.length > 0) return cleaners;
 
-  // Fallback: get cleaners from users table directly
-  const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner');
+  // Fallback: get cleaners from users table directly (jamais password_hash : colonne
+  // révoquée à la clé publique, donc on liste explicitement les colonnes lisibles)
+  const { data: users } = await supabase.from('users').select('id, name, email, phone, status').eq('role', 'cleaner');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
     hourly_rate: 0, status: u.status ?? 'active', can_clean: true, can_deliver: false, delivery_rate: 0,
@@ -60,7 +72,7 @@ export async function getActiveCleanersDB() {
   if (cleaners && cleaners.length > 0) return cleaners;
 
   // Fallback: get from users table — id = users.id, consistent with missions.cleaner_id
-  const { data: users } = await supabase.from('users').select('*').eq('role', 'cleaner').eq('status', 'active');
+  const { data: users } = await supabase.from('users').select('id, name, email, phone, status').eq('role', 'cleaner').eq('status', 'active');
   return (users ?? []).map(u => ({
     id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
     hourly_rate: 0, status: 'active', can_clean: true, can_deliver: false, delivery_rate: 0,
@@ -72,32 +84,14 @@ export async function createCleaner(fields: {
   password: string; hourlyRate?: number;
   canClean?: boolean; canDeliver?: boolean; deliveryRate?: number;
 }) {
-  const hash = await hashPassword(fields.password || 'cleaner123');
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .insert({ email: fields.email, password_hash: hash, role: 'cleaner', name: fields.name, phone: fields.phone, status: 'active' })
-    .select()
-    .single();
-
-  if (userError || !user) {
-    console.error('createCleaner - users insert error:', userError);
-    return;
-  }
-
-  const { error: cleanerError } = await supabase.from('cleaners').insert({
-    user_id: user.id,
-    name: fields.name,
-    email: fields.email,
-    phone: fields.phone ?? null,
-    hourly_rate: fields.hourlyRate ?? 0,
-    can_clean: fields.canClean ?? true,
-    can_deliver: fields.canDeliver ?? false,
-    delivery_rate: fields.deliveryRate ?? 0,
-    status: 'active',
-  });
-
-  if (cleanerError) {
-    console.error('createCleaner - cleaners insert error:', cleanerError);
+  try {
+    await postServer('/api/admin/users', {
+      action: 'createCleaner',
+      name: fields.name, email: fields.email, phone: fields.phone, password: fields.password,
+      hourlyRate: fields.hourlyRate, canClean: fields.canClean, canDeliver: fields.canDeliver, deliveryRate: fields.deliveryRate,
+    });
+  } catch (e) {
+    console.error('createCleaner:', e);
   }
 }
 
@@ -106,28 +100,18 @@ export async function setCleanerActive(id: string, active: boolean) {
 }
 
 export async function updateCleanerInfoDB(id: string, fields: { name: string; email: string; phone?: string }) {
-  const { error } = await supabase.from('cleaners').update({
-    name: fields.name,
-    email: fields.email,
-    phone: fields.phone ?? null,
-  }).eq('id', id);
-  // Garde le compte de connexion (users) synchronisé
-  const { data: c } = await supabase.from('cleaners').select('user_id').eq('id', id).single();
-  const userId = c?.user_id ?? id;
-  await supabase.from('users').update({
-    name: fields.name,
-    email: fields.email.toLowerCase().trim(),
-    phone: fields.phone ?? null,
-  }).eq('id', userId);
-  return { error: error?.message ?? null };
+  try {
+    await postServer('/api/admin/users', { action: 'updateCleanerInfo', id, name: fields.name, email: fields.email, phone: fields.phone });
+    return { error: null };
+  } catch (e: any) {
+    return { error: e?.message ?? 'Erreur' };
+  }
 }
 
 export async function deleteCleanerDB(id: string) {
   // missions.cleaner_id est FK ON DELETE SET NULL → les missions sont conservées
-  const { data: c } = await supabase.from('cleaners').select('user_id').eq('id', id).single();
-  const userId = c?.user_id ?? id;
-  await supabase.from('cleaners').delete().eq('id', id);
-  await supabase.from('users').delete().eq('id', userId);
+  try { await postServer('/api/admin/users', { action: 'deleteCleaner', id }); }
+  catch (e) { console.error('deleteCleanerDB:', e); }
 }
 
 export async function updateCleanerHourlyRateDB(id: string, hourlyRate: number) {
@@ -145,21 +129,15 @@ export async function updateCleanerDeliveryRateDB(id: string, deliveryRate: numb
 }
 
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
-  const hash = await hashPassword(newPassword);
-  const { data: cleaner } = await supabase.from('cleaners').select('user_id').eq('id', cleanerId).single();
-  if (cleaner?.user_id) {
-    await supabase.from('users').update({ password_hash: hash }).eq('id', cleaner.user_id);
-  } else {
-    // Fallback: cleanerId might be users.id directly
-    await supabase.from('users').update({ password_hash: hash }).eq('id', cleanerId);
-  }
+  try { await postServer('/api/admin/users', { action: 'setCleanerPassword', cleanerId, password: newPassword }); }
+  catch (e) { console.error('updateCleanerPasswordDB:', e); }
 }
 
 export async function getCleanerByUserId(userId: string) {
   const { data } = await supabase.from('cleaners').select('*').eq('user_id', userId).single();
   if (data) return data;
-  // Fallback: return user row if no cleaners entry
-  const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+  // Fallback: return user row if no cleaners entry (sans password_hash — colonne révoquée)
+  const { data: user } = await supabase.from('users').select('id, name, email, phone, status, role').eq('id', userId).single();
   return user;
 }
 
@@ -1304,9 +1282,8 @@ export async function getPendingHotelsDB() {
 }
 
 export async function approveHotelDB(id: string) {
-  await supabase.from('hotels').update({ status_account: 'approved' }).eq('id', id);
-  const { data } = await supabase.from('hotels').select('user_id').eq('id', id).single();
-  if (data?.user_id) await supabase.from('users').update({ status: 'active' }).eq('id', data.user_id);
+  try { await postServer('/api/admin/users', { action: 'approveHotel', id }); }
+  catch (e) { console.error('approveHotelDB:', e); }
 }
 
 export async function refuseHotelDB(id: string) {
@@ -1316,22 +1293,8 @@ export async function refuseHotelDB(id: string) {
 export async function registerHotelDB(fields: {
   name: string; address: string; email: string; phone: string; password: string;
 }) {
-  const hash = await hashPassword(fields.password);
-  const { data: user, error } = await supabase
-    .from('users')
-    .insert({ email: fields.email.toLowerCase(), password_hash: hash, role: 'hotel', name: fields.name, phone: fields.phone, status: 'pending' })
-    .select()
-    .single();
-
-  if (error || !user) throw new Error(error?.message ?? 'Erreur lors de la création du compte');
-
-  await supabase.from('hotels').insert({
-    user_id: user.id,
-    hotel_name: fields.name,
-    address: fields.address,
-    email: fields.email,
-    phone: fields.phone,
-    status_account: 'pending',
+  await postServer('/api/auth/register', {
+    type: 'hotel', name: fields.name, address: fields.address, email: fields.email, phone: fields.phone, password: fields.password,
   });
 }
 
@@ -1355,23 +1318,9 @@ export async function getHotelByUserId(userId: string) {
 export async function registerAirbnbPartnerDB(fields: {
   name: string; email: string; phone: string; password: string;
 }) {
-  const hash = await hashPassword(fields.password);
-  const { data: user, error } = await supabase
-    .from('users')
-    .insert({ email: fields.email.toLowerCase(), password_hash: hash, role: 'airbnb', name: fields.name, phone: fields.phone, status: 'pending' })
-    .select()
-    .single();
-
-  if (error || !user) throw new Error(error?.message ?? 'Erreur lors de la création du compte');
-
-  const { error: pErr } = await supabase.from('airbnb_partners').insert({
-    user_id: user.id,
-    partner_name: fields.name,
-    email: fields.email,
-    phone: fields.phone,
-    status_account: 'pending',
+  await postServer('/api/auth/register', {
+    type: 'airbnb', name: fields.name, email: fields.email, phone: fields.phone, password: fields.password,
   });
-  if (pErr) throw new Error(pErr.message);
 }
 
 export async function getAirbnbPartnerByUserId(userId: string) {
@@ -1392,9 +1341,8 @@ export async function getPendingAirbnbPartnersDB() {
 }
 
 export async function approveAirbnbPartnerDB(id: string) {
-  await supabase.from('airbnb_partners').update({ status_account: 'approved' }).eq('id', id);
-  const { data } = await supabase.from('airbnb_partners').select('user_id').eq('id', id).single();
-  if (data?.user_id) await supabase.from('users').update({ status: 'active' }).eq('id', data.user_id);
+  try { await postServer('/api/admin/users', { action: 'approveAirbnb', id }); }
+  catch (e) { console.error('approveAirbnbPartnerDB:', e); }
 }
 
 export async function refuseAirbnbPartnerDB(id: string) {
