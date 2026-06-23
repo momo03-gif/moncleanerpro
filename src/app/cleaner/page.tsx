@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, requestExtraTimeDB, withdrawMissionDB } from '@/lib/db';
+import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, markDeliveredDB, requestExtraTimeDB, withdrawMissionDB } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Mission } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
-import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL } from '@/lib/labels';
+import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
@@ -64,8 +64,12 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   const [extraError, setExtraError] = useState('');
   const [geoError, setGeoError] = useState('');
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
-  const canStart  = mission.status === 'accepted' || mission.status === 'pending';
-  const canFinish = mission.status === 'in_progress';
+  // Livraison : pas de pointage ni GPS, juste un bouton « Livré ».
+  const isDelivery = mission.service === 'delivery';
+  const isOpen = mission.status !== 'completed' && mission.status !== 'cancelled';
+  const canStart  = !isDelivery && (mission.status === 'accepted' || mission.status === 'pending');
+  const canFinish = !isDelivery && mission.status === 'in_progress';
+  const canDeliver = isDelivery && isOpen;
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
   const notesIsLong = extra.length > 120;
 
@@ -84,6 +88,14 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     setBusy(true); setGeoError('');
     const pos = await getApproxPosition();
     const res = await finishMissionDB(mission.id, userId, pos);
+    setBusy(false);
+    if (res.error) { setGeoError(res.error); return; }
+    onUpdate();
+  }
+
+  async function deliver() {
+    setBusy(true); setGeoError('');
+    const res = await markDeliveredDB(mission.id, userId);
     setBusy(false);
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
@@ -133,7 +145,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
             )}
           </div>
           <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
-            style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
+            style={{ backgroundColor: st.bg, color: st.color }}>{missionStatusLabel(mission.status, mission.service)}</span>
         </div>
       </div>
 
@@ -302,10 +314,18 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
       )}
 
       {/* Actions */}
-      {(canStart || canFinish) && (
+      {(canStart || canFinish || canDeliver) && (
         <div className="px-5 pb-5 space-y-2">
           {geoError && (
             <p className="text-xs px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{geoError}</p>
+          )}
+          {/* Livraison : un seul clic « Livré », sans pointage ni GPS. */}
+          {canDeliver && (
+            <button onClick={deliver} disabled={busy}
+              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              style={{ backgroundColor: '#C48A2A', color: '#FFFFFF' }}>
+              <Icon name="delivery" size={16} /> {busy ? '...' : 'Marquer comme livré'}
+            </button>
           )}
           {canStart && (
             <button onClick={start} disabled={busy}

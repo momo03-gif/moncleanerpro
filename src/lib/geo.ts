@@ -12,6 +12,14 @@ export const TRACKING_TOLERANCE_METERS = 200;
 export const PROXIMITY_ERROR =
   'Vous devez terminer la mission à proximité du lieu où elle a été commencée.';
 
+// Le cleaner n'est pas assez proche de l'adresse de la mission (démarrer/terminer).
+export const ADDRESS_PROXIMITY_ERROR =
+  'Vous devez être à proximité du logement pour démarrer ou terminer la mission.';
+
+// La géolocalisation est requise mais indisponible/refusée.
+export const GPS_REQUIRED_ERROR =
+  'Activez la localisation : vous devez être sur place pour démarrer ou terminer la mission.';
+
 export interface GeoPoint { lat: number; lng: number; }
 
 // Distance en mètres entre deux points (formule de haversine).

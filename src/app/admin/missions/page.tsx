@@ -6,7 +6,7 @@ import {
   createMissionDB, createMissionsBatchDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
-  updateMissionDB, deleteMissionDB, isMissionLocked, resolveExtraTimeDB,
+  updateMissionDB, deleteMissionDB, reopenMissionDB, resolveExtraTimeDB,
   updateMissionsOrderDB,
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +22,7 @@ import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
-import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL } from '@/lib/labels';
+import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL, missionStatusLabel } from '@/lib/labels';
 
 // Libellés statuts/types des missions : centralisés (lib/labels.ts).
 const STATUS_CFG = MISSION_STATUS_CFG;
@@ -191,6 +191,17 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     onRefresh();
   }
 
+  // Admin : reprendre une mission terminée → repasse « en cours ».
+  async function handleReopen() {
+    if (!user) return;
+    if (!confirm('Remettre cette mission en cours ? Elle ne sera plus comptée comme réalisée.')) return;
+    setBusy(true); setActionError('');
+    const res = await reopenMissionDB(mission.id, { id: user.id, role: 'admin' });
+    setBusy(false);
+    if (res.error) { setActionError(res.error); return; }
+    onRefresh();
+  }
+
   async function handleAssign() {
     if (!newCleaner) return;
     const c = cleaners.find(x => x.id === newCleaner);
@@ -264,7 +275,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
           style={{ backgroundColor: st.bg, color: st.color }}>
-          {st.label}
+          {missionStatusLabel(mission.status, mission.service)}
         </span>
       </div>
 
@@ -587,12 +598,22 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                   ✓ Terminer
                 </button>
               )}
-              {/* Annuler (transition de statut) toujours dispo */}
-              <button onClick={() => changeStatus('cancelled')} disabled={busy}
-                className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
-                Annuler
-              </button>
+              {/* Mission terminée : l'admin peut la reprendre (« en cours »). */}
+              {mission.status === 'completed' && (
+                <button onClick={handleReopen} disabled={busy}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>
+                  ↺ Remettre en cours
+                </button>
+              )}
+              {/* Annuler : dispo tant que la mission n'est pas déjà annulée. */}
+              {mission.status !== 'cancelled' && (
+                <button onClick={() => changeStatus('cancelled')} disabled={busy}
+                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
+                  Annuler
+                </button>
+              )}
             </div>
 
             {/* Modifier / Supprimer (créateur = admin ici) */}

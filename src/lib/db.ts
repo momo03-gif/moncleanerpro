@@ -4,7 +4,7 @@ import { computeCleanerGain, computeMissionGain } from './pay';
 import { canCleanerDoService } from './service';
 import { clusterApartments } from './zones';
 import { getBlockingFormationsDB } from './formation';
-import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, type GeoPoint } from './geo';
+import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR, GPS_REQUIRED_ERROR, type GeoPoint } from './geo';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
   notifyMissionCancelled, notifyMissionCompleted,
@@ -805,11 +805,32 @@ export async function resolveExtraTimeDB(
 // à l'admin (temps réel, écart, statistiques).
 
 // Démarrage : horodatage + statut « en cours » + position de départ (best-effort).
+// Coordonnées de l'adresse d'une mission (via l'appartement lié). Null pour les
+// missions hôtel (pas de géocodage) ou un appartement non géolocalisé.
+async function missionAddressCoords(missionId: string): Promise<{ service?: string; coords: GeoPoint | null }> {
+  const { data } = await supabase.from('missions')
+    .select('service, airbnbs(latitude, longitude)').eq('id', missionId).single();
+  const apt = (data as any)?.airbnbs;
+  const coords = apt && apt.latitude != null && apt.longitude != null
+    ? { lat: Number(apt.latitude), lng: Number(apt.longitude) }
+    : null;
+  return { service: (data as any)?.service, coords };
+}
+
 export async function startMissionDB(
   missionId: string, userId: string, coords?: GeoPoint | null,
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; tooFar?: boolean }> {
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
+
+  // GPS OBLIGATOIRE pour le MÉNAGE : le cleaner doit être à proximité (≤ 200 m) de
+  // l'adresse. La LIVRAISON n'est pas concernée (pas de pointage). Si l'adresse n'a
+  // pas de coordonnées (hôtel / appart non géolocalisé), on ne peut pas vérifier.
+  const { service, coords: addr } = await missionAddressCoords(missionId);
+  if (service !== 'delivery' && addr) {
+    if (!coords) return { error: GPS_REQUIRED_ERROR };
+    if (distanceMeters(addr, coords) > TRACKING_TOLERANCE_METERS) return { error: ADDRESS_PROXIMITY_ERROR, tooFar: true };
+  }
 
   const patch: Record<string, unknown> = {
     status: 'inprogress',
@@ -825,6 +846,24 @@ export async function startMissionDB(
   return { error: null };
 }
 
+// Livraison : le livreur valide simplement « Livré » → mission terminée. Aucun
+// pointage, aucun GPS, aucune étape de démarrage.
+export async function markDeliveredDB(
+  missionId: string, userId: string,
+): Promise<{ error: string | null }> {
+  const cleanerTableId = await resolveToCleanerTableId(userId);
+  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
+
+  const { data, error } = await supabase.from('missions')
+    .update({ status: 'done', ended_at: new Date().toISOString() })
+    .eq('id', missionId).eq('cleaner_id', cleanerTableId)
+    .not('status', 'in', '(done,cancelled)').select('id');
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: 'Action impossible sur cette mission.' };
+  await notifyMissionCompleted(missionId);
+  return { error: null };
+}
+
 // Fin : vérifie la proximité (si les deux positions existent), calcule la durée
 // réelle, horodate la fin et clôture la mission. Renvoie tooFar si trop éloigné.
 export async function finishMissionDB(
@@ -834,15 +873,24 @@ export async function finishMissionDB(
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
 
   const { data: m } = await supabase.from('missions')
-    .select('started_at, start_lat, start_lng, cleaner_id, status')
+    .select('started_at, start_lat, start_lng, cleaner_id, status, service, airbnbs(latitude, longitude)')
     .eq('id', missionId).single();
   if (!m || m.cleaner_id !== cleanerTableId) return { error: 'Mission introuvable.' };
   if (m.status === 'done' || m.status === 'cancelled') return { error: 'Mission déjà clôturée.' };
 
-  // Contrôle de proximité — uniquement si on dispose des deux positions.
-  if (coords && m.start_lat != null && m.start_lng != null) {
-    const d = distanceMeters({ lat: Number(m.start_lat), lng: Number(m.start_lng) }, coords);
-    if (d > TRACKING_TOLERANCE_METERS) return { error: PROXIMITY_ERROR, tooFar: true };
+  // Contrôle GPS (ménage uniquement). En priorité contre l'ADRESSE de la mission
+  // (≤ 200 m) ; à défaut de coordonnées d'adresse, on retombe sur début ↔ fin.
+  const apt = (m as any)?.airbnbs;
+  const addr = apt && apt.latitude != null && apt.longitude != null
+    ? { lat: Number(apt.latitude), lng: Number(apt.longitude) } : null;
+  if ((m as any).service !== 'delivery') {
+    if (addr) {
+      if (!coords) return { error: GPS_REQUIRED_ERROR };
+      if (distanceMeters(addr, coords) > TRACKING_TOLERANCE_METERS) return { error: ADDRESS_PROXIMITY_ERROR, tooFar: true };
+    } else if (coords && m.start_lat != null && m.start_lng != null) {
+      const d = distanceMeters({ lat: Number(m.start_lat), lng: Number(m.start_lng) }, coords);
+      if (d > TRACKING_TOLERANCE_METERS) return { error: PROXIMITY_ERROR, tooFar: true };
+    }
   }
 
   const now = new Date();
@@ -910,14 +958,16 @@ async function authorizeMissionMutation(
   const { data: row } = await loadMissionForAuth(missionId);
   if (!row) return { ok: false, error: 'Mission introuvable.' };
 
-  // 1) Statut verrouillé (terminée / annulée) → refus, quel que soit le rôle
+  const isAdmin = actor.role === 'admin';
+
+  // 1) Statut verrouillé (terminée / annulée) → refus SAUF pour l'admin, qui
+  //    garde le contrôle total (reprendre, modifier, annuler, supprimer).
   const appStatus = mapMissionStatus(row.status);
-  if (isMissionLocked(appStatus)) {
+  if (isMissionLocked(appStatus) && !isAdmin) {
     return { ok: false, error: missionLockMessage(appStatus, action) };
   }
 
   // 2) Droits : admin autorisé ; sinon doit être le créateur de la mission
-  const isAdmin = actor.role === 'admin';
   const isCreator = !!actor.id && (row.created_by === actor.id || row.partner_id === actor.id);
   if (!isAdmin && !isCreator) {
     return { ok: false, error: "Vous n'êtes pas autorisé à modifier cette mission." };
@@ -1060,18 +1110,30 @@ export async function deleteMissionDB(
   // Notif AVANT suppression (le contexte de la mission disparaît ensuite)
   await notifyMissionCancelled(missionId, actor.role, actor.id);
 
-  const { data, error } = await supabase
-    .from('missions')
-    .delete()
-    .eq('id', missionId)
-    .not('status', 'in', '(done,cancelled)')
-    .select('id');
+  // L'admin peut supprimer une mission clôturée ; les autres rôles restent bloqués
+  // par la garde atomique (.not status in done/cancelled).
+  let del = supabase.from('missions').delete().eq('id', missionId);
+  if (actor.role !== 'admin') del = del.not('status', 'in', '(done,cancelled)');
+  const { data, error } = await del.select('id');
 
   if (error) return { error: error.message };
   if (!data || data.length === 0) {
     return { error: 'Cette mission est clôturée et ne peut plus être supprimée.' };
   }
   return { error: null };
+}
+
+// Admin : reprendre une mission terminée → la repasse « en cours » et efface la
+// clôture (fin + durée réelle). Les compteurs (stats/compta/paie) la décomptent
+// automatiquement puisqu'ils dérivent du statut courant.
+export async function reopenMissionDB(missionId: string, actor: MissionActor): Promise<{ error: string | null }> {
+  if (actor.role !== 'admin') return { error: "Action réservée à l'administrateur." };
+  const { error } = await supabase.from('missions').update({
+    status: 'inprogress',
+    ended_at: null,
+    actual_duration_minutes: null,
+  }).eq('id', missionId);
+  return { error: error?.message ?? null };
 }
 
 // ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────

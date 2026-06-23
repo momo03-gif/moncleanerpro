@@ -20,6 +20,13 @@ export function missionStatusCfg(status: string) {
   return MISSION_STATUS_CFG[status] ?? MISSION_STATUS_CFG.pending;
 }
 
+// Libellé de statut tenant compte du service : une LIVRAISON terminée s'affiche
+// « Livré » (et non « Terminée »).
+export function missionStatusLabel(status: string, service?: string): string {
+  if (status === 'completed' && service === 'delivery') return 'Livré';
+  return missionStatusCfg(status).label;
+}
+
 // Types de mission (nature du ménage). `menage` / `grand_menage` sont des alias
 // hérités de missions issues d'annonces hôtel.
 export const MISSION_TYPE_LABEL: Record<string, string> = {
