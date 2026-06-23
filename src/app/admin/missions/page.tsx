@@ -706,11 +706,13 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                   Réassigner cleaner
                 </button>
               )}
-              {mission.status === 'in_progress' && (
+              {/* L'admin peut terminer/valider à la place du cleaner (oubli) — dès
+                  qu'un cleaner est assigné (en attente) ou en cours. */}
+              {(mission.status === 'accepted' || mission.status === 'in_progress') && (
                 <button onClick={() => changeStatus('completed')} disabled={busy}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
                   style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
-                  ✓ Terminer
+                  {mission.service === 'delivery' ? '✓ Marquer livré' : '✓ Terminer'}
                 </button>
               )}
               {/* Mission terminée : l'admin peut la reprendre (« en cours »). */}
