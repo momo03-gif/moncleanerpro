@@ -369,14 +369,19 @@ function rowToMission(row: any): Mission {
     ? Number(row.mission_duration_minutes)
     : Math.round((Number(row.hours_worked) || 0) * 60);
 
-  // Prix client : valeur stockée (snapshot). Pour une mission de MÉNAGE liée à un
-  // appartement dont le prix n'a pas été fixé (0), on le dérive EN DIRECT de la
-  // fiche appartement (comme l'adresse). La livraison n'est jamais facturée.
+  // Prix client :
+  //  • LIVRAISON → toujours 0 : jamais facturée au client (coût société uniquement,
+  //    = la paie du livreur, comptée en charge). Pas de revenu.
+  //  • MÉNAGE lié à un appartement, prix non fixé (0) → dérivé EN DIRECT de la
+  //    fiche appartement (comme l'adresse).
+  //  • Sinon → valeur stockée (snapshot).
   const storedPrice = Number(row.price) || 0;
   const isDelivery = (row.service ?? 'cleaning') === 'delivery';
-  const price = (storedPrice === 0 && row.airbnb_id && apt?.client_price != null && !isDelivery)
-    ? Number(apt.client_price) || 0
-    : storedPrice;
+  const price = isDelivery
+    ? 0
+    : (storedPrice === 0 && row.airbnb_id && apt?.client_price != null
+        ? Number(apt.client_price) || 0
+        : storedPrice);
 
   return {
     id: row.id,

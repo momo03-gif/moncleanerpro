@@ -914,7 +914,8 @@ export default function MissionsPage() {
       cleanerHourlyRate: c?.hourly_rate ?? 0,
       cleanerDeliveryRate: c?.delivery_rate ?? 0,
       cleanerId: form.cleanerId || undefined, cleanerName: c?.name,
-      price: Number(form.price) || 0,  // prix CLIENT (facturation)
+      // Livraison : jamais facturée au client → prix 0.
+      price: form.service === 'delivery' ? 0 : (Number(form.price) || 0),
     });
 
     if (result.error) {
