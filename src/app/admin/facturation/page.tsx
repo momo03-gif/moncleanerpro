@@ -8,6 +8,7 @@ import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/typ
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
+import { serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
 import DevisPanel from './DevisPanel';
 
@@ -265,8 +266,15 @@ export default function FacturationPage() {
   }
   useEffect(() => { loadAll(); }, []);
 
+  // Les livraisons ne sont JAMAIS facturées au client : elles sont à la charge de
+  // l'entreprise. On exclut les missions de livraison seule (on garde un éventuel
+  // legacy « ménage + livraison » qui conserve une part nettoyage facturable).
   const done = useMemo(
-    () => missions.filter(m => m.status === 'completed' && m.date >= from && m.date <= to),
+    () => missions.filter(m => {
+      if (m.status !== 'completed' || m.date < from || m.date > to) return false;
+      const parts = serviceParts(m.service);
+      return parts.cleaning; // delivery-only → exclu de la facturation client
+    }),
     [missions, from, to],
   );
   const partners = useMemo(() => {

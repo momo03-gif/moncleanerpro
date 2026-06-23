@@ -26,8 +26,12 @@ export default function StatsPage() {
   const total = missions.length;
   const completed = missions.filter(m => m.status === 'completed').length;
   const pending = missions.filter(m => m.status === 'pending').length;
-  const revenue = missions.filter(m => m.status === 'completed').reduce((s, m) => s + m.price, 0);
-  const avgPrice = total > 0 ? Math.round(missions.reduce((s, m) => s + m.price, 0) / total) : 0;
+  // Les livraisons ne sont pas facturées au client (à la charge de l'entreprise) :
+  // exclues du CA. Leur coût reste dans les salaires/dépenses.
+  const isBillable = (m: Mission) => serviceParts(m.service).cleaning;
+  const billable = missions.filter(isBillable);
+  const revenue = missions.filter(m => m.status === 'completed' && isBillable(m)).reduce((s, m) => s + m.price, 0);
+  const avgPrice = billable.length > 0 ? Math.round(billable.reduce((s, m) => s + m.price, 0) / billable.length) : 0;
 
   // Bénéfice net tout compris = revenus − salaires cleaners − dépenses (TTC).
   const salariesAll = missions.filter(m => m.status === 'completed').reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
