@@ -38,8 +38,8 @@ export default function AdminSidebar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.push('/login');
   }
 

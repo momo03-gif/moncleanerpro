@@ -2,19 +2,18 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Role } from '@/lib/types';
-import { loginUser } from '@/lib/db';
 
 interface AuthContextValue {
   user: User | null;
   login: (email: string, password: string) => Promise<User | null>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   login: async () => null,
-  logout: () => {},
+  logout: async () => {},
   isLoading: true,
 });
 
@@ -22,26 +21,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Source de vérité = la session serveur (cookie httpOnly signé), plus le
+  // localStorage falsifiable. On hydrate via /api/auth/me au chargement.
   useEffect(() => {
-    const stored = localStorage.getItem('mcp_user');
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { localStorage.removeItem('mcp_user'); }
-    }
-    setIsLoading(false);
+    let cancelled = false;
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setUser(d.user ?? null); })
+      .catch(() => { if (!cancelled) setUser(null); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   async function login(email: string, password: string): Promise<User | null> {
-    const found = await loginUser(email, password);
-    if (found) {
-      const safe = { ...found, password: '' };
-      localStorage.setItem('mcp_user', JSON.stringify(safe));
-      setUser(safe);
-    }
-    return found;
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) { setUser(null); return null; }
+    const data = await res.json();
+    setUser(data.user ?? null);
+    return data.user ?? null;
   }
 
-  function logout() {
-    localStorage.removeItem('mcp_user');
+  async function logout(): Promise<void> {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
     setUser(null);
   }
 

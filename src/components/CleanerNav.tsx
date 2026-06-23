@@ -19,7 +19,7 @@ export default function CleanerNav() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  function handleLogout() { logout(); router.push('/login'); }
+  async function handleLogout() { await logout(); router.push('/login'); }
 
   return (
     <>
