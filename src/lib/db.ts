@@ -30,39 +30,9 @@ export function missionLockMessage(status: MissionStatus, action: 'modifier' | '
 }
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
-
-export async function loginUser(email: string, password: string): Promise<User | null> {
-  const hash = await hashPassword(password);
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email.toLowerCase().trim())
-    .eq('password_hash', hash)
-    .single();
-
-  if (error || !data) return null;
-  if (data.role === 'cleaner' && data.status === 'inactive') return null;
-
-  if (data.role === 'hotel') {
-    const { data: hotel } = await supabase.from('hotels').select('status_account').eq('user_id', data.id).single();
-    if (hotel?.status_account === 'pending' || hotel?.status_account === 'refused') return null;
-  }
-
-  if (data.role === 'airbnb') {
-    const { data: partner } = await supabase.from('airbnb_partners').select('status_account').eq('user_id', data.id).single();
-    if (partner?.status_account === 'pending' || partner?.status_account === 'refused') return null;
-  }
-
-  return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    password: '',
-    role: data.role,
-    phone: data.phone,
-    isActive: data.status === 'active',
-  };
-}
+// L'authentification se fait désormais CÔTÉ SERVEUR via /api/auth/login (vérif du
+// mot de passe + session signée). L'ancien loginUser interrogeait la table users
+// par hash depuis le navigateur (clé anon) : supprimé pour fermer cette faille.
 
 // ── CLEANERS ──────────────────────────────────────────────────────────────────
 
