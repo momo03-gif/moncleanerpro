@@ -5,6 +5,7 @@ import { getMissionsDB, getCleaners, getPaymentsDB } from '@/lib/db';
 import type { Mission, Payment } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
+import { serviceParts } from '@/lib/service';
 import { loadPayrollDB, type PayrollRow } from '@/lib/payrollApi';
 import PayrollPanel from './PayrollPanel';
 import DepensesPanel from './DepensesPanel';
@@ -55,12 +56,16 @@ function GlobalView() {
   const primesMonth = Math.round(payroll.reduce((s, r) => s + r.payslip.primes.reduce((a, p) => a + p.montant, 0), 0) * 100) / 100;
   const travelMonth = Math.round(payroll.reduce((s, r) => s + (r.payslip.travelAmount ?? 0), 0) * 100) / 100;
   const completedMissions = missions.filter(m => m.status === 'completed');
-  const totalRevenue = completedMissions.reduce((s, m) => s + m.price, 0);
+  // Les livraisons ne sont pas facturées au client (à la charge de l'entreprise) :
+  // leur prix n'entre PAS dans le CA. En revanche leur coût (cleanerGain) reste
+  // compté dans les salaires/charges ci-dessous — c'est justement une charge.
+  const isBillable = (m: Mission) => serviceParts(m.service).cleaning;
+  const totalRevenue = completedMissions.reduce((s, m) => s + (isBillable(m) ? m.price : 0), 0);
   const totalSalaries = completedMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
   const netProfit = totalRevenue - totalSalaries;
 
   const thisMonthMissions = completedMissions.filter(m => m.date.startsWith(month));
-  const revenueMonth = thisMonthMissions.reduce((s, m) => s + m.price, 0);
+  const revenueMonth = thisMonthMissions.reduce((s, m) => s + (isBillable(m) ? m.price : 0), 0);
   const salariesMonth = thisMonthMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
   // Coût employeur total du mois = base + primes + déplacements.
   const laborMonth = Math.round((salariesMonth + primesMonth + travelMonth) * 100) / 100;
@@ -165,7 +170,7 @@ function GlobalView() {
               <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {formatDuration(m.missionDurationMinutes)}</p>
             </div>
             <p className="text-sm" style={{ color: m.cleanerName ? '#1A1A1A' : '#A8A09A' }}>{m.cleanerName ?? '—'}</p>
-            <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{m.price}€</p>
+            <p className="text-sm font-semibold" style={{ color: isBillable(m) ? '#5A8A6A' : '#A8A09A' }}>{isBillable(m) ? `${m.price}€` : '—'}</p>
             <p className="text-sm font-semibold" style={{ color: m.cleanerGain ? '#C9A84C' : '#A8A09A' }}>{m.cleanerGain ? `${m.cleanerGain}€` : '—'}</p>
           </div>
         ))}
