@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   getRhConfigDB, saveRhConfigDB,
   getPrimeTypesDB, createPrimeTypeDB, updatePrimeTypeDB, deletePrimeTypeDB,
-  getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB,
+  getIncidentsForCleanerDB, getMissionIncidentsDB, createIncidentDB, deleteIncidentDB,
   getPrimeRequestsDB, resolvePrimeRequestDB, getAllCleanerRhDB,
 } from '@/lib/rh';
 
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
       case 'updatePrimeType':   return NextResponse.json(await updatePrimeTypeDB(args.id, args.fields));
       case 'deletePrimeType':   return NextResponse.json(await deletePrimeTypeDB(args.id));
       case 'getIncidents':      return NextResponse.json(await getIncidentsForCleanerDB(args.cleanerId));
+      case 'getMissionIncidents': return NextResponse.json(await getMissionIncidentsDB(args.missionId));
       case 'createIncident':    return NextResponse.json(await createIncidentDB(args));
       case 'deleteIncident':    return NextResponse.json(await deleteIncidentDB(args.id, args.cleanerId));
       case 'getPrimeRequests':  return NextResponse.json(await getPrimeRequestsDB(args.statut));

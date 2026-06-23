@@ -38,9 +38,10 @@ export const updatePrimeTypeDB = (id: string, fields: Record<string, unknown>) =
 export const deletePrimeTypeDB = (id: string) => call<{ error: string | null }>('deletePrimeType', { id });
 
 export const getIncidentsForCleanerDB = (cleanerId: string) => call<RhIncident[]>('getIncidents', { cleanerId });
-export const createIncidentDB = (fields: { cleanerId: string; type: RhIncidentType; note?: string; date?: string }) =>
+export const getMissionIncidentsDB = (missionId: string) => call<RhIncident[]>('getMissionIncidents', { missionId });
+export const createIncidentDB = (fields: { cleanerId?: string | null; missionId?: string | null; type: RhIncidentType; note?: string; date?: string }) =>
   call<{ error: string | null }>('createIncident', fields as any);
-export const deleteIncidentDB = (id: string, cleanerId: string) =>
+export const deleteIncidentDB = (id: string, cleanerId?: string | null) =>
   call<{ error: string | null }>('deleteIncident', { id, cleanerId });
 
 export const getPrimeRequestsDB = (statut?: PrimeRequestStatus) => call<PrimeRequest[]>('getPrimeRequests', { statut });

@@ -155,24 +155,34 @@ export async function deletePrimeTypeDB(id: string): Promise<{ error: string | n
 
 // ── INCIDENTS + CLEANER_RH (LOT 2) ──────────────────────────────────────────────
 
-export type RhIncidentType = 'retour_negatif' | 'oubli_majeur' | 'degradation_non_signalee';
+export type RhIncidentType =
+  | 'retour_negatif' | 'oubli' | 'oubli_majeur' | 'qualite_insuffisante'
+  | 'degradation_non_signalee' | 'incident_externe' | 'autre';
 
 export const INCIDENT_LABEL: Record<RhIncidentType, string> = {
-  retour_negatif: 'Retour négatif',
+  retour_negatif: 'Retour négatif client',
+  oubli: 'Oubli',
   oubli_majeur: 'Oubli majeur',
+  qualite_insuffisante: 'Qualité insuffisante',
   degradation_non_signalee: 'Dégradation non signalée',
+  incident_externe: 'Incident externe (non lié au cleaner)',
+  autre: 'Autre',
 };
 
-// Quel compteur de cleaner_rh chaque type d'incident alimente.
-const INCIDENT_COUNTER: Record<RhIncidentType, 'negative_feedback_count' | 'major_mistakes_count' | 'damage_not_reported_count'> = {
+// Quel compteur de cleaner_rh chaque type alimente. Les types NON listés
+// (incident_externe, autre) n'impactent jamais les statistiques du cleaner.
+const INCIDENT_COUNTER: Partial<Record<RhIncidentType, 'negative_feedback_count' | 'major_mistakes_count' | 'damage_not_reported_count'>> = {
   retour_negatif: 'negative_feedback_count',
+  oubli: 'major_mistakes_count',
   oubli_majeur: 'major_mistakes_count',
+  qualite_insuffisante: 'major_mistakes_count',
   degradation_non_signalee: 'damage_not_reported_count',
 };
 
 export interface RhIncident {
   id: string;
-  cleanerId: string;
+  cleanerId?: string | null;   // NULL = incident externe (non attribué au cleaner)
+  missionId?: string | null;
   type: RhIncidentType;
   note?: string;
   date: string;
@@ -240,11 +250,24 @@ export async function getAllCleanerRhDB(): Promise<CleanerRh[]> {
   return (data ?? []).map(rowToCleanerRh);
 }
 
+const rowToIncident = (r: any): RhIncident => ({
+  id: r.id, cleanerId: r.cleaner_id ?? null, missionId: r.mission_id ?? null,
+  type: r.type, note: r.note ?? undefined, date: r.date,
+});
+
 export async function getIncidentsForCleanerDB(cleanerId: string): Promise<RhIncident[]> {
   const { data, error } = await supabase
     .from('rh_incidents').select('*').eq('cleaner_id', cleanerId).order('date', { ascending: false });
   if (error) { console.error('getIncidentsForCleanerDB error:', error.code, error.message); return []; }
-  return (data ?? []).map(r => ({ id: r.id, cleanerId: r.cleaner_id, type: r.type, note: r.note ?? undefined, date: r.date }));
+  return (data ?? []).map(rowToIncident);
+}
+
+// Incidents d'une mission (liés au cleaner ET externes).
+export async function getMissionIncidentsDB(missionId: string): Promise<RhIncident[]> {
+  const { data, error } = await supabase
+    .from('rh_incidents').select('*').eq('mission_id', missionId).order('date', { ascending: false });
+  if (error) { console.error('getMissionIncidentsDB error:', error.code, error.message); return []; }
+  return (data ?? []).map(rowToIncident);
 }
 
 // Recalcule UNIQUEMENT les champs liés aux incidents du mois en cours dans
@@ -274,26 +297,31 @@ async function recomputeIncidentFieldsDB(cleanerId: string, period = currentPeri
   }, { onConflict: 'cleaner_id' });
 }
 
-// Enregistre un incident (historique) puis met à jour les compteurs du mois.
+// Enregistre un incident puis recalcule les compteurs du cleaner concerné.
+// cleanerId NULL ou absent = incident EXTERNE (non lié au cleaner) → aucun impact
+// sur ses statistiques. missionId optionnel = incident signalé depuis une mission.
 export async function createIncidentDB(fields: {
-  cleanerId: string; type: RhIncidentType; note?: string; date?: string;
+  cleanerId?: string | null; missionId?: string | null;
+  type: RhIncidentType; note?: string; date?: string;
 }): Promise<{ error: string | null }> {
+  const cleanerId = fields.cleanerId || null;
   const { error } = await supabase.from('rh_incidents').insert({
-    cleaner_id: fields.cleanerId,
+    cleaner_id: cleanerId,
+    mission_id: fields.missionId || null,
     type: fields.type,
     note: fields.note || null,
     date: fields.date || new Date().toISOString().slice(0, 10),
   });
   if (error) { console.error('createIncidentDB error:', error.code, error.message); return { error: error.message }; }
-  await recomputeIncidentFieldsDB(fields.cleanerId);
+  if (cleanerId) await recomputeIncidentFieldsDB(cleanerId);  // externe → pas de recalcul
   return { error: null };
 }
 
-// Suppression d'un incident (correction) → recalcule les compteurs.
-export async function deleteIncidentDB(id: string, cleanerId: string): Promise<{ error: string | null }> {
+// Suppression d'un incident (correction) → recalcule les compteurs si attribué.
+export async function deleteIncidentDB(id: string, cleanerId?: string | null): Promise<{ error: string | null }> {
   const { error } = await supabase.from('rh_incidents').delete().eq('id', id);
   if (error) return { error: error.message };
-  await recomputeIncidentFieldsDB(cleanerId);
+  if (cleanerId) await recomputeIncidentFieldsDB(cleanerId);
   return { error: null };
 }
 

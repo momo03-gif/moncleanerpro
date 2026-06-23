@@ -402,7 +402,9 @@ function CapabilityToggles({ canClean, canDeliver, onChange, deliveryRate, onRat
 }
 
 // ── Incidents RH (admin) : signaler + historique. Réservé à l'admin. ────────────
-const INCIDENT_TYPES: RhIncidentType[] = ['retour_negatif', 'oubli_majeur', 'degradation_non_signalee'];
+// Incidents directement imputés au cleaner (les incidents externes se signalent
+// depuis une mission). « oubli_majeur » reste accepté pour l'historique.
+const INCIDENT_TYPES: RhIncidentType[] = ['retour_negatif', 'oubli', 'qualite_insuffisante', 'degradation_non_signalee', 'autre'];
 
 function IncidentPanel({ cleanerId }: { cleanerId: string }) {
   const [incidents, setIncidents] = useState<RhIncident[]>([]);
