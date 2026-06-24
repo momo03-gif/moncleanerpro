@@ -7,7 +7,6 @@ import {
   getRhConfigMapDB, getPrimeTypesDB, getIncidentsForCleanerDB, getCleanerRhDB,
   currentPeriod, type PrimeType, type CleanerRh,
 } from './rh';
-import type { Mission } from './types';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Moteur de calcul RH (LOT 3 + 3bis).
@@ -23,11 +22,6 @@ function cfg(map: ConfigMap, key: string, fallback = 0): { value: number; enable
   return map[key] ?? { value: fallback, enabled: false };
 }
 
-// Normalise une adresse pour comparer « même lieu » (casse/espaces ignorés).
-function normAddress(a?: string): string {
-  return (a ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
 // Ancienneté en mois pleins depuis la création du compte.
 function monthsSince(iso?: string): number {
   if (!iso) return 0;
@@ -36,28 +30,6 @@ function monthsSince(iso?: string): number {
   if (now.getDate() < c.getDate()) m -= 1;
   return Math.max(0, m);
 }
-
-// Minutes de trajet payées sur une journée : on paie le forfait à CHAQUE
-// changement d'adresse entre deux missions consécutives, JAMAIS avant la première.
-// Deux missions à la même adresse (même immeuble) → 0.
-function travelMinutesForDay(dayMissions: Mission[], travelMin: number): { minutes: number; legs: { from: string; to: string }[] } {
-  const sorted = [...dayMissions].sort((a, b) =>
-    (a.time || '99:99').localeCompare(b.time || '99:99') ||
-    (a.startedAt ?? '').localeCompare(b.startedAt ?? ''));
-  let minutes = 0;
-  const legs: { from: string; to: string }[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = normAddress(sorted[i - 1].address);
-    const cur = normAddress(sorted[i].address);
-    if (prev && cur && prev !== cur) {
-      minutes += travelMin;
-      legs.push({ from: sorted[i - 1].address, to: sorted[i].address });
-    }
-  }
-  return { minutes, legs };
-}
-
-export interface TravelDetail { date: string; from: string; to: string; minutes: number; }
 
 // Calcule (sans écrire) tous les agrégats RH d'un cleaner pour un mois donné.
 async function computeRhFields(cleaner: { id: string; created_at?: string }, period: string, config: ConfigMap) {
@@ -72,17 +44,6 @@ async function computeRhFields(cleaner: { id: string; created_at?: string }, per
   // Temps moyen réel par mission (ended_at - started_at)
   const durations = completed.map(m => m.actualDurationMinutes ?? 0).filter(d => d > 0);
   const avgMinutes = durations.length ? Math.round(durations.reduce((s, d) => s + d, 0) / durations.length) : 0;
-
-  // Déplacements payés (par jour, sur changement d'adresse)
-  const travelMin = cfg(config, 'minutes_trajet_paye', 15).value;
-  let travelPaid = 0;
-  const travelDetail: TravelDetail[] = [];
-  for (const day of days) {
-    const dm = completed.filter(m => m.date === day);
-    const { minutes, legs } = travelMinutesForDay(dm, travelMin);
-    travelPaid += minutes;
-    legs.forEach(l => travelDetail.push({ date: day, from: l.from, to: l.to, minutes: travelMin }));
-  }
 
   // Incidents du mois (source : rh_incidents)
   const incidents = (await getIncidentsForCleanerDB(cleaner.id)).filter(i => i.date.startsWith(period));
@@ -109,7 +70,7 @@ async function computeRhFields(cleaner: { id: string; created_at?: string }, per
     missionsCompletedThisMonth: missionsCompleted,
     daysWorkedMonth: daysWorked,
     avgMinutesPerMission: avgMinutes,
-    travelPaidMinutes: travelPaid,
+    travelPaidMinutes: 0, // déplacements supprimés de la paie ; champ conservé (colonne) à 0
     negativeFeedbackCount: negative,
     majorMistakesCount: major,
     damageNotReportedCount: damage,
@@ -120,7 +81,7 @@ async function computeRhFields(cleaner: { id: string; created_at?: string }, per
     internetBonusEligible: employmentMonths >= anciennete.value && internet.enabled,
     reducedPriority: totalIncidents > seuilIncidents.value,
   };
-  return { fields, travelDetail, totalIncidents };
+  return { fields, totalIncidents };
 }
 
 function fieldsToRow(cleanerId: string, f: Omit<CleanerRh, 'cleanerId'>) {
@@ -212,31 +173,24 @@ export interface Payslip {
   cleanerId: string;
   period: string;
   missionsGain: number;       // somme des gains des missions terminées du mois
-  travelMinutes: number;
-  travelAmount: number;       // déplacements payés convertis en €
   primes: PayslipPrime[];
   adjustment: number;         // ajustement manuel admin (€, peut être négatif)
   adjustmentNote?: string;    // raison de l'ajustement
-  total: number;              // missions + déplacements + primes + ajustement
+  total: number;              // missions + primes + ajustement
   time: PayslipTimeCompare;   // comparatif temps prévu / réel (admin)
 }
 
 // Calcule la fiche de paie d'un cleaner pour un mois. Tout vient de la base.
 export async function computePayslipDB(cleanerId: string, period = currentPeriod()): Promise<Payslip> {
-  const [{ data: cleaner }, missions, rh, config, primes] = await Promise.all([
-    supabase.from('cleaners').select('hourly_rate').eq('id', cleanerId).single(),
+  const [missions, rh, config, primes] = await Promise.all([
     getMissionsByCleanerTableIdDB(cleanerId),
     getCleanerRhDB(cleanerId),
     getRhConfigMapDB(),
     getPrimeTypesDB(),
   ]);
 
-  const rate = Number(cleaner?.hourly_rate) || 0;
   const completed = missions.filter(m => m.status === 'completed' && m.date.startsWith(period));
   const missionsGain = Math.round(completed.reduce((s, m) => s + (m.cleanerGain ?? 0), 0) * 100) / 100;
-
-  const travelMinutes = rh?.travelPaidMinutes ?? 0;
-  const travelAmount = Math.round((travelMinutes * rate / 60) * 100) / 100;
 
   const list: PayslipPrime[] = [];
 
@@ -262,7 +216,7 @@ export async function computePayslipDB(cleanerId: string, period = currentPeriod
   const adjustment = Number(adj?.amount) || 0;
   const adjustmentNote = adj?.note ?? undefined;
 
-  const total = Math.round((missionsGain + travelAmount + primesTotal + adjustment) * 100) / 100;
+  const total = Math.round((missionsGain + primesTotal + adjustment) * 100) / 100;
 
   // ── Comparatif temps prévu vs réel (information seule) ──────────────────────
   // Temps accordé = ménage prévu par appartement ; temps réel = pointage, ou le
@@ -277,7 +231,7 @@ export async function computePayslipDB(cleanerId: string, period = currentPeriod
     missionsCount: completed.length, pointedCount: pointed.length,
   };
 
-  return { cleanerId, period, missionsGain, travelMinutes, travelAmount, primes: list, adjustment, adjustmentNote, total, time };
+  return { cleanerId, period, missionsGain, primes: list, adjustment, adjustmentNote, total, time };
 }
 
 // Enregistre (ou efface) l'ajustement manuel de paie d'un cleaner pour un mois.

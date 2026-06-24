@@ -32,10 +32,10 @@ export default function RhPerfPanel() {
   }, []);
 
   function exportCsv() {
-    const head = ['Cleaner', 'Missions mois', 'Jours travaillés', 'Temps moyen (min)', 'Déplacements payés (min)',
+    const head = ['Cleaner', 'Missions mois', 'Jours travaillés', 'Temps moyen (min)',
       'Retours négatifs', 'Score qualité', 'Prime qualité', 'Prime performance', 'TCL', 'Internet', 'Statut'];
     const lines = rows.map(({ name, rh }) => [
-      name, rh.missionsCompletedThisMonth, rh.daysWorkedMonth, rh.avgMinutesPerMission, rh.travelPaidMinutes,
+      name, rh.missionsCompletedThisMonth, rh.daysWorkedMonth, rh.avgMinutesPerMission,
       rh.negativeFeedbackCount, rh.qualityScore,
       rh.qualityBonusEligible ? 'Oui' : 'Non', rh.performanceBonusEligible ? 'Oui' : 'Non',
       rh.tclEligible ? 'Oui' : 'Non', rh.internetBonusEligible ? 'Oui' : 'Non', health(rh).label,
@@ -68,8 +68,8 @@ export default function RhPerfPanel() {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <div className="hidden lg:grid px-5 py-3 text-xs font-semibold uppercase tracking-wide border-b" style={{ color: '#A8A09A', borderColor: '#F2EFE9', backgroundColor: '#FAFAF8', gridTemplateColumns: '1.4fr repeat(6, 1fr) 1.1fr' }}>
-            <span>Cleaner</span><span>Missions</span><span>Jours</span><span>Tps moy.</span><span>Trajets</span><span>Retours -</span><span>Qualité</span><span>Statut</span>
+          <div className="hidden lg:grid px-5 py-3 text-xs font-semibold uppercase tracking-wide border-b" style={{ color: '#A8A09A', borderColor: '#F2EFE9', backgroundColor: '#FAFAF8', gridTemplateColumns: '1.4fr repeat(5, 1fr) 1.1fr' }}>
+            <span>Cleaner</span><span>Missions</span><span>Jours</span><span>Tps moy.</span><span>Retours -</span><span>Qualité</span><span>Statut</span>
           </div>
           {rows.map(({ id, name, rh }, i) => {
             const h = health(rh);
@@ -80,7 +80,7 @@ export default function RhPerfPanel() {
               rh.internetBonusEligible && 'Internet',
             ].filter(Boolean) as string[];
             return (
-              <div key={id} className={`px-5 py-4 flex flex-col lg:grid gap-2 lg:gap-0 lg:items-center ${i < rows.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9', gridTemplateColumns: '1.4fr repeat(6, 1fr) 1.1fr' }}>
+              <div key={id} className={`px-5 py-4 flex flex-col lg:grid gap-2 lg:gap-0 lg:items-center ${i < rows.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9', gridTemplateColumns: '1.4fr repeat(5, 1fr) 1.1fr' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>{name.charAt(0)}</div>
                   <div className="min-w-0">
@@ -91,7 +91,6 @@ export default function RhPerfPanel() {
                 <Cell label="Missions" value={String(rh.missionsCompletedThisMonth)} />
                 <Cell label="Jours" value={String(rh.daysWorkedMonth)} />
                 <Cell label="Tps moy." value={formatDuration(rh.avgMinutesPerMission)} />
-                <Cell label="Trajets" value={`${rh.travelPaidMinutes} min`} />
                 <Cell label="Retours -" value={String(rh.negativeFeedbackCount)} color={rh.negativeFeedbackCount > 0 ? '#B85A50' : undefined} />
                 <Cell label="Qualité" value={String(rh.qualityScore)} color={rh.qualityScore < 0 ? '#B85A50' : '#5A8A6A'} />
                 <div className="flex items-center gap-2">

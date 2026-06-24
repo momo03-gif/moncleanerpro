@@ -13,7 +13,7 @@ import Loading from "@/components/Loading";
 const SECTION_TITLE: Record<string, string> = {
   primes: 'Primes',
   avantages: 'Avantages (éligibilité, pas un montant de paie)',
-  deplacements: 'Déplacements & priorité',
+  priorite: 'Priorité d’attribution',
 };
 
 // Petit interrupteur Activé/Désactivé — couleurs de l'app (doré actif).
@@ -74,7 +74,7 @@ export default function ReglesRhPage() {
     ...config.map(c => c.key).filter(k => !known.includes(k)),
   ];
   const byKey = Object.fromEntries(config.map(c => [c.key, c]));
-  const sections: ('primes' | 'avantages' | 'deplacements')[] = ['primes', 'avantages', 'deplacements'];
+  const sections: ('primes' | 'avantages' | 'priorite')[] = ['primes', 'avantages', 'priorite'];
 
   if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 

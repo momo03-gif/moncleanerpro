@@ -51,11 +51,10 @@ function GlobalView() {
 
   const month = currentMonth();
 
-  // Charges salariales RÉELLES du mois (fiches de paie) : primes + déplacements,
-  // en plus du salaire de base. Le bénéfice « ce mois » les déduit pour refléter
-  // le vrai coût employeur (avant : seul le salaire de base était compté).
+  // Charges salariales RÉELLES du mois (fiches de paie) : primes, en plus du
+  // salaire de base. Le bénéfice « ce mois » les déduit pour refléter le vrai
+  // coût employeur (avant : seul le salaire de base était compté).
   const primesMonth = Math.round(payroll.reduce((s, r) => s + r.payslip.primes.reduce((a, p) => a + p.montant, 0), 0) * 100) / 100;
-  const travelMonth = Math.round(payroll.reduce((s, r) => s + (r.payslip.travelAmount ?? 0), 0) * 100) / 100;
   const completedMissions = missions.filter(m => m.status === 'completed');
   // Les livraisons ne sont pas facturées au client (à la charge de l'entreprise) :
   // leur prix n'entre PAS dans le CA. En revanche leur coût (cleanerGain) reste
@@ -68,8 +67,8 @@ function GlobalView() {
   const thisMonthMissions = completedMissions.filter(m => m.date.startsWith(month));
   const revenueMonth = thisMonthMissions.reduce((s, m) => s + (isBillable(m) ? m.price : 0), 0);
   const salariesMonth = thisMonthMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
-  // Coût employeur total du mois = base + primes + déplacements.
-  const laborMonth = Math.round((salariesMonth + primesMonth + travelMonth) * 100) / 100;
+  // Coût employeur total du mois = base + primes.
+  const laborMonth = Math.round((salariesMonth + primesMonth) * 100) / 100;
   const profitMonth = Math.round((revenueMonth - laborMonth) * 100) / 100;
 
   const cleanerStats = cleaners.map(c => {
@@ -103,7 +102,7 @@ function GlobalView() {
 
       <div className="rounded-2xl border p-5 mb-8" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#7A7068' }}>Ce mois — {month}</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Revenus</p>
             <p className="text-xl font-bold" style={{ color: '#5A8A6A' }}>{revenueMonth}€</p>
@@ -117,16 +116,12 @@ function GlobalView() {
             <p className="text-xl font-bold" style={{ color: '#C48A2A' }}>{primesMonth}€</p>
           </div>
           <div>
-            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Déplacements</p>
-            <p className="text-xl font-bold" style={{ color: '#8B7A62' }}>{travelMonth}€</p>
-          </div>
-          <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Bénéfice net</p>
             <p className="text-xl font-bold" style={{ color: '#C9A84C' }}>{profitMonth}€</p>
           </div>
         </div>
         <p className="text-[11px] mt-3" style={{ color: '#A8A09A' }}>
-          Bénéfice = revenus − (salaires base + primes + déplacements). Coût employeur total ce mois : {laborMonth}€.
+          Bénéfice = revenus − (salaires base + primes). Coût employeur total ce mois : {laborMonth}€.
         </p>
       </div>
 

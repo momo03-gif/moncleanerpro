@@ -26,7 +26,7 @@ export interface RhConfigMeta {
   key: RhConfigKey;
   label: string;
   unit: string;          // suffixe affiché (€, %, missions, mois, min…)
-  section: 'primes' | 'avantages' | 'deplacements';
+  section: 'primes' | 'avantages' | 'priorite';
   hint?: string;
 }
 
@@ -38,8 +38,7 @@ export const RH_CONFIG_META: RhConfigMeta[] = [
   { key: 'anciennete_min_mois',      label: 'Ancienneté minimale',        unit: 'mois',     section: 'avantages',    hint: 'Ancienneté requise pour ouvrir les avantages.' },
   { key: 'tcl_pourcentage',          label: 'Avantage TCL',               unit: '%',        section: 'avantages',    hint: 'Réduction transport (éligibilité, pas un montant de paie).' },
   { key: 'internet_bonus',           label: 'Avantage Internet',          unit: '€',        section: 'avantages',    hint: 'Participation Internet (éligibilité, pas un montant de paie).' },
-  { key: 'minutes_trajet_paye',      label: 'Trajet payé entre adresses', unit: 'min',      section: 'deplacements', hint: 'Minutes payées au changement d’adresse le même jour.' },
-  { key: 'seuil_incidents_priorite', label: 'Seuil priorité réduite',     unit: 'incidents',section: 'deplacements', hint: 'Incidents/mois avant de baisser la priorité d’attribution.' },
+  { key: 'seuil_incidents_priorite', label: 'Seuil priorité réduite',     unit: 'incidents',section: 'priorite',     hint: 'Incidents/mois avant de baisser la priorité d’attribution.' },
 ];
 
 export interface RhConfigRow {

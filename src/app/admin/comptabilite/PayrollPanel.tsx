@@ -105,7 +105,6 @@ export default function PayrollPanel() {
             </div>
             <div className="px-5 py-4 space-y-2">
               <Line label="Gain missions terminées" value={money(p.missionsGain)} color="#C9A84C" />
-              <Line label={`Frais de déplacement (${p.travelMinutes} min)`} value={money(p.travelAmount)} color="#5B6EF5" />
               {p.primes.map((pr, i) => (
                 <Line key={i} label={`Prime : ${pr.nom}${pr.source === 'validee' ? ' (validée)' : ''}`} value={money(pr.montant)} color="#5A8A6A" />
               ))}
