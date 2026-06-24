@@ -46,7 +46,9 @@ export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]>
     .eq('partner_id', userId)
     .order('created_at');
   if (error) console.error('getAirbnbsForPartner error:', error.code, error.message);
-  return (data ?? []).map(rowToApartment);
+  // Le partenaire ne doit PAS voir la durée de ménage (paramétrée par l'admin, elle
+  // sert à la paie des cleaners) ni le gain cleaner : on les retire.
+  return (data ?? []).map(rowToApartment).map(a => ({ ...a, estimatedCleaningMinutes: undefined, cleanerGain: undefined }));
 }
 
 export async function createAirbnb(fields: {

@@ -191,7 +191,24 @@ export async function getMissionsForPartnerDB(userId: string): Promise<Mission[]
     .eq('partner_id', userId)
     .order('date_from', { ascending: false });
   if (error) console.error('getMissionsForPartnerDB:', error.code, error.message);
-  return (data ?? []).map(rowToMission);
+  // Le partenaire ne doit PAS voir les données internes (durée de ménage paramétrée,
+  // gain/taux cleaner, pointage GPS) : on les retire avant de renvoyer.
+  return (data ?? []).map(rowToMission).map(stripInternalForPartner);
+}
+
+// Retire d'une mission les champs réservés à l'usage interne (admin/cleaner) avant
+// de l'exposer à un partenaire (hôte). Voir getMissionsForPartnerDB.
+function stripInternalForPartner(m: Mission): Mission {
+  return {
+    ...m,
+    missionDurationMinutes: undefined,
+    cleanerHourlyRateSnapshot: undefined,
+    apartmentDefaultDurationSnapshot: undefined,
+    cleanerGain: undefined,
+    actualDurationMinutes: undefined,
+    startedAt: undefined, endedAt: undefined,
+    startLat: undefined, startLng: undefined, endLat: undefined, endLng: undefined,
+  };
 }
 
 export async function getPendingMissionsDB(): Promise<Mission[]> {
