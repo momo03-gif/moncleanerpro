@@ -10,6 +10,14 @@ export async function postServer(url: string, body: unknown): Promise<any> {
   return data;
 }
 
+// Lecture via une route serveur (données sensibles non lisibles par la clé publique).
+export async function getServer(url: string): Promise<any> {
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+  return data;
+}
+
 // La DB stocke parfois l'heure en HH:mm:ss → on tronque à HH:mm.
 export function trimTime(t: string | null | undefined): string {
   return (t ?? '').substring(0, 5);
