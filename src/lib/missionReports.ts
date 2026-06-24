@@ -27,6 +27,34 @@ export function reportHasContent(r: MissionReport | null | undefined): boolean {
     || !!(r.consumablesNote || r.issues || r.lostFound || r.note);
 }
 
+// Incident ouvert = un rapport qui signale un problème/dégât. On joint la mission
+// (appartement + date) pour l'afficher sur le dashboard opérationnel.
+export interface OpenIncident {
+  missionId: string;
+  issues: string;
+  property?: string;
+  date?: string;
+  status?: string;
+  updatedAt?: string;
+}
+
+export async function getOpenIncidentsDB(): Promise<OpenIncident[]> {
+  const { data, error } = await supabase
+    .from('mission_reports')
+    .select('mission_id, issues, updated_at, missions(property, date, status)')
+    .not('issues', 'is', null)
+    .order('updated_at', { ascending: false });
+  if (error) { console.error('getOpenIncidentsDB:', error.message); return []; }
+  return (data ?? []).map((r: any) => ({
+    missionId: r.mission_id,
+    issues: r.issues,
+    property: r.missions?.property,
+    date: r.missions?.date,
+    status: r.missions?.status,
+    updatedAt: r.updated_at,
+  }));
+}
+
 export async function getMissionReportDB(missionId: string): Promise<MissionReport | null> {
   const { data, error } = await supabase
     .from('mission_reports')

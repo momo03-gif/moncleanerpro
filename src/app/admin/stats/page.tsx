@@ -39,6 +39,20 @@ export default function StatsPage() {
   const depensesAll = depenses.reduce((s, d) => s + d.montantTtc, 0);
   const netAllIn = Math.round((revenue - salariesAll - depensesAll) * 100) / 100;
 
+  // Marge moyenne par mission (bénéfice dégagé sur chaque ménage facturé).
+  const margePerMission = completed > 0 ? Math.round(((revenue - salariesAll) / completed) * 100) / 100 : 0;
+
+  // Top cleaner (le plus de missions terminées) + top partenaire Airbnb (CA généré).
+  const cleanerCount = new Map<string, number>();
+  missions.filter(m => m.status === 'completed' && m.cleanerName)
+    .forEach(m => cleanerCount.set(m.cleanerName!, (cleanerCount.get(m.cleanerName!) ?? 0) + 1));
+  const topCleanerEntry = [...cleanerCount.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  const partnerRevenue = new Map<string, number>();
+  missions.filter(m => m.status === 'completed' && isBillable(m) && m.partnerName)
+    .forEach(m => partnerRevenue.set(m.partnerName!, (partnerRevenue.get(m.partnerName!) ?? 0) + m.price));
+  const topPartnerEntry = [...partnerRevenue.entries()].sort((a, b) => b[1] - a[1])[0];
+
   // ── Livraisons : nombre effectué + coût (gain livreur). Le coût est déjà inclus
   // dans les salaires ; on l'isole ici pour le suivi.
   const deliveryDone = missions.filter(m => m.status === 'completed' && serviceParts(m.service).delivery);
@@ -109,6 +123,25 @@ export default function StatsPage() {
           <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Revenus {revenue}€ − salaires {Math.round(salariesAll)}€ − dépenses {Math.round(depensesAll)}€</p>
         </div>
         <p className="text-3xl font-bold" style={{ color: netAllIn >= 0 ? '#5A8A6A' : '#B85A50' }}>{netAllIn}€</p>
+      </div>
+
+      {/* Pilotage : marge par mission + top cleaner + top partenaire Airbnb */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Marge moyenne / mission</p>
+          <p className="text-2xl font-bold" style={{ color: margePerMission >= 0 ? '#5A8A6A' : '#B85A50' }}>{margePerMission}€</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>bénéfice par ménage facturé</p>
+        </div>
+        <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Top cleaner</p>
+          <p className="text-xl font-bold truncate" style={{ color: '#1A1A1A' }}>{topCleanerEntry?.[0] ?? '—'}</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{topCleanerEntry ? `${topCleanerEntry[1]} missions terminées` : 'aucune donnée'}</p>
+        </div>
+        <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Top partenaire Airbnb</p>
+          <p className="text-xl font-bold truncate" style={{ color: '#1A1A1A' }}>{topPartnerEntry?.[0] ?? '—'}</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{topPartnerEntry ? `${Math.round(topPartnerEntry[1])}€ de CA` : 'aucune donnée'}</p>
+        </div>
       </div>
 
       {/* Suivi des livraisons */}
