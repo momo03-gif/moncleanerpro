@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { resolvePrimeRequestDB, currentPeriod, type PrimeRequest } from '@/lib/rhApi';
-import { loadPayrollDB, recomputeAllCleanerRhDB, type Payslip } from '@/lib/payrollApi';
+import { loadPayrollDB, recomputeAllCleanerRhDB, setPayAdjustmentDB, type Payslip } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
 
 // ── Fiche de paie mensuelle par cleaner (admin uniquement, LOT 3bis B/C). ───────
@@ -10,6 +10,14 @@ import Loading from "@/components/Loading";
 
 function money(n: number) {
   return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// Minutes → « 12h30 » (ou « 0h » si rien).
+function hm(min: number) {
+  const m = Math.max(0, Math.round(min));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r === 0 ? `${h}h` : `${h}h${String(r).padStart(2, '0')}`;
 }
 
 interface Row { id: string; name: string; payslip: Payslip; }
@@ -101,8 +109,41 @@ export default function PayrollPanel() {
               {p.primes.map((pr, i) => (
                 <Line key={i} label={`Prime : ${pr.nom}${pr.source === 'validee' ? ' (validée)' : ''}`} value={money(pr.montant)} color="#5A8A6A" />
               ))}
-              {p.primes.length === 0 && <p className="text-xs" style={{ color: '#A8A09A' }}>Aucune prime ce mois.</p>}
+              {p.adjustment !== 0 && (
+                <Line label={`Ajustement${p.adjustmentNote ? ` : ${p.adjustmentNote}` : ''}`} value={money(p.adjustment)} color={p.adjustment < 0 ? '#B85A50' : '#5A8A6A'} />
+              )}
+              {p.primes.length === 0 && p.adjustment === 0 && <p className="text-xs" style={{ color: '#A8A09A' }}>Aucune prime ce mois.</p>}
             </div>
+
+            {/* Temps du mois : prévu (ménage accordé) vs réel (pointage, sinon prévu) */}
+            <div className="px-5 py-4 border-t" style={{ borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Temps du mois</p>
+                <p className="text-xs" style={{ color: '#A8A09A' }}>
+                  {p.time.pointedCount}/{p.time.missionsCount} mission{p.time.missionsCount > 1 ? 's' : ''} pointée{p.time.pointedCount > 1 ? 's' : ''}
+                  {p.time.pointedCount < p.time.missionsCount && ' · le reste compté au temps accordé'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border px-3 py-2" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+                  <p className="text-xs" style={{ color: '#A8A09A' }}>Ménage accordé (prévu)</p>
+                  <p className="text-base font-bold" style={{ color: '#1A1A1A' }}>{hm(p.time.plannedMinutes)}</p>
+                </div>
+                <div className="rounded-xl border px-3 py-2" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+                  <p className="text-xs" style={{ color: '#A8A09A' }}>Temps réel</p>
+                  <p className="text-base font-bold" style={{ color: p.time.realMinutes > p.time.plannedMinutes ? '#B85A50' : '#5A8A6A' }}>{hm(p.time.realMinutes)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Ajustement manuel de la paie (admin) */}
+            <AdjustEditor
+              cleanerId={id}
+              period={period}
+              initialAmount={p.adjustment}
+              initialNote={p.adjustmentNote ?? ''}
+              onSaved={load}
+            />
           </div>
         ))}
       </div>
@@ -115,6 +156,57 @@ function Line({ label, value, color }: { label: string; value: string; color: st
     <div className="flex items-center justify-between">
       <span className="text-sm" style={{ color: '#7A7068' }}>{label}</span>
       <span className="text-sm font-semibold" style={{ color }}>{value}</span>
+    </div>
+  );
+}
+
+// Éditeur d'ajustement manuel de la paie (delta € + raison). Le total est
+// recalculé côté serveur, puis la liste est rechargée via onSaved.
+function AdjustEditor({ cleanerId, period, initialAmount, initialNote, onSaved }: {
+  cleanerId: string; period: string; initialAmount: number; initialNote: string; onSaved: () => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(initialAmount !== 0 || initialNote !== '');
+  const [amount, setAmount] = useState(initialAmount ? String(initialAmount) : '');
+  const [note, setNote] = useState(initialNote);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await setPayAdjustmentDB(cleanerId, period, Number(amount.replace(',', '.')) || 0, note);
+    await onSaved();
+    setSaving(false);
+  }
+
+  if (!open) {
+    return (
+      <div className="px-5 py-3 border-t" style={{ borderColor: '#F2EFE9' }}>
+        <button onClick={() => setOpen(true)} className="text-xs font-semibold" style={{ color: '#C9A84C' }}>
+          + Ajuster la paie
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 py-4 border-t space-y-3" style={{ borderColor: '#F2EFE9' }}>
+      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Ajustement de la paie</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs mb-1" style={{ color: '#A8A09A' }}>Montant (€, +/-)</label>
+          <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0"
+            className="w-28 px-3 py-2 rounded-xl border text-sm" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }} />
+        </div>
+        <div className="flex-1 min-w-[160px]">
+          <label className="block text-xs mb-1" style={{ color: '#A8A09A' }}>Raison</label>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="ex. heures supplémentaires"
+            className="w-full px-3 py-2 rounded-xl border text-sm" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }} />
+        </div>
+        <button onClick={save} disabled={saving}
+          className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+          style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          {saving ? '...' : 'Enregistrer'}
+        </button>
+      </div>
     </div>
   );
 }

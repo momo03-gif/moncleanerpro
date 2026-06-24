@@ -196,6 +196,18 @@ export async function recomputeAllCleanerRhDB(period = currentPeriod()): Promise
 // ── FICHE DE PAIE MENSUELLE (LOT 3bis B) ────────────────────────────────────────
 
 export interface PayslipPrime { nom: string; montant: number; source: 'auto' | 'validee'; }
+
+// Comparatif temps du mois (admin uniquement, information seule — aucune paie ici).
+// Temps prévu = ménage accordé par appartement (missionDurationMinutes).
+// Temps réel = pointage (actualDurationMinutes) ; pour une mission NON pointée,
+// le temps ménage prévu est considéré comme le temps réel (fallback).
+export interface PayslipTimeCompare {
+  plannedMinutes: number;     // somme du temps ménage accordé (missions terminées)
+  realMinutes: number;        // temps réel retenu (pointage, sinon prévu en fallback)
+  missionsCount: number;      // missions terminées du mois
+  pointedCount: number;       // dont missions réellement pointées
+}
+
 export interface Payslip {
   cleanerId: string;
   period: string;
@@ -203,7 +215,10 @@ export interface Payslip {
   travelMinutes: number;
   travelAmount: number;       // déplacements payés convertis en €
   primes: PayslipPrime[];
-  total: number;              // missions + déplacements + primes
+  adjustment: number;         // ajustement manuel admin (€, peut être négatif)
+  adjustmentNote?: string;    // raison de l'ajustement
+  total: number;              // missions + déplacements + primes + ajustement
+  time: PayslipTimeCompare;   // comparatif temps prévu / réel (admin)
 }
 
 // Calcule la fiche de paie d'un cleaner pour un mois. Tout vient de la base.
@@ -239,7 +254,43 @@ export async function computePayslipDB(cleanerId: string, period = currentPeriod
   (accepted ?? []).forEach((r: any) => list.push({ nom: r.type, montant: Number(r.montant) || 0, source: 'validee' }));
 
   const primesTotal = list.reduce((s, p) => s + p.montant, 0);
-  const total = Math.round((missionsGain + travelAmount + primesTotal) * 100) / 100;
 
-  return { cleanerId, period, missionsGain, travelMinutes, travelAmount, primes: list, total };
+  // Ajustement manuel admin pour ce mois (delta €, peut être négatif).
+  const { data: adj } = await supabase
+    .from('payroll_adjustments').select('amount, note')
+    .eq('cleaner_id', cleanerId).eq('period', period).maybeSingle();
+  const adjustment = Number(adj?.amount) || 0;
+  const adjustmentNote = adj?.note ?? undefined;
+
+  const total = Math.round((missionsGain + travelAmount + primesTotal + adjustment) * 100) / 100;
+
+  // ── Comparatif temps prévu vs réel (information seule) ──────────────────────
+  // Temps accordé = ménage prévu par appartement ; temps réel = pointage, ou le
+  // temps prévu en fallback quand la mission n'a pas été pointée.
+  const plannedMinutes = completed.reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
+  const pointed = completed.filter(m => (m.actualDurationMinutes ?? 0) > 0);
+  const realMinutes = completed.reduce(
+    (s, m) => s + ((m.actualDurationMinutes ?? 0) > 0 ? m.actualDurationMinutes! : (m.missionDurationMinutes ?? 0)), 0);
+
+  const time: PayslipTimeCompare = {
+    plannedMinutes, realMinutes,
+    missionsCount: completed.length, pointedCount: pointed.length,
+  };
+
+  return { cleanerId, period, missionsGain, travelMinutes, travelAmount, primes: list, adjustment, adjustmentNote, total, time };
+}
+
+// Enregistre (ou efface) l'ajustement manuel de paie d'un cleaner pour un mois.
+// amount = 0 sans note → on supprime la ligne pour rester propre.
+export async function setPayAdjustmentDB(cleanerId: string, period: string, amount: number, note?: string): Promise<void> {
+  const clean = Math.round((Number(amount) || 0) * 100) / 100;
+  const trimmedNote = note?.trim() || null;
+  if (clean === 0 && !trimmedNote) {
+    await supabase.from('payroll_adjustments').delete().eq('cleaner_id', cleanerId).eq('period', period);
+    return;
+  }
+  await supabase.from('payroll_adjustments').upsert(
+    { cleaner_id: cleanerId, period, amount: clean, note: trimmedNote, updated_at: new Date().toISOString() },
+    { onConflict: 'cleaner_id,period' },
+  );
 }
