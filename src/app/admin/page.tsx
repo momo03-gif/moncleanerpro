@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  getMissionsDB, getCleaners,
+  getMissionsDB, getCleaners, getAllReservationFeeds,
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
 } from '@/lib/db';
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [cleaners, setCleaners] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
   const [incidents, setIncidents] = useState<OpenIncident[]>([]);
+  const [failingFeeds, setFailingFeeds] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   const today = new Date().toISOString().split('T')[0];
@@ -56,8 +57,11 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
-      const [m, c, inc] = await Promise.all([getMissionsDB(), getCleaners(), getOpenIncidentsDB()]);
+      const [m, c, inc, feeds] = await Promise.all([
+        getMissionsDB(), getCleaners(), getOpenIncidentsDB(), getAllReservationFeeds(),
+      ]);
       setMissions(m); setCleaners(c); setIncidents(inc);
+      setFailingFeeds(feeds.filter(f => f.lastSyncStatus === 'error').length);
       await loadPending();
       setLoading(false);
     }
@@ -92,6 +96,19 @@ export default function AdminDashboard() {
           {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      {/* ── Alerte : synchronisation en panne ── */}
+      {failingFeeds > 0 && (
+        <Link href="/admin/reservations" className="block mb-6">
+          <div className="rounded-2xl border px-5 py-3.5 flex items-center gap-3" style={{ borderColor: '#EAC4BE', backgroundColor: '#FBECEA' }}>
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#B85A50' }} />
+            <p className="text-sm font-semibold" style={{ color: '#B85A50' }}>
+              {failingFeeds} calendrier{failingFeeds > 1 ? 's' : ''} ne se synchronise{failingFeeds > 1 ? 'nt' : ''} plus — des ménages risquent de ne plus se créer automatiquement.
+            </p>
+            <span className="ml-auto text-xs shrink-0" style={{ color: '#B85A50' }}>Voir →</span>
+          </div>
+        </Link>
+      )}
 
       {/* ── Cockpit : 6 tuiles opérationnelles ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-8">

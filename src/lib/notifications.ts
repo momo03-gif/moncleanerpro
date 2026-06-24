@@ -113,6 +113,17 @@ export async function notifyPartnerCreatedMission(partnerName: string, date: str
   } catch (e) { console.error('notifyPartnerCreatedMission:', e); }
 }
 
+// A bis. Alerte de SYNCHRONISATION → admins (changement de date sur mission assignée,
+// flux en panne, réservation annulée alors que la mission est assignée).
+export async function notifyAdminsSync(title: string, message: string, missionId?: string | null) {
+  try {
+    const admins = await adminUserIds();
+    await dispatch(admins.map(id => ({
+      userId: id, role: 'admin' as const, title, message, type: 'sync', missionId: missionId ?? null,
+    })));
+  } catch (e) { console.error('notifyAdminsSync:', e); }
+}
+
 // B. Nouvelle mission pour un cleaner (assignation) → cleaner
 export async function notifyCleanerNewMission(missionId: string) {
   try {

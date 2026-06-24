@@ -10,9 +10,10 @@
 //  Périmètre : appartements Airbnb / conciergerie. Les hôtels ne sont jamais touchés.
 // ════════════════════════════════════════════════════════════════════════════
 
+import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { parseICal, type ICalEvent } from './ical';
-import { notifyPartnerCreatedMission } from './notifications';
+import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
 // d'aujourd'hui jusqu'à J+90 (au-delà, les calendriers évoluent encore trop).
@@ -55,7 +56,7 @@ export interface FeedSyncResult {
 // ── ÉTAPE 1 : importer un flux ────────────────────────────────────────────────
 export async function syncFeed(feed: {
   id: string; airbnb_id: string; partner_id: string | null;
-  platform: string; ical_url: string;
+  platform: string; ical_url: string; last_sync_status?: string | null;
 }): Promise<FeedSyncResult> {
   const db = getSupabaseAdmin();
   const today = parisToday();
@@ -76,6 +77,16 @@ export async function syncFeed(feed: {
     const events = parseICal(text);
     const seenUids = new Set<string>();
     let imported = 0;
+
+    // État précédent (pour détecter un changement de date de départ sur une
+    // réservation déjà transformée en mission).
+    const { data: prevRows } = await db
+      .from('reservations')
+      .select('external_uid, check_out, check_out_time, mission_id')
+      .eq('feed_id', feed.id);
+    const prev = new Map<string, { check_out: string; check_out_time: string | null; mission_id: string | null }>(
+      (prevRows ?? []).map((r: any) => [r.external_uid, { check_out: r.check_out, check_out_time: r.check_out_time, mission_id: r.mission_id }]),
+    );
 
     for (const ev of events) {
       const status = classifyEvent(ev);
@@ -104,6 +115,14 @@ export async function syncFeed(feed: {
         .upsert(row, { onConflict: 'feed_id,external_uid' });
       if (error) { console.error('upsert reservation:', error.message); continue; }
       imported++;
+
+      // FIX #1 — changement de date de départ après création de la mission.
+      if (status === 'confirmed') {
+        const before = prev.get(ev.uid);
+        if (before?.mission_id && (before.check_out !== ev.end || (before.check_out_time ?? null) !== (ev.endTime ?? null))) {
+          await applyReservationDateChange(before.mission_id, ev.end, ev.endTime ?? null);
+        }
+      }
     }
 
     // Réservations futures encore « confirmed » mais absentes du flux → annulées.
@@ -119,8 +138,8 @@ export async function syncFeed(feed: {
       if (seenUids.has(r.external_uid)) continue;
       await db.from('reservations').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', r.id);
       cancelled++;
-      // Mission auto encore non assignée → on l'annule pour éviter un ménage fantôme.
-      if (r.mission_id) await cancelAutoMissionIfUnassigned(r.mission_id);
+      // Mission auto liée : annulée si non assignée, sinon l'admin est alerté.
+      if (r.mission_id) await handleCancelledReservationMission(r.mission_id);
     }
 
     await db.from('reservation_feeds').update({
@@ -130,6 +149,13 @@ export async function syncFeed(feed: {
     return { feedId: feed.id, ok: true, imported, cancelled };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
+    // FIX #2 — panne de synchro : toujours capturée dans Sentry ; l'admin n'est
+    // prévenu qu'à la 1re bascule ok→error (évite le spam à chaque cron).
+    Sentry.captureException(e, { tags: { area: 'reservation-sync', feedId: feed.id } });
+    if (feed.last_sync_status !== 'error') {
+      await notifyAdminsSync('Synchronisation en panne',
+        `Un calendrier (${feed.platform}) ne se synchronise plus : ${message}. Des ménages risquent de ne plus se créer automatiquement.`);
+    }
     await db.from('reservation_feeds').update({
       last_sync_at: new Date().toISOString(), last_sync_status: 'error', last_error: message,
     }).eq('id', feed.id);
@@ -137,13 +163,39 @@ export async function syncFeed(feed: {
   }
 }
 
-// Annule une mission issue d'une synchro UNIQUEMENT si elle est encore « pending »
-// (non assignée à un cleaner). Une mission déjà prise en charge n'est pas touchée.
-async function cancelAutoMissionIfUnassigned(missionId: string) {
+// FIX #3 — réservation annulée. Mission auto non assignée → on l'annule (pas de
+// ménage fantôme). Mission déjà assignée à un cleaner → on n'y touche pas mais on
+// ALERTE l'admin (sinon le cleaner se déplace pour rien).
+async function handleCancelledReservationMission(missionId: string) {
   const db = getSupabaseAdmin();
-  const { data: m } = await db.from('missions').select('status, auto_synced').eq('id', missionId).single();
-  if (m && m.auto_synced && m.status === 'pending') {
+  const { data: m } = await db.from('missions')
+    .select('status, auto_synced, cleaner_name, airbnbs(name)').eq('id', missionId).single();
+  if (!m || !m.auto_synced) return;
+  if (m.status === 'pending') {
     await db.from('missions').update({ status: 'cancelled' }).eq('id', missionId);
+  } else if (m.status !== 'cancelled' && m.status !== 'done') {
+    const place = (m as any).airbnbs?.name ?? 'un logement';
+    await notifyAdminsSync('Réservation annulée — mission assignée',
+      `La réservation de ${place} a été annulée, mais la mission est assignée à ${m.cleaner_name ?? 'un cleaner'}. Pense à annuler la mission et à prévenir.`, missionId);
+  }
+}
+
+// FIX #1 — le départ d'une réservation déjà matérialisée a changé. Mission non
+// assignée → on la déplace à la nouvelle date. Mission assignée → on alerte l'admin
+// (on ne bouge jamais en douce le planning d'un cleaner).
+async function applyReservationDateChange(missionId: string, newDate: string, newTime: string | null) {
+  const db = getSupabaseAdmin();
+  const { data: m } = await db.from('missions')
+    .select('status, auto_synced, airbnbs(name)').eq('id', missionId).single();
+  if (!m || !m.auto_synced) return;
+  if (m.status === 'pending') {
+    await db.from('missions').update({
+      date_from: newDate, time_from: newTime || DEFAULT_CHECKOUT_TIME,
+    }).eq('id', missionId);
+  } else if (m.status !== 'cancelled' && m.status !== 'done') {
+    const place = (m as any).airbnbs?.name ?? 'un logement';
+    await notifyAdminsSync('Changement de date — mission assignée',
+      `Le départ de ${place} a changé (nouveau départ : ${newDate}). La mission est déjà assignée — vérifie le planning du cleaner.`, missionId);
   }
 }
 
@@ -247,7 +299,7 @@ export async function runReservationSync(feedFilter?: { partnerId?: string; feed
 }> {
   const db = getSupabaseAdmin();
   let query = db.from('reservation_feeds')
-    .select('id, airbnb_id, partner_id, platform, ical_url')
+    .select('id, airbnb_id, partner_id, platform, ical_url, last_sync_status')
     .eq('active', true);
   if (feedFilter?.feedId) query = query.eq('id', feedFilter.feedId);
   else if (feedFilter?.partnerId) query = query.eq('partner_id', feedFilter.partnerId);
