@@ -92,6 +92,26 @@ export interface MissionPhoto {
   createdAt: string;
 }
 
+// ── Rapport d'état du logement (rempli par le cleaner en fin de mission) ─────────
+// Visible par l'admin et le partenaire (hôte). Sert à signaler ce qui doit être
+// réapprovisionné, un dégât/maintenance, ou un objet oublié par le client.
+export interface MissionReport {
+  missionId: string;
+  consumables: string[];      // items à réapprovisionner (liste fermée)
+  consumablesNote?: string;   // précision libre (ex. « plus de pastilles lave-vaisselle »)
+  issues?: string;            // problème / dégât / maintenance constaté
+  lostFound?: string;         // objet oublié par le client
+  note?: string;              // remarque générale
+  submittedBy?: string;
+  updatedAt?: string;
+}
+
+// Consommables proposés en cases à cocher (liste fermée, ordre stable).
+export const CONSUMABLE_ITEMS = [
+  'Papier toilette', 'Essuie-tout', 'Savon / gel douche', 'Liquide vaisselle',
+  'Pastilles lave-vaisselle', 'Sacs poubelle', 'Éponges', 'Café / thé', 'Ampoule',
+] as const;
+
 // État d'une demande de temps supplémentaire faite par le cleaner.
 export type ExtraTimeStatus = 'pending' | 'approved' | 'refused';
 

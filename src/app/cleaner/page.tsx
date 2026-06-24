@@ -12,6 +12,7 @@ import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
+import MissionReport from '@/components/MissionReport';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -259,6 +260,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
       {mission.status !== 'cancelled' && (
         <div className="px-5 pb-4 space-y-3">
           <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
+          <MissionReport missionId={mission.id} mode="cleaner" userId={userId} />
 
           {/* Temps supplémentaire : utile si l'appartement est très sale (photos avant). */}
           {extraStatus === 'pending' ? (

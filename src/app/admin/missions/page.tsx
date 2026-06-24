@@ -20,6 +20,7 @@ import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/li
 import { inputStyle } from '@/lib/ui';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
+import MissionReport from '@/components/MissionReport';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL, missionStatusLabel } from '@/lib/labels';
@@ -586,6 +587,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
         {/* Photos avant/après (consultation, zoom, téléchargement) */}
         <MissionPhotos missionId={mission.id} mode="viewer" />
+        <MissionReport missionId={mission.id} mode="viewer" />
       </div>
 
       {/* Incidents liés à la mission (signalement + responsabilité) */}

@@ -10,6 +10,7 @@ import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { MISSION_STATUS_CFG } from '@/lib/labels';
 import Icon from '@/components/Icon';
+import MissionReport from '@/components/MissionReport';
 import Loading from "@/components/Loading";
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
@@ -116,9 +117,14 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
 
         {/* Mission verrouillée : consultation uniquement */}
         {locked ? (
-          <p className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
-            🔒 Mission {mission.status === 'completed' ? 'terminée' : 'annulée'} — elle ne peut plus être modifiée ni supprimée.
-          </p>
+          <>
+            <p className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
+              🔒 Mission {mission.status === 'completed' ? 'terminée' : 'annulée'} — elle ne peut plus être modifiée ni supprimée.
+            </p>
+            {mission.status === 'completed' && (
+              <div className="mt-3"><MissionReport missionId={mission.id} mode="viewer" /></div>
+            )}
+          </>
         ) : editOpen ? (
           /* Formulaire de modification (créateur) */
           <div className="mt-3 space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
