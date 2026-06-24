@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { getAirbnbs, getMissionsDB, setAirbnbCoordsDB, regenerateZonesDB } from '@/lib/db';
 import { geocodeAddress } from '@/lib/zones';
 import type { Apartment, Mission } from '@/lib/types';
+import Loading from "@/components/Loading";
 
 // Leaflet a besoin de window → chargé uniquement côté client.
 const ZonesMap = dynamic(() => import('@/components/ZonesMap'), {
@@ -74,7 +75,7 @@ export default function CartePage() {
     setTimeout(() => setProgress(''), 4000);
   }
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">

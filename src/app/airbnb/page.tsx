@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAirbnbsForPartner, createAirbnb, updateAirbnb, deleteAirbnb } from '@/lib/db';
 import type { Apartment } from '@/lib/types';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 
@@ -111,7 +112,7 @@ export default function AirbnbApartmentsPage() {
     return !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q);
   });
 
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   return (
     <div className="p-5">

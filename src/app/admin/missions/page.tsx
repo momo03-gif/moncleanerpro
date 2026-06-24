@@ -24,6 +24,7 @@ import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL, missionStatusLabel } from '@/lib/labels';
 import { getMissionIncidentsDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncidentType, type RhIncident } from '@/lib/rhApi';
+import Loading from "@/components/Loading";
 
 // Libellés statuts/types des missions : centralisés (lib/labels.ts).
 const STATUS_CFG = MISSION_STATUS_CFG;
@@ -1099,7 +1100,7 @@ export default function MissionsPage() {
   const allDates = missions.map(m => m.date).filter(Boolean).sort();
   const outOfRangeCount = missions.length - dateScoped.length;
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">

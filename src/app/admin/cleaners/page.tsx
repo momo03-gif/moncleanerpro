@@ -9,6 +9,7 @@ import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false, deliveryRate: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
@@ -105,7 +106,7 @@ export default function CleanersPage() {
     return { completedThisMonth, unpaid, unpaidTotal, paidTotal, historyPayments };
   }
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">

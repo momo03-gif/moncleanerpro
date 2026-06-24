@@ -10,6 +10,7 @@ import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { MISSION_STATUS_CFG } from '@/lib/labels';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 const today = new Date().toISOString().split('T')[0];
@@ -259,7 +260,7 @@ export default function AirbnbMissionsPage() {
     setSaving(false);
   }
 
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   if (submitted) return (
     <div className="p-5 flex flex-col items-center justify-center min-h-[60vh] text-center">

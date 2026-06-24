@@ -5,6 +5,7 @@ import { getAirbnbs, getAllReservations, getAllReservationFeeds } from '@/lib/db
 import { supabase } from '@/lib/supabase';
 import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 const platformLabel = (p: string) => ({
   airbnb: 'Airbnb', booking: 'Booking.com', guesty: 'Guesty', hostaway: 'Hostaway',
@@ -119,7 +120,7 @@ export default function AdminReservationsPage() {
       return da.localeCompare(db);
     }), [occupancy]);
 
-  if (loading) return <div className="p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-6 text-sm" />;
 
   return (
     <div className="p-6 max-w-5xl">

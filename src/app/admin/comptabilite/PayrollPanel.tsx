@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { resolvePrimeRequestDB, currentPeriod, type PrimeRequest } from '@/lib/rhApi';
 import { loadPayrollDB, recomputeAllCleanerRhDB, type Payslip } from '@/lib/payrollApi';
+import Loading from "@/components/Loading";
 
 // ── Fiche de paie mensuelle par cleaner (admin uniquement, LOT 3bis B/C). ───────
 // Le cleaner ne voit JAMAIS ces montants : panneau réservé à l'écran admin.
@@ -43,7 +44,7 @@ export default function PayrollPanel() {
 
   const cleanerName = (id: string) => rows.find(r => r.id === id)?.name ?? 'Cleaner';
 
-  if (loading) return <div className="text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="text-sm" />;
 
   return (
     <>

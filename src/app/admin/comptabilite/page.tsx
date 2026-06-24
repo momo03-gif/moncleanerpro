@@ -9,6 +9,7 @@ import { serviceParts } from '@/lib/service';
 import { loadPayrollDB, type PayrollRow } from '@/lib/payrollApi';
 import PayrollPanel from './PayrollPanel';
 import DepensesPanel from './DepensesPanel';
+import Loading from "@/components/Loading";
 
 export default function ComptabilitePage() {
   const [tab, setTab] = useState<'global' | 'paie' | 'depenses'>('global');
@@ -46,7 +47,7 @@ function GlobalView() {
     });
   }, []);
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   const month = currentMonth();
 

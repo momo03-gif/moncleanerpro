@@ -8,6 +8,7 @@ import { formatDuration, formatHour } from '@/lib/format';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 export default function ProposedMissionsPage() {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ export default function ProposedMissionsPage() {
 
   const visible = missions.filter(m => !declined.has(m.id) && !accepted.has(m.id));
 
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   return (
     <div className="p-5">

@@ -8,6 +8,7 @@ import {
 } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 const SECTION_TITLE: Record<string, string> = {
   primes: 'Primes',
@@ -75,7 +76,7 @@ export default function ReglesRhPage() {
   const byKey = Object.fromEntries(config.map(c => [c.key, c]));
   const sections: ('primes' | 'avantages' | 'deplacements')[] = ['primes', 'avantages', 'deplacements'];
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">

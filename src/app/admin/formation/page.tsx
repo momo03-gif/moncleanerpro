@@ -10,6 +10,7 @@ import {
 } from '@/lib/formation';
 import { inputStyle } from '@/lib/ui';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 export default function AdminFormationPage() {
   const [tab, setTab] = useState<'contenu' | 'assignations'>('contenu');
@@ -25,7 +26,7 @@ export default function AdminFormationPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">

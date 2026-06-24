@@ -13,6 +13,7 @@ import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 // Incréments proposés pour une demande de temps supplémentaire (minutes).
 const EXTRA_TIME_OPTIONS = [15, 30, 45, 60];
@@ -381,7 +382,7 @@ export default function CleanerDashboard() {
   }, [load, user]);
 
   if (!user) return null;
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   const isToday = dateStart === today && dateEnd === today;
   const isSingleDay = dateStart === dateEnd;

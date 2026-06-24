@@ -10,6 +10,7 @@ import {
 import type { Mission } from '@/lib/types';
 import { formatDuration, formatHour } from '@/lib/format';
 import { missionStatusCfg } from '@/lib/labels';
+import Loading from "@/components/Loading";
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
   return (
@@ -60,7 +61,7 @@ export default function AdminDashboard() {
   const pendingMissions = missions.filter(m => m.status === 'pending');
   const recent = [...missions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
-  if (loading) return <div className="p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">

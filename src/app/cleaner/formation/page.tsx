@@ -8,6 +8,7 @@ import {
   type FormationCategory, type Formation, type FormationAssignment,
 } from '@/lib/formation';
 import Icon, { type IconName } from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 // Convertit une URL YouTube/Vimeo en URL d'intégration (lecteur iframe).
 function embedUrl(url?: string): string {
@@ -52,7 +53,7 @@ export default function CleanerFormationPage() {
   }
 
   if (!user) return null;
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   const todo = assignments.filter(a => a.statut === 'a_faire');
   const formationsOf = (catId: string) => formations.filter(f => f.categorieId === catId);

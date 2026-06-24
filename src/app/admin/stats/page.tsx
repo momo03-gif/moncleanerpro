@@ -8,6 +8,7 @@ import { formatDuration } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import RhPerfPanel from './RhPerfPanel';
+import Loading from "@/components/Loading";
 
 export default function StatsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -21,7 +22,7 @@ export default function StatsPage() {
     });
   }, []);
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   const total = missions.length;
   const completed = missions.filter(m => m.status === 'completed').length;

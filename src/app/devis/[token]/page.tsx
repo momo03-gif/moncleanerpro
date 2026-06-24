@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { getDevisByTokenDB, setDevisStatusByTokenDB, type Devis } from '@/lib/devis';
+import Loading from "@/components/Loading";
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 
@@ -23,7 +24,7 @@ export default function PublicDevisPage() {
     setDone(accept ? 'accepte' : 'refuse');
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="min-h-screen flex items-center justify-center text-sm" />;
   if (!devis) return <div className="min-h-screen flex items-center justify-center text-sm" style={{ color: '#A8A09A' }}>Devis introuvable.</div>;
 
   return (

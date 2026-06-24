@@ -10,6 +10,7 @@ import type { Mission } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 type PartnerKind = 'hotel' | 'airbnb';
 interface PendingPartner {
@@ -79,7 +80,7 @@ export default function ComptesPage() {
   const active = pending.filter(h => !done[h.id]);
   const processed = pending.filter(h => done[h.id]);
 
-  if (loading) return <div className="p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">

@@ -11,6 +11,7 @@ import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
 import DevisPanel from './DevisPanel';
+import Loading from "@/components/Loading";
 
 function partnerLabel(m: Mission): string {
   if (m.source === 'airbnb') return m.partnerName || 'Airbnb (sans partenaire)';
@@ -410,7 +411,7 @@ export default function FacturationPage() {
     setSavingCompany(false);
   }
 
-  if (loading) return <div className="p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-6 text-sm" />;
 
   const COMPANY_FIELDS: { label: string; key: keyof CompanyInfo; placeholder: string }[] = [
     { label: 'Nom / Raison sociale', key: 'name', placeholder: 'MonCleanerPro SARL' },

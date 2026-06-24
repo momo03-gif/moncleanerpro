@@ -8,6 +8,7 @@ import { currentMonth } from '@/lib/mockData';
 import { serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
 import MotivationPanel from './MotivationPanel';
+import Loading from "@/components/Loading";
 
 const AVAIL_STATUSES = [
   { value: 'available', label: 'Disponible',  color: '#5A8A6A' },
@@ -48,7 +49,7 @@ export default function CleanerProfil() {
   }, [user]);
 
   if (!user) return null;
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   const month = currentMonth();
   const completed = missions.filter(m => m.status === 'completed');

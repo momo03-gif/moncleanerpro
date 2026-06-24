@@ -6,6 +6,7 @@ import { getHotelRequestsForHotelDB, getHotelByUserId } from '@/lib/db';
 import type { HotelAnnounce } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, overlapsRange, type DateRange } from '@/lib/dateRange';
+import Loading from "@/components/Loading";
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   pending:    { label: 'En attente', color: '#C48A2A', bg: '#C48A2A12' },
@@ -33,7 +34,7 @@ export default function HotelHistoriquePage() {
     load();
   }, [user]);
 
-  if (!user || loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (!user || loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   // Annonces dont la période chevauche la période sélectionnée
   const filtered = announces.filter(a => overlapsRange(a.date, a.dateEnd, range));

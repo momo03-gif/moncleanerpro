@@ -9,6 +9,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import type { Apartment, ReservationFeed, Reservation, ReservationPlatform } from '@/lib/types';
 import Icon from '@/components/Icon';
+import Loading from "@/components/Loading";
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 
@@ -132,7 +133,7 @@ export default function AirbnbSyncPage() {
     load();
   }
 
-  if (loading) return <div className="p-5 pt-8 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   const hint = PLATFORMS.find(p => p.value === fPlatform)?.hint;
 

@@ -7,6 +7,7 @@ import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import MapsModal from '@/components/MapsModal';
+import Loading from "@/components/Loading";
 
 const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
@@ -118,7 +119,7 @@ export default function AirbnbPage() {
     await load();
   }
 
-  if (loading) return <div className="p-4 md:p-6 text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">

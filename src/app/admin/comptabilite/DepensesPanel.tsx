@@ -8,6 +8,7 @@ import {
 } from '@/lib/depensesApi';
 import type { Mission, InvoiceRecord, CompanyInfo } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
+import Loading from "@/components/Loading";
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 function thisMonth() { return new Date().toISOString().slice(0, 7); }
@@ -27,7 +28,7 @@ export default function DepensesPanel() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="text-sm" style={{ color: '#A8A09A' }}>Chargement...</div>;
+  if (loading) return <Loading className="text-sm" />;
 
   const depPeriod = depenses.filter(d => d.date.startsWith(period));
   const tvaDeductible = depPeriod.reduce((s, d) => s + d.tvaMontant, 0);
