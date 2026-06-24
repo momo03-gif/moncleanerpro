@@ -91,3 +91,24 @@ export async function getCleanerByUserId(userId: string) {
   const { data: user } = await supabase.from('users').select('id, name, email, phone, status, role').eq('id', userId).single();
   return user;
 }
+
+// ── Disponibilité (statut + jours travaillés) ────────────────────────────────────
+
+export async function updateCleanerStatusDB(userId: string, status: 'available' | 'busy' | 'offline'): Promise<boolean> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  if (cleaner) {
+    const { error } = await supabase.from('cleaners').update({ status }).eq('id', cleaner.id);
+    return !error;
+  }
+  // Fallback: try by id directly (when cleaners table uses users.id)
+  const { error } = await supabase.from('cleaners').update({ status }).eq('id', userId);
+  return !error;
+}
+
+export async function updateCleanerAvailableDaysDB(userId: string, days: string[]): Promise<boolean> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  const targetId = cleaner?.id ?? userId;
+  const { error } = await supabase.from('cleaners').update({ available_days: days }).eq('id', targetId);
+  if (error) console.warn('updateCleanerAvailableDaysDB:', error.message);
+  return !error;
+}

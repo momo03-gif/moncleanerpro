@@ -18,6 +18,7 @@ export * from './db/airbnbs';
 export * from './db/partners';
 export * from './db/billing';
 export * from './db/reservations';
+export * from './db/stats';
 
 // ── VERROUILLAGE DES MISSIONS ───────────────────────────────────────────────
 // Une mission terminée ou annulée est verrouillée : plus aucune modification ni
@@ -866,26 +867,7 @@ export async function reopenMissionDB(missionId: string, actor: MissionActor): P
   return { error: error?.message ?? null };
 }
 
-// ── CLEANER AVAILABILITY ──────────────────────────────────────────────────────
-
-export async function updateCleanerStatusDB(userId: string, status: 'available' | 'busy' | 'offline'): Promise<boolean> {
-  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  if (cleaner) {
-    const { error } = await supabase.from('cleaners').update({ status }).eq('id', cleaner.id);
-    return !error;
-  }
-  // Fallback: try by id directly (when cleaners table uses users.id)
-  const { error } = await supabase.from('cleaners').update({ status }).eq('id', userId);
-  return !error;
-}
-
-export async function updateCleanerAvailableDaysDB(userId: string, days: string[]): Promise<boolean> {
-  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  const targetId = cleaner?.id ?? userId;
-  const { error } = await supabase.from('cleaners').update({ available_days: days }).eq('id', targetId);
-  if (error) console.warn('updateCleanerAvailableDaysDB:', error.message);
-  return !error;
-}
+// (disponibilité cleaner déplacée dans ./db/cleaners)
 
 // ── HOTEL REQUESTS ────────────────────────────────────────────────────────────
 
@@ -1039,26 +1021,4 @@ export async function getMonthlyRankingDB(period: string): Promise<{ cleanerId: 
 // (les fonctions partenaires sont dans ./db/partners) ───────────────────────────
 
 // ── SYNCHRONISATION DES RÉSERVATIONS — déplacée dans ./db/reservations ───────────
-// ── STATS ─────────────────────────────────────────────────────────────────────
-
-export async function getStatsDB() {
-  const [{ data: missions }, { data: cleaners }, { data: hotels }] = await Promise.all([
-    supabase.from('missions').select('*'),
-    supabase.from('cleaners').select('*'),
-    supabase.from('hotels').select('status_account'),
-  ]);
-
-  const completed = (missions ?? []).filter(m => m.status === 'done');
-  const totalRevenue = completed.reduce((s: number, m: any) => s + (m.price ?? 0), 0);
-  const totalSalaries = completed.reduce((s: number, m: any) => s + (m.cleaner_gain ?? 0), 0);
-
-  return {
-    totalMissions: (missions ?? []).length,
-    completedMissions: completed.length,
-    totalRevenue,
-    totalSalaries,
-    netProfit: totalRevenue - totalSalaries,
-    activeCleaners: (cleaners ?? []).filter((c: any) => c.status === 'active').length,
-    approvedHotels: (hotels ?? []).filter((h: any) => h.status_account === 'approved').length,
-  };
-}
+// (STATS déplacées dans ./db/stats)
