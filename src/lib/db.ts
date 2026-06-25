@@ -126,6 +126,7 @@ function rowToMission(row: any): Mission {
     service: (row.service as MissionService) ?? 'cleaning',
     deliveryInstructions: row.delivery_instructions ?? undefined,
     groupId: row.group_id ?? undefined,
+    recurringId: row.recurring_id ?? undefined,
     assigneeUserId: row.assignee_user_id ?? undefined,
     assigneeName: row.assignee_name ?? undefined,
     assigneeRole: row.assignee_role ?? undefined,

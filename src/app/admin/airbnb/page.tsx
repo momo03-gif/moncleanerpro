@@ -250,8 +250,8 @@ export default function AirbnbPage() {
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
             </div>
           </div>
-          <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-            {saving ? 'Enregistrement...' : editingId ? 'Enregistrer' : "Ajouter l'appartement"}
+          <button type="submit" disabled={saving} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            {saving ? 'Enregistrement...' : editingId ? 'Enregistrer' : 'Ajouter le site'}
           </button>
         </form>
       )}

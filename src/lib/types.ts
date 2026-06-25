@@ -55,6 +55,8 @@ export interface Mission {
   // Intervention ponctuelle multi-cleaners : les lignes d'un même group_id sont
   // une seule intervention (un cleaner par ligne). Voir createOneShotMissionDB.
   groupId?: string;
+  // Planning récurrent ayant généré cette mission (dédoublonnage). Voir recurring.ts.
+  recurringId?: string;
   // Assigné non-cleaner (ex. administrateur) — pour les rendez-vous. Quand l'assigné
   // est un cleaner, on utilise cleanerId/cleanerName (mission visible dans son planning).
   assigneeUserId?: string;
@@ -266,6 +268,28 @@ export interface InvoiceRecord {
   lines: InvoiceLine[];
   status: string;
   createdAt: string;
+}
+
+// ── Intervention récurrente (ménage programmé à jours fixes) ─────────────────────
+// Décrit un ménage hebdomadaire répété ; les missions réelles sont matérialisées
+// automatiquement (cron) sur un horizon glissant. weekdays : 0=dimanche … 6=samedi.
+export interface RecurringMission {
+  id: string;
+  airbnbId?: string;
+  propertyName?: string;
+  address?: string;
+  cleanerId?: string;
+  cleanerName?: string;
+  service: string;
+  weekdays: number[];
+  timeFrom?: string;
+  durationMinutes: number;
+  price: number;
+  startDate: string;
+  endDate?: string;
+  active: boolean;
+  lastGeneratedDate?: string;
+  createdAt?: string;
 }
 
 export type NotificationType =

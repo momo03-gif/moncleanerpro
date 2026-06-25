@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runReservationSync } from '@/lib/reservationSync';
+import { generateRecurringMissions } from '@/lib/recurring';
 
 export const runtime = 'nodejs';
 
@@ -24,11 +25,15 @@ export async function GET(req: NextRequest) {
   try {
     const result = await runReservationSync();
     const imported = result.feeds.reduce((s, f) => s + f.imported, 0);
+    let recurringGenerated = 0;
+    try { recurringGenerated = (await generateRecurringMissions()).created; }
+    catch (e) { console.error('recurring generation:', e); }
     return NextResponse.json({
       ok: true,
       feeds: result.feeds.length,
       imported,
       missionsCreated: result.materialized.created,
+      recurringGenerated,
       errors: result.feeds.filter(f => !f.ok).map(f => ({ feedId: f.feedId, error: f.error })),
     });
   } catch (e: unknown) {
