@@ -36,6 +36,7 @@ export const MISSION_TYPE_LABEL: Record<string, string> = {
   regular: 'Ménage',
   menage: 'Ménage',
   grand_menage: 'Grand ménage',
+  appointment: 'Rendez-vous',
 };
 
 export function missionTypeLabel(type: string | undefined | null): string {
@@ -44,3 +45,16 @@ export function missionTypeLabel(type: string | undefined | null): string {
 }
 
 export const MISSION_SOURCE_LABEL: Record<string, string> = { hotel: 'Hôtel', airbnb: 'Airbnb' };
+
+// Types de site nettoyé (table airbnbs généralisée). Voir StructureType.
+export const STRUCTURE_LABEL: Record<string, string> = {
+  apartment: 'Appartement',
+  office: 'Bureau',
+  gym: 'Salle de sport',
+  other: 'Autre',
+};
+
+export function structureLabel(type: string | undefined | null, custom?: string): string {
+  if (type === 'other' && custom) return custom;
+  return STRUCTURE_LABEL[type ?? 'apartment'] ?? 'Site';
+}

@@ -65,6 +65,39 @@ export function sortMissionsByPriority(missions: Mission[]): Mission[] {
   return [...missions].sort(compareMissionPriority);
 }
 
+// ── Regroupement « intervention » (one-shot multi-cleaners) ──────────────────────
+// Une intervention ponctuelle réalisée par plusieurs cleaners = N lignes mission
+// partageant un group_id. Pour le PLANNING, on les présente comme UNE seule
+// intervention listant ses intervenants. Les missions sans group_id restent seules.
+export interface PlanningEntry {
+  mission: Mission;        // ligne représentative (porteuse du prix client)
+  assignees: string[];     // noms des intervenants (cleaners) de l'intervention
+  groupSize: number;       // nombre de lignes regroupées
+}
+
+export function collapseGroups(missions: Mission[]): PlanningEntry[] {
+  const byGroup = new Map<string, PlanningEntry>();
+  const result: PlanningEntry[] = [];
+  for (const m of missions) {
+    if (m.groupId) {
+      const existing = byGroup.get(m.groupId);
+      if (existing) {
+        if (m.cleanerName) existing.assignees.push(m.cleanerName);
+        existing.groupSize++;
+        // La ligne représentative est celle qui porte le prix client (> 0).
+        if ((m.price ?? 0) > (existing.mission.price ?? 0)) existing.mission = m;
+        continue;
+      }
+      const entry: PlanningEntry = { mission: m, assignees: m.cleanerName ? [m.cleanerName] : [], groupSize: 1 };
+      byGroup.set(m.groupId, entry);
+      result.push(entry);
+    } else {
+      result.push({ mission: m, assignees: m.cleanerName ? [m.cleanerName] : [], groupSize: 1 });
+    }
+  }
+  return result;
+}
+
 export interface CleanerMissionGroup {
   cleanerId: string | null;
   cleanerName: string;

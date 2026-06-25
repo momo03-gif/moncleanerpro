@@ -8,6 +8,7 @@ export const SERVICE_LABEL: Record<MissionService, string> = {
   cleaning: 'Nettoyage',
   delivery: 'Livraison',
   cleaning_delivery: 'Nettoyage + livraison',
+  appointment: 'Rendez-vous',
 };
 
 // Couleurs des badges (cohérentes avec la charte sobre de l'app).
@@ -15,6 +16,7 @@ export const SERVICE_BADGE: Record<MissionService, { color: string; bg: string }
   cleaning:          { color: '#5B6EF5', bg: '#5B6EF518' },
   delivery:          { color: '#C48A2A', bg: '#C48A2A15' },
   cleaning_delivery: { color: '#5A8A6A', bg: '#5A8A6A15' },
+  appointment:       { color: '#7C5CBF', bg: '#7C5CBF15' },
 };
 
 export function serviceLabel(service?: MissionService | null): string {

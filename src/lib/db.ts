@@ -11,6 +11,7 @@ import {
   notifyExtraTimeRequested, notifyExtraTimeResolved,
 } from './notifications';
 import { postServer, trimTime } from './db/shared';
+import { getActiveCleanersDB } from './db/cleaners';
 
 // Domaines extraits dans des modules dédiés — mêmes exports, appelants inchangés.
 export * from './db/cleaners';
@@ -93,8 +94,10 @@ function rowToMission(row: any): Mission {
   //    fiche appartement (comme l'adresse).
   //  • Sinon → valeur stockée (snapshot).
   const storedPrice = Number(row.price) || 0;
-  const isDelivery = (row.service ?? 'cleaning') === 'delivery';
-  const price = isDelivery
+  const svc = (row.service ?? 'cleaning') as MissionService;
+  // Livraison ET rendez-vous ne sont jamais facturés au client → prix 0.
+  const nonBillable = svc === 'delivery' || svc === 'appointment';
+  const price = nonBillable
     ? 0
     : (storedPrice === 0 && row.airbnb_id && apt?.client_price != null
         ? Number(apt.client_price) || 0
@@ -122,6 +125,10 @@ function rowToMission(row: any): Mission {
     type: (row.type as MissionType) ?? 'regular',
     service: (row.service as MissionService) ?? 'cleaning',
     deliveryInstructions: row.delivery_instructions ?? undefined,
+    groupId: row.group_id ?? undefined,
+    assigneeUserId: row.assignee_user_id ?? undefined,
+    assigneeName: row.assignee_name ?? undefined,
+    assigneeRole: row.assignee_role ?? undefined,
     source: (row.source as MissionSource) ?? 'hotel',
     requestedBy: row.client_name,
     notes,
@@ -346,6 +353,66 @@ export async function createMissionDB(fields: {
   return { error: null };
 }
 
+// ── INTERVENTION PONCTUELLE (one-shot) multi-cleaners ────────────────────────
+// Une intervention unique à une date, réalisée par 1..N cleaners (ex. gros ménage).
+// Représentation : UNE ligne mission PAR cleaner, partageant un group_id → chaque
+// cleaner l'a dans son planning, l'admin la voit comme une seule intervention.
+// Les coordonnées du site sont SNAPSHOTées (pas de lien airbnb_id) pour que le prix
+// client ne soit JAMAIS dérivé/dupliqué : il n'est porté que par UNE ligne du groupe.
+export async function createOneShotMissionDB(fields: {
+  propertyName: string; address?: string;
+  type?: string; source?: string;
+  date: string; time?: string;
+  durationMinutes: number; price: number; instructions?: string;
+  cleaners: { id: string; name: string; hourlyRate?: number }[];
+  createdBy?: string;
+}): Promise<{ error: string | null; count: number }> {
+  const minutes = Number(fields.durationMinutes) || 0;
+  const list = fields.cleaners ?? [];
+  // group_id seulement si plusieurs intervenants (une intervention = un groupe).
+  const groupId = list.length > 1 ? crypto.randomUUID() : null;
+
+  const rowBase = {
+    type: fields.type || 'deep_clean',
+    source: fields.source || 'hotel',
+    service: 'cleaning' as const,
+    property_name: fields.propertyName,
+    address: fields.address || null,
+    date_from: fields.date,
+    time_from: fields.time || null,
+    instructions: fields.instructions || null,
+    mission_duration_minutes: minutes,
+    hours_worked: Math.round((minutes / 60) * 100) / 100,
+    apartment_default_duration_snapshot: minutes,
+    created_by: fields.createdBy || null,
+    created_by_role: 'admin',
+    group_id: groupId,
+  };
+
+  let rows: Record<string, unknown>[];
+  if (list.length === 0) {
+    // Aucun intervenant encore : une ligne « À assigner », prix client porté ici.
+    rows = [{ ...rowBase, cleaner_id: null, cleaner_name: null, price: fields.price || 0, cleaner_gain: 0, status: 'pending' }];
+  } else {
+    rows = list.map((c, i) => ({
+      ...rowBase,
+      cleaner_id: c.id,
+      cleaner_name: c.name,
+      // Prix client porté par UNE seule ligne (la 1re) → le CA ne compte qu'une fois.
+      price: i === 0 ? (fields.price || 0) : 0,
+      cleaner_gain: computeCleanerGain(c.hourlyRate ?? 0, minutes),
+      cleaner_hourly_rate_snapshot: c.hourlyRate ?? null,
+      status: 'assigned',
+    }));
+  }
+
+  const { data, error } = await supabase.from('missions').insert(rows).select('id');
+  if (error) { console.error('createOneShotMissionDB error:', error); return { error: error.message, count: 0 }; }
+  // Notifier chaque cleaner assigné.
+  if (list.length > 0 && data) { for (const r of data) await notifyCleanerNewMission(r.id); }
+  return { error: null, count: data?.length ?? 0 };
+}
+
 // Création groupée : une mission INDIVIDUELLE par appartement sélectionné,
 // en un seul insert. Date / heure / cleaner partagés ; prix et durée repris
 // de chaque fiche appartement. Ne crée jamais une mission unique fusionnée.
@@ -396,6 +463,64 @@ export async function createMissionsBatchDB(params: {
     for (const r of data) await notifyCleanerNewMission(r.id);
   }
   return { error: null, count: data?.length ?? 0 };
+}
+
+// ── RENDEZ-VOUS (service = 'appointment') ───────────────────────────────────
+// Personnes assignables à un rendez-vous : administrateurs (users.id) + cleaners
+// actifs (cleaners.id). Le rôle permet à la création de router l'assignation
+// (cleaner → cleaner_id, visible dans son planning ; admin → assignee_user_id).
+export async function getAssignableStaffDB(): Promise<{ id: string; name: string; role: string }[]> {
+  const cleaners = await getActiveCleanersDB();
+  const { data: admins } = await supabase.from('users').select('id, name').eq('role', 'admin');
+  return [
+    ...(admins ?? []).map(a => ({ id: a.id, name: a.name, role: 'admin' })),
+    ...cleaners.map((c: any) => ({ id: c.id, name: c.name, role: 'cleaner' })),
+  ];
+}
+
+// Crée un rendez-vous : mission interne (price=0, gain=0), planifiée, assignée à un
+// cleaner OU un admin. Aucun GPS/pointage ni facturation (cf. serviceParts).
+export async function createAppointmentDB(fields: {
+  title: string; description?: string; date: string; time?: string;
+  assigneeId?: string; assigneeRole?: string; assigneeName?: string;
+  createdBy?: string;
+}): Promise<{ error: string | null }> {
+  const isCleaner = fields.assigneeRole === 'cleaner';
+  // Cleaner assigné → cleaner_id (= cleaners.id du dropdown) pour apparaître dans son
+  // planning. Admin → assignee_user_id (= users.id), cleaner_id null.
+  const cleanerId = fields.assigneeId && isCleaner ? fields.assigneeId : null;
+  const cleanerName = cleanerId ? (fields.assigneeName ?? null) : null;
+  const assigneeUserId = fields.assigneeId && !isCleaner ? fields.assigneeId : null;
+  const assigneeName = assigneeUserId ? (fields.assigneeName ?? null) : null;
+  const assigneeRole = assigneeUserId ? (fields.assigneeRole ?? 'admin') : null;
+  const assigned = !!fields.assigneeId;
+
+  const { data, error } = await supabase.from('missions').insert({
+    type: 'appointment',
+    source: 'hotel',
+    service: 'appointment',
+    property_name: fields.title,
+    address: null,
+    date_from: fields.date,
+    time_from: fields.time || null,
+    instructions: fields.description || null,
+    price: 0,
+    cleaner_gain: 0,
+    mission_duration_minutes: 0,
+    hours_worked: 0,
+    cleaner_id: cleanerId,
+    cleaner_name: cleanerName,
+    assignee_user_id: assigneeUserId,
+    assignee_name: assigneeName,
+    assignee_role: assigneeRole,
+    created_by: fields.createdBy || null,
+    created_by_role: 'admin',
+    status: assigned ? 'assigned' : 'pending',
+  }).select('id').single();
+
+  if (error) { console.error('createAppointmentDB error:', error); return { error: error.message }; }
+  if (cleanerId && data?.id) await notifyCleanerNewMission(data.id);
+  return { error: null };
 }
 
 // Maps app-level MissionStatus → DB status string

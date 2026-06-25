@@ -6,6 +6,7 @@ import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
+import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import MapsModal from '@/components/MapsModal';
 import Loading from "@/components/Loading";
 
@@ -13,6 +14,7 @@ const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
+  structureType: 'apartment', structureLabel: '',
 };
 type FormState = typeof emptyForm;
 
@@ -20,6 +22,8 @@ function aptToForm(a: Apartment): FormState {
   return {
     name: a.name ?? '',
     address: a.address ?? '',
+    structureType: a.structureType ?? 'apartment',
+    structureLabel: a.structureLabel ?? '',
     partnerName: a.partnerName ?? '',
     portalCode: a.portalCode ?? '',
     keyboxCode: a.keyboxCode ?? '',
@@ -86,6 +90,8 @@ export default function AirbnbPage() {
     const payload = {
       name: form.name,
       address: form.address,
+      structureType: form.structureType || 'apartment',
+      structureLabel: form.structureType === 'other' ? (form.structureLabel || undefined) : undefined,
       partnerName: form.partnerName || undefined,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
@@ -127,22 +133,42 @@ export default function AirbnbPage() {
 
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Airbnb</h1>
-          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{apartments.length} appartement{apartments.length > 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Sites</h1>
+          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{apartments.length} site{apartments.length > 1 ? 's' : ''} (logements, bureaux, salles de sport…)</p>
         </div>
         <button onClick={() => (showForm ? closeForm() : openCreate())} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
           style={{ backgroundColor: showForm ? '#F5F3EF' : '#C9A84C', color: showForm ? '#7A7068' : '#1A1A1A' }}>
           <span>{showForm ? '✕' : '+'}</span>
-          {showForm ? 'Annuler' : 'Ajouter un appartement'}
+          {showForm ? 'Annuler' : 'Ajouter un site'}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded-2xl border p-6 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>{editingId ? "Modifier l'appartement" : 'Nouvel appartement'}</h2>
+          <h2 className="font-semibold mb-5" style={{ color: '#1A1A1A' }}>{editingId ? 'Modifier le site' : 'Nouveau site'}</h2>
           <datalist id="partner-names">
             {partnerNames.map(n => <option key={n} value={n} />)}
           </datalist>
+
+          {/* Type de site : appartement (défaut), bureau, salle de sport, autre. */}
+          <div className="mb-4">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Type de site</label>
+            <div className="flex gap-2 flex-wrap">
+              {(['apartment', 'office', 'gym', 'other'] as const).map(t => (
+                <button key={t} type="button" onClick={() => setForm(p => ({ ...p, structureType: t }))}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
+                  style={{ borderColor: form.structureType === t ? '#C9A84C' : '#E8E4DC', backgroundColor: form.structureType === t ? '#C9A84C12' : '#FFFFFF', color: form.structureType === t ? '#C9A84C' : '#7A7068' }}>
+                  {STRUCTURE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+            {form.structureType === 'other' && (
+              <input value={form.structureLabel} onChange={e => setForm(p => ({ ...p, structureLabel: e.target.value }))}
+                placeholder="Préciser le type (ex : cabinet médical)" className="mt-3 w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+            )}
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             {[
               { label: 'Nom', key: 'name', placeholder: 'Studio Bellecour', required: true, list: undefined },
@@ -158,6 +184,8 @@ export default function AirbnbPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
             ))}
+            {/* Chambres/lits/canapé — uniquement pour un logement (appartement). */}
+            {form.structureType === 'apartment' && (
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Chambres</label>
@@ -178,6 +206,7 @@ export default function AirbnbPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
             </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client / ménage (€)</label>
@@ -287,6 +316,12 @@ export default function AirbnbPage() {
                   {apt.partnerName && (
                     <span className="inline-block text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#C9A84C15', color: '#C9A84C' }}>
                       {apt.partnerName}
+                    </span>
+                  )}
+                  {/* Type de site (badge) — affiché pour les non-appartements. */}
+                  {apt.structureType && apt.structureType !== 'apartment' && (
+                    <span className="text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#7C5CBF12', color: '#7C5CBF' }}>
+                      {structureLabel(apt.structureType, apt.structureLabel)}
                     </span>
                   )}
                   {apt.zoneName && (

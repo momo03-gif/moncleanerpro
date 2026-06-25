@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, markDeliveredDB, requestExtraTimeDB, withdrawMissionDB } from '@/lib/db';
+import { recordParkingPaymentClient, getMissionParkingClient } from '@/lib/parkingApi';
 import { supabase } from '@/lib/supabase';
-import type { Mission } from '@/lib/types';
+import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel } from '@/lib/labels';
@@ -65,13 +66,30 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   const [extraReason, setExtraReason] = useState('');
   const [extraError, setExtraError] = useState('');
   const [geoError, setGeoError] = useState('');
+  // Parking (module Livraison) : saisie manuelle du montant, liée à l'adresse mission.
+  const [parkingOpen, setParkingOpen] = useState(false);
+  const [parkingAmount, setParkingAmount] = useState('');
+  const [parkingDuration, setParkingDuration] = useState('');
+  const [parkingBusy, setParkingBusy] = useState(false);
+  const [parkingError, setParkingError] = useState('');
+  const [parkingPayments, setParkingPayments] = useState<ParkingPayment[]>([]);
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   // Livraison : pas de pointage ni GPS, juste un bouton « Livré ».
   const isDelivery = mission.service === 'delivery';
+  // Rendez-vous : mission interne planifiée, sans GPS/pointage ni facturation.
+  const isAppointment = mission.service === 'appointment';
+  // Livraison et rendez-vous se clôturent en un clic, sans pointage GPS.
+  const isSimple = isDelivery || isAppointment;
   const isOpen = mission.status !== 'completed' && mission.status !== 'cancelled';
-  const canStart  = !isDelivery && (mission.status === 'accepted' || mission.status === 'pending');
-  const canFinish = !isDelivery && mission.status === 'in_progress';
-  const canDeliver = isDelivery && isOpen;
+  // Le stationnement concerne toute mission incluant une livraison (livraison pure
+  // OU nettoyage + livraison) : c'est là que le livreur se déplace en véhicule.
+  const hasDelivery = serviceParts(mission.service).delivery;
+  // Le temps supplémentaire ne concerne que le NETTOYAGE (rallonger une durée de
+  // ménage) — inutile sur une livraison pure.
+  const hasCleaning = serviceParts(mission.service).cleaning;
+  const canStart  = !isSimple && (mission.status === 'accepted' || mission.status === 'pending');
+  const canFinish = !isSimple && mission.status === 'in_progress';
+  const canDeliver = isSimple && isOpen;
   const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
   const notesIsLong = extra.length > 120;
 
@@ -119,6 +137,24 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     if (res.error) { setExtraError(res.error); return; }
     setExtraOpen(false); setExtraReason('');
     onUpdate();
+  }
+
+  // Réaffiche les paiements de parking déjà enregistrés (persistance après reload).
+  useEffect(() => {
+    if (!hasDelivery) return;
+    getMissionParkingClient(mission.id).then(rows => { if (Array.isArray(rows)) setParkingPayments(rows); });
+  }, [mission.id, hasDelivery]);
+
+  async function payParking() {
+    setParkingBusy(true); setParkingError('');
+    const amt = parseFloat(parkingAmount.replace(',', '.'));
+    if (!Number.isFinite(amt) || amt <= 0) { setParkingError('Montant invalide.'); setParkingBusy(false); return; }
+    const dur = parkingDuration ? parseInt(parkingDuration, 10) : undefined;
+    const res = await recordParkingPaymentClient({ missionId: mission.id, amount: amt, durationMinutes: dur });
+    setParkingBusy(false);
+    if (res.error || !res.payment) { setParkingError(res.error || "Échec de l'enregistrement."); return; }
+    setParkingPayments(prev => [res.payment as ParkingPayment, ...prev]);
+    setParkingOpen(false); setParkingAmount(''); setParkingDuration('');
   }
 
   const extraStatus = mission.extraTimeStatus;
@@ -177,10 +213,13 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
               <span className="text-sm" style={{ color: '#7A7068' }}>{formatDuration(mission.missionDurationMinutes)}</span>
             </div>
           )}
-          <span className="text-xs px-2 py-0.5 rounded"
-            style={{ backgroundColor: mission.source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: mission.source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
-            {mission.source === 'airbnb' ? 'Airbnb' : 'Hôtel'}
-          </span>
+          {/* Source (Hôtel/Airbnb) — sans objet pour un rendez-vous. */}
+          {!isAppointment && (
+            <span className="text-xs px-2 py-0.5 rounded"
+              style={{ backgroundColor: mission.source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: mission.source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
+              {mission.source === 'airbnb' ? 'Airbnb' : 'Hôtel'}
+            </span>
+          )}
           {/* Prestation à réaliser — toujours visible et explicite pour le cleaner. */}
           <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded font-semibold"
             style={{ backgroundColor: SERVICE_BADGE[mission.service ?? 'cleaning'].bg, color: SERVICE_BADGE[mission.service ?? 'cleaning'].color }}>
@@ -256,14 +295,16 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
         )}
       </div>
 
-      {/* Photos avant/après + demande de temps supplémentaire */}
-      {mission.status !== 'cancelled' && (
+      {/* Photos avant/après + rapport + temps supplémentaire — sans objet pour un
+          rendez-vous (pas de logement à photographier / rapporter). */}
+      {mission.status !== 'cancelled' && !isAppointment && (
         <div className="px-5 pb-4 space-y-3">
           <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
           <MissionReport missionId={mission.id} mode="cleaner" userId={userId} />
 
-          {/* Temps supplémentaire : utile si l'appartement est très sale (photos avant). */}
-          {extraStatus === 'pending' ? (
+          {/* Temps supplémentaire : utile uniquement pour le NETTOYAGE (rallonger une
+              durée de ménage). Masqué sur les missions de livraison pure. */}
+          {hasCleaning && (extraStatus === 'pending' ? (
             <div className="px-3 py-2.5 rounded-xl text-xs" style={{ backgroundColor: '#C9A84C15', color: '#C48A2A' }}>
               Demande de +{mission.extraTimeMinutes} min envoyée — en attente de validation.
             </div>
@@ -312,6 +353,65 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
                 </button>
               </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Stationnement (livraison) — saisie manuelle du montant, liée à l'adresse.
+          Visible dès qu'une livraison est à effectuer et que la mission est ouverte. */}
+      {hasDelivery && isOpen && (
+        <div className="px-5 pb-4 space-y-2">
+          {parkingPayments.length > 0 && (
+            <div className="px-3 py-2.5 rounded-xl text-xs font-medium space-y-0.5" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+              {parkingPayments.map(p => (
+                <div key={p.id}>
+                  Parking payé{p.amount != null ? ` : ${p.amount.toFixed(2)} €` : ''}
+                  {` à ${new Date(p.paidAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+                  {p.durationMinutes ? ` · ${p.durationMinutes} min` : ''}
+                </div>
+              ))}
+            </div>
+          )}
+          {!parkingOpen ? (
+            <button onClick={() => setParkingOpen(true)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2"
+              style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              <Icon name="wallet" size={15} /> Payer le parking
+            </button>
+          ) : (
+            <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+              <p className="text-[11px]" style={{ color: '#7A7068' }}>
+                Montant du stationnement payé pour cette livraison.
+              </p>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Montant (€)</label>
+                  <input value={parkingAmount} onChange={e => setParkingAmount(e.target.value)}
+                    inputMode="decimal" placeholder="2,50"
+                    className="w-full px-3 py-2 rounded-lg text-sm border"
+                    style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Durée (min, fac.)</label>
+                  <input value={parkingDuration} onChange={e => setParkingDuration(e.target.value)}
+                    inputMode="numeric" placeholder="30"
+                    className="w-full px-3 py-2 rounded-lg text-sm border"
+                    style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+                </div>
+              </div>
+              {parkingError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{parkingError}</p>}
+              <div className="flex gap-2">
+                <button onClick={payParking} disabled={parkingBusy}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  style={{ backgroundColor: '#C48A2A', color: '#FFFFFF' }}>
+                  {parkingBusy ? '...' : 'Enregistrer le paiement'}
+                </button>
+                <button onClick={() => { setParkingOpen(false); setParkingError(''); }} disabled={parkingBusy}
+                  className="px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  Annuler
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -322,12 +422,13 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
           {geoError && (
             <p className="text-xs px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{geoError}</p>
           )}
-          {/* Livraison : un seul clic « Livré », sans pointage ni GPS. */}
+          {/* Livraison / rendez-vous : un seul clic pour clôturer, sans pointage ni GPS. */}
           {canDeliver && (
             <button onClick={deliver} disabled={busy}
               className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-              style={{ backgroundColor: '#C48A2A', color: '#FFFFFF' }}>
-              <Icon name="delivery" size={16} /> {busy ? '...' : 'Marquer comme livré'}
+              style={{ backgroundColor: isAppointment ? '#7C5CBF' : '#C48A2A', color: '#FFFFFF' }}>
+              {!isAppointment && <Icon name="delivery" size={16} />}
+              {busy ? '...' : isAppointment ? 'Marquer comme terminé' : 'Marquer comme livré'}
             </button>
           )}
           {canStart && (

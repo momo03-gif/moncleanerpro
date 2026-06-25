@@ -10,7 +10,7 @@ export type IconName =
   | 'accounts' | 'invoice' | 'stats' | 'wallet'
   | 'today' | 'inbox' | 'user' | 'request' | 'history'
   | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play'
-  | 'sync' | 'calendar' | 'link' | 'delivery';
+  | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -128,6 +128,10 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <circle cx="7" cy="17.5" r="1.8" />
     <circle cx="17" cy="17.5" r="1.8" />
     <path d="M9 17.5h6M3 15.5h1.5" />
+  </>),
+  parking: (<>
+    <rect x="4" y="3" width="16" height="18" rx="3" />
+    <path d="M9 17.5V7.5h3.4a2.6 2.6 0 0 1 0 5.2H9" />
   </>),
 };
 

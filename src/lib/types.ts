@@ -23,7 +23,9 @@ export type MissionSource = 'hotel' | 'airbnb';
 
 // Prestation portée par la mission. Le nettoyage est le défaut historique ;
 // la livraison s'ajoute sans système séparé. Orthogonal à MissionType.
-export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery';
+// 'appointment' = rendez-vous (entretien client, etc.) : ni ménage ni livraison,
+// donc ni facturé ni payé (serviceParts renvoie les deux à false).
+export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery' | 'appointment';
 
 export interface Mission {
   id: string;
@@ -46,10 +48,18 @@ export interface Mission {
   zoneColor?: string;
   zoneName?: string;
   type: MissionType;
-  // Prestation : nettoyage (défaut), livraison, ou les deux.
+  // Prestation : nettoyage (défaut), livraison, les deux, ou rendez-vous.
   service?: MissionService;
   // Consignes de livraison (quoi livrer / où déposer) — affichées au cleaner.
   deliveryInstructions?: string;
+  // Intervention ponctuelle multi-cleaners : les lignes d'un même group_id sont
+  // une seule intervention (un cleaner par ligne). Voir createOneShotMissionDB.
+  groupId?: string;
+  // Assigné non-cleaner (ex. administrateur) — pour les rendez-vous. Quand l'assigné
+  // est un cleaner, on utilise cleanerId/cleanerName (mission visible dans son planning).
+  assigneeUserId?: string;
+  assigneeName?: string;
+  assigneeRole?: string;
   source?: MissionSource;
   requestedBy?: string;
   notes?: string;
@@ -134,10 +144,18 @@ export interface HotelAnnounce {
   cleanerName?: string;
 }
 
+// Type de site nettoyé. Appartement = défaut historique (logement Airbnb/hôtel).
+// Les autres (bureau, salle de sport…) sont des sites facturables SANS synchro de
+// réservations ni partenaire obligatoire, créés comme un appartement.
+export type StructureType = 'apartment' | 'office' | 'gym' | 'other';
+
 export interface Apartment {
   id: string;
   name: string;
   address: string;
+  // Type de structure (défaut : appartement). Voir StructureType.
+  structureType?: StructureType;
+  structureLabel?: string;   // libellé libre quand structureType = 'other'
   portalCode?: string;
   keyboxCode?: string;
   entryDirectives: string;
@@ -168,6 +186,32 @@ export interface Payment {
   missionIds: string[];
   date: string;
   month: string;
+}
+
+// ── Paiement de stationnement (module Livraison) ─────────────────────────────────
+// Payé par un livreur pendant une mission de livraison. Saisie manuelle aujourd'hui
+// (provider 'manual') ; prêt à brancher une API (ex. PayByPhone) plus tard.
+export type ParkingStatus = 'pending' | 'paid' | 'failed' | 'cancelled';
+export type ParkingProviderId = 'manual' | 'paybyphone';
+
+export interface ParkingPayment {
+  id: string;
+  missionId?: string;
+  cleanerId?: string;
+  cleanerName?: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  amount?: number;
+  currency: string;
+  durationMinutes?: number;
+  status: ParkingStatus;
+  provider: ParkingProviderId | string;
+  providerRef?: string;
+  paidAt: string;
+  createdAt: string;
+  // Enrichi via le join mission (lecture seule, vue admin).
+  property?: string;
 }
 
 export interface CleanerRow {

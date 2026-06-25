@@ -7,7 +7,7 @@ import {
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
   updateMissionDB, deleteMissionDB, reopenMissionDB, resolveExtraTimeDB,
-  updateMissionsOrderDB,
+  updateMissionsOrderDB, createAppointmentDB, getAssignableStaffDB, createOneShotMissionDB,
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -379,15 +379,25 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               {selected && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
             </button>
           )}
-          <span className="text-xs px-2.5 py-1 rounded-lg font-semibold"
-            style={{ backgroundColor: source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
-            {SOURCE_LABEL[source]}
-          </span>
-          <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>
-          {serviceParts(mission.service).delivery && (
+          {/* Source (Hôtel/Airbnb) — sans objet pour un rendez-vous. */}
+          {mission.service !== 'appointment' && (
+            <span className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+              style={{ backgroundColor: source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
+              {SOURCE_LABEL[source]}
+            </span>
+          )}
+          {mission.service !== 'appointment' && <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>}
+          {/* Badge prestation : livraison ou rendez-vous (distinct). */}
+          {(serviceParts(mission.service).delivery || mission.service === 'appointment') && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg font-semibold"
               style={{ backgroundColor: SERVICE_BADGE[mission.service ?? 'cleaning'].bg, color: SERVICE_BADGE[mission.service ?? 'cleaning'].color }}>
-              <Icon name="delivery" size={12} /> {serviceLabel(mission.service)}
+              {serviceParts(mission.service).delivery && <Icon name="delivery" size={12} />} {serviceLabel(mission.service)}
+            </span>
+          )}
+          {/* Intervention ponctuelle multi-cleaners (group_id). */}
+          {mission.groupId && (
+            <span className="text-xs px-2 py-0.5 rounded-lg font-semibold" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+              Ponctuelle
             </span>
           )}
           {mission.zoneName && (
@@ -439,7 +449,25 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           )
         )}
 
-        {/* Cleaner + durée + taux + prix client + gain cleaner */}
+        {mission.service === 'appointment' ? (
+          /* Rendez-vous : assigné + descriptif, sans prix/durée/gain. */
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Assigné à</p>
+              <p className="text-sm font-medium" style={{ color: (mission.cleanerName || mission.assigneeName) ? '#1A1A1A' : '#C48A2A' }}>
+                {mission.cleanerName || mission.assigneeName || 'Non assigné'}
+                {mission.assigneeRole === 'admin' ? ' · Admin' : (mission.cleanerName ? ' · Équipe' : '')}
+              </p>
+            </div>
+            {mission.notes && (
+              <div>
+                <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Descriptif</p>
+                <p className="text-sm whitespace-pre-wrap" style={{ color: '#7A7068' }}>{mission.notes}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+        /* Cleaner + durée + taux + prix client + gain cleaner */
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Cleaner</p>
@@ -470,6 +498,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{mission.cleanerGain ?? 0}€</p>
           </div>
         </div>
+        )}
 
         {/* Codes accès + consignes */}
         {(portalCode || keyboxCode || extra) && (
@@ -780,7 +809,17 @@ export default function MissionsPage() {
   const [createError, setCreateError] = useState('');
   const [form, setForm] = useState(emptyForm);
   // Création groupée (plusieurs appartements en une opération)
-  const [createMode, setCreateMode] = useState<'single' | 'batch'>('single');
+  const [createMode, setCreateMode] = useState<'single' | 'batch' | 'appointment' | 'oneshot'>('single');
+  // Rendez-vous (assigné admin OU cleaner)
+  const [staff, setStaff] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [apptForm, setApptForm] = useState({ title: '', description: '', date: '', time: '', assigneeId: '' });
+  const [apptBusy, setApptBusy] = useState(false);
+  const [apptError, setApptError] = useState('');
+  // Intervention ponctuelle (one-shot) multi-cleaners
+  const [osForm, setOsForm] = useState({ siteId: '', property: '', address: '', date: '', time: '', durationMinutes: '120', price: '', instructions: '' });
+  const [osCleaners, setOsCleaners] = useState<Set<string>>(new Set());
+  const [osBusy, setOsBusy] = useState(false);
+  const [osError, setOsError] = useState('');
   const [batchApts, setBatchApts] = useState<Set<string>>(new Set());
   const [batchDate, setBatchDate] = useState('');
   const [batchTime, setBatchTime] = useState('');
@@ -791,11 +830,11 @@ export default function MissionsPage() {
   const [batchDone, setBatchDone] = useState('');
 
   const load = useCallback(async () => {
-    const [m, r, c, h, a] = await Promise.all([
+    const [m, r, c, h, a, s] = await Promise.all([
       getMissionsDB(), getHotelRequestsDB(), getActiveCleanersDB(),
-      getApprovedHotelsDB(), getAirbnbs(),
+      getApprovedHotelsDB(), getAirbnbs(), getAssignableStaffDB(),
     ]);
-    setMissions(m); setRequests(r); setCleaners(c);
+    setMissions(m); setRequests(r); setCleaners(c); setStaff(s);
     // Appartements triés par ordre alphabétique (listes de sélection).
     setHotels(h); setAirbnbs([...a].sort((x, y) => x.name.localeCompare(y.name, 'fr', { sensitivity: 'base', numeric: true })));
     setLoading(false);
@@ -817,6 +856,50 @@ export default function MissionsPage() {
   }
 
   async function handleRefuse(id: string) { await refuseRequestDB(id); await load(); }
+
+  // ── Rendez-vous ──
+  async function handleCreateAppointment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!apptForm.title.trim() || !apptForm.date) { setApptError('Titre et date requis.'); return; }
+    setApptBusy(true); setApptError('');
+    const a = staff.find(s => s.id === apptForm.assigneeId);
+    const res = await createAppointmentDB({
+      title: apptForm.title.trim(), description: apptForm.description, date: apptForm.date, time: apptForm.time,
+      assigneeId: apptForm.assigneeId || undefined, assigneeRole: a?.role, assigneeName: a?.name, createdBy: user?.id,
+    });
+    setApptBusy(false);
+    if (res.error) { setApptError(res.error); return; }
+    setApptForm({ title: '', description: '', date: '', time: '', assigneeId: '' });
+    await load(); setTab('Missions');
+  }
+
+  // ── Intervention ponctuelle (one-shot) ──
+  function selectOsSite(id: string) {
+    const a = airbnbs.find(x => x.id === id);
+    setOsForm(p => ({
+      ...p, siteId: id,
+      property: a?.name ?? p.property,
+      address: a?.address ?? p.address,
+      durationMinutes: a?.estimatedCleaningMinutes != null ? String(a.estimatedCleaningMinutes) : p.durationMinutes,
+      price: a?.clientPrice != null ? String(a.clientPrice) : p.price,
+    }));
+  }
+  async function handleCreateOneShot(e: React.FormEvent) {
+    e.preventDefault();
+    if (!osForm.property.trim() || !osForm.date) { setOsError('Nom du site et date requis.'); return; }
+    setOsBusy(true); setOsError('');
+    const chosen = cleaners.filter(c => osCleaners.has(c.id)).map(c => ({ id: c.id, name: c.name, hourlyRate: c.hourly_rate }));
+    const res = await createOneShotMissionDB({
+      propertyName: osForm.property.trim(), address: osForm.address, date: osForm.date, time: osForm.time,
+      durationMinutes: Number(osForm.durationMinutes) || 0, price: Number(osForm.price) || 0,
+      instructions: osForm.instructions, cleaners: chosen, createdBy: user?.id,
+    });
+    setOsBusy(false);
+    if (res.error) { setOsError(res.error); return; }
+    setOsForm({ siteId: '', property: '', address: '', date: '', time: '', durationMinutes: '120', price: '', instructions: '' });
+    setOsCleaners(new Set());
+    await load(); setTab('Missions');
+  }
 
   function selectHotel(hotelId: string) {
     const h = hotels.find(x => x.id === hotelId);
@@ -1337,7 +1420,7 @@ export default function MissionsPage() {
         <div>
           {/* Mode de création */}
           <div className="flex gap-1 mb-5 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-            {([['single', 'Une mission'], ['batch', 'Plusieurs appartements']] as const).map(([m, label]) => (
+            {([['single', 'Une mission'], ['batch', 'Plusieurs appartements'], ['oneshot', 'Intervention ponctuelle'], ['appointment', 'Rendez-vous']] as const).map(([m, label]) => (
               <button key={m} type="button" onClick={() => setCreateMode(m)}
                 className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
                 style={{ backgroundColor: createMode === m ? '#FFFFFF' : 'transparent', color: createMode === m ? '#1A1A1A' : '#A8A09A', boxShadow: createMode === m ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
@@ -1349,6 +1432,7 @@ export default function MissionsPage() {
           {createMode === 'single' ? (
         <form onSubmit={handleCreate} className="rounded-2xl border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <h2 className="font-semibold mb-6" style={{ color: '#1A1A1A' }}>Nouvelle mission</h2>
+          {/* (formulaire mission ménage/livraison existant) */}
 
           {/* Source */}
           <div className="mb-6">
@@ -1579,7 +1663,7 @@ export default function MissionsPage() {
             {creating ? 'Création...' : 'Créer la mission'}
           </button>
         </form>
-          ) : (
+          ) : createMode === 'batch' ? (
         /* ── CRÉATION GROUPÉE (plusieurs appartements) ── */
         <div className="rounded-2xl border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Créer plusieurs missions</h2>
@@ -1686,6 +1770,141 @@ export default function MissionsPage() {
             {batchBusy ? 'Création...' : `Créer ${batchApts.size > 0 ? batchApts.size + ' ' : ''}mission${batchApts.size > 1 ? 's' : ''}`}
           </button>
         </div>
+          ) : createMode === 'appointment' ? (
+        /* ── RENDEZ-VOUS (assigné admin ou cleaner, interne) ── */
+        <form onSubmit={handleCreateAppointment} className="rounded-2xl border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Nouveau rendez-vous</h2>
+          <p className="text-xs mb-6" style={{ color: '#A8A09A' }}>Entretien client, réunion… Planifié, non facturé.</p>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Intitulé</label>
+            <input value={apptForm.title} onChange={e => setApptForm(p => ({ ...p, title: e.target.value }))}
+              placeholder="Ex : entretien client Dupont" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</label>
+              <input type="date" value={apptForm.date} onChange={e => setApptForm(p => ({ ...p, date: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure</label>
+              <input type="time" value={apptForm.time} onChange={e => setApptForm(p => ({ ...p, time: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Assigné à</label>
+            <select value={apptForm.assigneeId} onChange={e => setApptForm(p => ({ ...p, assigneeId: e.target.value }))}
+              className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+              style={{ ...inputStyle, color: apptForm.assigneeId ? '#1A1A1A' : '#A8A09A' }}>
+              <option value="">Assigner plus tard</option>
+              {staff.map(s => <option key={`${s.role}-${s.id}`} value={s.id}>{s.name} · {s.role === 'admin' ? 'Admin' : 'Équipe'}</option>)}
+            </select>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Descriptif</label>
+            <textarea value={apptForm.description} onChange={e => setApptForm(p => ({ ...p, description: e.target.value }))}
+              rows={3} placeholder="Objet du rendez-vous, lieu, points à aborder…"
+              className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle} />
+          </div>
+
+          {apptError && <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{apptError}</div>}
+          <button type="submit" disabled={apptBusy}
+            className="px-8 py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+            style={{ backgroundColor: '#7C5CBF', color: '#FFFFFF' }}>
+            {apptBusy ? 'Création...' : 'Créer le rendez-vous'}
+          </button>
+        </form>
+          ) : (
+        /* ── INTERVENTION PONCTUELLE (one-shot, plusieurs cleaners) ── */
+        <form onSubmit={handleCreateOneShot} className="rounded-2xl border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Intervention ponctuelle</h2>
+          <p className="text-xs mb-6" style={{ color: '#A8A09A' }}>Une intervention unique à une date, réalisée par un ou plusieurs cleaners (ex. gros ménage).</p>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Site (facultatif — pré-remplit)</label>
+            <select value={osForm.siteId} onChange={e => selectOsSite(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+              style={{ ...inputStyle, color: osForm.siteId ? '#1A1A1A' : '#A8A09A' }}>
+              <option value="">Saisie libre</option>
+              {airbnbs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Nom / lieu</label>
+              <input value={osForm.property} onChange={e => setOsForm(p => ({ ...p, property: e.target.value }))}
+                placeholder="Ex : Salle de sport FitClub" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Adresse</label>
+              <input value={osForm.address} onChange={e => setOsForm(p => ({ ...p, address: e.target.value }))}
+                placeholder="Adresse" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</label>
+              <input type="date" value={osForm.date} onChange={e => setOsForm(p => ({ ...p, date: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure</label>
+              <input type="time" value={osForm.time} onChange={e => setOsForm(p => ({ ...p, time: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Durée (min)</label>
+              <input type="number" min={0} value={osForm.durationMinutes} onChange={e => setOsForm(p => ({ ...p, durationMinutes: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+          </div>
+
+          <div className="mb-4 md:w-1/3">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€)</label>
+            <input type="number" min={0} step="0.01" value={osForm.price} onChange={e => setOsForm(p => ({ ...p, price: e.target.value }))}
+              placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>
+              Cleaners — {osCleaners.size} sélectionné{osCleaners.size > 1 ? 's' : ''}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {cleaners.filter(c => canCleanerDoService(c, 'cleaning')).map(c => {
+                const on = osCleaners.has(c.id);
+                return (
+                  <button type="button" key={c.id}
+                    onClick={() => setOsCleaners(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })}
+                    className="px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all"
+                    style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C12' : '#FFFFFF', color: on ? '#C9A84C' : '#7A7068' }}>
+                    {on ? '✓ ' : ''}{c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Consignes</label>
+            <textarea value={osForm.instructions} onChange={e => setOsForm(p => ({ ...p, instructions: e.target.value }))}
+              rows={2} placeholder="Détails de l'intervention, accès, matériel…"
+              className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle} />
+          </div>
+
+          {osError && <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{osError}</div>}
+          <button type="submit" disabled={osBusy}
+            className="px-8 py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            {osBusy ? 'Création...' : `Créer l'intervention${osCleaners.size > 1 ? ` (${osCleaners.size} intervenants)` : ''}`}
+          </button>
+        </form>
           )}
         </div>
       )}

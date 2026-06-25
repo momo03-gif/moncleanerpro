@@ -11,6 +11,8 @@ import { getOpenIncidentsDB, type OpenIncident } from '@/lib/missionReports';
 import type { Mission } from '@/lib/types';
 import { formatHour } from '@/lib/format';
 import { missionStatusCfg } from '@/lib/labels';
+import { serviceLabel, SERVICE_BADGE } from '@/lib/service';
+import { collapseGroups } from '@/lib/missionOrder';
 import Loading from '@/components/Loading';
 
 const DONE = (s: string) => s === 'completed' || s === 'cancelled';
@@ -177,22 +179,39 @@ export default function AdminDashboard() {
             <Link href="/admin/missions" className="text-sm" style={{ color: '#C9A84C' }}>Voir tout →</Link>
           </div>
           <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-            {todayMissions.length === 0 && <div className="p-8 text-center text-sm" style={{ color: '#A8A09A' }}>Aucun ménage aujourd'hui</div>}
-            {todayMissions.map((m, i) => {
-              const cfg = missionStatusCfg(m.status);
-              return (
-                <div key={m.id} className={`px-5 py-3.5 flex items-center gap-4 ${i < todayMissions.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
-                  <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#7A7068', width: 44 }}>{formatHour(m.time) || '—'}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
-                    <p className="text-xs truncate" style={{ color: m.cleanerName ? '#A8A09A' : '#B85A50' }}>
-                      {m.cleanerName || 'Non assignée'}
-                    </p>
+            {todayMissions.length === 0 && <div className="p-8 text-center text-sm" style={{ color: '#A8A09A' }}>Rien de prévu aujourd'hui</div>}
+            {(() => {
+              // Interventions ponctuelles multi-cleaners regroupées en une seule ligne.
+              const entries = collapseGroups(todayMissions);
+              return entries.map((e, i) => {
+                const m = e.mission;
+                const cfg = missionStatusCfg(m.status);
+                const isAppointment = m.service === 'appointment';
+                const badge = SERVICE_BADGE[m.service ?? 'cleaning'];
+                // Assigné(s) : intervention groupée → liste ; RDV → cleaner ou admin.
+                const who = e.groupSize > 1
+                  ? `${e.groupSize} intervenants${e.assignees.length ? ` · ${e.assignees.join(', ')}` : ''}`
+                  : (m.cleanerName || m.assigneeName || (isAppointment ? 'Non assigné' : 'Non assignée'));
+                return (
+                  <div key={m.groupId || m.id} className={`px-5 py-3.5 flex items-center gap-4 ${i < entries.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
+                    <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#7A7068', width: 44 }}>{formatHour(m.time) || '—'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
+                        {(isAppointment || m.service === 'delivery') && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0" style={{ backgroundColor: badge.bg, color: badge.color }}>{serviceLabel(m.service)}</span>
+                        )}
+                        {e.groupSize > 1 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>Ponctuelle</span>
+                        )}
+                      </div>
+                      <p className="text-xs truncate" style={{ color: (m.cleanerName || m.assigneeName || e.groupSize > 1) ? '#A8A09A' : '#B85A50' }}>{who}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full font-medium shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full font-medium shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
 

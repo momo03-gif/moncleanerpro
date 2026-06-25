@@ -10,6 +10,8 @@ function rowToApartment(a: any): Apartment {
     id: a.id,
     name: a.name,
     address: a.address,
+    structureType: a.structure_type ?? 'apartment',
+    structureLabel: a.structure_label ?? undefined,
     portalCode: a.code_portail,
     keyboxCode: a.code_boite,
     entryDirectives: a.entry_instructions ?? '',
@@ -56,18 +58,23 @@ export async function createAirbnb(fields: {
   entryDirectives: string; partnerId?: string; partnerName?: string;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
+  structureType?: string; structureLabel?: string;
 }): Promise<string | null> {
+  const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
   const { data, error } = await supabase.from('airbnbs').insert({
     name: fields.name,
     address: fields.address,
+    structure_type: fields.structureType ?? 'apartment',
+    structure_label: fields.structureLabel || null,
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
     partner_id: fields.partnerId || null,
     partner_name: fields.partnerName || null,
-    bedrooms: fields.bedrooms ?? null,
-    beds: fields.beds ?? null,
-    sofa_beds: fields.sofaBeds ?? null,
+    // Chambres/lits/canapés : pertinents uniquement pour un logement.
+    bedrooms: isApartment ? (fields.bedrooms ?? null) : null,
+    beds: isApartment ? (fields.beds ?? null) : null,
+    sofa_beds: isApartment ? (fields.sofaBeds ?? null) : null,
     client_price: fields.clientPrice ?? null,
     estimated_cleaning_minutes: fields.estimatedCleaningMinutes ?? 60,
     zone_color: fields.zoneColor || null,
@@ -83,17 +90,21 @@ export async function updateAirbnb(id: string, fields: {
   entryDirectives: string; partnerName?: string;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
+  structureType?: string; structureLabel?: string;
 }) {
+  const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
   const { error } = await supabase.from('airbnbs').update({
     name: fields.name,
     address: fields.address,
+    structure_type: fields.structureType ?? 'apartment',
+    structure_label: fields.structureLabel || null,
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
     partner_name: fields.partnerName || null,
-    bedrooms: fields.bedrooms ?? null,
-    beds: fields.beds ?? null,
-    sofa_beds: fields.sofaBeds ?? null,
+    bedrooms: isApartment ? (fields.bedrooms ?? null) : null,
+    beds: isApartment ? (fields.beds ?? null) : null,
+    sofa_beds: isApartment ? (fields.sofaBeds ?? null) : null,
     client_price: fields.clientPrice ?? null,
     estimated_cleaning_minutes: fields.estimatedCleaningMinutes ?? 60,
     zone_color: fields.zoneColor || null,
