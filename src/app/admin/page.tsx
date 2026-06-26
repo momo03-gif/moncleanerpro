@@ -85,8 +85,17 @@ export default function AdminDashboard() {
   const todayDone = todayMissions.filter(m => m.status === 'completed').length;
   const tomorrowCount = missions.filter(m => m.date === tomorrow && !DONE(m.status)).length;
   const overdue = missions.filter(m => m.date < today && !DONE(m.status));
-  const unassigned = missions.filter(m => !m.cleanerId && !DONE(m.status));
+  // « À assigner » : missions de terrain sans cleaner. Un rendez-vous confié à un admin
+  // (assigneeUserId, sans cleanerId) n'est PAS « à assigner ».
+  const unassigned = missions.filter(m => !m.cleanerId && !m.assigneeUserId && !DONE(m.status));
   const available = cleaners.filter(c => !['busy', 'offline', 'inactive'].includes(c.status));
+
+  // Rendez-vous à venir (aujourd'hui et après), pour les rendre visibles quelle que
+  // soit leur date — pas seulement dans le planning du jour.
+  const upcomingAppointments = missions
+    .filter(m => m.service === 'appointment' && m.date >= today && !DONE(m.status))
+    .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))
+    .slice(0, 6);
 
   if (loading) return <Loading className="p-6 text-sm" />;
 
@@ -166,6 +175,34 @@ export default function AdminDashboard() {
                 {inc.date && <span className="text-xs shrink-0" style={{ color: '#A8A09A' }}>{inc.date}</span>}
               </div>
               <p className="text-sm mt-0.5" style={{ color: '#B85A50' }}>{inc.issues}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Rendez-vous à venir ── */}
+      {upcomingAppointments.length > 0 && (
+        <div className="rounded-2xl border overflow-hidden mb-8" style={{ borderColor: '#7C5CBF33', backgroundColor: '#FFFFFF' }}>
+          <div className="px-4 sm:px-5 py-3.5 flex items-center gap-3 border-b" style={{ borderColor: '#F2EFE9', backgroundColor: '#7C5CBF08' }}>
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#7C5CBF' }} />
+            <h2 className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Rendez-vous à venir</h2>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#7C5CBF15', color: '#7C5CBF' }}>{upcomingAppointments.length}</span>
+          </div>
+          {upcomingAppointments.map((m, i) => (
+            <div key={m.id} className={`px-4 sm:px-5 py-3.5 flex items-center gap-3 sm:gap-4 ${i < upcomingAppointments.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
+              <div className="shrink-0 text-center" style={{ width: 52 }}>
+                <p className="text-xs font-semibold capitalize" style={{ color: '#7C5CBF' }}>
+                  {new Date(m.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
+                </p>
+                <p className="text-[11px]" style={{ color: '#A8A09A' }}>{formatHour(m.time) || '—'}</p>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property || 'Rendez-vous'}</p>
+                <p className="text-xs truncate" style={{ color: (m.cleanerName || m.assigneeName) ? '#A8A09A' : '#B85A50' }}>
+                  {m.cleanerName || m.assigneeName || 'Non assigné'}
+                </p>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded font-semibold shrink-0" style={{ backgroundColor: '#7C5CBF15', color: '#7C5CBF' }}>Rendez-vous</span>
             </div>
           ))}
         </div>
