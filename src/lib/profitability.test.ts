@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeApartmentProfitability, estimateFuel, DEFAULT_PROFIT_CONFIG } from './profitabilityCompute';
+import { computeApartmentProfitability, estimateFuel, recommendedHourlyPrice, DEFAULT_PROFIT_CONFIG } from './profitabilityCompute';
 import type { Mission, Apartment, ProfitConfig } from './types';
 
 const cfg: ProfitConfig = { ...DEFAULT_PROFIT_CONFIG, productCostCents: 50, marginTarget: 0.30, cdiChargeRate: 0.45 };
@@ -53,5 +53,19 @@ describe('computeApartmentProfitability', () => {
     const [r] = computeApartmentProfitability({ missions: ms, apartments, parkingByMission: noParking, config: cfg, cleaners: [{ id: 'c1' }] });
     expect(r.profitable).toBe(false);
     expect(r.recommendedPrice).toBeGreaterThan(20);
+  });
+});
+
+describe('recommendedHourlyPrice — calculateur de prix rentable', () => {
+  it('auto-entrepreneur 11 €/h, marge 30 %, TVA 20 %', () => {
+    const q = recommendedHourlyPrice({ hourlyRate: 11, isCdi: false, cdiChargeRate: 0.45, marginTarget: 0.30, vatRate: 0.20 });
+    expect(q.costPerHour).toBe(11);
+    expect(q.breakevenTTC).toBeCloseTo(13.20, 2);
+    expect(q.targetTTC).toBeCloseTo(18.86, 1);
+  });
+  it('CDI au SMIC (~11,88 €/h) avec charges 15 %', () => {
+    const q = recommendedHourlyPrice({ hourlyRate: 11.88, isCdi: true, cdiChargeRate: 0.15, marginTarget: 0.30, vatRate: 0.20 });
+    expect(q.costPerHour).toBeCloseTo(13.66, 1);
+    expect(q.targetTTC).toBeCloseTo(23.42, 1);
   });
 });

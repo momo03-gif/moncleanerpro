@@ -8,8 +8,31 @@ import type { Apartment, Mission, ProfitConfig } from './types';
 export const DEFAULT_PROFIT_CONFIG: ProfitConfig = {
   productCostCents: 50, marginTarget: 0.30,
   fuelConsumption: 7, fuelPrice: 1.90, fuelRouteFactor: 1.4,
-  cdiChargeRate: 0.45,
+  cdiChargeRate: 0.45, vatRate: 0.20,
 };
+
+// ── Calculateur de prix rentable (hôtels / EHPAD : seul coût = le cleaner) ────────
+// Reprend tout : taux horaire, type de contrat (auto = paie seule ; CDI = paie +
+// charges), marge cible, TVA. Renvoie le plancher (ne pas perdre) et le prix conseillé.
+export interface PriceQuote {
+  costPerHour: number;
+  breakevenHT: number; breakevenTTC: number;   // marge 0 : ne pas perdre
+  targetHT: number; targetTTC: number;          // marge cible : rentable
+}
+
+export function recommendedHourlyPrice(p: {
+  hourlyRate: number; isCdi: boolean; cdiChargeRate: number; marginTarget: number; vatRate: number;
+}): PriceQuote {
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  const cost = p.hourlyRate * (p.isCdi ? 1 + p.cdiChargeRate : 1);
+  const targetHT = p.marginTarget < 1 ? cost / (1 - p.marginTarget) : cost;
+  const ttc = (ht: number) => r2(ht * (1 + p.vatRate));
+  return {
+    costPerHour: r2(cost),
+    breakevenHT: r2(cost), breakevenTTC: ttc(cost),
+    targetHT: r2(targetHT), targetTTC: ttc(targetHT),
+  };
+}
 
 // Essence estimée d'un aller-retour base ⇄ appartement (€). 0 si pas de base/coords.
 export function estimateFuel(distanceKm: number | null, cfg: ProfitConfig): number {

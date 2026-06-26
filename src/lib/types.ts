@@ -310,6 +310,7 @@ export interface ProfitConfig {
   fuelPrice: number;          // € / L
   fuelRouteFactor: number;    // distance route ≈ vol d'oiseau × facteur
   cdiChargeRate: number;      // charges patronales sur un CDI (0.45 = +45 %)
+  vatRate: number;            // TVA pour le calcul TTC (0.20 = 20 %)
 }
 
 export type NotificationType =

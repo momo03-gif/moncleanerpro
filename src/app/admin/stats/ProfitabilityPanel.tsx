@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMissionsDB, getCleaners, getAirbnbs } from '@/lib/db';
 import { listParkingPaymentsClient } from '@/lib/parkingApi';
-import { getProfitConfigDB, saveProfitConfigDB, computeApartmentProfitability, type ApartmentProfit } from '@/lib/profitability';
+import { getProfitConfigDB, saveProfitConfigDB, computeApartmentProfitability, recommendedHourlyPrice } from '@/lib/profitability';
 import { geocodeAddress } from '@/lib/zones';
 import type { Mission, Apartment, ProfitConfig } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
@@ -29,11 +29,19 @@ export default function ProfitabilityPanel() {
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
 
+  // Calculateur de prix rentable
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [calcRate, setCalcRate] = useState('11');
+  const [calcCdi, setCalcCdi] = useState(false);
+  const [calcMarginPct, setCalcMarginPct] = useState(30);
+  const [calcMinutes, setCalcMinutes] = useState('');
+
   const load = useCallback(async () => {
     const [m, a, c, cfg, parking] = await Promise.all([
       getMissionsDB(), getAirbnbs(), getCleaners(), getProfitConfigDB(), listParkingPaymentsClient(),
     ]);
     setMissions(m); setApartments(a); setCleaners(c); setConfig(cfg); setForm(cfg);
+    setCalcMarginPct(Math.round(cfg.marginTarget * 100));
     const map = new Map<string, number>();
     (Array.isArray(parking) ? parking : []).forEach(p => {
       if (p.missionId && p.amount != null) map.set(p.missionId, (map.get(p.missionId) ?? 0) + p.amount);
@@ -85,11 +93,91 @@ export default function ProfitabilityPanel() {
             </button>
           ))}
         </div>
-        <button onClick={() => setSettingsOpen(o => !o)} className="px-4 py-2 rounded-xl text-sm font-medium border"
-          style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-          {settingsOpen ? 'Fermer les paramètres' : 'Paramètres de rentabilité'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setCalcOpen(o => !o)} className="px-4 py-2 rounded-xl text-sm font-medium border"
+            style={{ borderColor: calcOpen ? '#C9A84C' : '#E8E4DC', color: calcOpen ? '#C9A84C' : '#7A7068' }}>
+            Calculateur de prix
+          </button>
+          <button onClick={() => setSettingsOpen(o => !o)} className="px-4 py-2 rounded-xl text-sm font-medium border"
+            style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+            {settingsOpen ? 'Fermer' : 'Paramètres'}
+          </button>
+        </div>
       </div>
+
+      {/* Calculateur de prix rentable */}
+      {calcOpen && (() => {
+        const q = recommendedHourlyPrice({
+          hourlyRate: Number(calcRate) || 0, isCdi: calcCdi,
+          cdiChargeRate: config.cdiChargeRate, marginTarget: (Number(calcMarginPct) || 0) / 100, vatRate: config.vatRate,
+        });
+        const hours = calcMinutes ? (Number(calcMinutes) || 0) / 60 : null;
+        return (
+          <div className="rounded-2xl p-4 sm:p-5 border mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
+            <h3 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Calculateur de prix rentable</h3>
+            <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>Hôtels / EHPAD (seul coût = le cleaner). TVA {pct(config.vatRate)} · charges CDI {pct(config.cdiChargeRate)} (modifiables dans Paramètres).</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Cleaner</label>
+                <select onChange={e => { const c = cleaners.find(x => x.id === e.target.value); if (c) { setCalcRate(String(c.hourly_rate ?? '')); setCalcCdi((c.employment_type ?? 'auto') === 'cdi'); } }}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} defaultValue="">
+                  <option value="">Saisie manuelle</option>
+                  {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Taux horaire (€/h)</label>
+                <input type="number" min={0} step="0.5" value={calcRate} onChange={e => setCalcRate(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Contrat</label>
+                <div className="flex gap-2">
+                  {([['auto', 'Auto'], ['cdi', 'CDI']] as const).map(([v, l]) => (
+                    <button key={v} type="button" onClick={() => setCalcCdi(v === 'cdi')}
+                      className="flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-all"
+                      style={{ borderColor: (calcCdi === (v === 'cdi')) ? '#C9A84C' : '#E8E4DC', backgroundColor: (calcCdi === (v === 'cdi')) ? '#C9A84C12' : '#FFFFFF', color: (calcCdi === (v === 'cdi')) ? '#C9A84C' : '#7A7068' }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Marge (%)</label>
+                <input type="number" min={0} max={95} value={calcMarginPct} onChange={e => setCalcMarginPct(Number(e.target.value) || 0)}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-xl p-4" style={{ backgroundColor: '#F8F6F2' }}>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#B85A50' }}>Plancher — ne pas perdre</p>
+                <p className="text-2xl font-bold" style={{ color: '#B85A50' }}>{eur(q.breakevenTTC)}<span className="text-sm font-normal">/h TTC</span></p>
+                <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{eur(q.breakevenHT)} HT · coût {eur(q.costPerHour)}/h</p>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: '#5A8A6A12' }}>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#5A8A6A' }}>Conseillé — rentable ({calcMarginPct} %)</p>
+                <p className="text-2xl font-bold" style={{ color: '#5A8A6A' }}>{eur(q.targetTTC)}<span className="text-sm font-normal">/h TTC</span></p>
+                <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{eur(q.targetHT)} HT</p>
+              </div>
+            </div>
+
+            {/* Total pour une durée de mission */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="sm:w-48">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Durée mission (min) — optionnel</label>
+                <input type="number" min={0} value={calcMinutes} onChange={e => setCalcMinutes(e.target.value)} placeholder="ex : 120"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+              </div>
+              {hours != null && hours > 0 && (
+                <p className="text-sm" style={{ color: '#1A1A1A' }}>
+                  Pour cette mission : plancher <b>{eur(q.breakevenTTC * hours)} TTC</b> · conseillé <b style={{ color: '#5A8A6A' }}>{eur(q.targetTTC * hours)} TTC</b>
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Panneau paramètres */}
       {settingsOpen && (
@@ -113,6 +201,12 @@ export default function ProfitabilityPanel() {
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Charges CDI (%)</label>
               <input type="number" min={0} max={100} value={Math.round(form.cdiChargeRate * 100)}
                 onChange={e => setForm(f => ({ ...f!, cdiChargeRate: (Number(e.target.value) || 0) / 100 }))}
+                className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>TVA (%)</label>
+              <input type="number" min={0} max={30} value={Math.round(form.vatRate * 100)}
+                onChange={e => setForm(f => ({ ...f!, vatRate: (Number(e.target.value) || 0) / 100 }))}
                 className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
             </div>
             <div className="sm:col-span-2 lg:col-span-3">
