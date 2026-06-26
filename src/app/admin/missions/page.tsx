@@ -9,7 +9,7 @@ import {
   updateMissionDB, deleteMissionDB, reopenMissionDB, resolveExtraTimeDB,
   updateMissionsOrderDB, createAppointmentDB, getAssignableStaffDB, createOneShotMissionDB,
 } from '@/lib/db';
-import { listRecurringDB, createRecurringDB, setRecurringActiveDB, deleteRecurringDB, generateRecurringMissions } from '@/lib/recurring';
+import { listRecurringDB, createRecurringDB, updateRecurringDB, setRecurringActiveDB, deleteRecurringDB, generateRecurringMissions } from '@/lib/recurring';
 import type { RecurringMission } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -837,6 +837,7 @@ export default function MissionsPage() {
   const [recBusy, setRecBusy] = useState(false);
   const [recError, setRecError] = useState('');
   const [recurrings, setRecurrings] = useState<RecurringMission[]>([]);
+  const [editingRecId, setEditingRecId] = useState<string | null>(null);
   const [batchApts, setBatchApts] = useState<Set<string>>(new Set());
   const [batchDate, setBatchDate] = useState('');
   const [batchTime, setBatchTime] = useState('');
@@ -929,6 +930,31 @@ export default function MissionsPage() {
       price: a?.clientPrice != null ? String(a.clientPrice) : p.price,
     }));
   }
+  function resetRecForm() {
+    setRecForm({ siteId: '', property: '', address: '', time: '', durationMinutes: '60', price: '', cleanerId: '', startDate: '', endDate: '' });
+    setRecWeekdays(new Set());
+    setEditingRecId(null);
+    setRecError('');
+  }
+  function startEditRec(rec: RecurringMission) {
+    setEditingRecId(rec.id);
+    setRecForm({
+      siteId: rec.airbnbId ?? '',
+      property: rec.propertyName ?? '',
+      address: rec.address ?? '',
+      time: rec.timeFrom ?? '',
+      durationMinutes: String(rec.durationMinutes ?? 60),
+      price: rec.price != null ? String(rec.price) : '',
+      cleanerId: rec.cleanerId ?? '',
+      startDate: rec.startDate ?? '',
+      endDate: rec.endDate ?? '',
+    });
+    setRecWeekdays(new Set(rec.weekdays));
+    setRecError('');
+    setCreateMode('recurring');
+    setTab('Créer');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
   async function handleCreateRecurring(e: React.FormEvent) {
     e.preventDefault();
     if (!recForm.property.trim() || recWeekdays.size === 0 || !recForm.startDate) {
@@ -936,18 +962,20 @@ export default function MissionsPage() {
     }
     setRecBusy(true); setRecError('');
     const c = cleaners.find(x => x.id === recForm.cleanerId);
-    const res = await createRecurringDB({
+    const payload = {
       airbnbId: recForm.siteId || undefined,
       propertyName: recForm.property.trim(), address: recForm.address,
       cleanerId: recForm.cleanerId || undefined, cleanerName: c?.name,
       weekdays: Array.from(recWeekdays).sort((x, y) => x - y), timeFrom: recForm.time,
       durationMinutes: Number(recForm.durationMinutes) || 60, price: Number(recForm.price) || 0,
-      startDate: recForm.startDate, endDate: recForm.endDate || undefined, createdBy: user?.id,
-    });
+      startDate: recForm.startDate, endDate: recForm.endDate || undefined,
+    };
+    const res = editingRecId
+      ? await updateRecurringDB(editingRecId, payload)
+      : await createRecurringDB({ ...payload, createdBy: user?.id });
     setRecBusy(false);
     if (res.error) { setRecError(res.error); return; }
-    setRecForm({ siteId: '', property: '', address: '', time: '', durationMinutes: '60', price: '', cleanerId: '', startDate: '', endDate: '' });
-    setRecWeekdays(new Set());
+    resetRecForm();
     await load(); setTab('Missions');
   }
   async function regenRecurring() {
@@ -1971,8 +1999,12 @@ export default function MissionsPage() {
         /* ── MÉNAGE RÉCURRENT (jours fixes) ── */
         <div className="space-y-5">
           <form onSubmit={handleCreateRecurring} className="rounded-2xl border p-4 sm:p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-            <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Ménage récurrent</h2>
-            <p className="text-xs mb-6" style={{ color: '#A8A09A' }}>Programmé à jours fixes (ex. salle de sport tous les lundis/mercredis/vendredis). Les missions sont créées automatiquement.</p>
+            <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>{editingRecId ? 'Modifier le ménage récurrent' : 'Ménage récurrent'}</h2>
+            <p className="text-xs mb-6" style={{ color: '#A8A09A' }}>
+              {editingRecId
+                ? 'Les missions futures non démarrées seront réalignées sur la nouvelle programmation.'
+                : 'Programmé à jours fixes (ex. salle de sport tous les lundis/mercredis/vendredis). Les missions sont créées automatiquement.'}
+            </p>
 
             <div className="mb-4">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Site (facultatif — pré-remplit)</label>
@@ -2056,11 +2088,20 @@ export default function MissionsPage() {
             </div>
 
             {recError && <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>{recError}</div>}
-            <button type="submit" disabled={recBusy}
-              className="w-full sm:w-auto px-8 py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
-              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-              {recBusy ? 'Programmation...' : 'Programmer le ménage récurrent'}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button type="submit" disabled={recBusy}
+                className="w-full sm:w-auto px-8 py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+                style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                {recBusy ? 'Enregistrement...' : editingRecId ? 'Enregistrer les modifications' : 'Programmer le ménage récurrent'}
+              </button>
+              {editingRecId && (
+                <button type="button" onClick={resetRecForm} disabled={recBusy}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  Annuler
+                </button>
+              )}
+            </div>
           </form>
 
           {/* Plannings existants — gestion (activer/suspendre/supprimer). */}
@@ -2087,7 +2128,12 @@ export default function MissionsPage() {
                       {rec.cleanerName ? ` · ${rec.cleanerName}` : ' · non assigné'}
                     </p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <button type="button" onClick={() => startEditRec(rec)}
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border"
+                      style={{ borderColor: '#C9A84C', color: '#C9A84C' }}>
+                      Modifier
+                    </button>
                     <button type="button" onClick={() => toggleRecActive(rec.id, !rec.active)}
                       className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold border"
                       style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>

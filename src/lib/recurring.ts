@@ -76,6 +76,39 @@ export async function createRecurringDB(fields: {
   return { error: null, generated: gen.created };
 }
 
+// Modifie un planning : met à jour la règle, puis RÉALIGNE l'agenda — supprime les
+// missions FUTURES non démarrées qu'il avait générées (status pending/assigned, date ≥
+// aujourd'hui) et régénère selon la nouvelle règle. Les missions passées / en cours /
+// terminées sont conservées (données de référence).
+export async function updateRecurringDB(id: string, fields: {
+  airbnbId?: string; propertyName?: string; address?: string;
+  cleanerId?: string; cleanerName?: string;
+  weekdays: number[]; timeFrom?: string; durationMinutes: number; price: number;
+  startDate: string; endDate?: string;
+}): Promise<{ error: string | null; generated: number }> {
+  const linked = !!fields.airbnbId;
+  const { error } = await supabase.from('recurring_missions').update({
+    airbnb_id: fields.airbnbId || null,
+    property_name: linked ? null : (fields.propertyName || null),
+    address: linked ? null : (fields.address || null),
+    cleaner_id: fields.cleanerId || null,
+    cleaner_name: fields.cleanerName || null,
+    weekdays: fields.weekdays,
+    time_from: fields.timeFrom || null,
+    duration_minutes: fields.durationMinutes || 60,
+    price: fields.price || 0,
+    start_date: fields.startDate,
+    end_date: fields.endDate || null,
+  }).eq('id', id);
+  if (error) { console.error('updateRecurringDB:', error.code, error.message); return { error: error.message, generated: 0 }; }
+
+  const today = parisToday();
+  await supabase.from('missions').delete()
+    .eq('recurring_id', id).gte('date_from', today).in('status', ['pending', 'assigned']);
+  const gen = await generateRecurringMissions();
+  return { error: null, generated: gen.created };
+}
+
 // Matérialise les missions des plannings actifs sur un horizon glissant. Idempotent :
 // dédoublonne via (recurring_id, date_from) → jamais de doublon si le cron repasse.
 export async function generateRecurringMissions(horizonDays = 60): Promise<{ created: number }> {
