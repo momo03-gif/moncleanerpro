@@ -9,7 +9,7 @@ import {
   updateMissionDB, deleteMissionDB, reopenMissionDB, resolveExtraTimeDB,
   updateMissionsOrderDB, createAppointmentDB, getAssignableStaffDB, createOneShotMissionDB,
 } from '@/lib/db';
-import { listRecurringDB, createRecurringDB, setRecurringActiveDB, deleteRecurringDB } from '@/lib/recurring';
+import { listRecurringDB, createRecurringDB, setRecurringActiveDB, deleteRecurringDB, generateRecurringMissions } from '@/lib/recurring';
 import type { RecurringMission } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -25,7 +25,7 @@ import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
-import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL, missionStatusLabel } from '@/lib/labels';
+import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, MISSION_SOURCE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { getMissionIncidentsDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncidentType, type RhIncident } from '@/lib/rhApi';
 import Loading from "@/components/Loading";
 
@@ -394,7 +394,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           {mission.service !== 'appointment' && (
             <span className="text-xs px-2.5 py-1 rounded-lg font-semibold"
               style={{ backgroundColor: source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
-              {SOURCE_LABEL[source]}
+              {missionOriginLabel(mission)}
             </span>
           )}
           {mission.service !== 'appointment' && <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>}
@@ -949,6 +949,13 @@ export default function MissionsPage() {
     setRecForm({ siteId: '', property: '', address: '', time: '', durationMinutes: '60', price: '', cleanerId: '', startDate: '', endDate: '' });
     setRecWeekdays(new Set());
     await load(); setTab('Missions');
+  }
+  async function regenRecurring() {
+    setRecBusy(true);
+    try { await generateRecurringMissions(); }
+    catch (e) { console.error('regen recurring:', e); }
+    setRecBusy(false);
+    await load();
   }
   async function toggleRecActive(id: string, active: boolean) { await setRecurringActiveDB(id, active); await load(); }
   async function removeRec(id: string) {
@@ -2059,8 +2066,13 @@ export default function MissionsPage() {
           {/* Plannings existants — gestion (activer/suspendre/supprimer). */}
           {recurrings.length > 0 && (
             <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-              <div className="px-4 sm:px-5 py-3.5 border-b" style={{ borderColor: '#F2EFE9' }}>
+              <div className="px-4 sm:px-5 py-3.5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2" style={{ borderColor: '#F2EFE9' }}>
                 <h3 className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Ménages récurrents ({recurrings.length})</h3>
+                <button type="button" onClick={regenRecurring} disabled={recBusy}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-semibold border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  {recBusy ? '...' : 'Générer les prochaines missions'}
+                </button>
               </div>
               {recurrings.map((rec, i) => (
                 <div key={rec.id} className={`px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ${i < recurrings.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>

@@ -78,7 +78,7 @@ export async function createRecurringDB(fields: {
 
 // Matérialise les missions des plannings actifs sur un horizon glissant. Idempotent :
 // dédoublonne via (recurring_id, date_from) → jamais de doublon si le cron repasse.
-export async function generateRecurringMissions(horizonDays = 21): Promise<{ created: number }> {
+export async function generateRecurringMissions(horizonDays = 60): Promise<{ created: number }> {
   const today = parisToday();
   const horizon = addDaysStr(today, horizonDays);
 
@@ -111,7 +111,9 @@ export async function generateRecurringMissions(horizonDays = 21): Promise<{ cre
 
     const rows = dates.filter(d => !have.has(d)).map(d => ({
       type: 'regular',
-      source: 'hotel',
+      // Lié à un site → 'airbnb' (cohérent avec l'app) ; le badge affiché dérive du
+      // type de site / du caractère récurrent (jamais « Hôtel » à tort). Cf. missionOriginLabel.
+      source: r.airbnb_id ? 'airbnb' : 'hotel',
       service: r.service || 'cleaning',
       airbnb_id: r.airbnb_id || null,
       property_name: linked ? null : (r.property_name || null),

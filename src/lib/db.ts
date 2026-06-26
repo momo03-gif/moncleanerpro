@@ -61,7 +61,7 @@ async function resolveToCleanerTableId(userId: string): Promise<string | null> {
 
 // Sélection commune : on joint l'appartement lié pour les missions Airbnb
 // afin d'en récupérer adresse + accès sans dupliquer l'info dans la mission.
-const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes, client_price, estimated_cleaning_minutes, zone_id, zone_color, zone_name)';
+const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes, client_price, estimated_cleaning_minutes, zone_id, zone_color, zone_name, structure_type, structure_label)';
 
 function rowToMission(row: any): Mission {
   let property = row.property_name ?? '';
@@ -122,6 +122,8 @@ function rowToMission(row: any): Mission {
     zoneId: apt?.zone_id ?? undefined,
     zoneColor: apt?.zone_color ?? undefined,
     zoneName: apt?.zone_name ?? undefined,
+    siteType: apt?.structure_type ?? undefined,
+    siteLabel: apt?.structure_label ?? undefined,
     type: (row.type as MissionType) ?? 'regular',
     service: (row.service as MissionService) ?? 'cleaning',
     deliveryInstructions: row.delivery_instructions ?? undefined,

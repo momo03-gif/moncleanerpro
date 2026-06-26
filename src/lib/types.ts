@@ -47,6 +47,9 @@ export interface Mission {
   zoneId?: string;
   zoneColor?: string;
   zoneName?: string;
+  // Type du site lié (dérivé du join) — pilote le badge d'origine affiché.
+  siteType?: StructureType;
+  siteLabel?: string;
   type: MissionType;
   // Prestation : nettoyage (défaut), livraison, les deux, ou rendez-vous.
   service?: MissionService;

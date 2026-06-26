@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
-import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel } from '@/lib/labels';
+import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
@@ -213,11 +213,11 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
               <span className="text-sm" style={{ color: '#7A7068' }}>{formatDuration(mission.missionDurationMinutes)}</span>
             </div>
           )}
-          {/* Source (Hôtel/Airbnb) — sans objet pour un rendez-vous. */}
+          {/* Origine : type de site / récurrent / source — sans objet pour un rendez-vous. */}
           {!isAppointment && (
             <span className="text-xs px-2 py-0.5 rounded"
               style={{ backgroundColor: mission.source === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: mission.source === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
-              {mission.source === 'airbnb' ? 'Airbnb' : 'Hôtel'}
+              {missionOriginLabel(mission)}
             </span>
           )}
           {/* Prestation à réaliser — toujours visible et explicite pour le cleaner. */}

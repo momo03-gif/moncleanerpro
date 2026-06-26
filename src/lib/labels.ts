@@ -58,3 +58,14 @@ export function structureLabel(type: string | undefined | null, custom?: string)
   if (type === 'other' && custom) return custom;
   return STRUCTURE_LABEL[type ?? 'apartment'] ?? 'Site';
 }
+
+// Badge d'origine d'une mission : type de site (bureau/salle de sport…) si lié à un
+// site non-logement, sinon « Récurrent » pour un ménage récurrent, sinon la source
+// historique (Hôtel/Airbnb). Évite le « Hôtel » trompeur sur les sites/récurrents.
+export function missionOriginLabel(m: {
+  siteType?: string | null; siteLabel?: string | null; recurringId?: string | null; source?: string | null;
+}): string {
+  if (m.siteType && m.siteType !== 'apartment') return structureLabel(m.siteType, m.siteLabel ?? undefined);
+  if (m.recurringId) return 'Récurrent';
+  return m.source === 'airbnb' ? 'Airbnb' : 'Hôtel';
+}
