@@ -8,6 +8,7 @@ import { formatDuration } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import RhPerfPanel from './RhPerfPanel';
+import ProfitabilityPanel from './ProfitabilityPanel';
 import Loading from "@/components/Loading";
 
 export default function StatsPage() {
@@ -15,6 +16,7 @@ export default function StatsPage() {
   const [cleaners, setCleaners] = useState<any[]>([]);
   const [depenses, setDepenses] = useState<Depense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'overview' | 'rentabilite'>('overview');
 
   useEffect(() => {
     Promise.all([getMissionsDB(), getCleaners(), getDepensesDB()]).then(([m, c, d]) => {
@@ -98,9 +100,22 @@ export default function StatsPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Statistiques</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue d'ensemble des performances</p>
+        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Vue d'ensemble des performances &amp; rentabilité</p>
       </div>
 
+      {/* Onglets : vue d'ensemble / rentabilité */}
+      <div className="flex flex-wrap gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
+        {([['overview', "Vue d'ensemble"], ['rentabilite', 'Rentabilité']] as const).map(([v, l]) => (
+          <button key={v} onClick={() => setView(v)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ backgroundColor: view === v ? '#FFFFFF' : 'transparent', color: view === v ? '#1A1A1A' : '#A8A09A', boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {view === 'rentabilite' && <ProfitabilityPanel />}
+
+      {view === 'overview' && (<>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total missions', value: total, icon: '◎' },
@@ -274,6 +289,7 @@ export default function StatsPage() {
       </div>
 
       <RhPerfPanel />
+      </>)}
     </div>
   );
 }

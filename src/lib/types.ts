@@ -161,6 +161,8 @@ export interface Apartment {
   // Type de structure (défaut : appartement). Voir StructureType.
   structureType?: StructureType;
   structureLabel?: string;   // libellé libre quand structureType = 'other'
+  // Override du coût produits par ménage (centimes). Absent → coût global ProfitConfig.
+  productCostCents?: number;
   portalCode?: string;
   keyboxCode?: string;
   entryDirectives: string;
@@ -235,6 +237,8 @@ export interface CleanerRow {
   can_deliver?: boolean;
   // Montant fixe gagné par livraison (indépendant de la durée).
   delivery_rate?: number;
+  // Type de contrat : 'auto' (auto-entrepreneur, défaut) ou 'cdi' (charges patronales en sus).
+  employment_type?: 'auto' | 'cdi';
 }
 
 export interface CompanyInfo {
@@ -293,6 +297,19 @@ export interface RecurringMission {
   active: boolean;
   lastGeneratedDate?: string;
   createdAt?: string;
+}
+
+// Paramètres globaux de rentabilité (ligne unique profit_config). Tous éditables.
+export interface ProfitConfig {
+  productCostCents: number;   // coût produits moyen par ménage (centimes)
+  marginTarget: number;       // marge cible (0.30 = 30 %)
+  fuelBaseAddress?: string;
+  fuelBaseLat?: number;
+  fuelBaseLng?: number;
+  fuelConsumption: number;    // L / 100 km
+  fuelPrice: number;          // € / L
+  fuelRouteFactor: number;    // distance route ≈ vol d'oiseau × facteur
+  cdiChargeRate: number;      // charges patronales sur un CDI (0.45 = +45 %)
 }
 
 export type NotificationType =

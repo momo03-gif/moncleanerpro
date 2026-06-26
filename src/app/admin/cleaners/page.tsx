@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, updateCleanerEmploymentTypeDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { capabilitiesLabel } from '@/lib/service';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
@@ -23,7 +23,7 @@ export default function CleanersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [managing, setManaging] = useState<string | null>(null);
-  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '', canClean: true, canDeliver: false, deliveryRate: '' });
+  const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '', canClean: true, canDeliver: false, deliveryRate: '', employmentType: 'auto' as 'auto' | 'cdi' });
   const [saving, setSaving] = useState(false);
 
   const month = currentMonth();
@@ -51,6 +51,7 @@ export default function CleanersPage() {
       password: '',
       canClean: c.can_clean ?? true, canDeliver: c.can_deliver ?? false,
       deliveryRate: c.delivery_rate != null ? String(c.delivery_rate) : '',
+      employmentType: (c.employment_type ?? 'auto') as 'auto' | 'cdi',
     });
   }
 
@@ -62,6 +63,7 @@ export default function CleanersPage() {
     await updateCleanerHourlyRateDB(id, Number(manageForm.hourlyRate) || 0);
     await updateCleanerCapabilitiesDB(id, { canClean: manageForm.canClean, canDeliver: manageForm.canDeliver });
     await updateCleanerDeliveryRateDB(id, manageForm.canDeliver ? (Number(manageForm.deliveryRate) || 0) : 0);
+    await updateCleanerEmploymentTypeDB(id, manageForm.employmentType);
     if (manageForm.password.trim()) await updateCleanerPasswordDB(id, manageForm.password.trim());
     setManaging(null);
     await load();
@@ -256,6 +258,19 @@ export default function CleanersPage() {
                         <CapabilityToggles canClean={manageForm.canClean} canDeliver={manageForm.canDeliver}
                           onChange={caps => setManageForm(p => ({ ...p, ...caps }))}
                           deliveryRate={manageForm.deliveryRate} onRateChange={v => setManageForm(p => ({ ...p, deliveryRate: v }))} />
+                        {/* Type de contrat — impacte le coût réel (charges patronales sur un CDI). */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Type de contrat</label>
+                          <div className="flex gap-2">
+                            {(['auto', 'cdi'] as const).map(t => (
+                              <button key={t} type="button" onClick={() => setManageForm(p => ({ ...p, employmentType: t }))}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
+                                style={{ borderColor: manageForm.employmentType === t ? '#C9A84C' : '#E8E4DC', backgroundColor: manageForm.employmentType === t ? '#C9A84C12' : '#FFFFFF', color: manageForm.employmentType === t ? '#C9A84C' : '#7A7068' }}>
+                                {t === 'auto' ? 'Auto-entrepreneur' : 'CDI (charges)'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => handleSaveManage(cleaner.id)} disabled={saving || !manageForm.name.trim() || !manageForm.email.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>

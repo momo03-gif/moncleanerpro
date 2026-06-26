@@ -12,6 +12,7 @@ function rowToApartment(a: any): Apartment {
     address: a.address,
     structureType: a.structure_type ?? 'apartment',
     structureLabel: a.structure_label ?? undefined,
+    productCostCents: a.product_cost_cents != null ? Number(a.product_cost_cents) : undefined,
     portalCode: a.code_portail,
     keyboxCode: a.code_boite,
     entryDirectives: a.entry_instructions ?? '',
@@ -58,7 +59,7 @@ export async function createAirbnb(fields: {
   entryDirectives: string; partnerId?: string; partnerName?: string;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
-  structureType?: string; structureLabel?: string;
+  structureType?: string; structureLabel?: string; productCostCents?: number;
 }): Promise<string | null> {
   const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
   const { data, error } = await supabase.from('airbnbs').insert({
@@ -66,6 +67,7 @@ export async function createAirbnb(fields: {
     address: fields.address,
     structure_type: fields.structureType ?? 'apartment',
     structure_label: fields.structureLabel || null,
+    product_cost_cents: fields.productCostCents ?? null,
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
@@ -90,7 +92,7 @@ export async function updateAirbnb(id: string, fields: {
   entryDirectives: string; partnerName?: string;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
-  structureType?: string; structureLabel?: string;
+  structureType?: string; structureLabel?: string; productCostCents?: number;
 }) {
   const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
   const { error } = await supabase.from('airbnbs').update({
@@ -98,6 +100,7 @@ export async function updateAirbnb(id: string, fields: {
     address: fields.address,
     structure_type: fields.structureType ?? 'apartment',
     structure_label: fields.structureLabel || null,
+    product_cost_cents: fields.productCostCents ?? null,
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,

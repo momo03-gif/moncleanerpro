@@ -14,7 +14,7 @@ const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
-  structureType: 'apartment', structureLabel: '',
+  structureType: 'apartment', structureLabel: '', productCostCents: '',
 };
 type FormState = typeof emptyForm;
 
@@ -24,6 +24,7 @@ function aptToForm(a: Apartment): FormState {
     address: a.address ?? '',
     structureType: a.structureType ?? 'apartment',
     structureLabel: a.structureLabel ?? '',
+    productCostCents: a.productCostCents != null ? String(a.productCostCents) : '',
     partnerName: a.partnerName ?? '',
     portalCode: a.portalCode ?? '',
     keyboxCode: a.keyboxCode ?? '',
@@ -92,6 +93,7 @@ export default function AirbnbPage() {
       address: form.address,
       structureType: form.structureType || 'apartment',
       structureLabel: form.structureType === 'other' ? (form.structureLabel || undefined) : undefined,
+      productCostCents: form.productCostCents ? Number(form.productCostCents) : undefined,
       partnerName: form.partnerName || undefined,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
@@ -247,6 +249,12 @@ export default function AirbnbPage() {
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Notes particulières — optionnel</label>
               <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                 placeholder="Animaux, parking, fragilités..." className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Coût produits par ménage (centimes) — optionnel</label>
+              <input type="number" min="0" value={form.productCostCents} onChange={e => setForm(p => ({ ...p, productCostCents: e.target.value }))}
+                placeholder="Laisser vide = coût global défini dans Rentabilité" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
             </div>
           </div>

@@ -79,6 +79,12 @@ export async function updateCleanerDeliveryRateDB(id: string, deliveryRate: numb
   await supabase.from('cleaners').update({ delivery_rate: deliveryRate }).eq('id', id);
 }
 
+// Type de contrat du cleaner (admin) : 'auto' (auto-entrepreneur) ou 'cdi' (charges
+// patronales en sus). Impacte le coût réel dans le calcul de rentabilité.
+export async function updateCleanerEmploymentTypeDB(id: string, employmentType: 'auto' | 'cdi') {
+  await supabase.from('cleaners').update({ employment_type: employmentType }).eq('id', id);
+}
+
 // Plaque d'immatriculation du véhicule du livreur (pour le paiement du stationnement).
 // Résout users.id → cleaners.id, comme updateCleanerStatusDB.
 export async function updateCleanerLicensePlateDB(userId: string, plate: string): Promise<boolean> {
