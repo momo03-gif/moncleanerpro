@@ -12,9 +12,10 @@ async function call<T>(op: string, args?: Record<string, unknown>): Promise<T> {
 }
 
 // Livreur : enregistre un paiement de stationnement sur sa mission (saisie manuelle).
+// coords = position du livreur, requise pour le contrôle de proximité (≤ 200 m).
 export const recordParkingPaymentClient = (args: {
-  missionId: string; amount?: number; durationMinutes?: number;
-}) => call<{ payment: ParkingPayment | null; error: string | null }>('record', args);
+  missionId: string; amount?: number; durationMinutes?: number; lat?: number; lng?: number;
+}) => call<{ payment: ParkingPayment | null; error: string | null; tooFar?: boolean }>('record', args);
 
 // Livreur/admin : paiements déjà enregistrés pour une mission.
 export const getMissionParkingClient = (missionId: string) =>

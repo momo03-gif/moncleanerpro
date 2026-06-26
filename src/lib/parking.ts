@@ -5,12 +5,13 @@
 
 import { getServerDb } from './serverDb';
 import { getParkingProvider } from './parking/index';
+import { distanceMeters, TRACKING_TOLERANCE_METERS, type GeoPoint } from './geo';
 import type { ParkingPayment } from './types';
 
 const supabase = getServerDb();
 
 const MISSION_SNAPSHOT_SELECT =
-  'id, property_name, address, cleaner_id, cleaner_name, airbnb_id, airbnbs(name, address, latitude, longitude)';
+  'id, property_name, address, address_lat, address_lng, cleaner_id, cleaner_name, airbnb_id, airbnbs(name, address, latitude, longitude)';
 
 const toParkingPayment = (r: any): ParkingPayment => ({
   id: r.id,
@@ -39,11 +40,13 @@ async function missionSnapshot(missionId: string): Promise<{
 }> {
   const { data: m } = await supabase.from('missions').select(MISSION_SNAPSHOT_SELECT).eq('id', missionId).single();
   if (!m) return { address: '', property: '', found: false };
-  const apt = (m as any).airbnbs;
-  const address = apt?.address ?? m.address ?? '';
-  const property = m.property_name ?? apt?.name ?? '';
-  const lat = apt?.latitude != null ? Number(apt.latitude) : undefined;
-  const lng = apt?.longitude != null ? Number(apt.longitude) : undefined;
+  const md = m as any;
+  const apt = md.airbnbs;
+  const address = apt?.address ?? md.address ?? '';
+  const property = md.property_name ?? apt?.name ?? '';
+  // Coordonnées : portées par la mission, sinon par le site lié.
+  const lat = md.address_lat != null ? Number(md.address_lat) : (apt?.latitude != null ? Number(apt.latitude) : undefined);
+  const lng = md.address_lng != null ? Number(md.address_lng) : (apt?.longitude != null ? Number(apt.longitude) : undefined);
   return { address, property, lat, lng, cleanerId: m.cleaner_id ?? undefined, cleanerName: m.cleaner_name ?? undefined, found: true };
 }
 
@@ -60,10 +63,23 @@ export async function createParkingPaymentDB(input: {
   amount?: number;
   durationMinutes?: number;
   cleanerName?: string;
-}): Promise<{ payment: ParkingPayment | null; error: string | null }> {
+  coords?: GeoPoint | null;
+}): Promise<{ payment: ParkingPayment | null; error: string | null; tooFar?: boolean }> {
   const snap = await missionSnapshot(input.missionId);
   if (!snap.found) return { payment: null, error: 'Mission introuvable.' };
   if (!snap.address) return { payment: null, error: 'Adresse de la mission manquante.' };
+
+  // RÈGLE : on ne paie le stationnement qu'À PROXIMITÉ (≤ 200 m) de l'adresse de la
+  // mission. Si l'adresse est géolocalisée, la position du livreur est obligatoire et
+  // vérifiée. (Adresse sans coordonnées → impossible de vérifier : on laisse passer.)
+  if (snap.lat != null && snap.lng != null) {
+    if (!input.coords) {
+      return { payment: null, error: 'Activez la localisation : vous devez être à proximité de l’adresse de la mission pour payer le parking.', tooFar: true };
+    }
+    if (distanceMeters({ lat: snap.lat, lng: snap.lng }, input.coords) > TRACKING_TOLERANCE_METERS) {
+      return { payment: null, error: 'Vous devez être à moins de 200 m de l’adresse de la mission pour payer le parking.', tooFar: true };
+    }
+  }
 
   const provider = getParkingProvider();
   let result;

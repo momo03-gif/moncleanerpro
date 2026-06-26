@@ -54,12 +54,15 @@ export async function createRecurringDB(fields: {
   cleanerId?: string; cleanerName?: string;
   weekdays: number[]; timeFrom?: string; durationMinutes: number; price: number;
   startDate: string; endDate?: string; createdBy?: string;
+  addressLat?: number; addressLng?: number;
 }): Promise<{ error: string | null; generated: number }> {
   const linked = !!fields.airbnbId;
   const { error } = await supabase.from('recurring_missions').insert({
     airbnb_id: fields.airbnbId || null,
     property_name: linked ? null : (fields.propertyName || null),
     address: linked ? null : (fields.address || null),
+    address_lat: fields.addressLat ?? null,
+    address_lng: fields.addressLng ?? null,
     cleaner_id: fields.cleanerId || null,
     cleaner_name: fields.cleanerName || null,
     service: 'cleaning',
@@ -85,12 +88,15 @@ export async function updateRecurringDB(id: string, fields: {
   cleanerId?: string; cleanerName?: string;
   weekdays: number[]; timeFrom?: string; durationMinutes: number; price: number;
   startDate: string; endDate?: string;
+  addressLat?: number; addressLng?: number;
 }): Promise<{ error: string | null; generated: number }> {
   const linked = !!fields.airbnbId;
   const { error } = await supabase.from('recurring_missions').update({
     airbnb_id: fields.airbnbId || null,
     property_name: linked ? null : (fields.propertyName || null),
     address: linked ? null : (fields.address || null),
+    address_lat: fields.addressLat ?? null,
+    address_lng: fields.addressLng ?? null,
     cleaner_id: fields.cleanerId || null,
     cleaner_name: fields.cleanerName || null,
     weekdays: fields.weekdays,
@@ -151,6 +157,8 @@ export async function generateRecurringMissions(horizonDays = 60): Promise<{ cre
       airbnb_id: r.airbnb_id || null,
       property_name: linked ? null : (r.property_name || null),
       address: linked ? null : (r.address || null),
+      address_lat: r.address_lat ?? null,
+      address_lng: r.address_lng ?? null,
       date_from: d,
       time_from: r.time_from || null,
       mission_duration_minutes: minutes,

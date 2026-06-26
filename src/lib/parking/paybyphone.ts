@@ -1,25 +1,88 @@
-// Fournisseur PayByPhone — STUB (non branché).
+// Fournisseur PayByPhone — intégration pilotée par variables d'environnement.
 // ────────────────────────────────────────────────────────────────────────────────
-// Le branchement réel est volontairement reporté (décision métier : attendre un
-// premier client qui en a besoin). Ce fichier matérialise le point d'extension :
-// le jour venu, il suffira d'implémenter `createPayment` avec l'API PayByPhone
-// Business (clés API à obtenir auprès de leur service commercial B2B) puis de
-// définir la variable d'env PARKING_PROVIDER=paybyphone. Rien d'autre à changer.
+// PRÉREQUIS pour activer (à obtenir auprès de PayByPhone *Business* / service B2B ;
+// un compte grand public ne suffit PAS) :
+//   PARKING_PROVIDER=paybyphone
+//   PAYBYPHONE_TOKEN_URL      (endpoint OAuth2 client_credentials)
+//   PAYBYPHONE_CLIENT_ID
+//   PAYBYPHONE_CLIENT_SECRET
+//   PAYBYPHONE_SESSIONS_URL   (endpoint de création de session de stationnement)
+//   PAYBYPHONE_SCOPE          (facultatif)
+//   PAYBYPHONE_ACCOUNT_ID     (facultatif — compte flotte)
+//   PAYBYPHONE_LOCATION_ID    (facultatif — zone/parcmètre)
 //
-// Pistes d'implémentation future (à confirmer avec la doc PayByPhone B2B) :
-//   1. Authentifier le compte flotte (OAuth client_credentials).
-//   2. Démarrer une session de stationnement pour la plaque + zone + durée.
-//   3. Renvoyer { status: 'pending'|'paid', providerRef: <sessionId> }.
-//   4. Confirmer le statut via webhook ou polling getStatus().
+// Aucune URL n'est codée en dur (elles dépendent du contrat d'API PayByPhone) : on
+// se branche sur un flux OAuth2 + REST standard. Le format exact du corps de session
+// est à confirmer avec leur documentation et s'ajuste dans `buildSessionPayload`.
+// Tant que les variables ne sont pas définies, ce provider échoue proprement et l'app
+// reste sur la saisie manuelle (PARKING_PROVIDER=manual par défaut).
 
 import type { ParkingProvider, ParkingSessionInput, ParkingSessionResult } from './types';
+import type { ParkingStatus } from '../types';
+
+const env = (k: string): string | undefined => process.env[k] || undefined;
+
+async function getAccessToken(): Promise<string> {
+  const tokenUrl = env('PAYBYPHONE_TOKEN_URL');
+  const clientId = env('PAYBYPHONE_CLIENT_ID');
+  const clientSecret = env('PAYBYPHONE_CLIENT_SECRET');
+  if (!tokenUrl || !clientId || !clientSecret) {
+    throw new Error('PayByPhone non configuré (PAYBYPHONE_TOKEN_URL / CLIENT_ID / CLIENT_SECRET manquants).');
+  }
+  const body = new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecret });
+  const scope = env('PAYBYPHONE_SCOPE');
+  if (scope) body.set('scope', scope);
+
+  const res = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  if (!res.ok) throw new Error(`PayByPhone OAuth ${res.status}`);
+  const data = await res.json().catch(() => ({}));
+  if (!data.access_token) throw new Error('PayByPhone OAuth : access_token absent.');
+  return data.access_token as string;
+}
+
+// Corps de la requête de session — à aligner sur la doc PayByPhone Business.
+function buildSessionPayload(input: ParkingSessionInput): Record<string, unknown> {
+  return {
+    address: input.address,
+    latitude: input.lat,
+    longitude: input.lng,
+    amount: input.amount,
+    currency: 'EUR',
+    durationMinutes: input.durationMinutes,
+    accountId: env('PAYBYPHONE_ACCOUNT_ID'),
+    locationId: env('PAYBYPHONE_LOCATION_ID'),
+  };
+}
 
 export const payByPhoneProvider: ParkingProvider = {
   id: 'paybyphone',
-  async createPayment(_input: ParkingSessionInput): Promise<ParkingSessionResult> {
-    throw new Error(
-      "Fournisseur PayByPhone non configuré. Définissez l'intégration API avant " +
-      "PARKING_PROVIDER=paybyphone, ou utilisez la saisie manuelle (PARKING_PROVIDER=manual).",
-    );
+  async createPayment(input: ParkingSessionInput): Promise<ParkingSessionResult> {
+    const sessionsUrl = env('PAYBYPHONE_SESSIONS_URL');
+    if (!sessionsUrl) throw new Error('PayByPhone non configuré (PAYBYPHONE_SESSIONS_URL manquant).');
+
+    const token = await getAccessToken();
+    const res = await fetch(sessionsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(buildSessionPayload(input)),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`PayByPhone session ${res.status}${data?.message ? ` : ${data.message}` : ''}`);
+
+    // Parsing défensif (les noms de champs dépendent de l'API) : on récupère un id de
+    // session et un statut, avec des valeurs de repli raisonnables.
+    const ref = data.id ?? data.sessionId ?? data.parkingSessionId;
+    const paid = data.status === 'paid' || data.state === 'active' || data.confirmed === true;
+    const status: ParkingStatus = paid ? 'paid' : 'pending';
+    return {
+      status,
+      providerRef: ref != null ? String(ref) : undefined,
+      redirectUrl: data.redirectUrl ?? data.paymentUrl,
+      metadata: data && typeof data === 'object' ? data : undefined,
+    };
   },
 };

@@ -38,8 +38,11 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Montant invalide.' }, { status: 400 });
         }
         const durationMinutes = args.durationMinutes != null ? Math.round(Number(args.durationMinutes)) : undefined;
+        // Position du livreur (contrôle de proximité 200 m côté createParkingPaymentDB).
+        const coords = (typeof args.lat === 'number' && typeof args.lng === 'number')
+          ? { lat: args.lat, lng: args.lng } : null;
         return NextResponse.json(await createParkingPaymentDB({
-          missionId: args.missionId, amount, durationMinutes, cleanerName: session.name,
+          missionId: args.missionId, amount, durationMinutes, cleanerName: session.name, coords,
         }));
       }
       case 'mission': {

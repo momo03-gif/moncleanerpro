@@ -10,6 +10,7 @@ import {
   updateMissionsOrderDB, createAppointmentDB, getAssignableStaffDB, createOneShotMissionDB,
 } from '@/lib/db';
 import { listRecurringDB, createRecurringDB, updateRecurringDB, setRecurringActiveDB, deleteRecurringDB, generateRecurringMissions } from '@/lib/recurring';
+import { geocodeAddress } from '@/lib/zones';
 import type { RecurringMission } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -891,6 +892,20 @@ export default function MissionsPage() {
     await load(); setTab('Missions');
   }
 
+  // Coordonnées de l'adresse cible : celles du site sélectionné, sinon géocodage de
+  // l'adresse libre. Sert au contrôle de proximité (démarrage / parking).
+  async function resolveCoords(siteId: string, address: string): Promise<{ lat?: number; lng?: number }> {
+    if (siteId) {
+      const a = airbnbs.find(x => x.id === siteId);
+      if (a?.latitude != null && a?.longitude != null) return { lat: a.latitude, lng: a.longitude };
+    }
+    if (address && address.trim()) {
+      const g = await geocodeAddress(address);
+      if (g) return { lat: g.lat, lng: g.lon };
+    }
+    return {};
+  }
+
   // ── Intervention ponctuelle (one-shot) ──
   function selectOsSite(id: string) {
     const a = airbnbs.find(x => x.id === id);
@@ -907,10 +922,12 @@ export default function MissionsPage() {
     if (!osForm.property.trim() || !osForm.date) { setOsError('Nom du site et date requis.'); return; }
     setOsBusy(true); setOsError('');
     const chosen = cleaners.filter(c => osCleaners.has(c.id)).map(c => ({ id: c.id, name: c.name, hourlyRate: c.hourly_rate }));
+    const coords = await resolveCoords(osForm.siteId, osForm.address);
     const res = await createOneShotMissionDB({
       propertyName: osForm.property.trim(), address: osForm.address, date: osForm.date, time: osForm.time,
       durationMinutes: Number(osForm.durationMinutes) || 0, price: Number(osForm.price) || 0,
-      instructions: osForm.instructions, cleaners: chosen, createdBy: user?.id,
+      instructions: osForm.instructions, addressLat: coords.lat, addressLng: coords.lng,
+      cleaners: chosen, createdBy: user?.id,
     });
     setOsBusy(false);
     if (res.error) { setOsError(res.error); return; }
@@ -962,6 +979,7 @@ export default function MissionsPage() {
     }
     setRecBusy(true); setRecError('');
     const c = cleaners.find(x => x.id === recForm.cleanerId);
+    const coords = await resolveCoords(recForm.siteId, recForm.address);
     const payload = {
       airbnbId: recForm.siteId || undefined,
       propertyName: recForm.property.trim(), address: recForm.address,
@@ -969,6 +987,7 @@ export default function MissionsPage() {
       weekdays: Array.from(recWeekdays).sort((x, y) => x - y), timeFrom: recForm.time,
       durationMinutes: Number(recForm.durationMinutes) || 60, price: Number(recForm.price) || 0,
       startDate: recForm.startDate, endDate: recForm.endDate || undefined,
+      addressLat: coords.lat, addressLng: coords.lng,
     };
     const res = editingRecId
       ? await updateRecurringDB(editingRecId, payload)
@@ -1085,6 +1104,7 @@ export default function MissionsPage() {
     setCreateError('');
     // Une mission = ménage OU livraison, un seul assigné.
     const c = cleaners.find(x => x.id === form.cleanerId);
+    const coords = await resolveCoords(form.airbnbId, form.address);
     const result = await createMissionDB({
       ...common, type, service: form.service,
       deliveryInstructions: form.service === 'delivery' ? form.deliveryInstructions : undefined,
@@ -1092,6 +1112,7 @@ export default function MissionsPage() {
       cleanerHourlyRate: c?.hourly_rate ?? 0,
       cleanerDeliveryRate: c?.delivery_rate ?? 0,
       cleanerId: form.cleanerId || undefined, cleanerName: c?.name,
+      addressLat: coords.lat, addressLng: coords.lng,
       // Livraison : jamais facturée au client → prix 0.
       price: form.service === 'delivery' ? 0 : (Number(form.price) || 0),
     });

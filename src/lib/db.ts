@@ -301,6 +301,7 @@ export async function createMissionDB(fields: {
   airbnbId?: string; partnerId?: string;
   nextArrival?: string; nextArrivalTime?: string;
   service?: MissionService; deliveryInstructions?: string;
+  addressLat?: number; addressLng?: number;
   createdBy?: string; createdByRole?: string;
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
@@ -329,6 +330,10 @@ export async function createMissionDB(fields: {
     created_by_role: fields.createdByRole || 'admin',
     property_name: linked ? null : fields.propertyName,
     address: linked ? null : fields.address,
+    // Coordonnées de l'adresse cible (proximité). Pour une mission liée à un site, le
+    // fallback sur airbnbs suffit ; pour une adresse libre, on stocke le géocodage.
+    address_lat: fields.addressLat ?? null,
+    address_lng: fields.addressLng ?? null,
     date_from: fields.dateFrom,
     time_from: fields.timeFrom || null,
     time_to: fields.timeTo || null,
@@ -367,6 +372,7 @@ export async function createOneShotMissionDB(fields: {
   type?: string; source?: string;
   date: string; time?: string;
   durationMinutes: number; price: number; instructions?: string;
+  addressLat?: number; addressLng?: number;
   cleaners: { id: string; name: string; hourlyRate?: number }[];
   createdBy?: string;
 }): Promise<{ error: string | null; count: number }> {
@@ -381,6 +387,8 @@ export async function createOneShotMissionDB(fields: {
     service: 'cleaning' as const,
     property_name: fields.propertyName,
     address: fields.address || null,
+    address_lat: fields.addressLat ?? null,
+    address_lng: fields.addressLng ?? null,
     date_from: fields.date,
     time_from: fields.time || null,
     instructions: fields.instructions || null,
@@ -685,12 +693,19 @@ export async function resolveExtraTimeDB(
 // missions hôtel (pas de géocodage) ou un appartement non géolocalisé.
 async function missionAddressCoords(missionId: string): Promise<{ service?: string; coords: GeoPoint | null }> {
   const { data } = await supabase.from('missions')
-    .select('service, airbnbs(latitude, longitude)').eq('id', missionId).single();
-  const apt = (data as any)?.airbnbs;
-  const coords = apt && apt.latitude != null && apt.longitude != null
-    ? { lat: Number(apt.latitude), lng: Number(apt.longitude) }
+    .select('service, address_lat, address_lng, airbnbs(latitude, longitude)').eq('id', missionId).single();
+  const d = data as any;
+  // Priorité aux coordonnées portées par la mission elle-même ; à défaut, le site lié.
+  let coords: GeoPoint | null = d?.address_lat != null && d?.address_lng != null
+    ? { lat: Number(d.address_lat), lng: Number(d.address_lng) }
     : null;
-  return { service: (data as any)?.service, coords };
+  if (!coords) {
+    const apt = d?.airbnbs;
+    coords = apt && apt.latitude != null && apt.longitude != null
+      ? { lat: Number(apt.latitude), lng: Number(apt.longitude) }
+      : null;
+  }
+  return { service: d?.service, coords };
 }
 
 export async function startMissionDB(
@@ -749,16 +764,19 @@ export async function finishMissionDB(
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
 
   const { data: m } = await supabase.from('missions')
-    .select('started_at, start_lat, start_lng, cleaner_id, status, service, airbnbs(latitude, longitude)')
+    .select('started_at, start_lat, start_lng, cleaner_id, status, service, address_lat, address_lng, airbnbs(latitude, longitude)')
     .eq('id', missionId).single();
   if (!m || m.cleaner_id !== cleanerTableId) return { error: 'Mission introuvable.' };
   if (m.status === 'done' || m.status === 'cancelled') return { error: 'Mission déjà clôturée.' };
 
   // Contrôle GPS (ménage uniquement). En priorité contre l'ADRESSE de la mission
-  // (≤ 200 m) ; à défaut de coordonnées d'adresse, on retombe sur début ↔ fin.
-  const apt = (m as any)?.airbnbs;
-  const addr = apt && apt.latitude != null && apt.longitude != null
-    ? { lat: Number(apt.latitude), lng: Number(apt.longitude) } : null;
+  // (≤ 200 m) — coords portées par la mission, sinon par le site lié ; à défaut, début ↔ fin.
+  const md = m as any;
+  const apt = md?.airbnbs;
+  const addr = md?.address_lat != null && md?.address_lng != null
+    ? { lat: Number(md.address_lat), lng: Number(md.address_lng) }
+    : (apt && apt.latitude != null && apt.longitude != null
+        ? { lat: Number(apt.latitude), lng: Number(apt.longitude) } : null);
   if ((m as any).service !== 'delivery') {
     if (addr) {
       if (!coords) return { error: GPS_REQUIRED_ERROR };

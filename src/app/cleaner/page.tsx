@@ -150,7 +150,9 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     const amt = parseFloat(parkingAmount.replace(',', '.'));
     if (!Number.isFinite(amt) || amt <= 0) { setParkingError('Montant invalide.'); setParkingBusy(false); return; }
     const dur = parkingDuration ? parseInt(parkingDuration, 10) : undefined;
-    const res = await recordParkingPaymentClient({ missionId: mission.id, amount: amt, durationMinutes: dur });
+    // Position du livreur : on ne peut payer qu'à proximité (≤ 200 m) de l'adresse mission.
+    const pos = await getApproxPosition();
+    const res = await recordParkingPaymentClient({ missionId: mission.id, amount: amt, durationMinutes: dur, lat: pos?.lat, lng: pos?.lng });
     setParkingBusy(false);
     if (res.error || !res.payment) { setParkingError(res.error || "Échec de l'enregistrement."); return; }
     setParkingPayments(prev => [res.payment as ParkingPayment, ...prev]);
