@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, markDeliveredDB, requestExtraTimeDB, withdrawMissionDB } from '@/lib/db';
-import { recordParkingPaymentClient, getMissionParkingClient } from '@/lib/parkingApi';
+import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
 import { supabase } from '@/lib/supabase';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
@@ -73,6 +73,8 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   const [parkingBusy, setParkingBusy] = useState(false);
   const [parkingError, setParkingError] = useState('');
   const [parkingPayments, setParkingPayments] = useState<ParkingPayment[]>([]);
+  // Tarif calculé par le fournisseur pour la durée (null = saisie manuelle du montant).
+  const [parkingQuote, setParkingQuote] = useState<number | null>(null);
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   // Livraison : pas de pointage ni GPS, juste un bouton « Livré ».
   const isDelivery = mission.service === 'delivery';
@@ -145,18 +147,33 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     getMissionParkingClient(mission.id).then(rows => { if (Array.isArray(rows)) setParkingPayments(rows); });
   }, [mission.id, hasDelivery]);
 
+  // Récupère le tarif calculé pour la durée (si le fournisseur tarife). Sinon null →
+  // le livreur saisit le montant lui-même.
+  async function refreshParkingQuote(durationStr: string) {
+    const dur = parseInt(durationStr, 10);
+    if (!Number.isFinite(dur) || dur <= 0) { setParkingQuote(null); return; }
+    const res = await quoteParkingClient(mission.id, dur);
+    setParkingQuote(res?.quote?.amount ?? null);
+  }
+
   async function payParking() {
     setParkingBusy(true); setParkingError('');
-    const amt = parseFloat(parkingAmount.replace(',', '.'));
-    if (!Number.isFinite(amt) || amt <= 0) { setParkingError('Montant invalide.'); setParkingBusy(false); return; }
     const dur = parkingDuration ? parseInt(parkingDuration, 10) : undefined;
+    // Montant : tarif fournisseur s'il existe, sinon saisie manuelle du livreur.
+    let amt: number;
+    if (parkingQuote != null) {
+      amt = parkingQuote;
+    } else {
+      amt = parseFloat(parkingAmount.replace(',', '.'));
+      if (!Number.isFinite(amt) || amt <= 0) { setParkingError('Montant invalide.'); setParkingBusy(false); return; }
+    }
     // Position du livreur : on ne peut payer qu'à proximité (≤ 200 m) de l'adresse mission.
     const pos = await getApproxPosition();
     const res = await recordParkingPaymentClient({ missionId: mission.id, amount: amt, durationMinutes: dur, lat: pos?.lat, lng: pos?.lng });
     setParkingBusy(false);
     if (res.error || !res.payment) { setParkingError(res.error || "Échec de l'enregistrement."); return; }
     setParkingPayments(prev => [res.payment as ParkingPayment, ...prev]);
-    setParkingOpen(false); setParkingAmount(''); setParkingDuration('');
+    setParkingOpen(false); setParkingAmount(''); setParkingDuration(''); setParkingQuote(null);
   }
 
   const extraStatus = mission.extraTimeStatus;
@@ -383,22 +400,37 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
           ) : (
             <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
               <p className="text-[11px]" style={{ color: '#7A7068' }}>
-                Montant du stationnement payé pour cette livraison.
+                {parkingQuote != null
+                  ? 'Choisissez la durée — le tarif est calculé automatiquement.'
+                  : 'Montant du stationnement payé pour cette livraison.'}
               </p>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Montant (€)</label>
-                  <input value={parkingAmount} onChange={e => setParkingAmount(e.target.value)}
-                    inputMode="decimal" placeholder="2,50"
+                  <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Durée (min{parkingQuote != null ? '' : ', fac.'})</label>
+                  <input value={parkingDuration}
+                    onChange={e => { setParkingDuration(e.target.value); refreshParkingQuote(e.target.value); }}
+                    inputMode="numeric" placeholder="30"
                     className="w-full px-3 py-2 rounded-lg text-sm border"
                     style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Durée (min, fac.)</label>
-                  <input value={parkingDuration} onChange={e => setParkingDuration(e.target.value)}
-                    inputMode="numeric" placeholder="30"
-                    className="w-full px-3 py-2 rounded-lg text-sm border"
-                    style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+                  {parkingQuote != null ? (
+                    <>
+                      <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Tarif</label>
+                      <div className="w-full px-3 py-2 rounded-lg text-sm border font-semibold"
+                        style={{ borderColor: '#E8E4DC', backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
+                        {parkingQuote.toFixed(2)} €
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Montant (€)</label>
+                      <input value={parkingAmount} onChange={e => setParkingAmount(e.target.value)}
+                        inputMode="decimal" placeholder="2,50"
+                        className="w-full px-3 py-2 rounded-lg text-sm border"
+                        style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+                    </>
+                  )}
                 </div>
               </div>
               {parkingError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{parkingError}</p>}

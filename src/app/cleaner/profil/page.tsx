@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, updateCleanerAvailableDaysDB } from '@/lib/db';
+import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, updateCleanerAvailableDaysDB, updateCleanerLicensePlateDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { serviceParts } from '@/lib/service';
@@ -37,6 +37,9 @@ export default function CleanerProfil() {
   const [daysSaving, setDaysSaving] = useState(false);
   const [daysSaved, setDaysSaved] = useState(false);
   const [availDays, setAvailDays] = useState<string[]>(DEFAULT_DAYS);
+  const [plate, setPlate] = useState('');
+  const [plateSaving, setPlateSaving] = useState(false);
+  const [plateSaved, setPlateSaved] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,9 +47,17 @@ export default function CleanerProfil() {
       setMissions(m);
       setCleanerRow(c);
       if (c?.available_days?.length) setAvailDays(c.available_days);
+      if (c?.license_plate) setPlate(c.license_plate);
       setLoading(false);
     });
   }, [user]);
+
+  async function savePlate() {
+    setPlateSaving(true);
+    const ok = await updateCleanerLicensePlateDB(user!.id, plate);
+    setPlateSaving(false);
+    if (ok) setPlateSaved(true);
+  }
 
   if (!user) return null;
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
@@ -186,6 +197,31 @@ export default function CleanerProfil() {
           {daysSaving ? 'Enregistrement...' : daysSaved ? '✓ Enregistré' : 'Enregistrer mes disponibilités'}
         </button>
       </div>
+
+      {/* ── Mon véhicule (livreur) — plaque pour le paiement du stationnement */}
+      {(cleanerRow?.can_deliver ?? false) && (
+        <div className="rounded-2xl p-5 border mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <h3 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Mon véhicule</h3>
+          <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>
+            Plaque d'immatriculation — nécessaire pour payer le stationnement pendant une livraison.
+          </p>
+          <input
+            value={plate}
+            onChange={e => { setPlate(e.target.value.toUpperCase()); setPlateSaved(false); }}
+            placeholder="AB-123-CD"
+            className="w-full px-4 py-3 rounded-xl text-sm border mb-3 font-mono tracking-wide"
+            style={{ borderColor: '#E8E4DC', backgroundColor: '#FAFAF8', color: '#1A1A1A', outline: 'none' }}
+          />
+          <button
+            onClick={savePlate}
+            disabled={plateSaving}
+            className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+            style={{ backgroundColor: plateSaved ? '#5A8A6A' : '#C9A84C', color: plateSaved ? '#FFFFFF' : '#1A1A1A' }}
+          >
+            {plateSaving ? 'Enregistrement...' : plateSaved ? '✓ Enregistré' : 'Enregistrer mon véhicule'}
+          </button>
+        </div>
+      )}
 
       {/* ── Historique récent */}
       <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>

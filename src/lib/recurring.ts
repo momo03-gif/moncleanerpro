@@ -117,7 +117,9 @@ export async function updateRecurringDB(id: string, fields: {
 
 // Matérialise les missions des plannings actifs sur un horizon glissant. Idempotent :
 // dédoublonne via (recurring_id, date_from) → jamais de doublon si le cron repasse.
-export async function generateRecurringMissions(horizonDays = 60): Promise<{ created: number }> {
+// Horizon glissant : on matérialise ~6 mois à l'avance (sans date de fin, le planning
+// est perpétuel — le cron repousse l'horizon chaque jour). Dédoublonnage garanti.
+export async function generateRecurringMissions(horizonDays = 180): Promise<{ created: number }> {
   const today = parisToday();
   const horizon = addDaysStr(today, horizonDays);
 

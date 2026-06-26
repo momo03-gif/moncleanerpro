@@ -21,6 +21,10 @@ export const recordParkingPaymentClient = (args: {
 export const getMissionParkingClient = (missionId: string) =>
   call<ParkingPayment[]>('mission', { missionId });
 
+// Devis : prix calculé pour une durée selon le tarif du fournisseur (null = saisie manuelle).
+export const quoteParkingClient = (missionId: string, durationMinutes: number) =>
+  call<{ quote: { amount: number; currency: string } | null }>('quote', { missionId, durationMinutes });
+
 // Admin : historique global (filtres période / livreur facultatifs).
 export const listParkingPaymentsClient = (filters?: { from?: string; to?: string; cleanerId?: string }) =>
   call<ParkingPayment[]>('list', filters);

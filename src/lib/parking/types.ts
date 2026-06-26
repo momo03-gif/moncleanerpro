@@ -13,19 +13,32 @@ export interface ParkingSessionInput {
   lng?: number;
   amount?: number;          // montant en euros (saisie manuelle pour 'manual')
   durationMinutes?: number; // durée payée (facultatif)
+  licensePlate?: string;    // plaque du véhicule du livreur (requise par PayByPhone)
 }
 
 // Résultat normalisé renvoyé par un fournisseur, indépendant de l'API sous-jacente.
 export interface ParkingSessionResult {
   status: ParkingStatus;
+  amount?: number;        // montant RÉELLEMENT facturé (tarif fournisseur) — fait foi
+  currency?: string;
   providerRef?: string;   // id de transaction externe (API future)
   redirectUrl?: string;   // si le fournisseur exige une redirection (API future)
   metadata?: Record<string, unknown>;
 }
 
+// Devis : prix calculé pour une durée selon le tarif du fournisseur (ex. PayByPhone :
+// 20 min = 1 €). Renvoie null si le fournisseur ne tarife pas (saisie manuelle).
+export interface ParkingQuote {
+  amount: number;
+  currency: string;
+}
+
 export interface ParkingProvider {
   readonly id: ParkingProviderId;
   // Crée/enregistre un paiement. Pour 'manual', renvoie immédiatement 'paid'.
-  // Pour une API future, peut renvoyer 'pending' + providerRef/redirectUrl.
+  // Pour une API (PayByPhone), démarre une session et renvoie le montant facturé.
   createPayment(input: ParkingSessionInput): Promise<ParkingSessionResult>;
+  // Calcule le prix d'une durée selon le tarif du fournisseur. null = pas de tarif
+  // automatique (le livreur saisit le montant lui-même).
+  quote?(input: ParkingSessionInput): Promise<ParkingQuote | null>;
 }

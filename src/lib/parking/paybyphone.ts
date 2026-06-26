@@ -17,7 +17,7 @@
 // Tant que les variables ne sont pas définies, ce provider échoue proprement et l'app
 // reste sur la saisie manuelle (PARKING_PROVIDER=manual par défaut).
 
-import type { ParkingProvider, ParkingSessionInput, ParkingSessionResult } from './types';
+import type { ParkingProvider, ParkingSessionInput, ParkingSessionResult, ParkingQuote } from './types';
 import type { ParkingStatus } from '../types';
 
 const env = (k: string): string | undefined => process.env[k] || undefined;
@@ -53,16 +53,43 @@ function buildSessionPayload(input: ParkingSessionInput): Record<string, unknown
     amount: input.amount,
     currency: 'EUR',
     durationMinutes: input.durationMinutes,
+    // Plaque du véhicule : une session PayByPhone y est obligatoirement rattachée.
+    licensePlate: input.licensePlate,
     accountId: env('PAYBYPHONE_ACCOUNT_ID'),
     locationId: env('PAYBYPHONE_LOCATION_ID'),
   };
 }
 
+// Extrait un montant d'une réponse, quel que soit le nom du champ.
+function pickAmount(data: any): number | undefined {
+  const v = data?.amount ?? data?.totalAmount ?? data?.cost ?? data?.fee ?? data?.price;
+  return v != null && Number.isFinite(Number(v)) ? Number(v) : undefined;
+}
+
 export const payByPhoneProvider: ParkingProvider = {
   id: 'paybyphone',
+  // Tarif PayByPhone : prix calculé pour une durée/zone (« 20 min = 1 € » provient de
+  // LEUR tarif, pas d'un calcul maison). Endpoint dédié si disponible (PAYBYPHONE_QUOTE_URL).
+  async quote(input: ParkingSessionInput): Promise<ParkingQuote | null> {
+    const quoteUrl = env('PAYBYPHONE_QUOTE_URL');
+    if (!quoteUrl || !input.durationMinutes) return null;
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(quoteUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(buildSessionPayload(input)),
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => ({}));
+      const amount = pickAmount(data);
+      return amount != null ? { amount, currency: data.currency ?? 'EUR' } : null;
+    } catch { return null; }
+  },
   async createPayment(input: ParkingSessionInput): Promise<ParkingSessionResult> {
     const sessionsUrl = env('PAYBYPHONE_SESSIONS_URL');
     if (!sessionsUrl) throw new Error('PayByPhone non configuré (PAYBYPHONE_SESSIONS_URL manquant).');
+    if (!input.licensePlate) throw new Error('Plaque d’immatriculation requise : renseignez le véhicule du livreur dans son profil.');
 
     const token = await getAccessToken();
     const res = await fetch(sessionsUrl, {
@@ -73,13 +100,15 @@ export const payByPhoneProvider: ParkingProvider = {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`PayByPhone session ${res.status}${data?.message ? ` : ${data.message}` : ''}`);
 
-    // Parsing défensif (les noms de champs dépendent de l'API) : on récupère un id de
-    // session et un statut, avec des valeurs de repli raisonnables.
+    // Parsing défensif (les noms de champs dépendent de l'API) : id de session, statut,
+    // et surtout le MONTANT réellement facturé par PayByPhone (fait foi).
     const ref = data.id ?? data.sessionId ?? data.parkingSessionId;
     const paid = data.status === 'paid' || data.state === 'active' || data.confirmed === true;
     const status: ParkingStatus = paid ? 'paid' : 'pending';
     return {
       status,
+      amount: pickAmount(data),
+      currency: data.currency ?? 'EUR',
       providerRef: ref != null ? String(ref) : undefined,
       redirectUrl: data.redirectUrl ?? data.paymentUrl,
       metadata: data && typeof data === 'object' ? data : undefined,

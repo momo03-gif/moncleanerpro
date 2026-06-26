@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import {
-  createParkingPaymentDB, getMissionParkingDB, getParkingPaymentsDB, getMissionCleanerUserId,
+  createParkingPaymentDB, getMissionParkingDB, getParkingPaymentsDB, getMissionCleanerUserId, quoteParkingDB,
 } from '@/lib/parking';
 
 // Paiements de stationnement (table verrouillée RLS) — SERVEUR (service_role).
@@ -51,6 +51,14 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "Cette mission ne vous est pas assignée." }, { status: 403 });
         }
         return NextResponse.json(await getMissionParkingDB(args.missionId));
+      }
+      case 'quote': {
+        if (!args.missionId) return NextResponse.json({ error: 'Mission manquante.' }, { status: 400 });
+        if (!(await assertMissionAccess(args.missionId))) {
+          return NextResponse.json({ error: "Cette mission ne vous est pas assignée." }, { status: 403 });
+        }
+        const duration = args.durationMinutes != null ? Math.round(Number(args.durationMinutes)) : undefined;
+        return NextResponse.json({ quote: await quoteParkingDB(args.missionId, duration) });
       }
       case 'list': {
         if (session.role !== 'admin') return NextResponse.json({ error: 'Accès réservé à l’administrateur.' }, { status: 403 });

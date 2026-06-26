@@ -79,6 +79,16 @@ export async function updateCleanerDeliveryRateDB(id: string, deliveryRate: numb
   await supabase.from('cleaners').update({ delivery_rate: deliveryRate }).eq('id', id);
 }
 
+// Plaque d'immatriculation du véhicule du livreur (pour le paiement du stationnement).
+// Résout users.id → cleaners.id, comme updateCleanerStatusDB.
+export async function updateCleanerLicensePlateDB(userId: string, plate: string): Promise<boolean> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
+  const targetId = cleaner?.id ?? userId;
+  const { error } = await supabase.from('cleaners').update({ license_plate: plate.trim() || null }).eq('id', targetId);
+  if (error) console.warn('updateCleanerLicensePlateDB:', error.message);
+  return !error;
+}
+
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
   try { await postServer('/api/admin/users', { action: 'setCleanerPassword', cleanerId, password: newPassword }); }
   catch (e) { console.error('updateCleanerPasswordDB:', e); }
