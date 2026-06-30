@@ -682,6 +682,38 @@ export async function resolveExtraTimeDB(
   return { error: null };
 }
 
+// Ajout (ou retrait) de temps par l'ADMIN sur une mission — Y COMPRIS déjà terminée.
+// Augmente la durée payée par rapport au temps prévu et recalcule le gain cleaner.
+// Sert à régulariser le temps réellement passé après coup.
+export async function addMissionTimeDB(
+  missionId: string, deltaMinutes: number, actor: MissionActor,
+): Promise<{ error: string | null }> {
+  if (actor.role !== 'admin') return { error: "Action réservée à l'administrateur." };
+  const delta = Math.round(Number(deltaMinutes) || 0);
+  if (delta === 0) return { error: 'Indiquez un nombre de minutes.' };
+
+  const { data: m } = await supabase.from('missions')
+    .select('cleaner_id, service, mission_duration_minutes').eq('id', missionId).single();
+  if (!m) return { error: 'Mission introuvable.' };
+
+  const newMinutes = Math.max(0, (Number(m.mission_duration_minutes) || 0) + delta);
+  const patch: Record<string, unknown> = {
+    mission_duration_minutes: newMinutes,
+    hours_worked: Math.round((newMinutes / 60) * 100) / 100,
+  };
+  if (m.cleaner_id) {
+    const { data: cleaner } = await supabase.from('cleaners')
+      .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).single();
+    const rate = Number(cleaner?.hourly_rate) || 0;
+    const deliveryRate = Number(cleaner?.delivery_rate) || 0;
+    patch.cleaner_gain = computeMissionGain({ service: (m as any).service, hourlyRate: rate, deliveryRate, durationMinutes: newMinutes });
+    patch.cleaner_hourly_rate_snapshot = rate;
+  }
+  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // ── POINTAGE AUTOMATIQUE (début / fin + géolocalisation) ────────────────────────
 // Discret côté cleaner : il ne voit que « Démarrer » / « Terminer ». Le système
 // enregistre l'heure et UNE position à chaque étape (pas de suivi continu), calcule

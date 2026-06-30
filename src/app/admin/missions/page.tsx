@@ -6,7 +6,7 @@ import {
   createMissionDB, createMissionsBatchDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
   updateMissionStatusDB, assignCleanerToMissionDB, assignCleanerToMissionsDB,
-  updateMissionDB, deleteMissionDB, reopenMissionDB, resolveExtraTimeDB,
+  updateMissionDB, deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
   updateMissionsOrderDB, createAppointmentDB, getAssignableStaffDB, createOneShotMissionDB,
 } from '@/lib/db';
 import { listRecurringDB, createRecurringDB, updateRecurringDB, setRecurringActiveDB, deleteRecurringDB, generateRecurringMissions } from '@/lib/recurring';
@@ -261,6 +261,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   const [notesOpen, setNotesOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [addTimeOpen, setAddTimeOpen] = useState(false);
+  const [addTimeVal, setAddTimeVal] = useState('30');
   const [editForm, setEditForm] = useState({
     date: mission.date, time: mission.time,
     durationMinutes: String(mission.missionDurationMinutes ?? 60),
@@ -349,6 +351,18 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     setNewCleaner('');
     onRefresh();
     setBusy(false);
+  }
+
+  async function handleAddTime() {
+    if (!user) return;
+    const delta = Math.round(Number(addTimeVal) || 0);
+    if (!delta) { setActionError('Indiquez un nombre de minutes.'); return; }
+    setBusy(true); setActionError('');
+    const res = await addMissionTimeDB(mission.id, delta, { id: user.id, role: 'admin' });
+    setBusy(false);
+    if (res.error) { setActionError(res.error); return; }
+    setAddTimeOpen(false); setAddTimeVal('30');
+    onRefresh();
   }
 
   async function resolveExtra(approve: boolean) {
@@ -776,6 +790,46 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                 </button>
               )}
             </div>
+
+            {/* Ajouter du temps — possible même sur une mission TERMINÉE (régularise la
+                durée payée par rapport au temps prévu, recalcule le gain cleaner). */}
+            {mission.status !== 'cancelled' && (
+              addTimeOpen ? (
+                <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+                  <p className="text-[11px]" style={{ color: '#7A7068' }}>
+                    Temps prévu actuel : <b>{formatDuration(mission.missionDurationMinutes)}</b>. Ajoutez le temps réellement passé en plus.
+                  </p>
+                  <div className="flex gap-1.5">
+                    {[15, 30, 45, 60].map(opt => (
+                      <button key={opt} type="button" onClick={() => setAddTimeVal(String(opt))}
+                        className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+                        style={{ backgroundColor: addTimeVal === String(opt) ? '#C9A84C' : '#FFFFFF', color: addTimeVal === String(opt) ? '#1A1A1A' : '#7A7068', border: '1px solid #E8E4DC' }}>
+                        +{opt}
+                      </button>
+                    ))}
+                    <input type="number" value={addTimeVal} onChange={e => setAddTimeVal(e.target.value)}
+                      className="w-16 px-2 py-2 rounded-lg text-xs border text-center" style={inputStyle} title="minutes" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleAddTime} disabled={busy}
+                      className="flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                      style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                      {busy ? '...' : `Ajouter ${Math.round(Number(addTimeVal) || 0)} min`}
+                    </button>
+                    <button onClick={() => { setAddTimeOpen(false); setActionError(''); }} disabled={busy}
+                      className="px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setAddTimeOpen(true)} disabled={busy}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  ⏱ Ajouter du temps{mission.status === 'completed' ? ' (mission terminée)' : ''}
+                </button>
+              )
+            )}
 
             {/* Modifier / Supprimer (créateur = admin ici) */}
             <div className="flex gap-2">
