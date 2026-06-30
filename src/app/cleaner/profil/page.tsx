@@ -6,6 +6,7 @@ import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, upd
 import type { Mission } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { serviceParts } from '@/lib/service';
+import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
 import MotivationPanel from './MotivationPanel';
 import Loading from "@/components/Loading";
@@ -64,7 +65,12 @@ export default function CleanerProfil() {
 
   const month = currentMonth();
   const completed = missions.filter(m => m.status === 'completed');
-  const hotelHoursMonth = completed.filter(m => m.source === 'hotel' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
+  // Heures à payer ce mois = somme des durées (temps accordé, ajustements admin inclus)
+  // des ménages terminés du mois. Les livraisons (payées au forfait) sont comptées à part.
+  const payableHoursMonth = Math.round(
+    completed.filter(m => m.date.startsWith(month) && serviceParts(m.service).cleaning)
+      .reduce((s, m) => s + (m.duration || 0), 0) * 10,
+  ) / 10;
   const completedMonth = completed.filter(m => m.date.startsWith(month)).length;
   // Nombre de livraisons effectuées ce mois (aucun montant affiché côté cleaner).
   const deliveriesMonth = completed.filter(m => m.date.startsWith(month) && serviceParts(m.service).delivery).length;
@@ -116,7 +122,7 @@ export default function CleanerProfil() {
 
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Heures hôtel', value: `${hotelHoursMonth}h`, gold: true, sub: 'ce mois' },
+            { label: 'Heures à payer', value: `${payableHoursMonth}h`, gold: true, sub: 'ce mois' },
             { label: 'Missions',     value: completedMonth,         gold: false, sub: 'ce mois' },
             ...(showDeliveries ? [{ label: 'Livraisons', value: deliveriesMonth, gold: false, sub: 'ce mois' }] : []),
           ].map(s => (
@@ -243,6 +249,10 @@ export default function CleanerProfil() {
                 <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{m.property}</p>
                 <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {m.time}</p>
               </div>
+              {/* Temps accordé (payé) de la mission — visible par le cleaner. */}
+              {serviceParts(m.service).cleaning && (m.missionDurationMinutes ?? 0) > 0 && (
+                <span className="text-xs font-semibold shrink-0" style={{ color: '#C9A84C' }}>{formatDuration(m.missionDurationMinutes)}</span>
+              )}
             </div>
           ))
         )}
