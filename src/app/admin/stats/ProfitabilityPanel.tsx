@@ -256,7 +256,9 @@ export default function ProfitabilityPanel() {
       </div>
 
       <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Rentabilité par appartement</h2>
-      <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>Du moins au plus rentable. Objectif : marge ≥ {pct(config.marginTarget)}.</p>
+      <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>
+        CA = ménages <b>terminés</b> sur la période ({period === 'month' ? 'ce mois' : 'tout'}). Un site sans ménage terminé sur la période n'apparaît pas — passe sur « Tout ». Du moins au plus rentable. Objectif : marge ≥ {pct(config.marginTarget)}.
+      </p>
 
       {rows.length === 0 ? (
         <div className="rounded-2xl p-8 text-center border text-sm" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#A8A09A' }}>
@@ -288,6 +290,14 @@ export default function ProfitabilityPanel() {
                       {r.jobs} ménage{r.jobs > 1 ? 's' : ''} · CA {eur(r.revenue)} · coût {eur(r.totalCost)}
                       {!r.profitable && r.revenue > 0 ? ` · prix conseillé ${eur(r.recommendedPrice)}/ménage` : ''}
                     </p>
+                    {/* Pourquoi le CA est à 0 — révélateur pour corriger vite. */}
+                    {r.revenue === 0 && (
+                      <p className="text-xs mt-0.5 font-medium" style={{ color: '#B85A50' }}>
+                        {r.jobs === 0
+                          ? 'Aucun ménage facturable terminé sur la période (livraison seule ?).'
+                          : 'CA à 0 → prix non défini sur la fiche de ce site.'}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-lg font-bold" style={{ color: r.marginPct >= config.marginTarget ? '#5A8A6A' : '#B85A50' }}>{pct(r.marginPct)}</p>
