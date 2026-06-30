@@ -10,14 +10,20 @@ import {
 import Icon, { type IconName } from '@/components/Icon';
 import Loading from "@/components/Loading";
 
-// Convertit une URL YouTube/Vimeo en URL d'intégration (lecteur iframe).
-function embedUrl(url?: string): string {
-  if (!url) return '';
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
-  const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
-  return url;
+// Analyse une URL de vidéo et renvoie le bon mode de lecture :
+//  - youtube / vimeo → iframe d'intégration (gère aussi Shorts, youtu.be, live)
+//  - file            → fichier direct (mp4/webm…) → balise <video>
+//  - link            → format non intégrable → on propose un lien à ouvrir
+type VideoSource = { type: 'youtube' | 'vimeo' | 'file' | 'link' | 'none'; src: string };
+function resolveVideo(url?: string): VideoSource {
+  if (!url || !url.trim()) return { type: 'none', src: '' };
+  const u = url.trim();
+  const yt = u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{6,})/);
+  if (yt) return { type: 'youtube', src: `https://www.youtube.com/embed/${yt[1]}` };
+  const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vm) return { type: 'vimeo', src: `https://player.vimeo.com/video/${vm[1]}` };
+  if (/\.(mp4|webm|ogg|ogv|mov|m4v)(\?.*)?$/i.test(u)) return { type: 'file', src: u };
+  return { type: 'link', src: u };
 }
 
 const safeIcon = (s?: string): IconName => (s === 'book' || s === 'play' || s === 'today' || s === 'building' ? s : 'book');
@@ -134,15 +140,35 @@ export default function CleanerFormationPage() {
       {video && (
         <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: 'rgba(26,26,26,0.6)' }} onClick={() => setVideo(null)}>
           <div className="w-full max-w-lg rounded-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF' }} onClick={e => e.stopPropagation()}>
-            <div className="aspect-video bg-black">
-              {embedUrl(video.videoUrl)
-                ? <iframe src={embedUrl(video.videoUrl)} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={video.titre} />
-                : <div className="w-full h-full flex items-center justify-center text-sm" style={{ color: '#FFFFFF' }}>Vidéo indisponible</div>}
-            </div>
+            {(() => {
+              const v = resolveVideo(video.videoUrl);
+              return (
+                <div className="aspect-video bg-black">
+                  {(v.type === 'youtube' || v.type === 'vimeo') ? (
+                    <iframe src={v.src} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={video.titre} />
+                  ) : v.type === 'file' ? (
+                    <video src={v.src} controls playsInline preload="metadata" className="w-full h-full" />
+                  ) : v.type === 'link' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-sm" style={{ color: '#FFFFFF' }}>
+                      <span>Cette vidéo s'ouvre dans un nouvel onglet.</span>
+                      <a href={v.src} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Ouvrir la vidéo</a>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm" style={{ color: '#FFFFFF' }}>Vidéo indisponible</div>
+                  )}
+                </div>
+              );
+            })()}
             <div className="p-5">
               <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{video.titre}</h3>
               {video.description && <p className="text-sm mt-1" style={{ color: '#7A7068' }}>{video.description}</p>}
-              <button onClick={() => setVideo(null)} className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Fermer</button>
+              {/* Secours : si l'intégration est bloquée par le propriétaire (écran noir), on peut toujours ouvrir la vidéo. */}
+              {video.videoUrl && (
+                <a href={video.videoUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block text-center text-xs font-medium" style={{ color: '#C9A84C' }}>
+                  La vidéo ne s'affiche pas ? Ouvrir dans un nouvel onglet ↗
+                </a>
+              )}
+              <button onClick={() => setVideo(null)} className="mt-3 w-full py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Fermer</button>
             </div>
           </div>
         </div>
