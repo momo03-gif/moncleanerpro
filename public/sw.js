@@ -1,8 +1,10 @@
-const CACHE = 'mcp-v4';
+const CACHE = 'mcp-v5';
 const OFFLINE_URL = '/offline';
 
-// On ne précache QUE la page hors-ligne. Le HTML des pages n'est jamais mis en
-// cache → jamais de « coquille » périmée qui bloque l'ouverture de l'app.
+// On précache la page hors-ligne. Le HTML des navigations est mis en cache au
+// fil de l'eau (network-first) pour que l'app puisse S'OUVRIR hors-ligne — la
+// fraîcheur est garantie par le versionnage du cache (purge à l'activation) +
+// le rechargement sur `controllerchange` après un déploiement.
 const PRECACHE = ['/offline'];
 
 self.addEventListener('install', e => {
@@ -42,9 +44,19 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Navigations (pages) : réseau d'abord, repli = page hors-ligne
+  // Navigations (pages) : réseau d'abord, on met la réponse en cache pour pouvoir
+  // rouvrir l'app hors-ligne ; repli = HTML en cache de cette page, sinon la page
+  // hors-ligne. Le cache versionné est purgé à chaque déploiement (activate).
   if (request.mode === 'navigate') {
-    e.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+    e.respondWith(
+      fetch(request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(request, clone));
+          return res;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match(OFFLINE_URL)))
+    );
     return;
   }
 

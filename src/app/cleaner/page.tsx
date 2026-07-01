@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
+import { cacheMissions, readCachedMissions } from '@/lib/offline/store';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
@@ -496,6 +497,9 @@ export default function CleanerDashboard() {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
+  // Horodatage de la dernière synchro quand on affiche des données du cache
+  // (hors-ligne). null = données à jour (en ligne).
+  const [offlineSince, setOfflineSince] = useState<string | null>(null);
   const today = toDateStr(new Date());
   const [dateStart, setDateStart] = useState(today);
   const [dateEnd, setDateEnd] = useState(today);
@@ -504,18 +508,38 @@ export default function CleanerDashboard() {
 
   const load = useCallback(async () => {
     if (!user) return;
+    // Hors-ligne : on sert directement le dernier planning connu (IndexedDB) sans
+    // tenter le réseau, et on affiche le bandeau « données de [heure] ».
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const cached = await readCachedMissions(user.id);
+      if (cached) { setMissions(cached.missions); setOfflineSince(cached.syncedAt); }
+      setLoading(false);
+      return;
+    }
+    // En ligne : on récupère le planning à jour et on rafraîchit le cache local.
     const m = await getMissionsForCleanerDB(user.id);
     setMissions(m);
+    setOfflineSince(null);
+    // On ne persiste pas un planning vide par-dessus un cache existant (une requête
+    // en échec renvoie [] — inutile d'écraser des données valides).
+    if (m.length > 0) await cacheMissions(user.id, m);
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
     load();
     if (!user) return;
+    // Recharge au changement d'état réseau : bascule bandeau ↔ données à jour.
+    window.addEventListener('online', load);
+    window.addEventListener('offline', load);
     const ch = supabase.channel('cleaner-missions')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      window.removeEventListener('online', load);
+      window.removeEventListener('offline', load);
+      supabase.removeChannel(ch);
+    };
   }, [load, user]);
 
   if (!user) return null;
@@ -555,6 +579,17 @@ export default function CleanerDashboard() {
 
   return (
     <div className="p-5">
+      {/* Bandeau hors-ligne : données servies depuis le dernier cache local. */}
+      {offlineSince && (
+        <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium"
+          style={{ backgroundColor: '#F5F3EF', color: '#7A7068', border: '1px solid #E8E4DC' }}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#A8A09A' }} />
+          Hors-ligne · données de {new Date(offlineSince).toLocaleString('fr-FR', {
+            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+          })}
+        </div>
+      )}
+
       {/* Greeting */}
       <div className="mb-5 pt-2">
         <p className="text-sm" style={{ color: '#A8A09A' }}>{greeting},</p>
