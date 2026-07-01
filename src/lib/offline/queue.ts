@@ -2,7 +2,7 @@
 //  File de synchronisation hors-ligne (actions cleaner).
 //
 //  Principe : quand le réseau est absent, les actions (démarrer/terminer/livrer/
-//  désister/temps supp./parking) sont mises en file dans IndexedDB avec l'heure ET
+//  désister/temps supp.) sont mises en file dans IndexedDB avec l'heure ET
 //  la position GPS capturées AU MOMENT de l'action (la géoloc fonctionne sans
 //  internet). À la reconnexion, elles sont REJOUÉES : le serveur revalide la
 //  proximité (≤ 200 m) et enregistre l'horodatage réel. Un rejet « trop loin » /
@@ -14,9 +14,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import { startMissionDB, finishMissionDB, markDeliveredDB, withdrawMissionDB, requestExtraTimeDB } from '@/lib/db';
-import { recordParkingPaymentClient } from '@/lib/parkingApi';
 import { GPS_REQUIRED_ERROR, type GeoPoint } from '@/lib/geo';
-import type { ParkingPayment } from '@/lib/types';
 import {
   addQueued, allQueued, putQueued, removeQueued, patchCachedMission,
   type QueuedAction, type QueuedType,
@@ -96,31 +94,6 @@ export async function submitExtraTime(p: { missionId: string; userId: string; mi
   return { queued: true, error: null };
 }
 
-export interface ParkingSubmitResult { queued: boolean; payment: ParkingPayment | null; error: string | null; tooFar?: boolean }
-
-export async function submitParking(p: {
-  missionId: string; userId: string; amount?: number; durationMinutes?: number; coords: GeoPoint | null;
-}): Promise<ParkingSubmitResult> {
-  // Jeton d'idempotence : garantit zéro doublon même si le rejeu double (ack perdu).
-  const clientToken = uuid();
-  const at = new Date().toISOString();
-  if (isOnline()) {
-    const r = await recordParkingPaymentClient({
-      missionId: p.missionId, amount: p.amount, durationMinutes: p.durationMinutes,
-      lat: p.coords?.lat, lng: p.coords?.lng, clientToken, paidAt: at,
-    });
-    return { queued: false, payment: r.payment, error: r.error, tooFar: r.tooFar };
-  }
-  await enqueue('parking', p.userId, p.missionId, { amount: p.amount, durationMinutes: p.durationMinutes, clientToken }, p.coords);
-  // Paiement optimiste affiché en attendant la synchro.
-  const optimistic: ParkingPayment = {
-    id: clientToken, missionId: p.missionId, address: '', amount: p.amount,
-    currency: 'EUR', durationMinutes: p.durationMinutes, status: 'pending',
-    provider: 'manual', paidAt: at, createdAt: at,
-  };
-  return { queued: true, payment: optimistic, error: null };
-}
-
 // ── Rejeu ───────────────────────────────────────────────────────────────────
 
 type Outcome = 'resolved' | 'rejected' | 'retry';
@@ -133,7 +106,6 @@ const RESOLVED_MESSAGES: Record<QueuedType, string[]> = {
   deliver: ['Action impossible sur cette mission.'],
   withdraw: ['Désistement impossible sur cette mission.'],
   extraTime: ['Demande impossible sur cette mission.', 'Durée supplémentaire invalide.'],
-  parking: [],
 };
 
 // Classe le résultat d'une mutation mission. tooFar / GPS manquant = rejet (à
@@ -162,16 +134,6 @@ async function replayOne(item: QueuedAction): Promise<Outcome> {
       return classifyMission('extraTime', await requestExtraTimeDB({
         missionId: item.missionId, userId: item.userId, minutes: Number(a.minutes) || 0, reason: a.reason, at: item.at,
       }), item);
-    case 'parking': {
-      const r = await recordParkingPaymentClient({
-        missionId: item.missionId, amount: a.amount, durationMinutes: a.durationMinutes,
-        lat: coords?.lat, lng: coords?.lng, clientToken: a.clientToken, paidAt: item.at,
-      });
-      if (!r.error && r.payment) return 'resolved';
-      if (r.tooFar) { item.error = r.error ?? undefined; return 'rejected'; }
-      item.error = r.error ?? undefined;
-      return 'retry';
-    }
   }
 }
 

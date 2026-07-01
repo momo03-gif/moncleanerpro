@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB } from '@/lib/db';
-import { getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
+import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
 import {
-  submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime, submitParking,
+  submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime,
   initOfflineSync, syncQueue, queueSummary, dismissRejected, QUEUE_CHANGE_EVENT, type QueueSummary,
 } from '@/lib/offline/queue';
 import { supabase } from '@/lib/supabase';
@@ -165,6 +165,11 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
 
   async function payParking() {
     setParkingBusy(true); setParkingError('');
+    // Le parking se paie EN LIGNE uniquement (pas de mise en file hors-ligne).
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setParkingError('Le paiement du parking nécessite une connexion internet.');
+      setParkingBusy(false); return;
+    }
     const dur = parkingDuration ? parseInt(parkingDuration, 10) : undefined;
     // Montant : tarif fournisseur s'il existe, sinon saisie manuelle du livreur.
     let amt: number;
@@ -176,7 +181,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     }
     // Position du livreur : on ne peut payer qu'à proximité (≤ 200 m) de l'adresse mission.
     const pos = await getApproxPosition();
-    const res = await submitParking({ missionId: mission.id, userId, amount: amt, durationMinutes: dur, coords: pos });
+    const res = await recordParkingPaymentClient({ missionId: mission.id, amount: amt, durationMinutes: dur, lat: pos?.lat, lng: pos?.lng });
     setParkingBusy(false);
     if (res.error || !res.payment) { setParkingError(res.error || "Échec de l'enregistrement."); return; }
     setParkingPayments(prev => [res.payment as ParkingPayment, ...prev]);

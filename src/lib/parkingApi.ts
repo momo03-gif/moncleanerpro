@@ -13,10 +13,9 @@ async function call<T>(op: string, args?: Record<string, unknown>): Promise<T> {
 
 // Livreur : enregistre un paiement de stationnement sur sa mission (saisie manuelle).
 // coords = position du livreur, requise pour le contrôle de proximité (≤ 200 m).
-// clientToken/paidAt = idempotence + horodatage capturés pour la synchro hors-ligne.
+// Parking = EN LIGNE uniquement (jamais mis en file hors-ligne).
 export const recordParkingPaymentClient = (args: {
   missionId: string; amount?: number; durationMinutes?: number; lat?: number; lng?: number;
-  clientToken?: string; paidAt?: string;
 }) => call<{ payment: ParkingPayment | null; error: string | null; tooFar?: boolean }>('record', args);
 
 // Livreur/admin : paiements déjà enregistrés pour une mission.
