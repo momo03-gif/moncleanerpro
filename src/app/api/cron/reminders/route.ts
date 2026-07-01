@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendPushToUser } from '@/lib/webpush';
 import { deleteExpiredMissionPhotosDB } from '@/lib/missionPhotos';
 import { runReservationSync } from '@/lib/reservationSync';
@@ -20,6 +20,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
   }
+
+  // service_role : le cron doit lire missions/cleaners et écrire notifications même
+  // une fois ces tables verrouillées RLS (la clé anon renverrait 0 ligne).
+  const supabase = getSupabaseAdmin();
 
   const when = new URL(req.url).searchParams.get('when') === 'tomorrow' ? 'tomorrow' : 'today';
 
