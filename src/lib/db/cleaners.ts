@@ -47,7 +47,8 @@ export async function createCleaner(fields: {
 }
 
 export async function setCleanerActive(id: string, active: boolean) {
-  await supabase.from('cleaners').update({ status: active ? 'active' : 'inactive' }).eq('id', id);
+  try { await postServer('/api/cleaners', { op: 'setActive', id, active }); }
+  catch (e) { console.error('setCleanerActive:', e); }
 }
 
 export async function updateCleanerInfoDB(id: string, fields: { name: string; email: string; phone?: string }) {
@@ -66,33 +67,34 @@ export async function deleteCleanerDB(id: string) {
 }
 
 export async function updateCleanerHourlyRateDB(id: string, hourlyRate: number) {
-  await supabase.from('cleaners').update({ hourly_rate: hourlyRate }).eq('id', id);
+  try { await postServer('/api/cleaners', { op: 'hourlyRate', id, hourlyRate }); }
+  catch (e) { console.error('updateCleanerHourlyRateDB:', e); }
 }
 
 // Capacités du cleaner : peut faire du nettoyage / de la livraison.
 export async function updateCleanerCapabilitiesDB(id: string, caps: { canClean: boolean; canDeliver: boolean }) {
-  await supabase.from('cleaners').update({ can_clean: caps.canClean, can_deliver: caps.canDeliver }).eq('id', id);
+  try { await postServer('/api/cleaners', { op: 'capabilities', id, canClean: caps.canClean, canDeliver: caps.canDeliver }); }
+  catch (e) { console.error('updateCleanerCapabilitiesDB:', e); }
 }
 
 // Montant fixe gagné par livraison (admin).
 export async function updateCleanerDeliveryRateDB(id: string, deliveryRate: number) {
-  await supabase.from('cleaners').update({ delivery_rate: deliveryRate }).eq('id', id);
+  try { await postServer('/api/cleaners', { op: 'deliveryRate', id, deliveryRate }); }
+  catch (e) { console.error('updateCleanerDeliveryRateDB:', e); }
 }
 
 // Type de contrat du cleaner (admin) : 'auto' (auto-entrepreneur) ou 'cdi' (charges
 // patronales en sus). Impacte le coût réel dans le calcul de rentabilité.
 export async function updateCleanerEmploymentTypeDB(id: string, employmentType: 'auto' | 'cdi') {
-  await supabase.from('cleaners').update({ employment_type: employmentType }).eq('id', id);
+  try { await postServer('/api/cleaners', { op: 'employmentType', id, employmentType }); }
+  catch (e) { console.error('updateCleanerEmploymentTypeDB:', e); }
 }
 
 // Plaque d'immatriculation du véhicule du livreur (pour le paiement du stationnement).
-// Résout users.id → cleaners.id, comme updateCleanerStatusDB.
+// Résout users.id → cleaners.id côté serveur, comme updateCleanerStatusDB.
 export async function updateCleanerLicensePlateDB(userId: string, plate: string): Promise<boolean> {
-  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  const targetId = cleaner?.id ?? userId;
-  const { error } = await supabase.from('cleaners').update({ license_plate: plate.trim() || null }).eq('id', targetId);
-  if (error) console.warn('updateCleanerLicensePlateDB:', error.message);
-  return !error;
+  try { const d = await postServer('/api/cleaners', { op: 'licensePlate', userId, plate }); return !!d.ok; }
+  catch (e) { console.warn('updateCleanerLicensePlateDB:', e); return false; }
 }
 
 export async function updateCleanerPasswordDB(cleanerId: string, newPassword: string) {
@@ -111,20 +113,11 @@ export async function getCleanerByUserId(userId: string) {
 // ── Disponibilité (statut + jours travaillés) ────────────────────────────────────
 
 export async function updateCleanerStatusDB(userId: string, status: 'available' | 'busy' | 'offline'): Promise<boolean> {
-  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  if (cleaner) {
-    const { error } = await supabase.from('cleaners').update({ status }).eq('id', cleaner.id);
-    return !error;
-  }
-  // Fallback: try by id directly (when cleaners table uses users.id)
-  const { error } = await supabase.from('cleaners').update({ status }).eq('id', userId);
-  return !error;
+  try { const d = await postServer('/api/cleaners', { op: 'status', userId, status }); return !!d.ok; }
+  catch (e) { console.warn('updateCleanerStatusDB:', e); return false; }
 }
 
 export async function updateCleanerAvailableDaysDB(userId: string, days: string[]): Promise<boolean> {
-  const { data: cleaner } = await supabase.from('cleaners').select('id').eq('user_id', userId).single();
-  const targetId = cleaner?.id ?? userId;
-  const { error } = await supabase.from('cleaners').update({ available_days: days }).eq('id', targetId);
-  if (error) console.warn('updateCleanerAvailableDaysDB:', error.message);
-  return !error;
+  try { const d = await postServer('/api/cleaners', { op: 'availableDays', userId, days }); return !!d.ok; }
+  catch (e) { console.warn('updateCleanerAvailableDaysDB:', e); return false; }
 }
