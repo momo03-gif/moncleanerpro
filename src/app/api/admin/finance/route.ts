@@ -14,6 +14,21 @@ async function requireAdmin() {
   return s && s.role === 'admin' ? s : null;
 }
 
+function rowToInvoice(r: any) {
+  return {
+    id: r.id,
+    number: r.number ?? '',
+    partnerLabel: r.partner_label ?? '',
+    partnerType: r.partner_type ?? '',
+    periodFrom: r.period_from ?? '',
+    periodTo: r.period_to ?? '',
+    total: Number(r.total) || 0,
+    lines: Array.isArray(r.lines) ? r.lines : [],
+    status: r.status ?? 'issued',
+    createdAt: r.created_at ?? '',
+  };
+}
+
 export async function GET(req: Request) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Accès refusé.' }, { status: 403 });
   const type = new URL(req.url).searchParams.get('type');
@@ -36,6 +51,11 @@ export async function GET(req: Request) {
       vat: data.vat ?? undefined, email: data.email ?? undefined, phone: data.phone ?? undefined,
       iban: data.iban ?? undefined, bic: data.bic ?? undefined,
     } });
+  }
+
+  if (type === 'invoices') {
+    const { data } = await db.from('invoices').select('*').order('created_at', { ascending: false });
+    return NextResponse.json({ invoices: (data ?? []).map(rowToInvoice) });
   }
 
   return NextResponse.json({ error: 'Type inconnu.' }, { status: 400 });
@@ -63,6 +83,15 @@ export async function POST(req: Request) {
         name: b.name || null, address: b.address || null, siret: b.siret || null, vat: b.vat || null,
         email: b.email || null, phone: b.phone || null, iban: b.iban || null, bic: b.bic || null,
         updated_at: new Date().toISOString(),
+      });
+      return NextResponse.json({ ok: !error, error: error?.message ?? null });
+    }
+
+    if (b.type === 'invoice') {
+      const { error } = await db.from('invoices').insert({
+        number: b.number, partner_label: b.partnerLabel, partner_type: b.partnerType,
+        period_from: b.periodFrom, period_to: b.periodTo, total: b.total, lines: b.lines,
+        status: 'issued',
       });
       return NextResponse.json({ ok: !error, error: error?.message ?? null });
     }
