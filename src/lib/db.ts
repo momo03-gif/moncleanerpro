@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, AnnounceStatus, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
+import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
 import { computeCleanerGain, computeMissionGain } from './pay';
 import { canCleanerDoService } from './service';
 import { clusterApartments } from './zones';
@@ -10,7 +10,7 @@ import {
   notifyMissionCancelled, notifyMissionCompleted,
   notifyExtraTimeRequested, notifyExtraTimeResolved,
 } from './notifications';
-import { postServer, trimTime } from './db/shared';
+import { postServer, getServer, trimTime } from './db/shared';
 import { getActiveCleanersDB } from './db/cleaners';
 
 // Domaines extraits dans des modules dédiés — mêmes exports, appelants inchangés.
@@ -1070,32 +1070,14 @@ export async function reopenMissionDB(missionId: string, actor: MissionActor): P
 
 // ── HOTEL REQUESTS ────────────────────────────────────────────────────────────
 
-function rowToAnnounce(row: any): HotelAnnounce {
-  return {
-    id: row.id,
-    hotelId: row.hotel_id,
-    hotelName: row.hotel_name ?? '',
-    type: row.type_prestation as any,
-    date: row.date_from ?? '',
-    dateEnd: row.date_to ?? undefined,
-    timeStart: trimTime(row.time_from),
-    timeEnd: trimTime(row.time_to),
-    guestCount: row.persons ?? 1,
-    instructions: row.instructions ?? undefined,
-    status: row.status as AnnounceStatus,
-    cleanerId: row.cleaner_id ?? undefined,
-    cleanerName: row.cleaner_name ?? undefined,
-  };
-}
-
 export async function getHotelRequestsDB(): Promise<HotelAnnounce[]> {
-  const { data } = await supabase.from('hotel_requests').select('*').order('created_at', { ascending: false });
-  return (data ?? []).map(rowToAnnounce);
+  try { const d = await getServer('/api/partners?op=hotelRequests'); return d.requests ?? []; }
+  catch { return []; }
 }
 
 export async function getHotelRequestsForHotelDB(hotelId: string): Promise<HotelAnnounce[]> {
-  const { data } = await supabase.from('hotel_requests').select('*').eq('hotel_id', hotelId).order('created_at', { ascending: false });
-  return (data ?? []).map(rowToAnnounce);
+  try { const d = await getServer(`/api/partners?op=hotelRequestsForHotel&hotelId=${encodeURIComponent(hotelId)}`); return d.requests ?? []; }
+  catch { return []; }
 }
 
 export async function createHotelRequestDB(fields: {
@@ -1103,101 +1085,27 @@ export async function createHotelRequestDB(fields: {
   dateFrom: string; dateTo: string; timeFrom: string; timeTo: string;
   persons: number; instructions?: string;
 }) {
-  const { error } = await supabase.from('hotel_requests').insert({
-    hotel_id: fields.hotelId,
-    hotel_name: fields.hotelName,
-    type_prestation: fields.type,
-    date_from: fields.dateFrom,
-    date_to: fields.dateTo,
-    time_from: fields.timeFrom,
-    time_to: fields.timeTo,
-    persons: fields.persons,
-    instructions: fields.instructions || null,
-    status: 'pending',
-  });
-  if (error) { console.error('createHotelRequestDB error:', error); return; }
-  // Notif admin : nouvelle mission créée par un hôtel
-  await notifyPartnerCreatedMission(fields.hotelName, fields.dateFrom, fields.timeFrom, null);
-}
-
-// Minutes entre deux heures 'HH:mm[:ss]' (>= 0).
-function minutesBetween(from?: string | null, to?: string | null): number {
-  const toMin = (t?: string | null) => { const [h, m] = (t ?? '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
-  const d = toMin(to) - toMin(from);
-  return d > 0 ? d : 0;
-}
-
-// Liste des dates 'YYYY-MM-DD' de `from` à `to` inclus (garde-fou 60 jours max).
-function eachDate(from: string, to?: string | null): string[] {
-  if (!from) return [];
-  const start = new Date(from + 'T00:00:00Z');
-  const end = new Date(((to || from) + 'T00:00:00Z'));
-  if (isNaN(start.getTime())) return [from];
-  const out: string[] = [];
-  for (let cur = start, i = 0; cur <= end && i < 60; cur = new Date(cur.getTime() + 86400000), i++) {
-    out.push(cur.toISOString().slice(0, 10));
-  }
-  return out.length > 0 ? out : [from];
+  try {
+    await postServer('/api/partners', {
+      op: 'createHotelRequest',
+      hotelId: fields.hotelId, hotelName: fields.hotelName, type: fields.type,
+      dateFrom: fields.dateFrom, dateTo: fields.dateTo, timeFrom: fields.timeFrom, timeTo: fields.timeTo,
+      persons: fields.persons, instructions: fields.instructions,
+    });
+  } catch (e) { console.error('createHotelRequestDB:', e); }
 }
 
 export async function validateRequestDB(id: string, cleanerId: string, cleanerName: string, durationMinutesOverride?: number) {
-  const { data: req } = await supabase.from('hotel_requests').select('*').eq('id', id).single();
-
-  await supabase.from('hotel_requests').update({
-    status: 'validated',
-    cleaner_id: cleanerId,
-    cleaner_name: cleanerName,
-  }).eq('id', id);
-
-  if (req) {
-    // Durée = heures saisies sur l'annonce (time_from→time_to), ou override admin,
-    // sinon 120 min par défaut. C'est elle qui sert au gain ET à la facturation hôtel.
-    const minutes = durationMinutesOverride && durationMinutesOverride > 0
-      ? durationMinutesOverride
-      : (minutesBetween(req.time_from, req.time_to) || 120);
-
-    // Gain cleaner = taux horaire du cleaner × durée / 60.
-    const { data: cleaner } = await supabase.from('cleaners').select('hourly_rate').eq('id', cleanerId).single();
-    const rate = Number(cleaner?.hourly_rate) || 0;
-    const gain = computeCleanerGain(rate, minutes);
-
-    // Créateur = l'hôtel + son TAUX HORAIRE FACTURÉ → prix client = taux × heures.
-    const { data: hotel } = await supabase.from('hotels').select('user_id, billing_hourly_rate').eq('id', req.hotel_id).single();
-    const hotelRate = Number(hotel?.billing_hourly_rate) || 0;
-    const price = Math.round(hotelRate * (minutes / 60) * 100) / 100;
-
-    // Annonce hôtel = ménage CHAQUE JOUR de la période → une mission par jour.
-    const baseRow = {
-      type: req.type_prestation ?? 'regular',
-      source: 'hotel',
-      created_by: hotel?.user_id ?? null,
-      created_by_role: 'hotel',
-      property_name: req.hotel_name ?? '',
-      address: '',
-      time_from: req.time_from || null,
-      time_to: req.time_to || null,
-      hours_worked: minutes / 60,
-      mission_duration_minutes: minutes,
-      cleaner_id: cleanerId,          // cleaners.id (FK)
-      cleaner_name: cleanerName,
-      client_name: req.hotel_name ?? '',
-      price,  // CA hôtel = taux horaire de l'hôtel × heures (par jour)
-      cleaner_gain: gain,
-      cleaner_hourly_rate_snapshot: rate,
-      instructions: req.instructions ?? null,
-      status: 'assigned',
-    };
-    const rows = eachDate(req.date_from, req.date_to).map(d => ({ ...baseRow, date_from: d }));
-
-    const { data: created, error } = await supabase.from('missions').insert(rows).select('id');
-    if (error) console.error('validateRequestDB - mission insert error:', error);
-    // Notif cleaner : une seule notif (il voit toutes ses missions dans l'app).
-    else if (created?.[0]?.id) await notifyCleanerNewMission(created[0].id);
-  }
+  try {
+    await postServer('/api/partners', {
+      op: 'validateRequest', id, cleanerId, cleanerName, durationMinutesOverride,
+    });
+  } catch (e) { console.error('validateRequestDB:', e); }
 }
 
 export async function refuseRequestDB(id: string) {
-  await supabase.from('hotel_requests').update({ status: 'refused' }).eq('id', id);
+  try { await postServer('/api/partners', { op: 'refuseRequest', id }); }
+  catch (e) { console.error('refuseRequestDB:', e); }
 }
 
 // Classement mensuel par nombre de missions terminées — AGRÉGAT SANS MONTANT.

@@ -1,22 +1,15 @@
 // ── Partenaires : comptes Hôtels & Conciergeries (Airbnb) ────────────────────────
-// Extrait de db.ts. Les créations/validations de comptes passent par les routes
-// serveur (postServer) ; les lectures se font via le client (clé publique).
+// Données PII (clients/partenaires) → tout passe par la route serveur /api/partners
+// (service_role, autorisation par session). La clé publique ne lit/écrit plus ces
+// tables (verrouillées RLS). Les créations de compte gardent leurs routes dédiées.
 
-import { supabase } from '../supabase';
-import { postServer } from './shared';
+import { getServer, postServer } from './shared';
 
 // ── HOTELS / ACCOUNTS ─────────────────────────────────────────────────────────
 
 export async function getPendingHotelsDB() {
-  const { data } = await supabase.from('hotels').select('*, users(name, email, phone)').eq('status_account', 'pending');
-  return (data ?? []).map((h: any) => ({
-    id: h.id,
-    name: h.hotel_name,
-    address: h.address,
-    email: h.email ?? h.users?.email,
-    phone: h.phone ?? h.users?.phone,
-    userId: h.user_id,
-  }));
+  try { const d = await getServer('/api/partners?op=pendingHotels'); return d.hotels ?? []; }
+  catch { return []; }
 }
 
 export async function approveHotelDB(id: string) {
@@ -25,7 +18,8 @@ export async function approveHotelDB(id: string) {
 }
 
 export async function refuseHotelDB(id: string) {
-  await supabase.from('hotels').update({ status_account: 'refused' }).eq('id', id);
+  try { await postServer('/api/partners', { op: 'refuseHotel', id }); }
+  catch (e) { console.error('refuseHotelDB:', e); }
 }
 
 export async function registerHotelDB(fields: {
@@ -37,18 +31,19 @@ export async function registerHotelDB(fields: {
 }
 
 export async function getApprovedHotelsDB() {
-  const { data } = await supabase.from('hotels').select('*').eq('status_account', 'approved').order('hotel_name');
-  return data ?? [];
+  try { const d = await getServer('/api/partners?op=approvedHotels'); return d.hotels ?? []; }
+  catch { return []; }
 }
 
 // Taux horaire FACTURÉ à un hôtel (€/h) — propre à chaque hôtel, réglé par l'admin.
 export async function updateHotelRateDB(hotelId: string, rate: number) {
-  await supabase.from('hotels').update({ billing_hourly_rate: rate }).eq('id', hotelId);
+  try { await postServer('/api/partners', { op: 'updateHotelRate', hotelId, rate }); }
+  catch (e) { console.error('updateHotelRateDB:', e); }
 }
 
 export async function getHotelByUserId(userId: string) {
-  const { data } = await supabase.from('hotels').select('*').eq('user_id', userId).single();
-  return data;
+  try { const d = await getServer(`/api/partners?op=hotelByUser&userId=${encodeURIComponent(userId)}`); return d.hotel ?? null; }
+  catch { return null; }
 }
 
 // ── AIRBNB PARTNERS (comptes) ──────────────────────────────────────────────────
@@ -62,20 +57,13 @@ export async function registerAirbnbPartnerDB(fields: {
 }
 
 export async function getAirbnbPartnerByUserId(userId: string) {
-  const { data } = await supabase.from('airbnb_partners').select('*').eq('user_id', userId).single();
-  return data;
+  try { const d = await getServer(`/api/partners?op=airbnbPartnerByUser&userId=${encodeURIComponent(userId)}`); return d.partner ?? null; }
+  catch { return null; }
 }
 
 export async function getPendingAirbnbPartnersDB() {
-  const { data } = await supabase.from('airbnb_partners').select('*, users(name, email, phone)').eq('status_account', 'pending');
-  return (data ?? []).map((p: any) => ({
-    id: p.id,
-    name: p.partner_name,
-    email: p.email ?? p.users?.email,
-    phone: p.phone ?? p.users?.phone,
-    userId: p.user_id,
-    partnerKind: 'airbnb' as const,
-  }));
+  try { const d = await getServer('/api/partners?op=pendingAirbnbPartners'); return d.partners ?? []; }
+  catch { return []; }
 }
 
 export async function approveAirbnbPartnerDB(id: string) {
@@ -84,18 +72,13 @@ export async function approveAirbnbPartnerDB(id: string) {
 }
 
 export async function refuseAirbnbPartnerDB(id: string) {
-  await supabase.from('airbnb_partners').update({ status_account: 'refused' }).eq('id', id);
+  try { await postServer('/api/partners', { op: 'refuseAirbnbPartner', id }); }
+  catch (e) { console.error('refuseAirbnbPartnerDB:', e); }
 }
 
 // Liste des noms de partenaires connus (comptes + libellés saisis sur les apparts)
 // — utile pour proposer une auto-complétion côté admin.
 export async function getPartnerNamesDB(): Promise<string[]> {
-  const [{ data: partners }, { data: apts }] = await Promise.all([
-    supabase.from('airbnb_partners').select('partner_name').eq('status_account', 'approved'),
-    supabase.from('airbnbs').select('partner_name'),
-  ]);
-  const names = new Set<string>();
-  (partners ?? []).forEach((p: any) => p.partner_name && names.add(p.partner_name));
-  (apts ?? []).forEach((a: any) => a.partner_name && names.add(a.partner_name));
-  return Array.from(names).sort();
+  try { const d = await getServer('/api/partners?op=partnerNames'); return d.names ?? []; }
+  catch { return []; }
 }
