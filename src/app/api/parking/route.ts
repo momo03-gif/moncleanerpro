@@ -41,8 +41,10 @@ export async function POST(req: Request) {
         // Position du livreur (contrôle de proximité 200 m côté createParkingPaymentDB).
         const coords = (typeof args.lat === 'number' && typeof args.lng === 'number')
           ? { lat: args.lat, lng: args.lng } : null;
+        const clientToken = typeof args.clientToken === 'string' ? args.clientToken : undefined;
+        const paidAt = typeof args.paidAt === 'string' ? args.paidAt : undefined;
         return NextResponse.json(await createParkingPaymentDB({
-          missionId: args.missionId, amount, durationMinutes, cleanerName: session.name, coords,
+          missionId: args.missionId, amount, durationMinutes, cleanerName: session.name, coords, clientToken, paidAt,
         }));
       }
       case 'mission': {

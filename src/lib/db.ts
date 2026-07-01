@@ -608,7 +608,7 @@ export async function assignCleanerToMissionsDB(missionIds: string[], cleanerId:
 
 // Demande faite par le cleaner connecté (userId = users.id).
 export async function requestExtraTimeDB(params: {
-  missionId: string; minutes: number; reason?: string; userId: string;
+  missionId: string; minutes: number; reason?: string; userId: string; at?: string;
 }): Promise<{ error: string | null }> {
   const minutes = Math.max(0, Math.round(Number(params.minutes) || 0));
   if (minutes <= 0) return { error: 'Durée supplémentaire invalide.' };
@@ -623,7 +623,7 @@ export async function requestExtraTimeDB(params: {
       extra_time_minutes: minutes,
       extra_time_reason: params.reason || null,
       extra_time_status: 'pending',
-      extra_time_requested_at: new Date().toISOString(),
+      extra_time_requested_at: params.at ?? new Date().toISOString(),
     })
     .eq('id', params.missionId)
     .eq('cleaner_id', cleanerTableId)
@@ -740,8 +740,11 @@ async function missionAddressCoords(missionId: string): Promise<{ service?: stri
   return { service: d?.service, coords };
 }
 
+// `at` = horodatage de l'action (ISO). En hors-ligne, l'action est capturée sur
+// place puis rejouée plus tard : on enregistre l'heure du démarrage réel, pas celle
+// du rejeu. Par défaut = maintenant (chemin en ligne classique).
 export async function startMissionDB(
-  missionId: string, userId: string, coords?: GeoPoint | null,
+  missionId: string, userId: string, coords?: GeoPoint | null, at?: string,
 ): Promise<{ error: string | null; tooFar?: boolean }> {
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
@@ -757,7 +760,7 @@ export async function startMissionDB(
 
   const patch: Record<string, unknown> = {
     status: 'inprogress',
-    started_at: new Date().toISOString(),
+    started_at: at ?? new Date().toISOString(),
   };
   if (coords) { patch.start_lat = coords.lat; patch.start_lng = coords.lng; }
 
@@ -772,13 +775,13 @@ export async function startMissionDB(
 // Livraison : le livreur valide simplement « Livré » → mission terminée. Aucun
 // pointage, aucun GPS, aucune étape de démarrage.
 export async function markDeliveredDB(
-  missionId: string, userId: string,
+  missionId: string, userId: string, at?: string,
 ): Promise<{ error: string | null }> {
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
 
   const { data, error } = await supabase.from('missions')
-    .update({ status: 'done', ended_at: new Date().toISOString() })
+    .update({ status: 'done', ended_at: at ?? new Date().toISOString() })
     .eq('id', missionId).eq('cleaner_id', cleanerTableId)
     .not('status', 'in', '(done,cancelled)').select('id');
   if (error) return { error: error.message };
@@ -790,7 +793,7 @@ export async function markDeliveredDB(
 // Fin : vérifie la proximité (si les deux positions existent), calcule la durée
 // réelle, horodate la fin et clôture la mission. Renvoie tooFar si trop éloigné.
 export async function finishMissionDB(
-  missionId: string, userId: string, coords?: GeoPoint | null,
+  missionId: string, userId: string, coords?: GeoPoint | null, at?: string,
 ): Promise<{ error: string | null; tooFar?: boolean }> {
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
@@ -819,7 +822,8 @@ export async function finishMissionDB(
     }
   }
 
-  const now = new Date();
+  // Heure de fin = celle capturée sur place (hors-ligne) ou maintenant (en ligne).
+  const now = at ? new Date(at) : new Date();
   const patch: Record<string, unknown> = { status: 'done', ended_at: now.toISOString() };
   if (m.started_at) {
     const mins = Math.max(0, Math.round((now.getTime() - new Date(m.started_at).getTime()) / 60000));

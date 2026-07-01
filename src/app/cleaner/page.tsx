@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMissionsForCleanerDB, startMissionDB, finishMissionDB, markDeliveredDB, requestExtraTimeDB, withdrawMissionDB } from '@/lib/db';
-import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
+import { getMissionsForCleanerDB } from '@/lib/db';
+import { getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
+import {
+  submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime, submitParking,
+  initOfflineSync, syncQueue, queueSummary, dismissRejected, QUEUE_CHANGE_EVENT, type QueueSummary,
+} from '@/lib/offline/queue';
 import { supabase } from '@/lib/supabase';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsByPriority } from '@/lib/missionOrder';
@@ -98,10 +102,12 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
 
   // Pointage : on capture une position approximative (best-effort) au démarrage
   // et à la fin. Le cleaner ne voit ni chrono ni durée réelle.
+  // Pointage : hors-ligne, l'action est mise en file (heure + GPS capturés sur place)
+  // et rejouée à la reconnexion — l'UI progresse tout de suite (cache optimiste).
   async function start() {
     setBusy(true); setGeoError('');
     const pos = await getApproxPosition();
-    const res = await startMissionDB(mission.id, userId, pos);
+    const res = await submitStart({ missionId: mission.id, userId, coords: pos });
     setBusy(false);
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
@@ -110,7 +116,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   async function finish() {
     setBusy(true); setGeoError('');
     const pos = await getApproxPosition();
-    const res = await finishMissionDB(mission.id, userId, pos);
+    const res = await submitFinish({ missionId: mission.id, userId, coords: pos });
     setBusy(false);
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
@@ -118,7 +124,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
 
   async function deliver() {
     setBusy(true); setGeoError('');
-    const res = await markDeliveredDB(mission.id, userId);
+    const res = await submitDeliver({ missionId: mission.id, userId });
     setBusy(false);
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
@@ -127,7 +133,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   async function withdraw() {
     if (!confirm('Se désister de cette mission ? Elle sera annulée et l’administrateur en sera informé.')) return;
     setBusy(true); setGeoError('');
-    const res = await withdrawMissionDB(mission.id, userId);
+    const res = await submitWithdraw({ missionId: mission.id, userId });
     setBusy(false);
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
@@ -135,7 +141,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
 
   async function submitExtra() {
     setBusy(true); setExtraError('');
-    const res = await requestExtraTimeDB({ missionId: mission.id, minutes: extraMinutes, reason: extraReason, userId });
+    const res = await submitExtraTime({ missionId: mission.id, userId, minutes: extraMinutes, reason: extraReason });
     setBusy(false);
     if (res.error) { setExtraError(res.error); return; }
     setExtraOpen(false); setExtraReason('');
@@ -170,7 +176,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     }
     // Position du livreur : on ne peut payer qu'à proximité (≤ 200 m) de l'adresse mission.
     const pos = await getApproxPosition();
-    const res = await recordParkingPaymentClient({ missionId: mission.id, amount: amt, durationMinutes: dur, lat: pos?.lat, lng: pos?.lng });
+    const res = await submitParking({ missionId: mission.id, userId, amount: amt, durationMinutes: dur, coords: pos });
     setParkingBusy(false);
     if (res.error || !res.payment) { setParkingError(res.error || "Échec de l'enregistrement."); return; }
     setParkingPayments(prev => [res.payment as ParkingPayment, ...prev]);
@@ -500,6 +506,8 @@ export default function CleanerDashboard() {
   // Horodatage de la dernière synchro quand on affiche des données du cache
   // (hors-ligne). null = données à jour (en ligne).
   const [offlineSince, setOfflineSince] = useState<string | null>(null);
+  // File d'actions hors-ligne en attente / refusées.
+  const [sync, setSync] = useState<QueueSummary>({ pending: 0, rejected: 0 });
   const today = toDateStr(new Date());
   const [dateStart, setDateStart] = useState(today);
   const [dateEnd, setDateEnd] = useState(today);
@@ -541,6 +549,17 @@ export default function CleanerDashboard() {
       supabase.removeChannel(ch);
     };
   }, [load, user]);
+
+  // Synchro de la file hors-ligne : auto au retour du réseau, et rafraîchissement de
+  // l'indicateur + du planning à chaque changement d'état de la file.
+  useEffect(() => {
+    if (!user) return;
+    initOfflineSync();
+    const refresh = () => { queueSummary().then(setSync); load(); };
+    refresh();
+    window.addEventListener(QUEUE_CHANGE_EVENT, refresh);
+    return () => window.removeEventListener(QUEUE_CHANGE_EVENT, refresh);
+  }, [user, load]);
 
   if (!user) return null;
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
@@ -587,6 +606,32 @@ export default function CleanerDashboard() {
           Hors-ligne · données de {new Date(offlineSince).toLocaleString('fr-FR', {
             day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
           })}
+        </div>
+      )}
+
+      {/* Indicateur de synchro : actions faites hors-ligne, en attente de rejeu. */}
+      {sync.pending > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium"
+          style={{ backgroundColor: '#C9A84C15', color: '#C48A2A', border: '1px solid #C9A84C40' }}>
+          <span>{sync.pending} action{sync.pending > 1 ? 's' : ''} en attente de synchro</span>
+          <button onClick={() => syncQueue()}
+            className="px-2.5 py-1 rounded-lg font-semibold shrink-0"
+            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            Synchroniser
+          </button>
+        </div>
+      )}
+
+      {/* Actions refusées à la reco (trop loin / GPS manquant) — à refaire sur place. */}
+      {sync.rejected > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium"
+          style={{ backgroundColor: '#B85A5012', color: '#B85A50', border: '1px solid #B85A5033' }}>
+          <span>{sync.rejected} action{sync.rejected > 1 ? 's' : ''} refusée{sync.rejected > 1 ? 's' : ''} — à refaire sur place</span>
+          <button onClick={() => dismissRejected()}
+            className="px-2.5 py-1 rounded-lg font-semibold shrink-0 border"
+            style={{ borderColor: '#B85A5055', color: '#B85A50' }}>
+            Effacer
+          </button>
         </div>
       )}
 

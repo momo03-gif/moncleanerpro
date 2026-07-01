@@ -58,13 +58,32 @@ export async function getMissionCleanerUserId(missionId: string): Promise<string
   return uid ?? null;
 }
 
+// Vrai si l'erreur = « colonne inconnue » (migration pas encore appliquée).
+// 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST.
+function isUndefinedColumn(error: { code?: string; message?: string }, column: string): boolean {
+  return (error.code === '42703' || error.code === 'PGRST204') && (error.message ?? '').includes(column);
+}
+
 export async function createParkingPaymentDB(input: {
   missionId: string;
   amount?: number;
   durationMinutes?: number;
   cleanerName?: string;
   coords?: GeoPoint | null;
+  // Jeton d'idempotence généré par le client (hors-ligne) : garantit qu'un rejeu
+  // de la file ne crée pas de doublon, même si l'accusé serveur a été perdu.
+  clientToken?: string;
+  // Horodatage de paiement capturé sur place (hors-ligne). Défaut = NOW() en base.
+  paidAt?: string;
 }): Promise<{ payment: ParkingPayment | null; error: string | null; tooFar?: boolean }> {
+  // Idempotence : si un paiement avec ce jeton existe déjà, on le renvoie tel quel
+  // (le rejeu est un no-op) sans recréer de ligne ni rappeler le fournisseur.
+  if (input.clientToken) {
+    const { data: existing } = await supabase.from('parking_payments')
+      .select('*').eq('client_token', input.clientToken).maybeSingle();
+    if (existing) return { payment: toParkingPayment(existing), error: null };
+  }
+
   const snap = await missionSnapshot(input.missionId);
   if (!snap.found) return { payment: null, error: 'Mission introuvable.' };
   if (!snap.address) return { payment: null, error: 'Adresse de la mission manquante.' };
@@ -105,7 +124,7 @@ export async function createParkingPaymentDB(input: {
   // Montant réellement facturé par le fournisseur (PayByPhone) → prioritaire.
   if (result.amount != null) amount = result.amount;
 
-  const { data, error } = await supabase.from('parking_payments').insert({
+  const baseRow: Record<string, unknown> = {
     mission_id: input.missionId,
     cleaner_id: snap.cleanerId ?? null,
     cleaner_name: input.cleanerName ?? snap.cleanerName ?? null,
@@ -118,9 +137,30 @@ export async function createParkingPaymentDB(input: {
     provider: provider.id,
     provider_ref: result.providerRef ?? null,
     metadata: result.metadata ?? {},
-  }).select('*').single();
+    ...(input.paidAt ? { paid_at: input.paidAt } : {}),
+  };
 
-  if (error) { console.error('createParkingPaymentDB:', error.code, error.message); return { payment: null, error: error.message }; }
+  let { data, error } = await supabase.from('parking_payments')
+    .insert({ ...baseRow, client_token: input.clientToken ?? null }).select('*').single();
+
+  // COMPAT DÉPLOIEMENT : si la migration `client_token` n'est pas encore appliquée,
+  // la colonne est inconnue → on réinsère sans elle. Le parking fonctionne dès le
+  // déploiement ; l'idempotence (anti-doublon au rejeu) s'active une fois le SQL lancé.
+  if (error && isUndefinedColumn(error, 'client_token')) {
+    ({ data, error } = await supabase.from('parking_payments').insert(baseRow).select('*').single());
+  }
+
+  if (error) {
+    // Course sur le jeton d'idempotence (deux rejeux quasi simultanés) → la
+    // contrainte UNIQUE(client_token) tranche : on renvoie la ligne déjà écrite.
+    if (error.code === '23505' && input.clientToken) {
+      const { data: existing } = await supabase.from('parking_payments')
+        .select('*').eq('client_token', input.clientToken).maybeSingle();
+      if (existing) return { payment: toParkingPayment(existing), error: null };
+    }
+    console.error('createParkingPaymentDB:', error.code, error.message);
+    return { payment: null, error: error.message };
+  }
   return { payment: toParkingPayment(data), error: null };
 }
 
