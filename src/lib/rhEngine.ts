@@ -1,5 +1,6 @@
 import { getServerDb } from './serverDb';
 import { getMissionsByCleanerTableIdDB, getActiveCleanersDB } from './db';
+import { serviceParts } from './service';
 
 // service_role côté serveur (le moteur RH tourne dans des routes admin).
 const supabase = getServerDb();
@@ -221,14 +222,17 @@ export async function computePayslipDB(cleanerId: string, period = currentPeriod
   // ── Comparatif temps prévu vs réel (information seule) ──────────────────────
   // Temps accordé = ménage prévu par appartement ; temps réel = pointage, ou le
   // temps prévu en fallback quand la mission n'a pas été pointée.
-  const plannedMinutes = completed.reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
-  const pointed = completed.filter(m => (m.actualDurationMinutes ?? 0) > 0);
-  const realMinutes = completed.reduce(
+  // Les livraisons (forfait) ne sont pas pointées et n'ont pas de temps : on les
+  // exclut des statistiques de pointage. Seul le nettoyage compte.
+  const pointable = completed.filter(m => serviceParts(m.service).cleaning);
+  const plannedMinutes = pointable.reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
+  const pointed = pointable.filter(m => (m.actualDurationMinutes ?? 0) > 0);
+  const realMinutes = pointable.reduce(
     (s, m) => s + ((m.actualDurationMinutes ?? 0) > 0 ? m.actualDurationMinutes! : (m.missionDurationMinutes ?? 0)), 0);
 
   const time: PayslipTimeCompare = {
     plannedMinutes, realMinutes,
-    missionsCount: completed.length, pointedCount: pointed.length,
+    missionsCount: pointable.length, pointedCount: pointed.length,
   };
 
   return { cleanerId, period, missionsGain, primes: list, adjustment, adjustmentNote, total, time };
