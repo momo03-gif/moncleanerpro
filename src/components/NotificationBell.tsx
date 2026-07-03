@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
-import {
-  getNotificationsDB, getUnreadCountDB, markNotificationReadDB,
-  markAllNotificationsReadDB, savePushSubscriptionDB,
-} from '@/lib/notifications';
 import type { AppNotification } from '@/lib/types';
 import Icon, { type IconName } from '@/components/Icon';
+
+// Perf : la couche données (supabase + fonctions notifications) est importée en
+// DIFFÉRÉ (dynamic import après le montage). La cloche est rendue dans la nav de
+// toutes les pages connectées ; en la chargeant à la demande, on sort le client
+// supabase (~222 Ko) du chemin critique de chaque page. Le temps réel reste
+// intact — il est juste branché une fois la page interactive.
+const loadNotifApi = () => import('@/lib/notifications');
+const loadSupabase = () => import('@/lib/supabase');
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -77,6 +80,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
 
   const load = useCallback(async () => {
     if (!user) return;
+    const { getNotificationsDB, getUnreadCountDB } = await loadNotifApi();
     const [list, count] = await Promise.all([getNotificationsDB(user.id), getUnreadCountDB(user.id)]);
     setItems(list);
     setUnread(count);
@@ -89,22 +93,27 @@ export default function NotificationBell({ light = false }: { light?: boolean })
   useEffect(() => {
     if (!user) return;
     load();
-    let ch: ReturnType<typeof supabase.channel> | null = null;
-    try {
-      ch = supabase
-        .channel(`notif-${user.id}-${channelId.current}`)
-        .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-          () => {
-            if (!firstLoad.current) alertUser();
-            load();
-          })
-        .subscribe();
-    } catch (e) {
-      console.error('notif realtime:', e);
-    }
+    // Abonnement temps réel branché en différé (après chargement du client supabase).
+    let cleanup = () => {};
+    (async () => {
+      try {
+        const { supabase } = await loadSupabase();
+        const ch = supabase
+          .channel(`notif-${user.id}-${channelId.current}`)
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+            () => {
+              if (!firstLoad.current) alertUser();
+              load();
+            })
+          .subscribe();
+        cleanup = () => { try { supabase.removeChannel(ch); } catch { /* ignore */ } };
+      } catch (e) {
+        console.error('notif realtime:', e);
+      }
+    })();
     firstLoad.current = false;
-    return () => { if (ch) { try { supabase.removeChannel(ch); } catch { /* ignore */ } } };
+    return () => cleanup();
   }, [user, load]);
 
   async function handleOpen() {
@@ -115,6 +124,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
     if (n.read) return;
     setItems(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
     setUnread(u => Math.max(0, u - 1));
+    const { markNotificationReadDB } = await loadNotifApi();
     await markNotificationReadDB(n.id);
   }
 
@@ -122,6 +132,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
     if (!user) return;
     setItems(prev => prev.map(x => ({ ...x, read: true })));
     setUnread(0);
+    const { markAllNotificationsReadDB } = await loadNotifApi();
     await markAllNotificationsReadDB(user.id);
   }
 
@@ -144,6 +155,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
             applicationServerKey: urlB64ToUint8Array(VAPID) as BufferSource,
           });
         }
+        const { savePushSubscriptionDB } = await loadNotifApi();
         await savePushSubscriptionDB(user.id, user.role, sub.toJSON(), deviceType());
       }
     } catch (e) {
