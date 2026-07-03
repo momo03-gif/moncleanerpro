@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, updateCleanerEmploymentTypeDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
-import { capabilitiesLabel } from '@/lib/service';
+import { capabilitiesLabel, serviceParts } from '@/lib/service';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
@@ -178,7 +178,9 @@ export default function CleanersPage() {
               const cm = missions.filter(m => m.cleanerId === cleaner.id);
               const completed = cm.filter(m => m.status === 'completed').length;
               const upcoming = cm.filter(m => ['accepted', 'in_progress'].includes(m.status)).length;
-              const hoursMonth = cm.filter(m => m.status === 'completed' && m.date.startsWith(month)).reduce((s, m) => s + m.duration, 0);
+              // Heures du mois = uniquement le nettoyage (horaire). Les livraisons sont
+              // payées au forfait et ne comptent pas dans les heures travaillées.
+              const hoursMonth = cm.filter(m => m.status === 'completed' && m.date.startsWith(month) && serviceParts(m.service).cleaning).reduce((s, m) => s + m.duration, 0);
 
               return (
                 <div key={cleaner.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', opacity: isActive ? 1 : 0.65 }}>

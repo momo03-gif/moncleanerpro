@@ -308,7 +308,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     const res = await updateMissionDB(mission.id, { id: user.id, role: 'admin' }, {
       dateFrom: editForm.date,
       timeFrom: editForm.time,
-      missionDurationMinutes: Number(editForm.durationMinutes) || 0,
+      // Livraison : forfait, on ne suit aucun temps → durée 0.
+      missionDurationMinutes: editForm.service === 'delivery' ? 0 : (Number(editForm.durationMinutes) || 0),
       type: editForm.type,
       service: editForm.service,
       deliveryInstructions: serviceParts(editForm.service).delivery ? editForm.deliveryInstructions : '',
@@ -507,18 +508,26 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.requestedBy}</p>
             </div>
           )}
+          {/* Livraison : forfait, aucun temps suivi → on affiche « Forfait » au lieu de la durée. */}
           <div>
-            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Durée</p>
-            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatDuration(mission.missionDurationMinutes)}</p>
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>{mission.service === 'delivery' ? 'Type' : 'Durée'}</p>
+            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.service === 'delivery' ? 'Forfait livraison' : formatDuration(mission.missionDurationMinutes)}</p>
           </div>
           <div>
-            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Taux cleaner</p>
-            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.cleanerHourlyRateSnapshot != null ? `${mission.cleanerHourlyRateSnapshot}€/h` : '—'}</p>
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>{mission.service === 'delivery' ? 'Forfait cleaner' : 'Taux cleaner'}</p>
+            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>
+              {mission.service === 'delivery'
+                ? `${mission.cleanerGain ?? 0}€ / livraison`
+                : (mission.cleanerHourlyRateSnapshot != null ? `${mission.cleanerHourlyRateSnapshot}€/h` : '—')}
+            </p>
           </div>
+          {/* Livraison : jamais facturée au client → on masque le prix client. */}
+          {mission.service !== 'delivery' && (
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Prix client</p>
             <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{mission.price}€</p>
           </div>
+          )}
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Gain cleaner</p>
             <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{mission.cleanerGain ?? 0}€</p>
@@ -676,11 +685,14 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                     className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
                 )}
               </div>
+              {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
+              {serviceParts(editForm.service).cleaning && (
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Temps de nettoyage (min)</label>
                 <input type="number" min="5" step="5" value={editForm.durationMinutes} onChange={e => setEditForm(f => ({ ...f, durationMinutes: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
+              )}
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type</label>
                 <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value as MissionType }))}
@@ -699,11 +711,14 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                   <option value="delivery">Livraison</option>
                 </select>
               </div>
+              {/* Livraison : jamais facturée au client → pas de prix client. */}
+              {editForm.service !== 'delivery' && (
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prix client (€)</label>
                 <input type="number" min="0" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
+              )}
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Gain cleaner (auto)</label>
                 <div className="w-full px-3 py-2 rounded-lg text-sm border font-semibold" style={{ ...inputStyle, color: '#C9A84C' }}>
@@ -719,7 +734,9 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               </div>
             )}
             <p className="text-[11px]" style={{ color: '#A8A09A' }}>
-              Gain = taux cleaner {editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0}€/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.
+              {editForm.service === 'delivery'
+                ? <>Gain = forfait livraison {editCleaner?.delivery_rate ?? 0}€ par livraison (montant fixe, sans durée). Livraison non facturée au client.</>
+                : <>Gain = taux cleaner {editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0}€/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.</>}
             </p>
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={busy}
@@ -1162,7 +1179,8 @@ export default function MissionsPage() {
     const result = await createMissionDB({
       ...common, type, service: form.service,
       deliveryInstructions: form.service === 'delivery' ? form.deliveryInstructions : undefined,
-      missionDurationMinutes: Number(form.durationMinutes) || 60,
+      // Livraison : forfait, on ne suit aucun temps → durée 0.
+      missionDurationMinutes: form.service === 'delivery' ? 0 : (Number(form.durationMinutes) || 60),
       cleanerHourlyRate: c?.hourly_rate ?? 0,
       cleanerDeliveryRate: c?.delivery_rate ?? 0,
       cleanerId: form.cleanerId || undefined, cleanerName: c?.name,
@@ -1692,6 +1710,8 @@ export default function MissionsPage() {
                     onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
                 </div>
               </div>
+              {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
+              {serviceParts(form.service).cleaning && (
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps de nettoyage (minutes)</label>
                 <div className="flex gap-2 flex-wrap mb-2">
@@ -1707,12 +1727,16 @@ export default function MissionsPage() {
                   placeholder="Durée en minutes" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
+              )}
+              {/* Livraison : jamais facturée au client → pas de prix client. */}
+              {form.service !== 'delivery' && (
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€) — facturation</label>
                 <input type="number" min="0" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
                   placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
+              )}
               <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} service={form.service} />
             </>)}
 
