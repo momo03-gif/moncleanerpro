@@ -2,18 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  getMissionsDB, getCleaners, getAllReservationFeeds,
-  getPendingHotelsDB, approveHotelDB, refuseHotelDB,
-  getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
-} from '@/lib/db';
-import { getOpenIncidentsDB, type OpenIncident } from '@/lib/missionReports';
+import type { OpenIncident } from '@/lib/missionReports';
 import type { Mission } from '@/lib/types';
 import { formatHour } from '@/lib/format';
 import { missionStatusCfg } from '@/lib/labels';
 import { serviceLabel, SERVICE_BADGE } from '@/lib/service';
 import { collapseGroups } from '@/lib/missionOrder';
 import Loading from '@/components/Loading';
+
+// Perf : la couche données (supabase) est importée en différé → elle ne pèse
+// pas sur le chargement initial du tableau de bord.
+const loadDb = () => import('@/lib/db');
+const loadReports = () => import('@/lib/missionReports');
 
 const DONE = (s: string) => s === 'completed' || s === 'cancelled';
 
@@ -50,6 +50,7 @@ export default function AdminDashboard() {
   const tomorrow = tomorrowD.toISOString().split('T')[0];
 
   async function loadPending() {
+    const { getPendingHotelsDB, getPendingAirbnbPartnersDB } = await loadDb();
     const [hotels, partners] = await Promise.all([getPendingHotelsDB(), getPendingAirbnbPartnersDB()]);
     setPending([
       ...hotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
@@ -59,8 +60,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
+      const [db, reports] = await Promise.all([loadDb(), loadReports()]);
       const [m, c, inc, feeds] = await Promise.all([
-        getMissionsDB(), getCleaners(), getOpenIncidentsDB(), getAllReservationFeeds(),
+        db.getMissionsDB(), db.getCleaners(), reports.getOpenIncidentsDB(), db.getAllReservationFeeds(),
       ]);
       setMissions(m); setCleaners(c); setIncidents(inc);
       setFailingFeeds(feeds.filter(f => f.lastSyncStatus === 'error').length);
@@ -71,10 +73,12 @@ export default function AdminDashboard() {
   }, []);
 
   async function handleApprove(h: any) {
+    const { approveAirbnbPartnerDB, approveHotelDB } = await loadDb();
     if (h.kind === 'airbnb') await approveAirbnbPartnerDB(h.id); else await approveHotelDB(h.id);
     await loadPending();
   }
   async function handleRefuse(h: any) {
+    const { refuseAirbnbPartnerDB, refuseHotelDB } = await loadDb();
     if (h.kind === 'airbnb') await refuseAirbnbPartnerDB(h.id); else await refuseHotelDB(h.id);
     await loadPending();
   }
