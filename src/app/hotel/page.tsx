@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { createHotelRequestDB, getHotelByUserId } from '@/lib/db';
 import type { AnnounceType } from '@/lib/types';
 import Icon from '@/components/Icon';
+
+// Perf : la couche données (supabase) n'est utilisée qu'à l'envoi du formulaire.
+// On l'importe en différé dans le handler → elle ne pèse pas sur le chargement
+// initial de la page.
+const loadDb = () => import('@/lib/db');
 
 const TYPES: { value: AnnounceType; label: string; desc: string }[] = [
   { value: 'menage', label: 'Ménage courant', desc: 'Nettoyage régulier des chambres' },
@@ -30,6 +34,7 @@ export default function HotelDemandePage() {
     if (!isValid || !user) return;
     setLoading(true); setError('');
     try {
+      const { getHotelByUserId, createHotelRequestDB } = await loadDb();
       const hotel = await getHotelByUserId(user.id);
       await createHotelRequestDB({
         hotelId: hotel?.id ?? user.id,

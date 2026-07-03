@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPendingMissionsDB, acceptMissionDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { formatDuration, formatHour } from '@/lib/format';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
+
+// Perf : couche données importée en différé → supabase hors du chemin critique.
+const loadDb = () => import('@/lib/db');
 
 export default function ProposedMissionsPage() {
   const { user } = useAuth();
@@ -20,6 +22,7 @@ export default function ProposedMissionsPage() {
   const [blockMsg, setBlockMsg] = useState('');
 
   const load = useCallback(async () => {
+    const { getPendingMissionsDB } = await loadDb();
     const m = await getPendingMissionsDB();
     setMissions(m);
     setLoading(false);
@@ -30,6 +33,7 @@ export default function ProposedMissionsPage() {
   async function accept(id: string) {
     if (!user) return;
     setAccepting(id);
+    const { acceptMissionDB } = await loadDb();
     const res = await acceptMissionDB(id, user.id);
     setAccepting(null);
     if (res.error) { setBlockMsg(res.error); return; }
