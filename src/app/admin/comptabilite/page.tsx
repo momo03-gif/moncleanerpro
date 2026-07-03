@@ -1,15 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMissionsDB, getCleaners, getPaymentsDB } from '@/lib/db';
+import dynamic from 'next/dynamic';
 import type { Mission, Payment } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
-import { loadPayrollDB, type PayrollRow } from '@/lib/payrollApi';
-import PayrollPanel from './PayrollPanel';
-import DepensesPanel from './DepensesPanel';
+import type { PayrollRow } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
+
+// Perf : panneaux lourds (paie, dépenses) chargés en différé (chunks séparés),
+// uniquement quand leur onglet est ouvert.
+const PayrollPanel = dynamic(() => import('./PayrollPanel'), { loading: () => <Loading className="p-4 md:p-6 text-sm" /> });
+const DepensesPanel = dynamic(() => import('./DepensesPanel'), { loading: () => <Loading className="p-4 md:p-6 text-sm" /> });
+
+// Perf : couche données importée en différé → supabase hors du chemin critique.
+const loadComptaData = async () => {
+  const [db, pay] = await Promise.all([import('@/lib/db'), import('@/lib/payrollApi')]);
+  return { getMissionsDB: db.getMissionsDB, getCleaners: db.getCleaners, getPaymentsDB: db.getPaymentsDB, loadPayrollDB: pay.loadPayrollDB };
+};
 
 export default function ComptabilitePage() {
   const [tab, setTab] = useState<'global' | 'paie' | 'depenses'>('global');
@@ -40,11 +49,13 @@ function GlobalView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB(), loadPayrollDB(currentMonth())]).then(([m, c, p, pay]) => {
+    (async () => {
+      const { getMissionsDB, getCleaners, getPaymentsDB, loadPayrollDB } = await loadComptaData();
+      const [m, c, p, pay] = await Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB(), loadPayrollDB(currentMonth())]);
       setMissions(m); setCleaners(c); setPayments(p);
       setPayroll(pay.rows ?? []);
       setLoading(false);
-    });
+    })();
   }, []);
 
   if (loading) return <Loading className="p-4 md:p-6 text-sm" />;

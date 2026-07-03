@@ -3,15 +3,20 @@
 import type React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
-import { getMissionsDB, getCompanyInfoDB, saveCompanyInfoDB, getInvoicesDB, saveInvoiceDB } from '@/lib/db';
+import dynamic from 'next/dynamic';
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import Icon from '@/components/Icon';
-import DevisPanel from './DevisPanel';
 import Loading from "@/components/Loading";
+
+// Perf : panneau devis chargé en différé (chunk séparé).
+const DevisPanel = dynamic(() => import('./DevisPanel'), { loading: () => <Loading className="p-4 text-sm" /> });
+
+// Perf : couche données importée en différé → supabase hors du chemin critique.
+const loadDb = () => import('@/lib/db');
 
 function partnerLabel(m: Mission): string {
   if (m.source === 'airbnb') return m.partnerName || 'Airbnb (sans partenaire)';
@@ -261,6 +266,7 @@ export default function FacturationPage() {
   const [savingCompany, setSavingCompany] = useState(false);
 
   async function loadAll() {
+    const { getMissionsDB, getCompanyInfoDB, getInvoicesDB } = await loadDb();
     const [m, c, inv] = await Promise.all([getMissionsDB(), getCompanyInfoDB(), getInvoicesDB()]);
     setMissions(m); setCompany(c); setCompanyForm(c); setInvoices(inv);
     setLoading(false);
@@ -395,6 +401,7 @@ export default function FacturationPage() {
   async function handleSaveInvoice() {
     const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, duration, unitPrice }) =>
       ({ date, label, type, amount, apartment, cleaner, duration, unitPrice }));
+    const { saveInvoiceDB, getInvoicesDB } = await loadDb();
     const res = await saveInvoiceDB({ number: invoiceNo, partnerLabel: partner, partnerType, periodFrom: from, periodTo: to, total, lines });
     if (res.error) { setSavedMsg('Erreur : ' + res.error); return; }
     setSavedMsg('Facture enregistrée dans l\'historique ✓');
@@ -405,6 +412,7 @@ export default function FacturationPage() {
   async function handleSaveCompany(e: React.FormEvent) {
     e.preventDefault();
     setSavingCompany(true);
+    const { saveCompanyInfoDB } = await loadDb();
     await saveCompanyInfoDB(companyForm);
     setCompany(companyForm);
     setShowSettings(false);

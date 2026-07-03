@@ -1,15 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMissionsDB, getCleaners } from '@/lib/db';
-import { getDepensesDB, type Depense } from '@/lib/depensesApi';
+import dynamic from 'next/dynamic';
+import type { Depense } from '@/lib/depensesApi';
 import type { Mission } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
-import RhPerfPanel from './RhPerfPanel';
-import ProfitabilityPanel from './ProfitabilityPanel';
 import Loading from "@/components/Loading";
+
+// Perf : les panneaux lourds (RH, rentabilité) tirent la couche données ; on les
+// charge en différé (chunks séparés) pour qu'ils ne pèsent pas sur le chargement
+// initial de la page stats.
+const RhPerfPanel = dynamic(() => import('./RhPerfPanel'), { loading: () => <Loading className="p-4 md:p-6 text-sm" /> });
+const ProfitabilityPanel = dynamic(() => import('./ProfitabilityPanel'), { loading: () => <Loading className="p-4 md:p-6 text-sm" /> });
+
+// Perf : couche données importée en différé → supabase hors du chemin critique.
+const loadStatsData = async () => {
+  const [db, dep] = await Promise.all([import('@/lib/db'), import('@/lib/depensesApi')]);
+  return { getMissionsDB: db.getMissionsDB, getCleaners: db.getCleaners, getDepensesDB: dep.getDepensesDB };
+};
 
 export default function StatsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -19,9 +29,11 @@ export default function StatsPage() {
   const [view, setView] = useState<'overview' | 'rentabilite'>('overview');
 
   useEffect(() => {
-    Promise.all([getMissionsDB(), getCleaners(), getDepensesDB()]).then(([m, c, d]) => {
+    (async () => {
+      const { getMissionsDB, getCleaners, getDepensesDB } = await loadStatsData();
+      const [m, c, d] = await Promise.all([getMissionsDB(), getCleaners(), getDepensesDB()]);
       setMissions(m); setCleaners(c); setDepenses(d); setLoading(false);
-    });
+    })();
   }, []);
 
   if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
