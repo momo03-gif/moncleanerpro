@@ -129,7 +129,7 @@ export default function LogementDetailClient() {
           <p className="text-xs px-3 py-2 rounded-xl mt-3" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</p>
         )}
 
-        <button onClick={() => router.push('/airbnb')} className="mt-4 text-xs font-medium" style={{ color: '#C9A84C' }}>
+        <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="mt-4 text-xs font-medium" style={{ color: '#C9A84C' }}>
           Modifier les informations →
         </button>
       </div>

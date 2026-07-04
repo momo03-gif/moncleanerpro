@@ -58,6 +58,16 @@ export default function AirbnbApartmentsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Deep-link ?edit=<id> (depuis la fiche logement) → ouvre directement l'édition.
+  useEffect(() => {
+    if (loading) return;
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (!editId) return;
+    const a = apartments.find(x => x.id === editId);
+    if (a) openEdit(a);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   function openCreate() {
     setEditingId(null);
     setForm(emptyForm);
