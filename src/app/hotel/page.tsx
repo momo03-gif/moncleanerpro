@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AnnounceType } from '@/lib/types';
+import { readHotelPrefill } from '@/lib/hotelPrefill';
 import Icon from '@/components/Icon';
 
 // Perf : la couche données (supabase) n'est utilisée qu'à l'envoi du formulaire.
@@ -26,6 +27,15 @@ export default function HotelDemandePage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Pré-remplissage depuis « Refaire cette demande » (historique). Les dates
+  // restent vides : l'hôtel choisit toujours de nouvelles dates.
+  useEffect(() => {
+    const p = readHotelPrefill();
+    if (!p) return;
+    setForm(f => ({ ...f, type: (p.type as AnnounceType) || '', timeStart: p.timeStart || '', timeEnd: p.timeEnd || '', guestCount: p.guestCount || '' }));
+    if (p.instructions) { setHasInstructions(true); setInstructions(p.instructions); }
+  }, []);
 
   const isValid = form.type && form.dateStart && form.dateEnd && form.timeStart && form.timeEnd && form.guestCount;
 

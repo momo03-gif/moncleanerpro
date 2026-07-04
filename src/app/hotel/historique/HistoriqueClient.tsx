@@ -5,9 +5,11 @@
 // couche données (pas de supabase dans le bundle client de cette page).
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { HotelAnnounce } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, overlapsRange, type DateRange } from '@/lib/dateRange';
+import { writeHotelPrefill } from '@/lib/hotelPrefill';
 
 // Statuts côté hôtel : suivi clair du cycle de vie de la demande.
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -22,7 +24,19 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
 const TYPE_LABEL: Record<string, string> = { menage: 'Ménage courant', checkin: 'Check-in', checkout: 'Check-out', grand_menage: 'Grand ménage' };
 
 export default function HistoriqueClient({ announces }: { announces: HotelAnnounce[] }) {
+  const router = useRouter();
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
+
+  function reuse(a: HotelAnnounce) {
+    writeHotelPrefill({
+      type: a.type,
+      timeStart: a.timeStart ?? '',
+      timeEnd: a.timeEnd ?? '',
+      guestCount: a.guestCount != null ? String(a.guestCount) : '',
+      instructions: a.instructions ?? '',
+    });
+    router.push('/hotel');
+  }
 
   // Demandes dont la période chevauche la période sélectionnée
   const filtered = announces.filter(a => overlapsRange(a.date, a.dateEnd, range));
@@ -90,7 +104,12 @@ export default function HistoriqueClient({ announces }: { announces: HotelAnnoun
                     </div>
                   </div>
                   {a.instructions && <p className="text-xs px-3 py-2 rounded-xl" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{a.instructions}</p>}
-                  {a.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Cleaner : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{a.cleanerName}</span></p>}
+                  {a.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Agent : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{a.cleanerName}</span></p>}
+                  <button onClick={() => reuse(a)}
+                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99]"
+                    style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}>
+                    Refaire cette demande
+                  </button>
                 </div>
               </div>
             );
