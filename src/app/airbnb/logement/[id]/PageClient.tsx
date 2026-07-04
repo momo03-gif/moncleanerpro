@@ -73,6 +73,11 @@ export default function LogementDetailClient() {
   const arrivalsByDay = new Set(reservations.filter(r => r.status === 'confirmed').map(r => r.checkIn));
   const isTurnover = (checkOut: string) => arrivalsByDay.has(checkOut);
 
+  // Prochaines arrivées confirmées (aujourd'hui ou après).
+  const upcomingArrivals = reservations
+    .filter(r => r.status === 'confirmed' && r.checkIn >= t)
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+
   // Ménages récents (missions du logement), les plus récents d'abord.
   const recentMissions = [...missions].sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
 
@@ -166,6 +171,25 @@ export default function LogementDetailClient() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Prochaines arrivées */}
+      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Prochaines arrivées</h2>
+      {upcomingArrivals.length === 0 ? (
+        <div className="rounded-2xl p-6 text-center border mb-6" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <p className="text-xs" style={{ color: '#A8A09A' }}>Aucune arrivée à venir.</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5 mb-6">
+          {upcomingArrivals.slice(0, 8).map(r => (
+            <div key={r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FCFBF8', borderColor: '#E8E4DC' }}>
+              <span className="text-sm shrink-0" style={{ color: '#5A8A6A' }}>▲</span>
+              <p className="text-sm font-semibold flex-1" style={{ color: '#1A1A1A' }}>
+                Arrivée {fmtDate(r.checkIn)}{r.checkInTime ? ` · ${formatHour(r.checkInTime)}` : ''}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
