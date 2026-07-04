@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { computeCleanerGain, computeMissionGain } from './pay';
+import { computeCleanerGain, computeMissionGain, billableHotelPrice } from './pay';
+
+describe('billableHotelPrice — facturation hôtel/EHPAD = max(temps accordé, réel)', () => {
+  // Prix de base = taux × prévu. Ex. 40€ pour 120 min prévues (= 20€/h).
+  it('temps réel = prévu → prix inchangé', () => {
+    expect(billableHotelPrice(40, 120, 120)).toBe(40);
+  });
+  it('dépassement (150 min pour 120 prévues) → facturé au réel', () => {
+    expect(billableHotelPrice(40, 120, 150)).toBe(50); // 40 × 150/120
+  });
+  it('plus rapide (90 min pour 120 prévues) → facturé au temps accordé (jamais moins)', () => {
+    expect(billableHotelPrice(40, 120, 90)).toBe(40);
+  });
+  it('sans temps prévu → prix de base conservé', () => {
+    expect(billableHotelPrice(40, 0, 90)).toBe(40);
+  });
+  it('sans prix de base → 0', () => {
+    expect(billableHotelPrice(0, 120, 200)).toBe(0);
+  });
+});
 
 describe('computeCleanerGain — salaire = taux horaire × durée / 60', () => {
   it('une heure pleine = le taux horaire', () => {

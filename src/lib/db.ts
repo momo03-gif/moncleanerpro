@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
-import { computeCleanerGain, computeMissionGain } from './pay';
+import { computeCleanerGain, computeMissionGain, billableHotelPrice } from './pay';
 import { canCleanerDoService } from './service';
 import { clusterApartments } from './zones';
 import { getBlockingFormationsDB } from './formation';
@@ -813,7 +813,7 @@ export async function finishMissionDB(
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
 
   const { data: m } = await supabase.from('missions')
-    .select('started_at, start_lat, start_lng, cleaner_id, status, service, address_lat, address_lng, airbnbs(latitude, longitude)')
+    .select('started_at, start_lat, start_lng, cleaner_id, status, service, source, price, mission_duration_minutes, cleaner_hourly_rate_snapshot, address_lat, address_lng, airbnbs(latitude, longitude)')
     .eq('id', missionId).single();
   if (!m || m.cleaner_id !== cleanerTableId) return { error: 'Mission introuvable.' };
   if (m.status === 'done' || m.status === 'cancelled') return { error: 'Mission déjà clôturée.' };
@@ -842,6 +842,28 @@ export async function finishMissionDB(
   if (m.started_at) {
     const mins = Math.max(0, Math.round((now.getTime() - new Date(m.started_at).getTime()) / 60000));
     patch.actual_duration_minutes = mins;
+
+    const md = m as { source?: string; price?: number; mission_duration_minutes?: number; cleaner_hourly_rate_snapshot?: number; service?: string };
+    const svc = md.service ?? 'cleaning';
+    const planned = Number(md.mission_duration_minutes) || 0;
+
+    // PAIE CLEANER — HÔTEL / EHPAD UNIQUEMENT : payé au TEMPS RÉEL travaillé
+    // (pointage), même si < prévu. Ménage uniquement (la livraison = forfait).
+    // Les Airbnb gardent la paie au temps prévu (marge Airbnb fixe).
+    const rate = Number(md.cleaner_hourly_rate_snapshot) || 0;
+    if (md.source === 'hotel' && svc === 'cleaning' && rate > 0) {
+      patch.cleaner_gain = computeCleanerGain(rate, mins);
+    }
+
+    // FACTURATION HÔTEL / EHPAD (source 'hotel') : on facture le MAX(temps
+    // accordé, temps réel). Dépassement → on facture le réel ; plus rapide → on
+    // facture quand même le temps convenu (jamais moins). Airbnb NON concernés
+    // (prix fixe par ménage). Sans pointage → prix prévu conservé (ce bloc est
+    // dans `if (m.started_at)`).
+    const basePrice = Number(md.price) || 0;
+    if (md.source === 'hotel' && planned > 0 && basePrice > 0) {
+      patch.price = billableHotelPrice(basePrice, planned, mins);
+    }
   }
   if (coords) { patch.end_lat = coords.lat; patch.end_lng = coords.lng; }
 

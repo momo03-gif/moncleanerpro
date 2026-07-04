@@ -18,6 +18,19 @@ export function computeCleanerGain(hourlyRate: number, durationMinutes: number):
   return Math.round((rate * minutes / 60) * 100) / 100;
 }
 
+// Prix client FACTURÉ pour un ménage hôtel / EHPAD selon le pointage.
+// Règle : on facture le MAX du temps accordé et du temps réel. Un dépassement est
+// facturé au réel ; un ménage plus rapide est facturé au temps convenu (jamais
+// moins). Sans temps prévu ou sans prix de base → on renvoie le prix de base tel
+// quel. (Ne s'applique PAS aux Airbnb : prix fixe par ménage.)
+export function billableHotelPrice(basePrice: number, plannedMinutes: number, realMinutes: number): number {
+  const base = Number(basePrice) || 0;
+  const planned = Number(plannedMinutes) || 0;
+  const real = Number(realMinutes) || 0;
+  if (base <= 0 || planned <= 0) return base;
+  return Math.round(base * Math.max(1, real / planned) * 100) / 100;
+}
+
 // Gain d'une mission selon sa prestation :
 //   ménage   → taux horaire × durée / 60
 //   livraison → montant fixe par livraison (delivery_rate)
