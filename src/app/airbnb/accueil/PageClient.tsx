@@ -6,7 +6,7 @@
 // aperçu des 7 prochains jours. Objectif : répondre en un coup d'œil à
 // « qu'est-ce qui se passe et qu'est-ce que je dois surveiller ? ».
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -36,6 +36,8 @@ export default function PartnerHomeClient() {
   const [feeds, setFeeds] = useState<ReservationFeed[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const autoSynced = useRef(false);
+
   const load = useCallback(async () => {
     if (!user) return;
     const [a, r, m, f] = await Promise.all([
@@ -46,6 +48,21 @@ export default function PartnerHomeClient() {
     ]);
     setApartments(a); setReservations(r); setMissions(m); setFeeds(f);
     setLoading(false);
+
+    // Synchro auto à l'ouverture (une fois par visite) si les données datent de
+    // plus de 30 min : les départs/arrivées sont frais au moment où le partenaire
+    // regarde, sans dépendre uniquement des crons 2×/jour. Non bloquant.
+    if (!autoSynced.current && f.length > 0) {
+      autoSynced.current = true;
+      const latest = f.map(x => x.lastSyncAt).filter(Boolean).sort().pop();
+      const stale = !latest || Date.now() - new Date(latest).getTime() > 30 * 60 * 1000;
+      if (stale) {
+        fetch('/api/reservations/sync', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partnerId: user.id }),
+        }).then(() => load()).catch(() => { /* silencieux : le cron prendra le relais */ });
+      }
+    }
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
