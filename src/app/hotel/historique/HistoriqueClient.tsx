@@ -1,8 +1,9 @@
 'use client';
 
-// Partie interactive de l'historique hôtel (filtre de dates + liste). Les données
-// sont chargées côté SERVEUR et passées en props → ce composant n'importe PAS la
-// couche données (pas de supabase dans le bundle client de cette page).
+// Suivi des demandes hôtel. Les données sont chargées côté SERVEUR et passées en
+// props → ce composant n'importe PAS la couche données (pas de supabase dans le
+// bundle de la page). Deux sections : « En cours » (demandes actives, toujours
+// visibles) et « Historique » (demandes closes, filtrées par dates).
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +24,9 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
 
 const TYPE_LABEL: Record<string, string> = { menage: 'Ménage courant', checkin: 'Check-in', checkout: 'Check-out', grand_menage: 'Grand ménage' };
 
+// Demandes « actives » (en cours de traitement) vs closes (historique).
+const ACTIVE_STATUSES = new Set(['pending', 'validated', 'in_progress']);
+
 // Frise de progression d'une demande (masquée si refusée/annulée : le badge suffit).
 const STEPS = ['Envoyée', 'Acceptée', 'En cours', 'Terminée'];
 const STEP_INDEX: Record<string, number> = { pending: 0, validated: 1, in_progress: 2, completed: 3 };
@@ -42,6 +46,65 @@ function StatusTimeline({ status }: { status: string }) {
           <span className="text-[9px] mt-1 text-center leading-tight" style={{ color: i <= idx ? '#7A7068' : '#C2BBB2', fontWeight: i === idx ? 700 : 400 }}>{label}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function RequestCard({ a, onReuse, onCancel, cancelBusy, cancelError }: {
+  a: HotelAnnounce;
+  onReuse: (a: HotelAnnounce) => void;
+  onCancel: (a: HotelAnnounce) => void;
+  cancelBusy: string | null;
+  cancelError: { id: string; msg: string } | null;
+}) {
+  const st = STATUS[a.status] ?? STATUS.pending;
+  return (
+    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+      <div className="px-5 py-3 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
+        <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{TYPE_LABEL[a.type] ?? a.type}</span>
+        <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
+      </div>
+      <div className="px-5 py-4">
+        <StatusTimeline status={a.status} />
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <div>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Période</p>
+            <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
+              {new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              {a.dateEnd && a.dateEnd !== a.date && <> → {new Date(a.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</>}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Horaires</p>
+            <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{a.timeStart} – {a.timeEnd}</p>
+          </div>
+          <div>
+            <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Chambres</p>
+            <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{a.guestCount}</p>
+          </div>
+        </div>
+        {a.instructions && <p className="text-xs px-3 py-2 rounded-xl whitespace-pre-line" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{a.instructions}</p>}
+        {a.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Agent : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{a.cleanerName}</span></p>}
+
+        {cancelError?.id === a.id && (
+          <p className="text-xs mt-2 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{cancelError.msg}</p>
+        )}
+
+        {a.status === 'pending' && (
+          <button onClick={() => onCancel(a)} disabled={cancelBusy === a.id}
+            className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99] disabled:opacity-50"
+            style={{ borderColor: '#EAC4BE', color: '#B85A50', backgroundColor: '#FFFFFF' }}>
+            {cancelBusy === a.id ? 'Annulation…' : 'Annuler la demande'}
+          </button>
+        )}
+        {['completed', 'refused', 'cancelled'].includes(a.status) && (
+          <button onClick={() => onReuse(a)}
+            className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99]"
+            style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}>
+            Refaire cette demande
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -79,97 +142,62 @@ export default function HistoriqueClient({ announces }: { announces: HotelAnnoun
     router.refresh();
   }
 
-  // Demandes dont la période chevauche la période sélectionnée
-  const filtered = list.filter(a => overlapsRange(a.date, a.dateEnd, range));
-  const pendingCount = filtered.filter(a => a.status === 'pending').length;
-  const activeCount = filtered.filter(a => ['validated', 'in_progress'].includes(a.status)).length;
-  const doneCount = filtered.filter(a => a.status === 'completed').length;
+  // En cours (toujours visibles, triées par date la plus proche en premier).
+  const active = list
+    .filter(a => ACTIVE_STATUSES.has(a.status))
+    .sort((x, y) => (x.date + (x.timeStart || '')).localeCompare(y.date + (y.timeStart || '')));
 
-  // Bornes (1re → dernière demande) pour le bouton « voir toutes les dates »
-  const allDates = list.flatMap(a => [a.date, a.dateEnd ?? a.date]).filter(Boolean).sort();
-  const outOfRangeCount = list.length - filtered.length;
+  // Historique (demandes closes), filtré par la période sélectionnée, plus récent d'abord.
+  const past = list.filter(a => !ACTIVE_STATUSES.has(a.status));
+  const pastFiltered = past
+    .filter(a => overlapsRange(a.date, a.dateEnd, range))
+    .sort((x, y) => y.date.localeCompare(x.date));
+  const pastDates = past.flatMap(a => [a.date, a.dateEnd ?? a.date]).filter(Boolean).sort();
+  const pastOutOfRange = past.length - pastFiltered.length;
+
+  const cardProps = { onReuse: reuse, onCancel: cancelRequest, cancelBusy, cancelError };
 
   return (
     <div className="p-5">
       <div className="mb-5 pt-2">
         <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Mes demandes</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{filtered.length} demande{filtered.length > 1 ? 's' : ''}</p>
+        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>
+          {active.length > 0 ? `${active.length} en cours` : 'Aucune demande en cours'}
+        </p>
       </div>
 
-      <DateRangeFilter start={range.start} end={range.end} onChange={setRange} className="mb-5" />
-
-      {(pendingCount > 0 || activeCount > 0 || doneCount > 0) && (
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {pendingCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#C48A2A12', color: '#C48A2A' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{pendingCount} en attente</div>}
-          {activeCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{activeCount} en cours</div>}
-          {doneCount > 0 && <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}><span className="w-1.5 h-1.5 rounded-full bg-current" />{doneCount} terminée{doneCount > 1 ? 's' : ''}</div>}
+      {/* ── EN COURS ─────────────────────────────────────────────────────── */}
+      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>En cours</h2>
+      {active.length === 0 ? (
+        <div className="rounded-2xl p-6 text-center border mb-8" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune demande en cours</p>
+          <button onClick={() => router.push('/hotel')}
+            className="mt-3 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            Nouvelle demande
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3 mb-8">
+          {active.map(a => <RequestCard key={a.id} a={a} {...cardProps} />)}
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune demande sur cette période</p>
-          {outOfRangeCount > 0 && allDates.length > 0 && (
-            <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}
+      {/* ── HISTORIQUE ───────────────────────────────────────────────────── */}
+      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Historique</h2>
+      <DateRangeFilter start={range.start} end={range.end} onChange={setRange} className="mb-4" />
+      {pastFiltered.length === 0 ? (
+        <div className="rounded-2xl p-8 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune demande terminée sur cette période</p>
+          {pastOutOfRange > 0 && pastDates.length > 0 && (
+            <button onClick={() => setRange({ start: pastDates[0], end: pastDates[pastDates.length - 1] })}
               className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-              Voir mes {outOfRangeCount} demande{outOfRangeCount > 1 ? 's' : ''} sur d'autres dates →
+              Voir mes {pastOutOfRange} demande{pastOutOfRange > 1 ? 's' : ''} passée{pastOutOfRange > 1 ? 's' : ''} →
             </button>
           )}
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(a => {
-            const st = STATUS[a.status] ?? STATUS.pending;
-            return (
-              <div key={a.id} className="rounded-2xl border overflow-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-                <div className="px-5 py-3 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
-                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{TYPE_LABEL[a.type] ?? a.type}</span>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
-                </div>
-                <div className="px-5 py-4">
-                  <StatusTimeline status={a.status} />
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div>
-                      <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Période</p>
-                      <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
-                        {new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                        {a.dateEnd && a.dateEnd !== a.date && <> → {new Date(a.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</>}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Horaires</p>
-                      <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{a.timeStart} – {a.timeEnd}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Chambres</p>
-                      <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{a.guestCount}</p>
-                    </div>
-                  </div>
-                  {a.instructions && <p className="text-xs px-3 py-2 rounded-xl" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{a.instructions}</p>}
-                  {a.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Agent : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{a.cleanerName}</span></p>}
-
-                  {cancelError?.id === a.id && (
-                    <p className="text-xs mt-2 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{cancelError.msg}</p>
-                  )}
-
-                  {a.status === 'pending' && (
-                    <button onClick={() => cancelRequest(a)} disabled={cancelBusy === a.id}
-                      className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99] disabled:opacity-50"
-                      style={{ borderColor: '#EAC4BE', color: '#B85A50', backgroundColor: '#FFFFFF' }}>
-                      {cancelBusy === a.id ? 'Annulation…' : 'Annuler la demande'}
-                    </button>
-                  )}
-                  {['completed', 'refused', 'cancelled'].includes(a.status) && (
-                    <button onClick={() => reuse(a)}
-                      className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99]"
-                      style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}>
-                      Refaire cette demande
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {pastFiltered.map(a => <RequestCard key={a.id} a={a} {...cardProps} />)}
         </div>
       )}
     </div>
