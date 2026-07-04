@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import type { AnnounceType } from '@/lib/types';
+import type { AnnounceType, HotelAnnounce } from '@/lib/types';
 import { readHotelPrefill } from '@/lib/hotelPrefill';
 import Icon from '@/components/Icon';
+
+const TYPE_SHORT: Record<string, string> = { menage: 'Ménage', grand_menage: 'Grand ménage', checkin: 'Check-in', checkout: 'Check-out' };
 
 // Perf : la couche données (supabase) n'est utilisée qu'à l'envoi du formulaire.
 // On l'importe en différé dans le handler → elle ne pèse pas sur le chargement
@@ -21,12 +24,15 @@ const today = new Date().toISOString().split('T')[0];
 
 export default function HotelDemandePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [form, setForm] = useState({ type: '' as AnnounceType | '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', guestCount: '', zone: '', contact: '' });
   const [hasInstructions, setHasInstructions] = useState(false);
   const [instructions, setInstructions] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Raccourcis « Refaire » : quelques modèles distincts issus des demandes récentes.
+  const [recent, setRecent] = useState<HotelAnnounce[]>([]);
 
   // Pré-remplissage depuis « Refaire cette demande » (historique). Les dates
   // restent vides : l'hôtel choisit toujours de nouvelles dates.
@@ -36,6 +42,36 @@ export default function HotelDemandePage() {
     setForm(f => ({ ...f, type: (p.type as AnnounceType) || '', timeStart: p.timeStart || '', timeEnd: p.timeEnd || '', guestCount: p.guestCount || '' }));
     if (p.instructions) { setHasInstructions(true); setInstructions(p.instructions); }
   }, []);
+
+  // Modèles récents (déduplication par type + chambres + horaires) pour un
+  // « Refaire » en 1 tap directement sur l'accueil.
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    (async () => {
+      try {
+        const { getHotelByUserId, getHotelRequestsForHotelDB } = await loadDb();
+        const hotel = await getHotelByUserId(user.id);
+        const all = await getHotelRequestsForHotelDB(hotel?.id ?? user.id);
+        const seen = new Set<string>();
+        const uniq: HotelAnnounce[] = [];
+        for (const a of all) {
+          const key = `${a.type}|${a.guestCount}|${a.timeStart}|${a.timeEnd}`;
+          if (seen.has(key)) continue;
+          seen.add(key); uniq.push(a);
+          if (uniq.length >= 3) break;
+        }
+        if (active) setRecent(uniq);
+      } catch { /* silencieux */ }
+    })();
+    return () => { active = false; };
+  }, [user]);
+
+  function applyTemplate(a: HotelAnnounce) {
+    setForm(f => ({ ...f, type: (a.type as AnnounceType) || '', timeStart: a.timeStart ?? '', timeEnd: a.timeEnd ?? '', guestCount: a.guestCount != null ? String(a.guestCount) : '' }));
+    if (a.instructions) { setHasInstructions(true); setInstructions(a.instructions); }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   const isValid = form.type && form.dateStart && form.dateEnd && form.timeStart && form.timeEnd && form.guestCount;
 
@@ -82,7 +118,10 @@ export default function HotelDemandePage() {
         </div>
         <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Demande envoyée</h2>
         <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Vous serez notifié dès qu'elle est acceptée.</p>
-        <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Nouvelle demande</button>
+        <div className="flex gap-2 justify-center">
+          <button onClick={() => router.push('/hotel/historique')} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Voir mes demandes</button>
+          <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Nouvelle demande</button>
+        </div>
       </div>
     </div>
   );
@@ -93,6 +132,21 @@ export default function HotelDemandePage() {
         <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Nouvelle demande</h1>
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Notre équipe traite votre demande et assigne un agent</p>
       </div>
+
+      {recent.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Refaire une demande récente</p>
+          <div className="flex gap-2 flex-wrap">
+            {recent.map(a => (
+              <button key={a.id} type="button" onClick={() => applyTemplate(a)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95"
+                style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FFFFFF' }}>
+                {TYPE_SHORT[a.type] ?? a.type}{a.guestCount != null ? ` · ${a.guestCount} ch.` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Type */}
