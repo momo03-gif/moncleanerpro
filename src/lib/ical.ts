@@ -62,15 +62,37 @@ function unescapeText(v: string): string {
   return v.replace(/\\n/gi, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\').trim();
 }
 
+// Nombre de jours d'une DURATION IS-8601 (RFC 5545), ex. P2D, P1W, P1DT12H.
+// On ne garde que la composante en jours/semaines (suffisant pour un séjour).
+function parseDurationDays(v: string): number | null {
+  const m = v.match(/^[+-]?P(?:(\d+)W)?(?:(\d+)D)?/);
+  if (!m || (!m[1] && !m[2])) return null;
+  return (m[1] ? parseInt(m[1], 10) * 7 : 0) + (m[2] ? parseInt(m[2], 10) : 0);
+}
+
+// Ajoute des jours à une date 'YYYY-MM-DD' (calcul en UTC pour éviter les décalages).
+function addDaysISO(isoDate: string, days: number): string {
+  const d = new Date(isoDate + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function parseICal(raw: string): ICalEvent[] {
   const lines = unfold(raw);
   const events: ICalEvent[] = [];
-  let cur: Partial<ICalEvent> | null = null;
+  let cur: (Partial<ICalEvent> & { _durDays?: number }) | null = null;
 
   for (const line of lines) {
     if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
     if (line === 'END:VEVENT') {
-      if (cur && cur.uid && cur.start && cur.end) events.push(cur as ICalEvent);
+      // Robustesse multi-plateformes : un évènement sans DTEND ne doit pas être
+      // perdu. On reconstruit la fin depuis DURATION si présente, sinon on retombe
+      // sur la date de début (séjour d'un jour) — mieux que d'ignorer la réservation.
+      if (cur && cur.uid && cur.start) {
+        if (!cur.end) cur.end = cur._durDays ? addDaysISO(cur.start, cur._durDays) : cur.start;
+        delete cur._durDays;
+        events.push(cur as ICalEvent);
+      }
       cur = null;
       continue;
     }
@@ -93,6 +115,11 @@ export function parseICal(raw: string): ICalEvent[] {
       case 'DTEND': {
         const d = parseICalDate(value);
         if (d) { cur.end = d.date; if (d.time) cur.endTime = d.time; }
+        break;
+      }
+      case 'DURATION': {
+        const days = parseDurationDays(value.trim());
+        if (days != null) cur._durDays = days;
         break;
       }
     }
