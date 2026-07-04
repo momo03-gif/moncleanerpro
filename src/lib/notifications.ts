@@ -42,12 +42,13 @@ interface MissionContext {
   cleanerName: string | null;
   createdBy: string | null;
   createdByRole: string | null;
+  partnerId: string | null;
 }
 
 async function loadMissionContext(missionId: string): Promise<MissionContext | null> {
   const { data, error } = await supabase
     .from('missions')
-    .select('id, date_from, time_from, property_name, client_name, cleaner_id, cleaner_name, created_by, created_by_role, airbnbs(name)')
+    .select('id, date_from, time_from, property_name, client_name, cleaner_id, cleaner_name, created_by, created_by_role, partner_id, airbnbs(name)')
     .eq('id', missionId)
     .single();
   if (error || !data) return null;
@@ -64,6 +65,7 @@ async function loadMissionContext(missionId: string): Promise<MissionContext | n
     place, date: data.date_from ?? '', time: trimTime(data.time_from),
     cleanerUserId, cleanerName: data.cleaner_name ?? null,
     createdBy: data.created_by ?? null, createdByRole: data.created_by_role ?? null,
+    partnerId: (data as { partner_id?: string | null }).partner_id ?? null,
   };
 }
 
@@ -186,8 +188,11 @@ export async function notifyMissionCompleted(missionId: string) {
     const rows: NotifInput[] = admins.map(id => ({
       userId: id, role: 'admin' as const, title: 'Mission terminée', message, type: 'mission_completed', missionId,
     }));
-    if (ctx.createdBy) {
-      rows.push({ userId: ctx.createdBy, role: 'partner', title: 'Mission terminée', message, type: 'mission_completed', missionId });
+    // Le partenaire est identifié par partner_id (autoritaire, y compris pour les
+    // ménages AUTO-synchronisés dont created_by est null), sinon par le créateur.
+    const partnerRecipient = ctx.partnerId ?? ctx.createdBy;
+    if (partnerRecipient) {
+      rows.push({ userId: partnerRecipient, role: 'partner', title: 'Ménage terminé', message, type: 'mission_completed', missionId });
     }
     await dispatch(rows);
   } catch (e) { console.error('notifyMissionCompleted:', e); }
