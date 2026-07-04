@@ -138,7 +138,8 @@ export default function PartnerHomeClient() {
           {upcomingMissions.slice(0, 15).map(m => {
             const cfg = missionStatusCfg(m.status);
             return (
-              <div key={m.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+              <button key={m.id} onClick={() => router.push(`/airbnb/mission/${m.id}`)}
+                className="w-full text-left rounded-2xl border px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-transform" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{m.property || 'Logement'}</p>
                   <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>
@@ -148,7 +149,7 @@ export default function PartnerHomeClient() {
                 <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>
                   {missionStatusLabel(m.status, m.service)}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>

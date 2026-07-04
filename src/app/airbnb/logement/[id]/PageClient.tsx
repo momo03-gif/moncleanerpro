@@ -180,10 +180,12 @@ export default function LogementDetailClient() {
           {recentMissions.slice(0, 20).map(m => {
             const cfg = missionStatusCfg(m.status);
             return (
-              <div key={m.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+              <button key={m.id} onClick={() => router.push(`/airbnb/mission/${m.id}`)}
+                className="w-full text-left rounded-2xl border px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-transform" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
+                  <p className="text-sm font-semibold flex items-center gap-1" style={{ color: '#1A1A1A' }}>
                     {fmtDate(m.date)}{m.time ? ` · ${formatHour(m.time)}` : ''}
+                    <span className="text-xs" style={{ color: '#C9A84C' }}>›</span>
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>
                     {serviceParts(m.service).delivery ? 'Livraison' : 'Ménage'}
@@ -193,7 +195,7 @@ export default function LogementDetailClient() {
                 <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>
                   {missionStatusLabel(m.status, m.service)}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
