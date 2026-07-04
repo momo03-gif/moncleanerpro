@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAirbnbsForPartner, createAirbnb, updateAirbnb, deleteAirbnb } from '@/lib/db';
-import type { Apartment } from '@/lib/types';
+import { getAirbnbsForPartner, getReservationsForPartner, createAirbnb, updateAirbnb, deleteAirbnb } from '@/lib/db';
+import type { Apartment, Reservation } from '@/lib/types';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -42,6 +42,7 @@ export default function AirbnbApartmentsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,8 +52,12 @@ export default function AirbnbApartmentsPage() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const a = await getAirbnbsForPartner(user.id);
+    const [a, r] = await Promise.all([
+      getAirbnbsForPartner(user.id),
+      getReservationsForPartner(user.id),
+    ]);
     setApartments(a);
+    setReservations(r);
     setLoading(false);
   }, [user]);
 
@@ -123,6 +128,17 @@ export default function AirbnbApartmentsPage() {
     const q = search.toLowerCase();
     return !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q);
   });
+
+  // Statut du jour par logement (occupé/libre + prochain départ) depuis les réservations.
+  const todayStr = new Date().toISOString().split('T')[0];
+  const confirmedRes = reservations.filter(r => r.status === 'confirmed');
+  function statusFor(aptId: string) {
+    const occupied = confirmedRes.some(r => r.airbnbId === aptId && r.checkIn <= todayStr && r.checkOut >= todayStr);
+    const nextDep = confirmedRes
+      .filter(r => r.airbnbId === aptId && r.checkOut >= todayStr)
+      .sort((a, b) => a.checkOut.localeCompare(b.checkOut))[0];
+    return { occupied, nextDep };
+  }
 
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
@@ -238,6 +254,22 @@ export default function AirbnbApartmentsPage() {
                 </div>
               </div>
               <div className="px-5 py-3 space-y-1.5 text-sm" style={{ color: '#7A7068' }}>
+                {(() => {
+                  const { occupied, nextDep } = statusFor(apt.id);
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
+                        style={{ backgroundColor: occupied ? '#5A8A6A15' : '#F1F1EE', color: occupied ? '#5A8A6A' : '#A8A09A' }}>
+                        {occupied ? 'Occupé' : 'Libre'}
+                      </span>
+                      {nextDep && (
+                        <span className="text-[11px]" style={{ color: '#A8A09A' }}>
+                          Prochain départ : {new Date(nextDep.checkOut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 {apt.clientPrice != null && (
                   <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ / ménage</p>
                 )}
