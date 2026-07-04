@@ -93,6 +93,39 @@ export default function PartnerHomeClient() {
     .filter(m => !DONE(m.status) && m.date > t && m.date <= in7)
     .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
 
+  // Config incomplète = pas encore de logement OU pas encore de calendrier connecté.
+  // Tant que ce n'est pas fait, on affiche un guide de démarrage plutôt que le
+  // tableau de bord vide (première prise en main limpide).
+  const setupIncomplete = apartments.length === 0 || feeds.length === 0;
+
+  if (setupIncomplete) {
+    return (
+      <div className="p-5">
+        <div className="mb-5 pt-2">
+          <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>{greeting}{user?.name ? `, ${user.name}` : ''}</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>Configurons votre espace en 3 étapes.</p>
+        </div>
+        <div className="rounded-2xl border p-5" style={{ borderColor: '#C9A84C', backgroundColor: '#FCF8EF' }}>
+          <p className="text-sm font-bold mb-1" style={{ color: '#1A1A1A' }}>Bien démarrer</p>
+          <p className="text-xs mb-4" style={{ color: '#7A7068' }}>Une fois configuré, vos ménages se créeront automatiquement à chaque départ.</p>
+          <div className="space-y-3">
+            <SetupStep n={1} done={apartments.length > 0}
+              title="Ajouter un logement"
+              desc={apartments.length > 0 ? `${apartments.length} logement${apartments.length > 1 ? 's' : ''} ajouté${apartments.length > 1 ? 's' : ''}` : 'Créez votre premier logement (adresse, codes, prix)'}
+              actionLabel="Ajouter" onAction={() => router.push('/airbnb')} showAction={apartments.length === 0} />
+            <SetupStep n={2} done={feeds.length > 0}
+              title="Connecter un calendrier"
+              desc={feeds.length > 0 ? `${feeds.length} calendrier${feeds.length > 1 ? 's' : ''} connecté${feeds.length > 1 ? 's' : ''}` : 'Airbnb, Booking, Smoobu… via lien iCal'}
+              actionLabel="Connecter" onAction={() => router.push('/airbnb/sync')} showAction={apartments.length > 0 && feeds.length === 0} />
+            <SetupStep n={3} done={false} info
+              title="C'est automatique"
+              desc="À chaque départ synchronisé, un ménage est créé et suivi ici." />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-5">
       <div className="mb-5 pt-2">
@@ -242,6 +275,31 @@ function QuickAction({ icon, label, onClick }: { icon: IconName; label: string; 
       <span style={{ color: '#C9A84C' }}><Icon name={icon} size={20} /></span>
       <span className="text-[11px] font-semibold" style={{ color: '#7A7068' }}>{label}</span>
     </button>
+  );
+}
+
+function SetupStep({ n, done, title, desc, actionLabel, onAction, showAction, info }: {
+  n: number; done: boolean; title: string; desc: string;
+  actionLabel?: string; onAction?: () => void; showAction?: boolean; info?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+        style={{
+          backgroundColor: done ? '#5A8A6A' : info ? '#C9A84C20' : '#FFFFFF',
+          color: done ? '#FFFFFF' : info ? '#C9A84C' : '#A8A09A',
+          border: done || info ? 'none' : '1.5px solid #E8E4DC',
+        }}>
+        {done ? <Icon name="check" size={14} /> : info ? <Icon name="sync" size={14} /> : n}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{title}</p>
+        <p className="text-[11px]" style={{ color: '#A8A09A' }}>{desc}</p>
+      </div>
+      {showAction && onAction && actionLabel && (
+        <button onClick={onAction} className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 active:scale-95 transition-transform" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{actionLabel}</button>
+      )}
+    </div>
   );
 }
 
