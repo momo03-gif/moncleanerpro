@@ -239,6 +239,25 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   }
 
   for (const dep of departures) {
+    // Garde-fou anti-doublon : si un ménage auto existe déjà pour CE logement à
+    // CETTE date de départ (cas fréquent : un logement a 2 calendriers, ex.
+    // Airbnb + Booking, qui exportent le même séjour sous deux UID différents),
+    // on ne recrée pas de ménage — on rattache la réservation au ménage existant.
+    const { data: dup } = await db
+      .from('missions')
+      .select('id')
+      .eq('airbnb_id', dep.airbnb_id)
+      .eq('date_from', dep.check_out)
+      .eq('auto_synced', true)
+      .neq('status', 'cancelled')
+      .limit(1);
+    if (dup && dup.length > 0) {
+      await db.from('reservations')
+        .update({ mission_id: dup[0].id, mission_created_at: new Date().toISOString() })
+        .eq('id', dep.id);
+      continue;
+    }
+
     const apt = await getApt(dep.airbnb_id);
     const minutes = apt.estimated_cleaning_minutes;
 
