@@ -65,6 +65,35 @@ async function ownsHotel(db: SupabaseClient, hotelId: string, sessionUserId: str
   return !!data && data.user_id === sessionUserId;
 }
 
+// Statut EFFECTIF d'une demande hôtel, dérivé de ses missions liées
+// (colonne missions.request_id). Une demande « acceptée » (validated) passe à
+// « en cours » dès qu'une mission démarre, et à « terminée » quand TOUTES ses
+// missions sont terminées. Mute `row.status` sur place. Robuste : si la colonne
+// request_id n'existe pas encore (migration non lancée) ou s'il n'y a pas de
+// mission liée, on conserve le statut stocké.
+async function applyEffectiveStatus(db: SupabaseClient, rows: { id: string; status: string }[]): Promise<void> {
+  const validatedIds = rows.filter(r => r.status === 'validated').map(r => r.id);
+  if (validatedIds.length === 0) return;
+  const { data: ms, error } = await db.from('missions').select('request_id, status').in('request_id', validatedIds);
+  if (error || !ms || ms.length === 0) return;
+  const agg = new Map<string, { total: number; done: number; active: number }>();
+  for (const m of ms as { request_id: string | null; status: string }[]) {
+    if (!m.request_id) continue;
+    const g = agg.get(m.request_id) ?? { total: 0, done: 0, active: 0 };
+    g.total++;
+    if (m.status === 'completed') g.done++;
+    if (m.status === 'in_progress' || m.status === 'completed') g.active++;
+    agg.set(m.request_id, g);
+  }
+  for (const r of rows) {
+    if (r.status !== 'validated') continue;
+    const g = agg.get(r.id);
+    if (!g || g.total === 0) continue;
+    if (g.done === g.total) r.status = 'completed';
+    else if (g.active > 0) r.status = 'in_progress';
+  }
+}
+
 export async function GET(req: Request) {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 });
@@ -141,13 +170,17 @@ export async function GET(req: Request) {
     case 'hotelRequests': {
       if (!isAdmin) return adminOnly();
       const { data } = await db.from('hotel_requests').select('*').order('created_at', { ascending: false });
-      return NextResponse.json({ requests: (data ?? []).map(rowToAnnounce) });
+      const rows = data ?? [];
+      await applyEffectiveStatus(db, rows);
+      return NextResponse.json({ requests: rows.map(rowToAnnounce) });
     }
     case 'hotelRequestsForHotel': {
       const hotelId = url.searchParams.get('hotelId') ?? '';
       if (!isAdmin && !(await ownsHotel(db, hotelId, session.id))) return adminOnly();
       const { data } = await db.from('hotel_requests').select('*').eq('hotel_id', hotelId).order('created_at', { ascending: false });
-      return NextResponse.json({ requests: (data ?? []).map(rowToAnnounce) });
+      const rows = data ?? [];
+      await applyEffectiveStatus(db, rows);
+      return NextResponse.json({ requests: rows.map(rowToAnnounce) });
     }
     default:
       return NextResponse.json({ error: 'Opération inconnue.' }, { status: 400 });
@@ -250,7 +283,13 @@ export async function POST(req: Request) {
           const rows = eachDate(req.date_from, req.date_to).map(d => ({ ...baseRow, date_from: d }));
           const { data: created, error } = await db.from('missions').insert(rows).select('id');
           if (error) console.error('validateRequest - mission insert error:', error);
-          else if (created?.[0]?.id) await notifyCleanerNewMission(created[0].id);
+          else if (created && created.length > 0) {
+            await notifyCleanerNewMission(created[0].id);
+            // Lier les missions à la demande pour un suivi de statut fiable.
+            // Best-effort : sans effet si la colonne request_id n'existe pas encore
+            // (le statut effectif retombe alors sur le statut stocké).
+            await db.from('missions').update({ request_id: b.id }).in('id', created.map((m: { id: string }) => m.id));
+          }
           // Prévenir l'hôtel que sa demande a été acceptée.
           await notifyHotelRequestDecision(hotel?.user_id ?? '', true, req.type_prestation, req.date_from);
         }
