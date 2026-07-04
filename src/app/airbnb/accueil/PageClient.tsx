@@ -102,6 +102,17 @@ export default function PartnerHomeClient() {
   const departuresToday = confirmed.filter(r => r.checkOut === t).length;
   // Logement occupé aujourd'hui = un séjour confirmé couvre la journée (arrivée ≤ auj. ≤ départ).
   const occupiedToday = apartments.filter(a => confirmed.some(r => r.airbnbId === a.id && r.checkIn <= t && r.checkOut >= t)).length;
+  const freeToday = apartments.length - occupiedToday;
+
+  // Activité de la semaine (7 jours glissants) : nb de ménages + coût estimé.
+  const weekMissions = missions.filter(m => m.status !== 'cancelled' && m.date >= t && m.date < in7);
+  const weekCost = Math.round(weekMissions.reduce((s, m) => s + (m.price || 0), 0));
+  const weekDone = weekMissions.filter(m => m.status === 'completed').length;
+
+  // Prochain départ à venir (après aujourd'hui) — visibilité sur le mouvement suivant.
+  const nextDeparture = confirmed
+    .filter(r => r.checkOut > t)
+    .sort((a, b) => a.checkOut.localeCompare(b.checkOut))[0];
 
   // ── Aperçu 7 prochains jours (nb de ménages non annulés par jour) ──────
   const week = Array.from({ length: 7 }, (_, i) => {
@@ -183,9 +194,30 @@ export default function PartnerHomeClient() {
       <div className="grid grid-cols-2 gap-3 mb-6">
         <Tile label="Arrivées aujourd'hui" value={arrivalsToday} tone={arrivalsToday > 0 ? 'gold' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
         <Tile label="Départs aujourd'hui" value={departuresToday} tone={departuresToday > 0 ? 'gold' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
-        <Tile label="Occupés aujourd'hui" value={occupiedToday} sub={`sur ${apartments.length} logement${apartments.length > 1 ? 's' : ''}`} />
+        <Tile label="Occupés aujourd'hui" value={occupiedToday} sub={`${freeToday} libre${freeToday > 1 ? 's' : ''} · ${apartments.length} au total`} />
         <Tile label="Ménages en attente" value={pendingCount} tone={pendingCount > 0 ? 'warn' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
       </div>
+
+      {/* ── Cette semaine (activité + coût estimé) ──────────────────────── */}
+      <div className="rounded-2xl border p-4 mb-3 flex items-center justify-between" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#A8A09A' }}>Cette semaine</p>
+          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{weekMissions.length}<span className="text-sm font-medium" style={{ color: '#A8A09A' }}> ménage{weekMissions.length > 1 ? 's' : ''}</span></p>
+          <p className="text-[11px]" style={{ color: '#A8A09A' }}>{weekDone} terminé{weekDone > 1 ? 's' : ''}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold" style={{ color: '#C9A84C' }}>{weekCost}€</p>
+          <p className="text-[11px]" style={{ color: '#A8A09A' }}>coût ménages estimé</p>
+        </div>
+      </div>
+
+      {/* Prochain départ (repère quand rien aujourd'hui) */}
+      {departuresToday === 0 && nextDeparture && (
+        <p className="text-xs mb-6 px-1" style={{ color: '#A8A09A' }}>
+          Prochain départ : <span style={{ color: '#1A1A1A', fontWeight: 600 }}>{nextDeparture.apartmentName ?? 'Logement'}</span> le {new Date(nextDeparture.checkOut + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+        </p>
+      )}
+      {(departuresToday > 0 || !nextDeparture) && <div className="mb-3" />}
 
       {/* ── Actions rapides ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2.5 mb-6">
