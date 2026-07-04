@@ -155,6 +155,22 @@ export default function AirbnbSyncPage() {
       </button>
       {syncMsg && <p className="text-xs mb-2 px-3 py-2 rounded-lg" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{syncMsg}</p>}
 
+      {/* Rappel : la synchro tourne automatiquement (crons 6h et 18h). Le bouton
+          ci-dessus ne sert qu'à forcer une actualisation immédiate. */}
+      {feeds.length > 0 && (() => {
+        const latest = feeds
+          .map(f => f.lastSyncAt)
+          .filter(Boolean)
+          .sort()
+          .pop();
+        return (
+          <p className="text-[11px] mb-2 flex items-center gap-1.5" style={{ color: '#5A8A6A' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#5A8A6A' }} />
+            Synchronisation automatique 2×/jour{latest ? ` · dernière : ${fmtDateTime(latest)}` : ''}
+          </p>
+        );
+      })()}
+
       {/* Onglets */}
       <div className="flex gap-1 my-4 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
         {([['feeds', 'Connexions'], ['reservations', 'Réservations']] as const).map(([v, label]) => (
