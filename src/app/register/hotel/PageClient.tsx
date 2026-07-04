@@ -10,7 +10,7 @@ const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', col
 
 export default function RegisterHotelPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: '', address: '', email: '', phone: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ name: '', address: '', email: '', phone: '', password: '', confirm: '', clientType: 'hotel' as 'hotel' | 'ehpad' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -23,7 +23,7 @@ export default function RegisterHotelPage() {
 
     setLoading(true);
     try {
-      await registerHotelDB({ name: form.name, address: form.address, email: form.email, phone: form.phone, password: form.password });
+      await registerHotelDB({ name: form.name, address: form.address, email: form.email, phone: form.phone, password: form.password, clientType: form.clientType });
       setDone(true);
     } catch (err: any) {
       setError(err.message ?? 'Une erreur est survenue.');
@@ -57,8 +57,25 @@ export default function RegisterHotelPage() {
 
         <div className="rounded-2xl p-8" style={{ backgroundColor: '#141414', border: '1px solid #242424' }}>
           <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Type d'établissement */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: '#6A6058' }}>Type d&apos;établissement</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['hotel', 'ehpad'] as const).map(ct => (
+                  <button key={ct} type="button" onClick={() => setForm(p => ({ ...p, clientType: ct }))}
+                    className="py-2.5 rounded-xl text-sm font-semibold border transition-all"
+                    style={{
+                      borderColor: form.clientType === ct ? '#C9A84C' : '#2E2E2E',
+                      backgroundColor: form.clientType === ct ? '#C9A84C' : '#1A1A1A',
+                      color: form.clientType === ct ? '#0D0D0D' : '#8A8078',
+                    }}>
+                    {ct === 'hotel' ? 'Hôtel' : 'EHPAD'}
+                  </button>
+                ))}
+              </div>
+            </div>
             {[
-              { label: "Nom de l'hôtel", key: 'name', type: 'text', placeholder: 'Hôtel Lumière', required: true },
+              { label: form.clientType === 'ehpad' ? "Nom de l'établissement" : "Nom de l'hôtel", key: 'name', type: 'text', placeholder: form.clientType === 'ehpad' ? 'EHPAD Les Tilleuls' : 'Hôtel Lumière', required: true },
               { label: 'Adresse', key: 'address', type: 'text', placeholder: '15 Avenue Victor Hugo, Paris', required: true },
               { label: 'Email', key: 'email', type: 'email', placeholder: 'contact@hotel.com', required: true },
               { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '01 23 45 67 89', required: false },

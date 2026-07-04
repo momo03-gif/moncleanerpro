@@ -31,10 +31,15 @@ export async function POST(req: Request) {
     }
 
     if (type === 'hotel') {
-      const { error: hErr } = await db.from('hotels').insert({
+      const { data: h, error: hErr } = await db.from('hotels').insert({
         user_id: user.id, hotel_name: b.name, address: b.address ?? null, email: b.email, phone: b.phone ?? null, status_account: 'pending',
-      });
+      }).select('id').single();
       if (hErr) return NextResponse.json({ error: hErr.message }, { status: 400 });
+      // Type de client (hôtel / EHPAD). Best-effort : sans effet si la colonne
+      // client_type n'existe pas encore (le compte reste « hôtel » par défaut).
+      if (h && b.clientType === 'ehpad') {
+        await db.from('hotels').update({ client_type: 'ehpad' }).eq('id', h.id);
+      }
     } else {
       const { error: pErr } = await db.from('airbnb_partners').insert({
         user_id: user.id, partner_name: b.name, email: b.email, phone: b.phone ?? null, status_account: 'pending',

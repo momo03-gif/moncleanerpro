@@ -24,9 +24,11 @@ export async function refuseHotelDB(id: string) {
 
 export async function registerHotelDB(fields: {
   name: string; address: string; email: string; phone: string; password: string;
+  clientType?: 'hotel' | 'ehpad';
 }) {
   await postServer('/api/auth/register', {
     type: 'hotel', name: fields.name, address: fields.address, email: fields.email, phone: fields.phone, password: fields.password,
+    clientType: fields.clientType === 'ehpad' ? 'ehpad' : 'hotel',
   });
 }
 
