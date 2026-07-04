@@ -168,27 +168,41 @@ function mapMissionStatus(s: string): MissionStatus {
   return map[s] ?? 'pending';
 }
 
-export async function getMissionsDB(): Promise<Mission[]> {
-  const { data, error } = await supabase.from('missions').select(MISSION_SELECT).order('date_from', { ascending: false });
+// `sinceDate` (YYYY-MM-DD) borne aux missions à partir de cette date (le futur est
+// toujours inclus). À utiliser pour les vues OPÉRATIONNELLES (tableau de bord,
+// planning) qui n'ont pas besoin de tout l'historique — ça évite que la requête
+// ralentisse à mesure que les missions s'accumulent. Sans `sinceDate` →
+// comportement inchangé (tout l'historique), pour les vues analytiques
+// (statistiques, facturation, comptabilité).
+export async function getMissionsDB(sinceDate?: string): Promise<Mission[]> {
+  let query = supabase.from('missions').select(MISSION_SELECT).order('date_from', { ascending: false });
+  if (sinceDate) query = query.gte('date_from', sinceDate);
+  const { data, error } = await query;
   if (error) console.error('getMissionsDB error:', error.code, error.message);
   return (data ?? []).map(rowToMission);
 }
 
-export async function getMissionsForCleanerDB(userId: string): Promise<Mission[]> {
+export async function getMissionsForCleanerDB(userId: string, sinceDate?: string): Promise<Mission[]> {
   // missions.cleaner_id is a FK to cleaners.id — resolve users.id → cleaners.id
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return [];
-  return getMissionsByCleanerTableIdDB(cleanerTableId);
+  return getMissionsByCleanerTableIdDB(cleanerTableId, sinceDate);
 }
 
 // Missions d'un cleaner identifié par cleaners.id (pas users.id) — utilisé par le
 // moteur RH, qui raisonne directement en cleaners.id (= missions.cleaner_id).
-export async function getMissionsByCleanerTableIdDB(cleanerTableId: string): Promise<Mission[]> {
-  const { data, error } = await supabase
+// `sinceDate` (YYYY-MM-DD) borne la requête aux missions à partir de cette date
+// (les missions futures sont toujours incluses). Sert à alléger le planning
+// cleaner : inutile de charger tout l'historique sur un outil mobile quotidien.
+// Sans `sinceDate` → comportement inchangé (tout l'historique), pour le moteur RH.
+export async function getMissionsByCleanerTableIdDB(cleanerTableId: string, sinceDate?: string): Promise<Mission[]> {
+  let query = supabase
     .from('missions')
     .select(MISSION_SELECT)
     .eq('cleaner_id', cleanerTableId)
     .order('date_from', { ascending: false });
+  if (sinceDate) query = query.gte('date_from', sinceDate);
+  const { data, error } = await query;
   if (error) console.error('getMissionsByCleanerTableIdDB:', error.code, error.message);
   return (data ?? []).map(rowToMission);
 }

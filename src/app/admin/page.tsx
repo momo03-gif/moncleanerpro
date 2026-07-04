@@ -61,8 +61,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       const [db, reports] = await Promise.all([loadDb(), loadReports()]);
+      // Perf : le tableau de bord n'affiche que le jour même, le lendemain, les
+      // retards récents et les rendez-vous à venir → on borne à ~90 jours
+      // d'historique (le futur reste inclus). Évite de charger tout l'historique.
+      const since = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
       const [m, c, inc, feeds] = await Promise.all([
-        db.getMissionsDB(), db.getCleaners(), reports.getOpenIncidentsDB(), db.getAllReservationFeeds(),
+        db.getMissionsDB(since), db.getCleaners(), reports.getOpenIncidentsDB(), db.getAllReservationFeeds(),
       ]);
       setMissions(m); setCleaners(c); setIncidents(inc);
       setFailingFeeds(feeds.filter(f => f.lastSyncStatus === 'error').length);

@@ -530,7 +530,11 @@ export default function CleanerDashboard() {
       return;
     }
     // En ligne : on récupère le planning à jour et on rafraîchit le cache local.
-    const m = await getMissionsForCleanerDB(user.id);
+    // Perf : on ne charge que ~6 mois d'historique (les missions futures sont
+    // toujours incluses) — inutile de tirer tout l'historique sur mobile, et ça
+    // évite que la requête ralentisse à mesure que les missions s'accumulent.
+    const since = toDateStr(new Date(Date.now() - 183 * 86400000));
+    const m = await getMissionsForCleanerDB(user.id, since);
     setMissions(m);
     setOfflineSince(null);
     // On ne persiste pas un planning vide par-dessus un cache existant (une requête
