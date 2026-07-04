@@ -8,7 +8,12 @@ import type { AppNotification } from './types';
 //  qui échoue ne doit JAMAIS casser l'action métier (création/màj de mission).
 // ════════════════════════════════════════════════════════════════════════════
 
-type Recipient = { userId: string; role: 'admin' | 'cleaner' | 'partner' };
+type Recipient = { userId: string; role: 'admin' | 'cleaner' | 'partner' | 'hotel' | 'airbnb' };
+
+// Libellés des prestations hôtel (pour les messages de notification).
+const HOTEL_TYPE_LABEL: Record<string, string> = {
+  menage: 'Ménage courant', grand_menage: 'Grand ménage', checkin: 'Check-in', checkout: 'Check-out',
+};
 type NotifInput = Recipient & { title: string; message: string; type: string; missionId?: string | null };
 
 function fmtDate(d: string): string {
@@ -113,6 +118,23 @@ export async function notifyPartnerCreatedMission(partnerName: string, date: str
       type: 'mission_created', missionId: missionId ?? null,
     })));
   } catch (e) { console.error('notifyPartnerCreatedMission:', e); }
+}
+
+// A ter. Décision de l'équipe sur une demande hôtel → l'hôtel est prévenu
+// (acceptée ou refusée). Évite qu'il ait à vérifier son suivi manuellement.
+export async function notifyHotelRequestDecision(hotelUserId: string, accepted: boolean, typePrestation: string, date: string) {
+  if (!hotelUserId) return;
+  try {
+    const label = HOTEL_TYPE_LABEL[typePrestation] ?? 'Ménage';
+    await dispatch([{
+      userId: hotelUserId, role: 'hotel',
+      title: accepted ? 'Demande acceptée' : 'Demande refusée',
+      message: accepted
+        ? `Votre demande « ${label} » du ${fmtDate(date)} a été acceptée. Un agent va intervenir.`
+        : `Votre demande « ${label} » du ${fmtDate(date)} a été refusée. Contactez l'équipe si besoin.`,
+      type: accepted ? 'request_accepted' : 'request_refused',
+    }]);
+  } catch (e) { console.error('notifyHotelRequestDecision:', e); }
 }
 
 // A bis. Alerte de SYNCHRONISATION → admins (changement de date sur mission assignée,

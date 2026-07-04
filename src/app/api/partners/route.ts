@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
 import { computeCleanerGain } from '@/lib/pay';
-import { notifyPartnerCreatedMission, notifyCleanerNewMission } from '@/lib/notifications';
+import { notifyPartnerCreatedMission, notifyCleanerNewMission, notifyHotelRequestDecision } from '@/lib/notifications';
 import type { HotelAnnounce, AnnounceStatus } from '@/lib/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -195,7 +195,12 @@ export async function POST(req: Request) {
       }
       case 'refuseRequest': {
         if (!isAdmin) return adminOnly();
+        const { data: req } = await db.from('hotel_requests').select('hotel_id, type_prestation, date_from').eq('id', b.id).single();
         await db.from('hotel_requests').update({ status: 'refused' }).eq('id', b.id);
+        if (req) {
+          const { data: hotel } = await db.from('hotels').select('user_id').eq('id', req.hotel_id).single();
+          await notifyHotelRequestDecision(hotel?.user_id ?? '', false, req.type_prestation, req.date_from);
+        }
         return NextResponse.json({ ok: true });
       }
       case 'cancelHotelRequest': {
@@ -246,6 +251,8 @@ export async function POST(req: Request) {
           const { data: created, error } = await db.from('missions').insert(rows).select('id');
           if (error) console.error('validateRequest - mission insert error:', error);
           else if (created?.[0]?.id) await notifyCleanerNewMission(created[0].id);
+          // Prévenir l'hôtel que sa demande a été acceptée.
+          await notifyHotelRequestDecision(hotel?.user_id ?? '', true, req.type_prestation, req.date_from);
         }
         return NextResponse.json({ ok: true });
       }
