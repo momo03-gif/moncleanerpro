@@ -239,11 +239,11 @@ export default function AirbnbMissionsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [load, user]);
 
-  // Ouverture directe du formulaire de création via ?tab=create (ex. bouton
-  // « Commander » du tableau de bord). Lu côté client pour éviter Suspense.
+  // Ouverture directe d'un onglet via ?tab= (ex. « Commander » → create,
+  // « ménages en attente » → track). Lu côté client pour éviter Suspense.
   useEffect(() => {
     const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam === 'create') setTab('create');
+    if (tabParam === 'create' || tabParam === 'track' || tabParam === 'reservations') setTab(tabParam);
   }, []);
 
   function resetForm() {

@@ -195,7 +195,7 @@ export default function PartnerHomeClient() {
         <Tile label="Arrivées aujourd'hui" value={arrivalsToday} tone={arrivalsToday > 0 ? 'gold' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
         <Tile label="Départs aujourd'hui" value={departuresToday} tone={departuresToday > 0 ? 'gold' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
         <Tile label="Occupés aujourd'hui" value={occupiedToday} sub={`${freeToday} libre${freeToday > 1 ? 's' : ''} · ${apartments.length} au total`} />
-        <Tile label="Ménages en attente" value={pendingCount} tone={pendingCount > 0 ? 'warn' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
+        <Tile label="Ménages en attente" value={pendingCount} tone={pendingCount > 0 ? 'warn' : 'plain'} onClick={() => router.push('/airbnb/missions?tab=track')} />
       </div>
 
       {/* ── Cette semaine (activité + coût estimé) ──────────────────────── */}
