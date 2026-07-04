@@ -76,13 +76,15 @@ async function applyEffectiveStatus(db: SupabaseClient, rows: { id: string; stat
   if (validatedIds.length === 0) return;
   const { data: ms, error } = await db.from('missions').select('request_id, status').in('request_id', validatedIds);
   if (error || !ms || ms.length === 0) return;
+  // NB : la table missions stocke les statuts en valeurs BRUTES ('inprogress',
+  // 'done'…) — PAS les valeurs applicatives ('in_progress'/'completed').
   const agg = new Map<string, { total: number; done: number; active: number }>();
   for (const m of ms as { request_id: string | null; status: string }[]) {
     if (!m.request_id) continue;
     const g = agg.get(m.request_id) ?? { total: 0, done: 0, active: 0 };
     g.total++;
-    if (m.status === 'completed') g.done++;
-    if (m.status === 'in_progress' || m.status === 'completed') g.active++;
+    if (m.status === 'done') g.done++;
+    if (m.status === 'inprogress' || m.status === 'done') g.active++;
     agg.set(m.request_id, g);
   }
   for (const r of rows) {
