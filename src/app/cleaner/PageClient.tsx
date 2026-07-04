@@ -529,7 +529,11 @@ export default function CleanerDashboard() {
       setLoading(false);
       return;
     }
-    // En ligne : on récupère le planning à jour et on rafraîchit le cache local.
+    // En ligne : affichage instantané du dernier planning connu (cache IndexedDB)
+    // pendant qu'on rafraîchit en arrière-plan (stale-while-revalidate). Rouvrir
+    // la page ou y revenir affiche donc les missions tout de suite, sans attente.
+    const cached = await readCachedMissions(user.id);
+    if (cached && cached.missions.length > 0) { setMissions(cached.missions); setLoading(false); }
     // Perf : on ne charge que ~6 mois d'historique (les missions futures sont
     // toujours incluses) — inutile de tirer tout l'historique sur mobile, et ça
     // évite que la requête ralentisse à mesure que les missions s'accumulent.

@@ -9,11 +9,17 @@ import { missionStatusCfg } from '@/lib/labels';
 import { serviceLabel, SERVICE_BADGE } from '@/lib/service';
 import { collapseGroups } from '@/lib/missionOrder';
 import Loading from '@/components/Loading';
+import { getSessionCache, setSessionCache } from '@/lib/sessionCache';
 
 // Perf : la couche données (supabase) est importée en différé → elle ne pèse
 // pas sur le chargement initial du tableau de bord.
 const loadDb = () => import('@/lib/db');
 const loadReports = () => import('@/lib/missionReports');
+
+// Cache mémoire de session pour un affichage instantané en revenant sur le
+// tableau de bord (rafraîchi en arrière-plan).
+type DashCache = { missions: Mission[]; cleaners: any[]; pending: any[]; incidents: OpenIncident[]; failingFeeds: number };
+const DASH_CACHE_KEY = 'admin-dashboard';
 
 const DONE = (s: string) => s === 'completed' || s === 'cancelled';
 
@@ -38,12 +44,14 @@ function Tile({ label, value, sub, href, tone = 'plain' }: {
 }
 
 export default function AdminDashboard() {
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [cleaners, setCleaners] = useState<any[]>([]);
-  const [pending, setPending] = useState<any[]>([]);
-  const [incidents, setIncidents] = useState<OpenIncident[]>([]);
-  const [failingFeeds, setFailingFeeds] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+  // Affichage instantané depuis le cache de session si on revient sur la page.
+  const cached = getSessionCache<DashCache>(DASH_CACHE_KEY);
+  const [missions, setMissions] = useState<Mission[]>(cached?.missions ?? []);
+  const [cleaners, setCleaners] = useState<any[]>(cached?.cleaners ?? []);
+  const [pending, setPending] = useState<any[]>(cached?.pending ?? []);
+  const [incidents, setIncidents] = useState<OpenIncident[]>(cached?.incidents ?? []);
+  const [failingFeeds, setFailingFeeds] = useState<number>(cached?.failingFeeds ?? 0);
+  const [loading, setLoading] = useState(cached === undefined);
 
   const today = new Date().toISOString().split('T')[0];
   const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
@@ -52,10 +60,12 @@ export default function AdminDashboard() {
   async function loadPending() {
     const { getPendingHotelsDB, getPendingAirbnbPartnersDB } = await loadDb();
     const [hotels, partners] = await Promise.all([getPendingHotelsDB(), getPendingAirbnbPartnersDB()]);
-    setPending([
+    const list = [
       ...hotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
       ...partners.map((p: any) => ({ ...p, kind: 'airbnb' as const })),
-    ]);
+    ];
+    setPending(list);
+    return list;
   }
 
   useEffect(() => {
@@ -68,9 +78,11 @@ export default function AdminDashboard() {
       const [m, c, inc, feeds] = await Promise.all([
         db.getMissionsDB(since), db.getCleaners(), reports.getOpenIncidentsDB(), db.getAllReservationFeeds(),
       ]);
+      const failing = feeds.filter(f => f.lastSyncStatus === 'error').length;
       setMissions(m); setCleaners(c); setIncidents(inc);
-      setFailingFeeds(feeds.filter(f => f.lastSyncStatus === 'error').length);
-      await loadPending();
+      setFailingFeeds(failing);
+      const pendingList = await loadPending();
+      setSessionCache<DashCache>(DASH_CACHE_KEY, { missions: m, cleaners: c, pending: pendingList, incidents: inc, failingFeeds: failing });
       setLoading(false);
     }
     load();
