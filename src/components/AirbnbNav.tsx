@@ -10,7 +10,7 @@ import Logo from '@/components/Logo';
 const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/airbnb/accueil', label: 'Accueil', icon: 'today' },
   { href: '/airbnb', label: 'Logements', icon: 'building' },
-  { href: '/airbnb/missions', label: 'Ménages', icon: 'missions' },
+  { href: '/airbnb/missions', label: 'Planning', icon: 'missions' },
   { href: '/airbnb/sync', label: 'Synchro', icon: 'sync' },
 ];
 

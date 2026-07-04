@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAirbnbsForPartner, getMissionsForPartnerDB, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
+import { useRouter } from 'next/navigation';
+import { getAirbnbsForPartner, getMissionsForPartnerDB, getReservationsForPartner, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import type { Apartment, Mission } from '@/lib/types';
+import type { Apartment, Mission, Reservation } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
@@ -197,10 +198,12 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
 
 export default function AirbnbMissionsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'create' | 'track'>('track');
+  const [tab, setTab] = useState<'reservations' | 'track' | 'create'>('reservations');
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
 
   const [airbnbId, setAirbnbId] = useState('');
@@ -216,12 +219,14 @@ export default function AirbnbMissionsPage() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [a, m] = await Promise.all([
+    const [a, m, r] = await Promise.all([
       getAirbnbsForPartner(user.id),
       getMissionsForPartnerDB(user.id),
+      getReservationsForPartner(user.id),
     ]);
     setApartments(a);
     setMissions(m);
+    setReservations(r);
     setLoading(false);
   }, [user]);
 
@@ -292,17 +297,104 @@ export default function AirbnbMissionsPage() {
   return (
     <div className="p-5">
       <div className="mb-5 pt-2">
-        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Missions</h1>
+        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Planning</h1>
+        <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>Arrivées, départs et ménages de vos logements</p>
       </div>
 
       <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['track', 'Mes missions'], ['create', 'Créer']] as const).map(([v, label]) => (
+        {([['reservations', 'Réservations'], ['track', 'Ménages'], ['create', 'Créer']] as const).map(([v, label]) => (
           <button key={v} onClick={() => setTab(v)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
             style={{ backgroundColor: tab === v ? '#FFFFFF' : 'transparent', color: tab === v ? '#1A1A1A' : '#A8A09A', boxShadow: tab === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
             {label}
           </button>
         ))}
       </div>
+
+      {/* ── PLANNING RÉSERVATIONS (arrivées + départs, 14 jours) ────────── */}
+      {tab === 'reservations' && (() => {
+        const t = today;
+        const horizon = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+        const confirmed = reservations.filter(r => r.status === 'confirmed');
+        const arrivalsByDay = new Set(confirmed.map(r => r.checkIn));
+        const missionById = new Map(missions.map(m => [m.id, m]));
+
+        type Ev = { day: string; kind: 'in' | 'out'; res: Reservation };
+        const events: Ev[] = [];
+        for (const r of confirmed) {
+          if (r.checkIn >= t && r.checkIn <= horizon) events.push({ day: r.checkIn, kind: 'in', res: r });
+          if (r.checkOut >= t && r.checkOut <= horizon) events.push({ day: r.checkOut, kind: 'out', res: r });
+        }
+        const byDay = events.reduce((acc, e) => { (acc[e.day] ??= []).push(e); return acc; }, {} as Record<string, Ev[]>);
+        const days = Object.keys(byDay).sort();
+
+        if (days.length === 0) {
+          return (
+            <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+              <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="calendar" size={30} /></span>
+              <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune arrivée ni départ à venir</p>
+              <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Connectez vos calendriers dans « Synchro ».</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 text-[11px]" style={{ color: '#A8A09A' }}>
+              <span className="flex items-center gap-1"><span style={{ color: '#5A8A6A' }}>▲</span> Arrivée</span>
+              <span className="flex items-center gap-1"><span style={{ color: '#C48A2A' }}>▼</span> Départ</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#B91C1C' }} /> Turnover</span>
+            </div>
+            {days.map(day => {
+              const evs = byDay[day];
+              const departures = evs.filter(e => e.kind === 'out');
+              const arrivals = evs.filter(e => e.kind === 'in');
+              const isToday = day === t;
+              const turnover = departures.some(e => arrivalsByDay.has(e.res.checkOut));
+              return (
+                <div key={day}>
+                  <div className="flex items-center gap-2 mb-2.5 sticky top-16 py-1 z-10" style={{ backgroundColor: '#FAFAF8' }}>
+                    <span className="text-sm font-bold capitalize" style={{ color: isToday ? '#C9A84C' : '#1A1A1A' }}>{formatDate(day)}</span>
+                    {isToday && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Aujourd&apos;hui</span>}
+                    {turnover && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>turnover</span>}
+                  </div>
+                  <div className="space-y-2">
+                    {departures.map(e => {
+                      const r = e.res;
+                      const isTurn = arrivalsByDay.has(r.checkOut);
+                      const m = r.missionId ? missionById.get(r.missionId) : undefined;
+                      const cfg = m ? (STATUS_CFG[m.status] ?? STATUS_CFG.pending) : null;
+                      return (
+                        <div key={'out' + r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: isTurn ? '#EAC4BE' : '#E8E4DC' }}>
+                          <span className="text-sm shrink-0" style={{ color: '#C48A2A' }}>▼</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? 'Logement'}</p>
+                            <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Départ{r.checkOutTime ? ` ${formatHour(r.checkOutTime)}` : ''}{isTurn && <span style={{ color: '#B85A50', fontWeight: 600 }}> · arrivée le jour même</span>}</p>
+                          </div>
+                          {m && cfg
+                            ? <button onClick={() => router.push(`/airbnb/mission/${m.id}`)} className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</button>
+                            : <span className="text-[11px] shrink-0" style={{ color: '#C48A2A' }}>ménage à créer</span>}
+                        </div>
+                      );
+                    })}
+                    {arrivals.map(e => {
+                      const r = e.res;
+                      return (
+                        <div key={'in' + r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FCFBF8', borderColor: '#E8E4DC' }}>
+                          <span className="text-sm shrink-0" style={{ color: '#5A8A6A' }}>▲</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? 'Logement'}</p>
+                            <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Arrivée{r.checkInTime ? ` ${formatHour(r.checkInTime)}` : ''}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {tab === 'create' && (
         apartments.length === 0 ? (
