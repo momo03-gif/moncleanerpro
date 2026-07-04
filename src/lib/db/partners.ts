@@ -43,6 +43,12 @@ export async function updateHotelRateDB(hotelId: string, rate: number) {
   catch (e) { console.error('updateHotelRateDB:', e); }
 }
 
+// Corrige le type d'un compte hôtelier (hôtel ↔ EHPAD) — admin uniquement.
+export async function updateHotelClientTypeDB(hotelId: string, clientType: 'hotel' | 'ehpad'): Promise<{ error: string | null }> {
+  try { await postServer('/api/partners', { op: 'updateHotelClientType', hotelId, clientType }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Modification impossible.' }; }
+}
+
 export async function getHotelByUserId(userId: string) {
   try { const d = await getServer(`/api/partners?op=hotelByUser&userId=${encodeURIComponent(userId)}`); return d.hotel ?? null; }
   catch { return null; }

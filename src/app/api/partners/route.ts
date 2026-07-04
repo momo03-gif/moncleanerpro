@@ -211,6 +211,13 @@ export async function POST(req: Request) {
         await db.from('hotels').update({ billing_hourly_rate: b.rate }).eq('id', b.hotelId);
         return NextResponse.json({ ok: true });
       }
+      case 'updateHotelClientType': {
+        if (!isAdmin) return adminOnly();
+        const clientType = b.clientType === 'ehpad' ? 'ehpad' : 'hotel';
+        const { error } = await db.from('hotels').update({ client_type: clientType }).eq('id', b.hotelId);
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ ok: true });
+      }
       case 'refuseAirbnbPartner': {
         if (!isAdmin) return adminOnly();
         await db.from('airbnb_partners').update({ status_account: 'refused' }).eq('id', b.id);

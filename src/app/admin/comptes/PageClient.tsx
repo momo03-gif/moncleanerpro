@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
-  getApprovedHotelsDB, updateHotelRateDB, getMissionsDB,
+  getApprovedHotelsDB, updateHotelRateDB, updateHotelClientTypeDB, getMissionsDB,
 } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
@@ -60,6 +60,15 @@ export default function ComptesPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // Corrige le type d'un compte (hôtel ↔ EHPAD), mise à jour optimiste.
+  async function saveType(h: any, ct: 'hotel' | 'ehpad') {
+    const prev = h.client_type ?? 'hotel';
+    if (prev === ct) return;
+    setHotels(list => list.map(x => x.id === h.id ? { ...x, client_type: ct } : x));
+    const res = await updateHotelClientTypeDB(h.id, ct);
+    if (res.error) setHotels(list => list.map(x => x.id === h.id ? { ...x, client_type: prev } : x));
+  }
 
   async function saveRate(hotelId: string) {
     await updateHotelRateDB(hotelId, Number(rates[hotelId]) || 0);
@@ -165,6 +174,18 @@ export default function ComptesPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.hotel_name}</p>
                     {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
+                    <div className="flex gap-1 mt-1.5">
+                      {(['hotel', 'ehpad'] as const).map(ct => {
+                        const on = (h.client_type ?? 'hotel') === ct;
+                        return (
+                          <button key={ct} onClick={() => saveType(h, ct)}
+                            className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold border transition-all"
+                            style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#A8A09A' }}>
+                            {ct === 'hotel' ? 'Hôtel' : 'EHPAD'}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5">
