@@ -4,7 +4,7 @@
 // sont chargées côté SERVEUR et passées en props → ce composant n'importe PAS la
 // couche données (pas de supabase dans le bundle client de cette page).
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { HotelAnnounce } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
@@ -49,6 +49,12 @@ function StatusTimeline({ status }: { status: string }) {
 export default function HistoriqueClient({ announces }: { announces: HotelAnnounce[] }) {
   const router = useRouter();
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
+  // Copie locale (les données viennent du serveur) pour refléter une annulation
+  // immédiatement, tout en resynchronisant quand le serveur renvoie des données fraîches.
+  const [list, setList] = useState(announces);
+  useEffect(() => { setList(announces); }, [announces]);
+  const [cancelBusy, setCancelBusy] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<{ id: string; msg: string } | null>(null);
 
   function reuse(a: HotelAnnounce) {
     writeHotelPrefill({
@@ -61,15 +67,27 @@ export default function HistoriqueClient({ announces }: { announces: HotelAnnoun
     router.push('/hotel');
   }
 
+  async function cancelRequest(a: HotelAnnounce) {
+    if (!confirm('Annuler cette demande ?')) return;
+    setCancelBusy(a.id); setCancelError(null);
+    // Import différé de la couche données (garde supabase hors du bundle de la page).
+    const { cancelHotelRequestDB } = await import('@/lib/db');
+    const res = await cancelHotelRequestDB(a.id);
+    setCancelBusy(null);
+    if (res.error) { setCancelError({ id: a.id, msg: res.error }); return; }
+    setList(prev => prev.map(x => x.id === a.id ? { ...x, status: 'cancelled' } : x));
+    router.refresh();
+  }
+
   // Demandes dont la période chevauche la période sélectionnée
-  const filtered = announces.filter(a => overlapsRange(a.date, a.dateEnd, range));
+  const filtered = list.filter(a => overlapsRange(a.date, a.dateEnd, range));
   const pendingCount = filtered.filter(a => a.status === 'pending').length;
   const activeCount = filtered.filter(a => ['validated', 'in_progress'].includes(a.status)).length;
   const doneCount = filtered.filter(a => a.status === 'completed').length;
 
   // Bornes (1re → dernière demande) pour le bouton « voir toutes les dates »
-  const allDates = announces.flatMap(a => [a.date, a.dateEnd ?? a.date]).filter(Boolean).sort();
-  const outOfRangeCount = announces.length - filtered.length;
+  const allDates = list.flatMap(a => [a.date, a.dateEnd ?? a.date]).filter(Boolean).sort();
+  const outOfRangeCount = list.length - filtered.length;
 
   return (
     <div className="p-5">
@@ -129,11 +147,25 @@ export default function HistoriqueClient({ announces }: { announces: HotelAnnoun
                   </div>
                   {a.instructions && <p className="text-xs px-3 py-2 rounded-xl" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{a.instructions}</p>}
                   {a.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Agent : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{a.cleanerName}</span></p>}
-                  <button onClick={() => reuse(a)}
-                    className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99]"
-                    style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}>
-                    Refaire cette demande
-                  </button>
+
+                  {cancelError?.id === a.id && (
+                    <p className="text-xs mt-2 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{cancelError.msg}</p>
+                  )}
+
+                  {a.status === 'pending' && (
+                    <button onClick={() => cancelRequest(a)} disabled={cancelBusy === a.id}
+                      className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99] disabled:opacity-50"
+                      style={{ borderColor: '#EAC4BE', color: '#B85A50', backgroundColor: '#FFFFFF' }}>
+                      {cancelBusy === a.id ? 'Annulation…' : 'Annuler la demande'}
+                    </button>
+                  )}
+                  {['completed', 'refused', 'cancelled'].includes(a.status) && (
+                    <button onClick={() => reuse(a)}
+                      className="mt-3 w-full py-2.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.99]"
+                      style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FAFAF8' }}>
+                      Refaire cette demande
+                    </button>
+                  )}
                 </div>
               </div>
             );

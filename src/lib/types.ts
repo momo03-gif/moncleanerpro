@@ -130,7 +130,7 @@ export const CONSUMABLE_ITEMS = [
 // État d'une demande de temps supplémentaire faite par le cleaner.
 export type ExtraTimeStatus = 'pending' | 'approved' | 'refused';
 
-export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed';
+export type AnnounceStatus = 'pending' | 'validated' | 'refused' | 'in_progress' | 'completed' | 'cancelled';
 export type AnnounceType = 'menage' | 'checkin' | 'checkout' | 'grand_menage';
 
 export interface HotelAnnounce {

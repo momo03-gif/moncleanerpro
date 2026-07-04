@@ -1122,6 +1122,17 @@ export async function refuseRequestDB(id: string) {
   catch (e) { console.error('refuseRequestDB:', e); }
 }
 
+// Annulation d'une demande hôtel par l'hôtel lui-même (seulement si « en attente »).
+// Renvoie un message d'erreur éventuel pour l'afficher dans l'UI.
+export async function cancelHotelRequestDB(id: string): Promise<{ error: string | null }> {
+  try {
+    await postServer('/api/partners', { op: 'cancelHotelRequest', id });
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Annulation impossible.' };
+  }
+}
+
 // Classement mensuel par nombre de missions terminées — AGRÉGAT SANS MONTANT.
 // Ne sélectionne ni price ni cleaner_gain : sûr à exposer côté cleaner (LOT 6).
 export async function getMonthlyRankingDB(period: string): Promise<{ cleanerId: string; name: string; count: number }[]> {

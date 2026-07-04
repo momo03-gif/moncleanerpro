@@ -198,6 +198,19 @@ export async function POST(req: Request) {
         await db.from('hotel_requests').update({ status: 'refused' }).eq('id', b.id);
         return NextResponse.json({ ok: true });
       }
+      case 'cancelHotelRequest': {
+        // L'hôtel annule SA demande, et uniquement tant qu'elle est en attente
+        // (une fois acceptée/en cours, il doit contacter l'équipe). L'admin peut
+        // toujours annuler.
+        const { data: req } = await db.from('hotel_requests').select('hotel_id, status').eq('id', b.id).single();
+        if (!req) return NextResponse.json({ error: 'Demande introuvable.' }, { status: 404 });
+        if (!isAdmin && !(await ownsHotel(db, req.hotel_id, session.id))) return adminOnly();
+        if (req.status !== 'pending') {
+          return NextResponse.json({ error: 'Seule une demande en attente peut être annulée.' }, { status: 400 });
+        }
+        await db.from('hotel_requests').update({ status: 'cancelled' }).eq('id', b.id);
+        return NextResponse.json({ ok: true });
+      }
       case 'validateRequest': {
         if (!isAdmin) return adminOnly();
         const { data: req } = await db.from('hotel_requests').select('*').eq('id', b.id).single();
