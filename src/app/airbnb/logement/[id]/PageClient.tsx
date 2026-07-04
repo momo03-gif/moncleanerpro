@@ -81,6 +81,11 @@ export default function LogementDetailClient() {
   // Ménages récents (missions du logement), les plus récents d'abord.
   const recentMissions = [...missions].sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
 
+  // Activité du mois en cours (nb de ménages non annulés + coût estimé) pour ce logement.
+  const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const monthMissions = missions.filter(m => m.date.startsWith(monthPrefix) && m.status !== 'cancelled');
+  const monthCost = Math.round(monthMissions.reduce((s, m) => s + (m.price || 0), 0));
+
   const capacity = [
     apt.bedrooms != null ? `${apt.bedrooms} chambre${apt.bedrooms > 1 ? 's' : ''}` : null,
     apt.beds != null ? `${apt.beds} lit${apt.beds > 1 ? 's' : ''}` : null,
@@ -105,6 +110,7 @@ export default function LogementDetailClient() {
           {apt.clientPrice != null && (
             <Info label="Prix / ménage" value={`${apt.clientPrice}€`} valueColor="#5A8A6A" />
           )}
+          <Info label="Ce mois" value={`${monthMissions.length} ménage${monthMissions.length > 1 ? 's' : ''} · ${monthCost}€`} />
           {capacity && <Info label="Capacité" value={capacity} />}
           {apt.cleanerName && <Info label="Cleaner attitré" value={apt.cleanerName} />}
           {apt.zoneName && <Info label="Zone" value={apt.zoneName} valueColor={apt.zoneColor} />}
