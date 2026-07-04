@@ -23,6 +23,29 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
 
 const TYPE_LABEL: Record<string, string> = { menage: 'Ménage courant', checkin: 'Check-in', checkout: 'Check-out', grand_menage: 'Grand ménage' };
 
+// Frise de progression d'une demande (masquée si refusée/annulée : le badge suffit).
+const STEPS = ['Envoyée', 'Acceptée', 'En cours', 'Terminée'];
+const STEP_INDEX: Record<string, number> = { pending: 0, validated: 1, in_progress: 2, completed: 3 };
+
+function StatusTimeline({ status }: { status: string }) {
+  const idx = STEP_INDEX[status];
+  if (idx === undefined) return null;
+  return (
+    <div className="flex items-start gap-0 mb-3">
+      {STEPS.map((label, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center">
+          <div className="flex items-center w-full">
+            <div className="h-0.5 flex-1" style={{ backgroundColor: i === 0 ? 'transparent' : i <= idx ? '#C9A84C' : '#E8E4DC' }} />
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: i <= idx ? '#C9A84C' : '#E8E4DC' }} />
+            <div className="h-0.5 flex-1" style={{ backgroundColor: i === STEPS.length - 1 ? 'transparent' : i < idx ? '#C9A84C' : '#E8E4DC' }} />
+          </div>
+          <span className="text-[9px] mt-1 text-center leading-tight" style={{ color: i <= idx ? '#7A7068' : '#C2BBB2', fontWeight: i === idx ? 700 : 400 }}>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HistoriqueClient({ announces }: { announces: HotelAnnounce[] }) {
   const router = useRouter();
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
@@ -86,6 +109,7 @@ export default function HistoriqueClient({ announces }: { announces: HotelAnnoun
                   <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
                 </div>
                 <div className="px-5 py-4">
+                  <StatusTimeline status={a.status} />
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
                       <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Période</p>
