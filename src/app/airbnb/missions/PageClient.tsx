@@ -432,10 +432,34 @@ export default function AirbnbMissionsPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {visibleMissions.map(m => (
-                <PartnerMissionCard key={m.id} mission={m} apartments={apartments} userId={user?.id ?? ''} onRefresh={load} />
-              ))}
+            <div className="space-y-6">
+              {/* Planning : missions regroupées par jour (agenda). */}
+              {Object.entries(
+                visibleMissions.reduce((acc, m) => {
+                  (acc[m.date] ??= []).push(m);
+                  return acc;
+                }, {} as Record<string, Mission[]>),
+              ).map(([day, dayMissions]) => {
+                const turnover = dayMissions.some(m => m.nextArrival && m.nextArrival === m.date);
+                const isToday = day === today;
+                return (
+                  <div key={day}>
+                    <div className="flex items-center gap-2 mb-2.5 sticky top-16 py-1 z-10" style={{ backgroundColor: '#FAFAF8' }}>
+                      <span className="text-sm font-bold capitalize" style={{ color: isToday ? '#C9A84C' : '#1A1A1A' }}>
+                        {formatDate(day)}
+                      </span>
+                      {isToday && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Aujourd&apos;hui</span>}
+                      <span className="text-xs" style={{ color: '#A8A09A' }}>· {dayMissions.length} ménage{dayMissions.length > 1 ? 's' : ''}</span>
+                      {turnover && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>turnover</span>}
+                    </div>
+                    <div className="space-y-3">
+                      {dayMissions.map(m => (
+                        <PartnerMissionCard key={m.id} mission={m} apartments={apartments} userId={user?.id ?? ''} onRefresh={load} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
