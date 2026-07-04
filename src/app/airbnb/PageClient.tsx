@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAirbnbsForPartner, createAirbnb, updateAirbnb, deleteAirbnb } from '@/lib/db';
 import type { Apartment } from '@/lib/types';
@@ -39,6 +40,7 @@ const TEXT_FIELDS: { label: string; key: keyof FormState; placeholder: string; r
 
 export default function AirbnbApartmentsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -212,10 +214,13 @@ export default function AirbnbApartmentsPage() {
             <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
               <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
+                  <button onClick={() => router.push(`/airbnb/logement/${apt.id}`)} className="min-w-0 text-left flex-1">
+                    <h3 className="font-semibold truncate flex items-center gap-1" style={{ color: '#1A1A1A' }}>
+                      {apt.name}
+                      <span className="text-xs shrink-0" style={{ color: '#C9A84C' }}>›</span>
+                    </h3>
                     <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>◎ {apt.address}</p>
-                  </div>
+                  </button>
                   <div className="flex gap-1.5 shrink-0">
                     <button onClick={() => openEdit(apt)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
                     <button onClick={() => handleDelete(apt.id)} className="text-xs px-2.5 py-1.5 rounded-lg" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>✕</button>
