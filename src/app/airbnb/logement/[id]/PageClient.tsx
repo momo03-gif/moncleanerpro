@@ -86,6 +86,23 @@ export default function LogementDetailClient() {
   const monthMissions = missions.filter(m => m.date.startsWith(monthPrefix) && m.status !== 'cancelled');
   const monthCost = Math.round(monthMissions.reduce((s, m) => s + (m.price || 0), 0));
 
+  // Calendrier d'occupation du mois en cours.
+  const now = new Date();
+  const calYear = now.getFullYear();
+  const calMonth = now.getMonth();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const firstWeekday = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // lundi = 0
+  const confirmedRes = reservations.filter(r => r.status === 'confirmed');
+  const arrSet = new Set(confirmedRes.map(r => r.checkIn));
+  const depSet = new Set(confirmedRes.map(r => r.checkOut));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const calDays = Array.from({ length: daysInMonth }, (_, i) => {
+    const dnum = i + 1;
+    const iso = `${calYear}-${pad(calMonth + 1)}-${pad(dnum)}`;
+    const occupied = confirmedRes.some(r => r.checkIn <= iso && r.checkOut >= iso);
+    return { dnum, occupied, turnover: arrSet.has(iso) && depSet.has(iso), isToday: iso === t };
+  });
+
   const capacity = [
     apt.bedrooms != null ? `${apt.bedrooms} chambre${apt.bedrooms > 1 ? 's' : ''}` : null,
     apt.beds != null ? `${apt.beds} lit${apt.beds > 1 ? 's' : ''}` : null,
@@ -143,6 +160,34 @@ export default function LogementDetailClient() {
         <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="mt-4 text-xs font-medium" style={{ color: '#C9A84C' }}>
           Modifier les informations →
         </button>
+      </div>
+
+      {/* Occupation du mois (calendrier visuel) */}
+      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Occupation ce mois</h2>
+      <div className="rounded-2xl border p-4 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
+            <span key={i} className="text-[10px] text-center" style={{ color: '#A8A09A' }}>{d}</span>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: firstWeekday }).map((_, i) => <span key={'b' + i} />)}
+          {calDays.map(d => (
+            <div key={d.dnum} className="aspect-square rounded-lg flex items-center justify-center text-[11px] font-semibold"
+              style={{
+                backgroundColor: d.turnover ? '#FEE2E2' : d.occupied ? '#C9A84C22' : '#F8F6F2',
+                color: d.turnover ? '#B91C1C' : d.occupied ? '#A87B1E' : '#C2BBB2',
+                outline: d.isToday ? '1.5px solid #C9A84C' : 'none',
+                outlineOffset: '-1.5px',
+              }}>
+              {d.dnum}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-4 mt-3 text-[10px]" style={{ color: '#A8A09A' }}>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#C9A84C22' }} /> Occupé</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#FEE2E2' }} /> Turnover</span>
+        </div>
       </div>
 
       {/* Prochains départs → ménages */}
