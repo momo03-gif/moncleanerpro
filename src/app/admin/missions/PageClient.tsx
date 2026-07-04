@@ -37,10 +37,11 @@ const TYPE_LABEL = MISSION_TYPE_LABEL;
 // Statuts des DEMANDES hôtel (hotel_requests) — domaine distinct des missions.
 const ST_REQ: Record<string, { label: string; color: string }> = {
   pending:     { label: 'En attente', color: '#C48A2A' },
-  validated:   { label: 'Validée',    color: '#C9A84C' },
-  refused:     { label: 'Refusée',    color: '#B85A50' },
-  in_progress: { label: 'En cours',   color: '#8B7A62' },
+  validated:   { label: 'Acceptée',   color: '#5B6EF5' },
+  in_progress: { label: 'En cours',   color: '#C9A84C' },
   completed:   { label: 'Terminée',   color: '#5A8A6A' },
+  refused:     { label: 'Refusée',    color: '#B85A50' },
+  cancelled:   { label: 'Annulée',    color: '#8A8178' },
 };
 
 function parseMissionNotes(notes: string | undefined | null) {
@@ -57,7 +58,7 @@ function parseMissionNotes(notes: string | undefined | null) {
 
 const SOURCE_LABEL = MISSION_SOURCE_LABEL;
 
-const TABS = ['Annonces hôtel', 'Missions', 'Créer'] as const;
+const TABS = ['Demandes hôtel', 'Missions', 'Créer'] as const;
 
 const emptyForm = {
   source: 'hotel' as MissionSource,
@@ -872,7 +873,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
 export default function MissionsPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<typeof TABS[number]>('Annonces hôtel');
+  const [tab, setTab] = useState<typeof TABS[number]>('Demandes hôtel');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
@@ -1380,7 +1381,7 @@ export default function MissionsPage() {
           <button key={t} onClick={() => setTab(t)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all relative"
             style={{ backgroundColor: tab === t ? '#FFFFFF' : 'transparent', color: tab === t ? '#1A1A1A' : '#A8A09A', boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
             {t}
-            {t === 'Annonces hôtel' && pendingReqs > 0 && (
+            {t === 'Demandes hôtel' && pendingReqs > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
                 style={{ backgroundColor: '#C48A2A', color: '#FFF' }}>{pendingReqs}</span>
             )}
@@ -1389,15 +1390,15 @@ export default function MissionsPage() {
       </div>
 
       {/* ── ANNONCES HÔTEL ── */}
-      {tab === 'Annonces hôtel' && (
+      {tab === 'Demandes hôtel' && (
         <div className="space-y-3">
           {requests.length === 0 && (
             <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-              <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune annonce</p>
+              <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune demande</p>
             </div>
           )}
           {requests.map(a => {
-            const st = ST_REQ[a.status];
+            const st = ST_REQ[a.status] ?? ST_REQ.pending;
             const isPending = a.status === 'pending';
             return (
               <div key={a.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: isPending ? '#C48A2A40' : '#E8E4DC' }}>
@@ -1415,7 +1416,7 @@ export default function MissionsPage() {
                 </div>
                 <div className="px-5 py-4">
                   <div className="flex flex-wrap gap-4 mb-3">
-                    <span className="text-xs" style={{ color: '#7A7068' }}>{a.guestCount} personne{a.guestCount > 1 ? 's' : ''}</span>
+                    <span className="text-xs" style={{ color: '#7A7068' }}>{a.guestCount} chambre{a.guestCount > 1 ? 's' : ''}</span>
                     {a.cleanerName && <span className="text-xs" style={{ color: '#C9A84C' }}>{a.cleanerName}</span>}
                   </div>
                   {a.instructions && <p className="text-xs mb-3 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{a.instructions}</p>}
