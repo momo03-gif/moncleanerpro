@@ -134,7 +134,7 @@ export default function PartnerHomeClient() {
 
       {/* ── Actions rapides ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2.5 mb-6">
-        <QuickAction icon="plus" label="Commander" onClick={() => router.push('/airbnb/missions')} />
+        <QuickAction icon="plus" label="Commander" onClick={() => router.push('/airbnb/missions?tab=create')} />
         <QuickAction icon="sync" label="Synchroniser" onClick={() => router.push('/airbnb/sync')} />
         <QuickAction icon="building" label="Logements" onClick={() => router.push('/airbnb')} />
       </div>

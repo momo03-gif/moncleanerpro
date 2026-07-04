@@ -234,6 +234,13 @@ export default function AirbnbMissionsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [load, user]);
 
+  // Ouverture directe du formulaire de création via ?tab=create (ex. bouton
+  // « Commander » du tableau de bord). Lu côté client pour éviter Suspense.
+  useEffect(() => {
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam === 'create') setTab('create');
+  }, []);
+
   function resetForm() {
     setAirbnbId(''); setDate(''); setTime('');
     setNextArrival(''); setNextArrivalTime('');
