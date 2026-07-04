@@ -21,7 +21,7 @@ const today = new Date().toISOString().split('T')[0];
 
 export default function HotelDemandePage() {
   const { user } = useAuth();
-  const [form, setForm] = useState({ type: '' as AnnounceType | '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', guestCount: '' });
+  const [form, setForm] = useState({ type: '' as AnnounceType | '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', guestCount: '', zone: '', contact: '' });
   const [hasInstructions, setHasInstructions] = useState(false);
   const [instructions, setInstructions] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -46,6 +46,12 @@ export default function HotelDemandePage() {
     try {
       const { getHotelByUserId, createHotelRequestDB } = await loadDb();
       const hotel = await getHotelByUserId(user.id);
+      // Zone/étage et contact sur place sont capturés dans les instructions
+      // (structurés) pour être visibles par l'équipe et l'agent, sans colonne dédiée.
+      const parts: string[] = [];
+      if (form.zone.trim()) parts.push(`Zone / étage : ${form.zone.trim()}`);
+      if (form.contact.trim()) parts.push(`Contact sur place : ${form.contact.trim()}`);
+      if (hasInstructions && instructions.trim()) parts.push(instructions.trim());
       await createHotelRequestDB({
         hotelId: hotel?.id ?? user.id,
         hotelName: user.name,
@@ -55,7 +61,7 @@ export default function HotelDemandePage() {
         timeFrom: form.timeStart,
         timeTo: form.timeEnd,
         persons: Number(form.guestCount) || 1,
-        instructions: hasInstructions ? instructions : undefined,
+        instructions: parts.length > 0 ? parts.join('\n') : undefined,
       });
       setSubmitted(true);
     } catch { setError('Une erreur est survenue. Réessayez.'); }
@@ -64,7 +70,7 @@ export default function HotelDemandePage() {
 
   function reset() {
     setSubmitted(false);
-    setForm({ type: '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', guestCount: '' });
+    setForm({ type: '', dateStart: '', dateEnd: '', timeStart: '', timeEnd: '', guestCount: '', zone: '', contact: '' });
     setHasInstructions(false); setInstructions(''); setError('');
   }
 
@@ -159,6 +165,22 @@ export default function HotelDemandePage() {
                 {n}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Zone / étage + contact (optionnels) */}
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Zone / étage — optionnel</label>
+            <input type="text" value={form.zone} onChange={e => setForm(p => ({ ...p, zone: e.target.value }))}
+              placeholder="Ex : 3e étage, aile B" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Contact sur place — optionnel</label>
+            <input type="text" value={form.contact} onChange={e => setForm(p => ({ ...p, contact: e.target.value }))}
+              placeholder="Ex : Marie · 06 12 34 56 78" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
           </div>
         </div>
 
