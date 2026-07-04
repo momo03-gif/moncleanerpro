@@ -44,7 +44,7 @@ export default function HotelDemandePage() {
         dateTo: form.dateEnd,
         timeFrom: form.timeStart,
         timeTo: form.timeEnd,
-        persons: Number(form.guestCount.replace('+', '')) || 6,
+        persons: Number(form.guestCount) || 1,
         instructions: hasInstructions ? instructions : undefined,
       });
       setSubmitted(true);
@@ -64,9 +64,9 @@ export default function HotelDemandePage() {
         <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
           <Icon name="check" size={24} />
         </div>
-        <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Annonce envoyée</h2>
-        <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Vous serez notifié une fois validée.</p>
-        <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Nouvelle annonce</button>
+        <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Demande envoyée</h2>
+        <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Vous serez notifié dès qu'elle est acceptée.</p>
+        <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Nouvelle demande</button>
       </div>
     </div>
   );
@@ -74,8 +74,8 @@ export default function HotelDemandePage() {
   return (
     <div className="p-5">
       <div className="mb-6 pt-2">
-        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Déposer une annonce</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Nous vous assignons le cleaner disponible</p>
+        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Nouvelle demande</h1>
+        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Notre équipe traite votre demande et assigne un agent</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -134,13 +134,17 @@ export default function HotelDemandePage() {
           </div>
         </div>
 
-        {/* Personnes */}
+        {/* Chambres */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Nombre de personnes</p>
-          <div className="flex gap-2">
-            {['1', '2', '3', '4', '5', '6+'].map(n => (
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Nombre de chambres</p>
+          <input type="number" min="1" inputMode="numeric" value={form.guestCount} required
+            onChange={e => setForm(p => ({ ...p, guestCount: e.target.value }))}
+            placeholder="Ex : 12" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {['5', '10', '15', '20', '30'].map(n => (
               <button key={n} type="button" onClick={() => setForm(p => ({ ...p, guestCount: n }))}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all"
                 style={{ borderColor: form.guestCount === n ? '#C9A84C' : '#E8E4DC', backgroundColor: form.guestCount === n ? '#C9A84C' : '#FFFFFF', color: form.guestCount === n ? '#1A1A1A' : '#A8A09A' }}>
                 {n}
               </button>
@@ -169,7 +173,7 @@ export default function HotelDemandePage() {
         {error && <p className="text-xs text-center py-2 px-3 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{error}</p>}
 
         <button type="submit" disabled={!isValid || loading} className="w-full py-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-          {loading ? 'Envoi...' : "Envoyer l'annonce"}
+          {loading ? 'Envoi...' : 'Envoyer la demande'}
         </button>
       </form>
     </div>
