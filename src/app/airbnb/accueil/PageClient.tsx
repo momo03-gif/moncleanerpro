@@ -96,7 +96,12 @@ export default function PartnerHomeClient() {
 
   // ── Chiffres clés ─────────────────────────────────────────────────────
   const pendingCount = missions.filter(m => m.status === 'pending' && m.date >= t).length;
-  const turnovers7 = confirmed.filter(r => r.checkOut >= t && r.checkOut <= in7 && isTurnover(r.checkOut)).length;
+
+  // Vue « property management » du jour : arrivées, départs, occupation.
+  const arrivalsToday = confirmed.filter(r => r.checkIn === t).length;
+  const departuresToday = confirmed.filter(r => r.checkOut === t).length;
+  // Logement occupé aujourd'hui = un séjour confirmé couvre la journée (arrivée ≤ auj. ≤ départ).
+  const occupiedToday = apartments.filter(a => confirmed.some(r => r.airbnbId === a.id && r.checkIn <= t && r.checkOut >= t)).length;
 
   // ── Aperçu 7 prochains jours (nb de ménages non annulés par jour) ──────
   const week = Array.from({ length: 7 }, (_, i) => {
@@ -174,12 +179,12 @@ export default function PartnerHomeClient() {
         )}
       </div>
 
-      {/* ── Chiffres clés ───────────────────────────────────────────────── */}
+      {/* ── Chiffres clés du jour (vue property management) ─────────────── */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <Tile label="Ménages aujourd'hui" value={missionsToday.length} sub={missionsToday.length > 0 ? `${doneToday} terminé${doneToday > 1 ? 's' : ''}` : undefined} tone={missionsToday.length > 0 ? 'gold' : 'plain'} />
-        <Tile label="En attente d'assignation" value={pendingCount} tone={pendingCount > 0 ? 'warn' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
-        <Tile label="Turnovers (7 j)" value={turnovers7} tone={turnovers7 > 0 ? 'alert' : 'plain'} />
-        <Tile label="Logements" value={apartments.length} onClick={() => router.push('/airbnb')} />
+        <Tile label="Arrivées aujourd'hui" value={arrivalsToday} tone={arrivalsToday > 0 ? 'gold' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
+        <Tile label="Départs aujourd'hui" value={departuresToday} tone={departuresToday > 0 ? 'gold' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
+        <Tile label="Occupés aujourd'hui" value={occupiedToday} sub={`sur ${apartments.length} logement${apartments.length > 1 ? 's' : ''}`} />
+        <Tile label="Ménages en attente" value={pendingCount} tone={pendingCount > 0 ? 'warn' : 'plain'} onClick={() => router.push('/airbnb/missions')} />
       </div>
 
       {/* ── Actions rapides ─────────────────────────────────────────────── */}
