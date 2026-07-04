@@ -33,6 +33,7 @@ export default function LogementDetailClient() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shared, setShared] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -103,6 +104,24 @@ export default function LogementDetailClient() {
     return { dnum, occupied, turnover: arrSet.has(iso) && depSet.has(iso), isToday: iso === t };
   });
 
+  // Relevé mensuel à transmettre au propriétaire (partage natif, sinon presse-papiers).
+  async function shareMonthlyReport() {
+    if (!apt) return;
+    const monthName = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const lines = [...monthMissions]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(m => `- ${new Date(m.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} · ${m.status === 'completed' ? 'réalisé' : m.status === 'cancelled' ? 'annulé' : 'prévu'}`);
+    const text = `Relevé ménages — ${apt.name}\n${monthName}\n\n${monthMissions.length} ménage${monthMissions.length > 1 ? 's' : ''} :\n${lines.join('\n') || '—'}\n\nTotal : ${monthCost}€`;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: `Relevé ${apt.name}`, text });
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        setShared(true); setTimeout(() => setShared(false), 2500);
+      }
+    } catch { /* partage annulé par l'utilisateur */ }
+  }
+
   const capacity = [
     apt.bedrooms != null ? `${apt.bedrooms} chambre${apt.bedrooms > 1 ? 's' : ''}` : null,
     apt.beds != null ? `${apt.beds} lit${apt.beds > 1 ? 's' : ''}` : null,
@@ -157,9 +176,14 @@ export default function LogementDetailClient() {
           <p className="text-xs px-3 py-2 rounded-xl mt-3" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</p>
         )}
 
-        <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="mt-4 text-xs font-medium" style={{ color: '#C9A84C' }}>
-          Modifier les informations →
-        </button>
+        <div className="mt-4 flex items-center gap-4">
+          <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="text-xs font-medium" style={{ color: '#C9A84C' }}>
+            Modifier les informations →
+          </button>
+          <button onClick={shareMonthlyReport} className="text-xs font-medium" style={{ color: '#7A7068' }}>
+            {shared ? 'Copié ✓' : 'Partager le relevé du mois'}
+          </button>
+        </div>
       </div>
 
       {/* Occupation du mois (calendrier visuel) */}
