@@ -1,4 +1,4 @@
-const CACHE = 'mcp-v9';
+const CACHE = 'mcp-v10';
 const OFFLINE_URL = '/offline';
 
 // On précache la page hors-ligne. Le HTML des navigations est mis en cache au

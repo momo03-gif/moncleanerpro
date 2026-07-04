@@ -8,8 +8,8 @@ import Icon, { type IconName } from '@/components/Icon';
 import Logo from '@/components/Logo';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
-  { href: '/hotel', label: 'Demande', icon: 'request' },
-  { href: '/hotel/historique', label: 'Historique', icon: 'history' },
+  { href: '/hotel', label: 'Demander', icon: 'request' },
+  { href: '/hotel/historique', label: 'Mes demandes', icon: 'history' },
 ];
 
 export default function HotelNav() {
