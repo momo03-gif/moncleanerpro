@@ -21,7 +21,7 @@ const PROTECTED: { prefix: string; role: Role }[] = [
 function homeForRole(role: Role): string {
   return role === 'admin' ? '/admin'
     : role === 'cleaner' ? '/cleaner'
-    : role === 'airbnb' ? '/airbnb'
+    : role === 'airbnb' ? '/airbnb/accueil'
     : '/hotel';
 }
 

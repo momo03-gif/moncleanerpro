@@ -62,6 +62,6 @@ export function useAuth() { return useContext(AuthContext); }
 export function redirectPathForRole(role: Role): string {
   return role === 'admin' ? '/admin'
     : role === 'cleaner' ? '/cleaner'
-    : role === 'airbnb' ? '/airbnb'
+    : role === 'airbnb' ? '/airbnb/accueil'
     : '/hotel';
 }
