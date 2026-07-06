@@ -238,6 +238,84 @@ export async function computePayslipDB(cleanerId: string, period = currentPeriod
   return { cleanerId, period, missionsGain, primes: list, adjustment, adjustmentNote, total, time };
 }
 
+// ── DÉTAIL PAR CLEANER SUR UNE PLAGE DE DATES (récap missions) ───────────────────
+// Vue « fiche cleaner » ouverte au clic depuis la paie : on liste chaque mission
+// terminée entre deux dates avec le temps accordé (prévu), le temps réel (pointage,
+// sinon prévu en fallback pour le ménage) et le gain. Information admin seule.
+
+export interface PayDetailMission {
+  id: string;
+  date: string;                 // YYYY-MM-DD
+  time: string;
+  property: string;
+  service: string;
+  plannedMinutes: number;       // temps ménage accordé (0 hors ménage)
+  realMinutes: number;          // temps réel retenu (0 hors ménage)
+  pointed: boolean;             // mission réellement pointée
+  gain: number;                 // gain cleaner de la mission
+}
+
+export interface PayDetail {
+  cleanerId: string;
+  name: string;
+  from: string;
+  to: string;
+  missions: PayDetailMission[];
+  totals: {
+    count: number;              // missions terminées sur la plage
+    plannedMinutes: number;     // somme temps accordé (ménage)
+    realMinutes: number;        // somme temps réel (ménage)
+    pointedCount: number;       // dont pointées
+    gain: number;               // gain total
+  };
+}
+
+// from / to inclus, au format YYYY-MM-DD.
+export async function computeCleanerPeriodDetailDB(cleanerId: string, from: string, to: string): Promise<PayDetail> {
+  const { data: cleaner } = await supabase.from('cleaners').select('id, name').eq('id', cleanerId).maybeSingle();
+  const name = (cleaner as any)?.name ?? 'Cleaner';
+
+  // sinceDate borne le bas côté requête ; on filtre le haut ici.
+  const missions = await getMissionsByCleanerTableIdDB(cleanerId, from);
+  const completed = missions
+    .filter(m => m.status === 'completed' && m.date >= from && m.date <= to)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  const rows: PayDetailMission[] = completed.map(m => {
+    const isCleaning = serviceParts(m.service).cleaning;
+    const planned = isCleaning ? (m.missionDurationMinutes ?? 0) : 0;
+    const pointed = (m.actualDurationMinutes ?? 0) > 0;
+    // Ménage : réel = pointage, sinon prévu en fallback. Hors ménage : pas de temps.
+    const real = isCleaning ? (pointed ? m.actualDurationMinutes! : planned) : 0;
+    return {
+      id: m.id,
+      date: m.date,
+      time: m.time,
+      property: m.property || m.address || '—',
+      service: m.service ?? 'cleaning',
+      plannedMinutes: planned,
+      realMinutes: real,
+      pointed: isCleaning && pointed,
+      gain: Math.round((m.cleanerGain ?? 0) * 100) / 100,
+    };
+  });
+
+  const totals = rows.reduce(
+    (t, r) => {
+      t.count += 1;
+      t.plannedMinutes += r.plannedMinutes;
+      t.realMinutes += r.realMinutes;
+      if (r.pointed) t.pointedCount += 1;
+      t.gain += r.gain;
+      return t;
+    },
+    { count: 0, plannedMinutes: 0, realMinutes: 0, pointedCount: 0, gain: 0 },
+  );
+  totals.gain = Math.round(totals.gain * 100) / 100;
+
+  return { cleanerId, name, from, to, missions: rows, totals };
+}
+
 // Enregistre (ou efface) l'ajustement manuel de paie d'un cleaner pour un mois.
 // amount = 0 sans note → on supprime la ligne pour rester propre.
 export async function setPayAdjustmentDB(cleanerId: string, period: string, amount: number, note?: string): Promise<void> {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getActiveCleanersDB } from '@/lib/db';
 import { getPrimeRequestsDB, currentPeriod } from '@/lib/rh';
-import { recomputeAllCleanerRhDB, computePayslipDB, setPayAdjustmentDB } from '@/lib/rhEngine';
+import { recomputeAllCleanerRhDB, computePayslipDB, setPayAdjustmentDB, computeCleanerPeriodDetailDB } from '@/lib/rhEngine';
 
 // Fiches de paie + recalcul (LOT 3bis / LOT 4) — SERVEUR (service_role).
 export const runtime = 'nodejs';
@@ -20,6 +20,11 @@ export async function POST(req: Request) {
       if (!cleanerId) return NextResponse.json({ error: 'cleanerId requis.' }, { status: 400 });
       await setPayAdjustmentDB(cleanerId, period, Number(amount) || 0, note);
       return NextResponse.json({ ok: true });
+    }
+    if (op === 'detail') {
+      const { cleanerId, from, to } = body;
+      if (!cleanerId || !from || !to) return NextResponse.json({ error: 'cleanerId, from et to requis.' }, { status: 400 });
+      return NextResponse.json(await computeCleanerPeriodDetailDB(cleanerId, from, to));
     }
     if (op === 'load') {
       const cleaners = await getActiveCleanersDB();

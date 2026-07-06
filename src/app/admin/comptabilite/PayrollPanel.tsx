@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { resolvePrimeRequestDB, currentPeriod, type PrimeRequest } from '@/lib/rhApi';
 import { loadPayrollDB, recomputeAllCleanerRhDB, setPayAdjustmentDB, type Payslip } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
+import CleanerPayDetail from './CleanerPayDetail';
 
 // ── Fiche de paie mensuelle par cleaner (admin uniquement, LOT 3bis B/C). ───────
 // Le cleaner ne voit JAMAIS ces montants : panneau réservé à l'écran admin.
@@ -28,6 +29,7 @@ export default function PayrollPanel() {
   const [requests, setRequests] = useState<PrimeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [recomputing, setRecomputing] = useState(false);
+  const [detail, setDetail] = useState<{ id: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     const { rows, requests } = await loadPayrollDB(period);
@@ -94,10 +96,13 @@ export default function PayrollPanel() {
         {rows.map(({ id, name, payslip: p }) => (
           <div key={id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
             <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#F2EFE9' }}>
-              <div className="flex items-center gap-3">
+              <button onClick={() => setDetail({ id, name })} className="flex items-center gap-3 text-left group" title="Voir le détail des missions">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold" style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>{name.charAt(0)}</div>
-                <p className="font-semibold" style={{ color: '#1A1A1A' }}>{name}</p>
-              </div>
+                <div>
+                  <p className="font-semibold group-hover:underline" style={{ color: '#1A1A1A' }}>{name}</p>
+                  <p className="text-xs" style={{ color: '#C9A84C' }}>Voir le détail des missions →</p>
+                </div>
+              </button>
               <div className="text-right">
                 <p className="text-xs" style={{ color: '#A8A09A' }}>Total à payer</p>
                 <p className="text-lg font-bold" style={{ color: '#1A1A1A' }}>{money(p.total)}</p>
@@ -146,6 +151,10 @@ export default function PayrollPanel() {
           </div>
         ))}
       </div>
+
+      {detail && (
+        <CleanerPayDetail cleanerId={detail.id} name={detail.name} onClose={() => setDetail(null)} />
+      )}
     </>
   );
 }
