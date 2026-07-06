@@ -66,6 +66,9 @@ export interface Mission {
   assigneeName?: string;
   assigneeRole?: string;
   source?: MissionSource;
+  // Créateur de la mission (users.id). Pour une mission hôtel/EHPAD = user_id du
+  // compte hôtelier → permet de classer le client (hôtel vs EHPAD).
+  createdBy?: string;
   requestedBy?: string;
   notes?: string;
   instructionsRaw?: string;

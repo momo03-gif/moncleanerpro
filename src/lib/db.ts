@@ -133,6 +133,7 @@ function rowToMission(row: any): Mission {
     assigneeName: row.assignee_name ?? undefined,
     assigneeRole: row.assignee_role ?? undefined,
     source: (row.source as MissionSource) ?? 'hotel',
+    createdBy: row.created_by ?? undefined,
     requestedBy: row.client_name,
     notes,
     instructionsRaw: row.instructions ?? undefined,

@@ -7,6 +7,7 @@ import type { Mission } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
+import { clientKindOf, CLIENT_KIND_LABEL, CLIENT_KIND_COLOR, type ClientKind } from '@/lib/clientKind';
 import Loading from "@/components/Loading";
 
 // Perf : les panneaux lourds (RH, rentabilité) tirent la couche données ; on les
@@ -18,21 +19,22 @@ const ProfitabilityPanel = dynamic(() => import('./ProfitabilityPanel'), { loadi
 // Perf : couche données importée en différé → supabase hors du chemin critique.
 const loadStatsData = async () => {
   const [db, dep] = await Promise.all([import('@/lib/db'), import('@/lib/depensesApi')]);
-  return { getMissionsDB: db.getMissionsDB, getCleaners: db.getCleaners, getDepensesDB: dep.getDepensesDB };
+  return { getMissionsDB: db.getMissionsDB, getCleaners: db.getCleaners, getDepensesDB: dep.getDepensesDB, getApprovedHotelsDB: db.getApprovedHotelsDB };
 };
 
 export default function StatsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
   const [depenses, setDepenses] = useState<Depense[]>([]);
+  const [hotels, setHotels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'overview' | 'rentabilite'>('overview');
 
   useEffect(() => {
     (async () => {
-      const { getMissionsDB, getCleaners, getDepensesDB } = await loadStatsData();
-      const [m, c, d] = await Promise.all([getMissionsDB(), getCleaners(), getDepensesDB()]);
-      setMissions(m); setCleaners(c); setDepenses(d); setLoading(false);
+      const { getMissionsDB, getCleaners, getDepensesDB, getApprovedHotelsDB } = await loadStatsData();
+      const [m, c, d, h] = await Promise.all([getMissionsDB(), getCleaners(), getDepensesDB(), getApprovedHotelsDB()]);
+      setMissions(m); setCleaners(c); setDepenses(d); setHotels(h); setLoading(false);
     })();
   }, []);
 
@@ -55,6 +57,19 @@ export default function StatsPage() {
 
   // Marge moyenne par mission (bénéfice dégagé sur chaque ménage facturé).
   const margePerMission = completed > 0 ? Math.round(((revenue - salariesAll) / completed) * 100) / 100 : 0;
+
+  // ── Répartition par type de client : Airbnb / Hôtel / EHPAD ─────────────────
+  const ehpadUserIds = new Set<string>(
+    hotels.filter(h => h.client_type === 'ehpad').map(h => h.user_id).filter(Boolean),
+  );
+  const CLIENT_KINDS: ClientKind[] = ['airbnb', 'hotel', 'ehpad'];
+  const byClientKind = CLIENT_KINDS.map(k => {
+    const ms = missions.filter(m => clientKindOf(m, ehpadUserIds) === k);
+    const done = ms.filter(m => m.status === 'completed');
+    const ca = Math.round(done.filter(isBillable).reduce((s, m) => s + m.price, 0));
+    const salaries = Math.round(done.reduce((s, m) => s + (m.cleanerGain ?? 0), 0));
+    return { kind: k, total: ms.length, done: done.length, ca, salaries, marge: ca - salaries };
+  });
 
   // Top cleaner (le plus de missions terminées) + top partenaire Airbnb (CA généré).
   const cleanerCount = new Map<string, number>();
@@ -141,6 +156,38 @@ export default function StatsPage() {
             <p className="text-xs mt-1" style={{ color: kpi.accent ? '#7A6030' : '#A8A09A' }}>{kpi.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Répartition par type de client : Airbnb / Hôtel / EHPAD */}
+      <div className="mb-8">
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Par type de client</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {byClientKind.map(k => (
+            <div key={k.kind} className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CLIENT_KIND_COLOR[k.kind] }} />
+                <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>{CLIENT_KIND_LABEL[k.kind]}</span>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: '#A8A09A' }}>Missions</span>
+                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{k.total} <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>({k.done} terminées)</span></span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: '#A8A09A' }}>Revenus</span>
+                  <span className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{k.ca}€</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: '#A8A09A' }}>Marge (− salaires)</span>
+                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{k.marge}€</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] mt-2" style={{ color: '#B0A795' }}>
+          Airbnb = prix fixe par ménage · Hôtel / EHPAD = temps réel travaillé. Les EHPAD n&apos;apparaissent qu&apos;une fois les comptes marqués « EHPAD ».
+        </p>
       </div>
 
       {/* Bénéfice net tout compris (revenus − salaires − dépenses) */}
