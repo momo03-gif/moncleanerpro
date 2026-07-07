@@ -86,11 +86,11 @@ const IconMonitor = <><rect x="2" y="3" width="20" height="14" rx="2" /><path d=
 const IconUsers = <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6" /></>;
 
 const sectors = [
-  { icon: IconHotel, title: 'Hôtellerie', text: "Ménage des chambres et parties communes, remise en état entre les séjours, cadence soutenue et exigences de standing hôtelier." },
-  { icon: IconHeart, title: 'EHPAD & résidences', text: "Entretien rigoureux d'établissements accueillant du public sensible : protocoles d'hygiène stricts, régularité et discrétion." },
-  { icon: IconKey, title: 'Conciergeries & Airbnb', text: "Ménage entre voyageurs, gestion du linge et check-list de mise en place. Idéal pour conciergeries et propriétaires de locations courte durée." },
-  { icon: IconHome, title: 'Particuliers', text: "Grand ménage, nettoyage en profondeur et prestations ponctuelles pour les particuliers de la métropole lyonnaise." },
-  { icon: IconTool, title: 'Fin de chantier', text: "Nettoyage de fin de travaux et finitions avant livraison ou mise en vente, pour un bien impeccable dès la remise des clés." },
+  { icon: IconHotel, title: 'Hôtellerie', href: '/nettoyage-hotel-lyon', text: "Ménage des chambres et parties communes, remise en état entre les séjours, cadence soutenue et exigences de standing hôtelier." },
+  { icon: IconHeart, title: 'EHPAD & résidences', href: '/nettoyage-ehpad-lyon', text: "Entretien rigoureux d'établissements accueillant du public sensible : protocoles d'hygiène stricts, régularité et discrétion." },
+  { icon: IconKey, title: 'Conciergeries & Airbnb', href: '/menage-airbnb-lyon', text: "Ménage entre voyageurs, gestion du linge et check-list de mise en place. Idéal pour conciergeries et propriétaires de locations courte durée." },
+  { icon: IconHome, title: 'Particuliers', href: '/grand-menage-lyon', text: "Grand ménage, nettoyage en profondeur et prestations ponctuelles pour les particuliers de la métropole lyonnaise." },
+  { icon: IconTool, title: 'Fin de chantier', href: '/nettoyage-fin-de-chantier-lyon', text: "Nettoyage de fin de travaux et finitions avant livraison ou mise en vente, pour un bien impeccable dès la remise des clés." },
 ];
 
 const services = [
@@ -300,13 +300,14 @@ export default function VitrinePage() {
         </div>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {sectors.map((s, i) => (
-            <div key={s.title} data-reveal className="mcp-card rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER, transitionDelay: `${i * 70}ms` }}>
+            <a key={s.title} href={s.href} data-reveal className="mcp-card block rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER, transitionDelay: `${i * 70}ms` }}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ backgroundColor: 'rgba(201,168,76,0.12)', color: GOLD }}>
                 <Icon path={s.icon} size={24} />
               </div>
               <h3 className="text-lg font-bold">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>{s.text}</p>
-            </div>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: GOLD }}>En savoir plus <span aria-hidden>→</span></span>
+            </a>
           ))}
         </div>
       </section>
