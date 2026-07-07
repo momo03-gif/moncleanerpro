@@ -12,6 +12,14 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'MonCleanerPro',
   },
+  icons: {
+    icon: [
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-icon-180.png', sizes: '180x180', type: 'image/png' }],
+  },
   formatDetection: { telephone: false },
 };
 
@@ -27,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className="h-full">
       <head>
-        <link rel="apple-touch-icon" href="/icon/192" />
+        <link rel="apple-touch-icon" href="/apple-icon-180.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

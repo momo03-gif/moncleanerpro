@@ -1,4 +1,4 @@
-const CACHE = 'mcp-v18';
+const CACHE = 'mcp-v19';
 const OFFLINE_URL = '/offline';
 
 // On précache la page hors-ligne. Le HTML des navigations est mis en cache au
@@ -71,8 +71,8 @@ self.addEventListener('push', e => {
   const title = data.title || 'MonCleanerPro';
   const options = {
     body: data.body || '',
-    icon: '/icon/192',
-    badge: '/icon/96',
+    icon: '/icon-192.png',
+    badge: '/favicon-48.png',
     tag: data.tag || undefined,
     renotify: !!data.tag,
     vibrate: [120, 60, 120],

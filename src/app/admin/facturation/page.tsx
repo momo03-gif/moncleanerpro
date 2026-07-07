@@ -107,12 +107,8 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
       {/* ── EN-TÊTE ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, paddingBottom: 26, borderBottom: '1px solid #ECE7DC' }}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <span style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#0D0D0D', color: '#C9A84C', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>M</span>
-            <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '0.14em', color: '#0D0D0D' }}>MONCLEANERPRO</span>
-          </div>
-          <p style={{ margin: '7px 0 0 31px', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.34em', textTransform: 'uppercase', color: '#C9A84C' }}>Nettoyage Professionnel</p>
-          <div style={{ marginTop: 18, fontSize: 11, lineHeight: 1.85, color: '#6B6259' }}>
+          <img src="/logo-full.png" alt="MonCleanerPro" style={{ height: 72, width: 'auto', display: 'block' }} />
+          <div style={{ marginTop: 16, fontSize: 11, lineHeight: 1.85, color: '#6B6259' }}>
             {company.address && <div>{company.address}</div>}
             {(company.email || company.phone) && <div>{[company.email, company.phone].filter(Boolean).join('   ·   ')}</div>}
             {(company.siret || company.vat) && <div>{[company.siret && `SIRET ${company.siret}`, company.vat && `TVA ${company.vat}`].filter(Boolean).join('   ·   ')}</div>}

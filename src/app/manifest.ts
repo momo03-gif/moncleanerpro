@@ -12,13 +12,13 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait-primary',
     categories: ['business', 'productivity'],
     icons: [
-      { src: '/icon/192', sizes: '192x192', type: 'image/png' },
-      { src: '/icon/512', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-      { src: '/icon/512', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
-      { name: 'Missions', url: '/cleaner', icons: [{ src: '/icon/96', sizes: '96x96' }] },
-      { name: 'Admin', url: '/admin', icons: [{ src: '/icon/96', sizes: '96x96' }] },
+      { name: 'Missions', url: '/cleaner', icons: [{ src: '/icon-192.png', sizes: '192x192' }] },
+      { name: 'Admin', url: '/admin', icons: [{ src: '/icon-192.png', sizes: '192x192' }] },
     ],
   };
 }

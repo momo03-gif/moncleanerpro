@@ -31,6 +31,7 @@ export default function PublicDevisPage() {
     <div className="min-h-screen py-10 px-5" style={{ backgroundColor: '#FAFAF8' }}>
       <div className="max-w-lg mx-auto rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
         <div className="px-6 py-5 border-b" style={{ borderColor: '#F2EFE9' }}>
+          <img src="/logo-full.png" alt="MonCleanerPro" style={{ height: 52, width: 'auto', marginBottom: 14 }} />
           <p className="text-xs uppercase tracking-wider" style={{ color: '#C9A84C' }}>Devis {devis.number}</p>
           <h1 className="text-xl font-bold mt-1" style={{ color: '#1A1A1A' }}>{devis.clientName || 'Votre devis'}</h1>
           {devis.validUntil && <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Valable jusqu’au {new Date(devis.validUntil).toLocaleDateString('fr-FR')}</p>}
