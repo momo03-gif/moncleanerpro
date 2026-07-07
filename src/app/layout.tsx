@@ -5,6 +5,7 @@ import ServiceWorkerReg from '@/components/ServiceWorkerReg';
 import InstallBanner from '@/components/InstallBanner';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://moncleanerpro.fr'),
   title: 'MonCleanerPro',
   description: 'Plateforme professionnelle de nettoyage hôtelier',
   appleWebApp: {
