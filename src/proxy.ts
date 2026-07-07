@@ -25,8 +25,19 @@ function homeForRole(role: Role): string {
     : '/hotel';
 }
 
+// Domaine vitrine (apex + www) : sert le site public. L'app vit sur le
+// sous-domaine app.moncleanerpro.fr et garde son comportement habituel.
+const VITRINE_HOSTS = new Set(['moncleanerpro.fr', 'www.moncleanerpro.fr']);
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const host = (req.headers.get('host') ?? '').toLowerCase();
+
+  // Sur le domaine vitrine, la racine affiche la page d'accueil publique.
+  if (VITRINE_HOSTS.has(host) && pathname === '/') {
+    return NextResponse.rewrite(new URL('/accueil', req.url));
+  }
+
   const match = PROTECTED.find(p => pathname === p.prefix || pathname.startsWith(p.prefix + '/'));
   if (!match) return NextResponse.next();
 
@@ -45,6 +56,7 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/admin', '/admin/:path*',
     '/cleaner', '/cleaner/:path*',
     '/hotel', '/hotel/:path*',
