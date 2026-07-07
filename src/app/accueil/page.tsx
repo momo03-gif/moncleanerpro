@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import Motion from './Motion';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Vitrine publique MonCleanerPro (remplace le site Hostinger Horizons).
-//  Page statique (server component) → SEO + perf. Charte : or #C9A84C, encre
-//  #1A1A1A, crème #FAFAF8. Look SaaS pro, sobre, icônes ligne, aucun emoji.
+//  Contenu rendu côté serveur (SEO + perf) ; les animations sont une couche
+//  d'amélioration progressive (Motion.tsx) — sans JS, tout reste visible.
+//  Charte : or #C9A84C, encre #1A1A1A, crème #FAFAF8. Aucun emoji, icônes ligne.
 //  NB : la livraison est un usage interne, jamais un service vendu → non listée.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -35,47 +37,37 @@ export const metadata: Metadata = {
     description: DESC,
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'MonCleanerPro — Nettoyage professionnel à Lyon' }],
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: TITLE,
-    description: DESC,
-    images: ['/og-image.png'],
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESC, images: ['/og-image.png'] },
+  applicationName: 'MonCleanerPro',
+  authors: [{ name: 'MonCleanerPro' }],
+  creator: 'MonCleanerPro',
+  publisher: 'MonCleanerPro',
+  category: 'Services de nettoyage',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
   },
-  robots: { index: true, follow: true },
 };
 
-// Données structurées (JSON-LD) LocalBusiness → référencement local Google.
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'CleaningService',
-  name: 'MonCleanerPro',
-  description: DESC,
-  url: 'https://moncleanerpro.fr',
-  telephone: '+33781569696',
-  email: 'contact@moncleanerpro.fr',
-  image: 'https://moncleanerpro.fr/og-image.png',
-  logo: 'https://moncleanerpro.fr/icon-512.png',
-  priceRange: '€€',
-  areaServed: [
-    { '@type': 'City', name: 'Lyon' },
-    { '@type': 'City', name: 'Villeurbanne' },
-    { '@type': 'AdministrativeArea', name: 'Métropole de Lyon' },
-    { '@type': 'AdministrativeArea', name: 'Rhône-Alpes' },
-  ],
-  address: { '@type': 'PostalAddress', addressLocality: 'Lyon', addressRegion: 'Auvergne-Rhône-Alpes', addressCountry: 'FR' },
-  serviceType: [
-    'Nettoyage hôtelier', 'Nettoyage EHPAD', 'Ménage Airbnb et conciergerie',
-    'Grand ménage', 'Nettoyage de fin de chantier',
-  ],
-};
+const GOLD = '#C9A84C';
+const INK = '#1A1A1A';
+const VOID = '#0D0D0D';
+const CREAM = '#FAFAF8';
+const MUTED = '#7A7068';
+const BORDER = '#E8E4DC';
 
-// ── Petites icônes ligne (SVG sobres, cohérentes avec l'app) ────────────────────
+// ── Icônes ligne (SVG sobres) ───────────────────────────────────────────────────
 function Icon({ path, size = 24 }: { path: React.ReactNode; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      {path}
-    </svg>
+      strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">{path}</svg>
   );
 }
 const IconHotel = <><path d="M3 21h18" /><path d="M5 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16" /><path d="M16 8h3a1 1 0 0 1 1 1v12" /><path d="M9 8h.01M12 8h.01M9 12h.01M12 12h.01M9 16h.01M12 16h.01" /></>;
@@ -92,13 +84,6 @@ const IconPhone = <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 
 const IconMail = <><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 7 10 6 10-6" /></>;
 const IconMonitor = <><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></>;
 const IconUsers = <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6" /></>;
-
-const GOLD = '#C9A84C';
-const INK = '#1A1A1A';
-const VOID = '#0D0D0D';
-const CREAM = '#FAFAF8';
-const MUTED = '#7A7068';
-const BORDER = '#E8E4DC';
 
 const sectors = [
   { icon: IconHotel, title: 'Hôtellerie', text: "Ménage des chambres et parties communes, remise en état entre les séjours, cadence soutenue et exigences de standing hôtelier." },
@@ -150,16 +135,76 @@ const faq = [
   { q: 'Vos intervenants sont-ils formés et encadrés ?', a: "Oui, nos équipes sont formées, encadrées et suivent une check-list qualité systématique. Chaque mission fait l’objet d’un rapport d’intervention." },
 ];
 
+// ── Données structurées (SEO) ───────────────────────────────────────────────────
+const jsonLdBusiness = {
+  '@context': 'https://schema.org', '@type': 'CleaningService',
+  name: 'MonCleanerPro', description: DESC, url: 'https://moncleanerpro.fr',
+  telephone: '+33781569696', email: EMAIL,
+  image: 'https://moncleanerpro.fr/og-image.png', logo: 'https://moncleanerpro.fr/icon-512.png',
+  priceRange: '€€',
+  areaServed: [
+    { '@type': 'City', name: 'Lyon' }, { '@type': 'City', name: 'Villeurbanne' },
+    { '@type': 'AdministrativeArea', name: 'Métropole de Lyon' }, { '@type': 'AdministrativeArea', name: 'Rhône-Alpes' },
+  ],
+  address: { '@type': 'PostalAddress', addressLocality: 'Lyon', addressRegion: 'Auvergne-Rhône-Alpes', addressCountry: 'FR' },
+  serviceType: ['Nettoyage hôtelier', 'Nettoyage EHPAD', 'Ménage Airbnb et conciergerie', 'Grand ménage', 'Nettoyage de fin de chantier'],
+};
+const jsonLdFaq = {
+  '@context': 'https://schema.org', '@type': 'FAQPage',
+  mainEntity: faq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+};
+const jsonLdOrg = {
+  '@context': 'https://schema.org', '@type': 'Organization',
+  name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
+  logo: 'https://moncleanerpro.fr/icon-512.png',
+  image: 'https://moncleanerpro.fr/og-image.png',
+  email: EMAIL,
+  contactPoint: [{ '@type': 'ContactPoint', telephone: '+33781569696', contactType: 'customer service', areaServed: 'FR', availableLanguage: 'French' }],
+};
+const jsonLdWebsite = {
+  '@context': 'https://schema.org', '@type': 'WebSite',
+  name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
+  inLanguage: 'fr-FR', publisher: { '@type': 'Organization', name: 'MonCleanerPro' },
+};
+
+// ── Styles d'animation/finitions (scopés « mcp- », injectés en SSR) ──────────────
+const STYLES = `
+.mcp-js [data-reveal]{opacity:0;transform:translateY(30px);transition:opacity .8s cubic-bezier(.16,.84,.24,1),transform .8s cubic-bezier(.16,.84,.24,1);will-change:opacity,transform}
+.mcp-js [data-reveal].mcp-in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.mcp-js [data-reveal]{opacity:1!important;transform:none!important;transition:none}}
+#mcp-header{transition:box-shadow .3s ease,background-color .3s ease}
+#mcp-header.mcp-scrolled{box-shadow:0 8px 30px rgba(26,26,26,.07)}
+.mcp-card{transition:transform .35s cubic-bezier(.16,.84,.24,1),box-shadow .35s ease,border-color .35s ease}
+.mcp-card:hover{transform:translateY(-5px);box-shadow:0 22px 45px -20px rgba(26,26,26,.28);border-color:rgba(201,168,76,.55)}
+.mcp-btn{transition:transform .2s ease,box-shadow .25s ease,opacity .2s ease}
+.mcp-btn:hover{transform:translateY(-2px)}
+.mcp-btn-gold:hover{box-shadow:0 14px 30px -10px rgba(201,168,76,.75)}
+.mcp-link{transition:color .2s ease,opacity .2s ease}
+.mcp-gold-grad{background:linear-gradient(100deg,#E7C868,#C9A84C 55%,#A8873B);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mcp-hero{position:relative;overflow:hidden}
+.mcp-glow{position:absolute;border-radius:9999px;filter:blur(72px);opacity:.5;pointer-events:none}
+.mcp-glow-1{width:540px;height:540px;background:radial-gradient(circle,rgba(201,168,76,.45),transparent 65%);top:-170px;right:-130px;animation:mcpFloat 15s ease-in-out infinite}
+.mcp-glow-2{width:440px;height:440px;background:radial-gradient(circle,rgba(201,168,76,.20),transparent 65%);bottom:-170px;left:-110px;animation:mcpFloat 19s ease-in-out infinite reverse}
+@keyframes mcpFloat{0%,100%{transform:translate(0,0)}50%{transform:translate(34px,28px)}}
+.mcp-js .mcp-rise{opacity:0;transform:translateY(24px);animation:mcpRise .9s cubic-bezier(.16,.84,.24,1) forwards}
+@keyframes mcpRise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.mcp-glow{animation:none}.mcp-js .mcp-rise{opacity:1;transform:none;animation:none}}
+details.mcp-faq summary::-webkit-details-marker{display:none}
+.mcp-chip{transition:transform .35s cubic-bezier(.16,.84,.24,1),box-shadow .35s ease}
+.mcp-chip:hover{transform:translateY(-3px);box-shadow:0 14px 30px -16px rgba(26,26,26,.25)}
+`;
+
 function Btn({ href, children, variant = 'gold', external = false }: {
   href: string; children: React.ReactNode; variant?: 'gold' | 'outline' | 'dark'; external?: boolean;
 }) {
-  const base = 'inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all';
+  const cls = 'mcp-btn inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold'
+    + (variant === 'gold' ? ' mcp-btn-gold' : '');
   const styles: React.CSSProperties =
     variant === 'gold' ? { backgroundColor: GOLD, color: INK }
     : variant === 'dark' ? { backgroundColor: INK, color: '#FFFFFF' }
     : { backgroundColor: 'transparent', color: INK, border: `1px solid ${BORDER}` };
   return (
-    <a href={href} className={base} style={styles} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+    <a href={href} className={cls} style={styles} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
       {children}
     </a>
   );
@@ -168,59 +213,61 @@ function Btn({ href, children, variant = 'gold', external = false }: {
 export default function VitrinePage() {
   return (
     <main style={{ backgroundColor: CREAM, color: INK }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBusiness) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrg) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }} />
+      <Motion />
+
       {/* ── NAV ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.85)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
+      <header id="mcp-header" className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.82)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 shrink-0">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
           </a>
           <nav className="hidden md:flex items-center gap-7 text-sm" style={{ color: MUTED }}>
-            <a href="#secteurs" className="hover:opacity-70">Secteurs</a>
-            <a href="#prestations" className="hover:opacity-70">Prestations</a>
-            <a href="#pourquoi" className="hover:opacity-70">Pourquoi nous</a>
-            <a href="#contact" className="hover:opacity-70">Contact</a>
+            <a href="#secteurs" className="mcp-link hover:opacity-70">Secteurs</a>
+            <a href="#prestations" className="mcp-link hover:opacity-70">Prestations</a>
+            <a href="#process" className="mcp-link hover:opacity-70">Déroulé</a>
+            <a href="#avis" className="mcp-link hover:opacity-70">Avis</a>
+            <a href="#faq" className="mcp-link hover:opacity-70">FAQ</a>
           </nav>
           <div className="flex items-center gap-2.5">
             <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border"
-              style={{ borderColor: BORDER, color: INK }}>
-              Espace client
-            </a>
-            <a href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>
-              Devis gratuit
-            </a>
+              className="mcp-btn hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border"
+              style={{ borderColor: BORDER, color: INK }}>Espace client</a>
+            <a href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</a>
           </div>
         </div>
       </header>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <section id="top" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
-        <div className="max-w-6xl mx-auto px-5 py-24 md:py-32">
+      <section id="top" className="mcp-hero" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
+        <div className="mcp-glow mcp-glow-1" aria-hidden />
+        <div className="mcp-glow mcp-glow-2" aria-hidden />
+        <div className="relative max-w-6xl mx-auto px-5 py-24 md:py-32">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-7"
-              style={{ backgroundColor: 'rgba(201,168,76,0.12)', color: GOLD, border: '1px solid rgba(201,168,76,0.25)' }}>
-              <span style={{ color: GOLD }}><Icon path={IconPin} size={14} /></span>
-              Lyon &amp; Rhône-Alpes
+            <div className="mcp-rise inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-7" style={{ animationDelay: '0ms', backgroundColor: 'rgba(201,168,76,0.12)', color: GOLD, border: '1px solid rgba(201,168,76,0.25)' }}>
+              <span style={{ color: GOLD }}><Icon path={IconPin} size={14} /></span> Lyon &amp; Rhône-Alpes
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold leading-[1.05]" style={{ letterSpacing: '-0.02em' }}>
+            <h1 className="mcp-rise text-4xl md:text-6xl font-bold leading-[1.05]" style={{ animationDelay: '80ms', letterSpacing: '-0.02em' }}>
               Le nettoyage professionnel<br />
-              <span style={{ color: GOLD }}>qui tient ses promesses.</span>
+              <span className="mcp-gold-grad">qui tient ses promesses.</span>
             </h1>
-            <p className="mt-6 text-lg leading-relaxed" style={{ color: '#B8B2A8' }}>
+            <p className="mcp-rise mt-6 text-lg leading-relaxed" style={{ animationDelay: '160ms', color: '#B8B2A8' }}>
               MonCleanerPro accompagne hôtels, EHPAD, conciergeries et particuliers
               de la métropole lyonnaise. Des équipes formées, un contrôle qualité
               systématique et un suivi digital de chaque intervention.
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
+            <div className="mcp-rise mt-9 flex flex-wrap gap-3" style={{ animationDelay: '240ms' }}>
               <Btn href="/devis-en-ligne" variant="gold"><Icon path={IconSpark} size={18} /> Demander un devis gratuit</Btn>
-              <a href={PHONE_HREF} className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
-                style={{ backgroundColor: 'transparent', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>
+              <a href={PHONE_HREF} className="mcp-btn inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'transparent', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>
                 <Icon path={IconPhone} size={18} /> {PHONE}
               </a>
             </div>
-            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-2 text-sm" style={{ color: '#8A857C' }}>
+            <div className="mcp-rise mt-10 flex flex-wrap gap-x-8 gap-y-2 text-sm" style={{ animationDelay: '320ms', color: '#8A857C' }}>
               <span className="inline-flex items-center gap-2"><span style={{ color: GOLD }}><Icon path={IconCheck} size={16} /></span> Devis sous 24h</span>
               <span className="inline-flex items-center gap-2"><span style={{ color: GOLD }}><Icon path={IconCheck} size={16} /></span> Équipe formée &amp; encadrée</span>
               <span className="inline-flex items-center gap-2"><span style={{ color: GOLD }}><Icon path={IconCheck} size={16} /></span> Contrôle qualité systématique</span>
@@ -232,9 +279,9 @@ export default function VitrinePage() {
       {/* ── CHIFFRES CLÉS ─────────────────────────────────────────────────── */}
       <section style={{ backgroundColor: INK, color: '#FFFFFF' }}>
         <div className="max-w-6xl mx-auto px-5 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {stats.map(s => (
-            <div key={s.label}>
-              <p className="text-3xl md:text-4xl font-bold" style={{ color: GOLD, letterSpacing: '-0.02em' }}>{s.value}</p>
+          {stats.map((s, i) => (
+            <div key={s.label} data-reveal style={{ transitionDelay: `${i * 70}ms` }}>
+              <p className="text-3xl md:text-4xl font-bold" data-count={s.value} style={{ color: GOLD, letterSpacing: '-0.02em' }}>{s.value}</p>
               <p className="mt-1 text-sm" style={{ color: '#B8B2A8' }}>{s.label}</p>
             </div>
           ))}
@@ -243,15 +290,17 @@ export default function VitrinePage() {
 
       {/* ── SECTEURS ──────────────────────────────────────────────────────── */}
       <section id="secteurs" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos secteurs</p>
-        <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un savoir-faire adapté à chaque activité</h2>
-        <p className="mt-4 max-w-2xl" style={{ color: MUTED }}>
-          Du professionnel de l’hébergement au particulier, nous ajustons nos protocoles,
-          nos cadences et nos équipes à vos exigences.
-        </p>
+        <div data-reveal>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos secteurs</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un savoir-faire adapté à chaque activité</h2>
+          <p className="mt-4 max-w-2xl" style={{ color: MUTED }}>
+            Du professionnel de l’hébergement au particulier, nous ajustons nos protocoles,
+            nos cadences et nos équipes à vos exigences.
+          </p>
+        </div>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {sectors.map(s => (
-            <div key={s.title} className="rounded-2xl border p-7 transition-all hover:shadow-sm" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+          {sectors.map((s, i) => (
+            <div key={s.title} data-reveal className="mcp-card rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER, transitionDelay: `${i * 70}ms` }}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ backgroundColor: 'rgba(201,168,76,0.12)', color: GOLD }}>
                 <Icon path={s.icon} size={24} />
               </div>
@@ -265,7 +314,7 @@ export default function VitrinePage() {
       {/* ── PRESTATIONS ───────────────────────────────────────────────────── */}
       <section id="prestations" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-2 gap-14 items-center">
-          <div>
+          <div data-reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos prestations</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des interventions sur mesure, un standard constant</h2>
             <p className="mt-4" style={{ color: MUTED }}>
@@ -278,8 +327,8 @@ export default function VitrinePage() {
             </div>
           </div>
           <ul className="grid sm:grid-cols-2 gap-3">
-            {services.map(s => (
-              <li key={s} className="flex items-start gap-3 rounded-xl border p-4" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
+            {services.map((s, i) => (
+              <li key={s} data-reveal className="mcp-chip flex items-start gap-3 rounded-xl border p-4" style={{ borderColor: BORDER, backgroundColor: CREAM, transitionDelay: `${i * 60}ms` }}>
                 <span className="mt-0.5 shrink-0" style={{ color: GOLD }}><Icon path={IconCheck} size={18} /></span>
                 <span className="text-sm font-medium">{s}</span>
               </li>
@@ -290,29 +339,33 @@ export default function VitrinePage() {
 
       {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────────── */}
       <section id="process" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Comment ça marche</p>
-        <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>De la demande à l’intervention, en 3 étapes</h2>
+        <div data-reveal>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Comment ça marche</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>De la demande à l’intervention, en 3 étapes</h2>
+        </div>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
-          {steps.map(s => (
-            <div key={s.n} className="rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+          {steps.map((s, i) => (
+            <div key={s.n} data-reveal className="mcp-card rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER, transitionDelay: `${i * 90}ms` }}>
               <p className="text-4xl font-bold" style={{ color: 'rgba(201,168,76,0.35)', letterSpacing: '-0.02em' }}>{s.n}</p>
               <h3 className="mt-3 text-lg font-bold">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>{s.text}</p>
             </div>
           ))}
         </div>
-        <p className="mt-8 text-sm" style={{ color: MUTED }}>
+        <p data-reveal className="mt-8 text-sm" style={{ color: MUTED }}>
           Estimation immédiate grâce à notre <span className="font-semibold" style={{ color: INK }}>assistant de devis intelligent</span> — testez-le en ligne, sans engagement.
         </p>
       </section>
 
       {/* ── POURQUOI NOUS ─────────────────────────────────────────────────── */}
-      <section id="pourquoi" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Pourquoi MonCleanerPro</p>
-        <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un service premium, pensé pour durer</h2>
+      <section id="pourquoi" className="max-w-6xl mx-auto px-5 pb-20 md:pb-28">
+        <div data-reveal>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Pourquoi MonCleanerPro</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un service premium, pensé pour durer</h2>
+        </div>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {values.map(v => (
-            <div key={v.title} className="rounded-2xl p-7" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${BORDER}` }}>
+          {values.map((v, i) => (
+            <div key={v.title} data-reveal className="mcp-card rounded-2xl p-7" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${BORDER}`, transitionDelay: `${i * 70}ms` }}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ backgroundColor: INK, color: GOLD }}>
                 <Icon path={v.icon} size={22} />
               </div>
@@ -321,9 +374,7 @@ export default function VitrinePage() {
             </div>
           ))}
         </div>
-
-        {/* Zone d'intervention */}
-        <div className="mt-12 rounded-2xl border p-8 flex flex-wrap items-center gap-6 justify-between" style={{ borderColor: BORDER, backgroundColor: '#FFFFFF' }}>
+        <div data-reveal className="mt-12 rounded-2xl border p-8 flex flex-wrap items-center gap-6 justify-between" style={{ borderColor: BORDER, backgroundColor: '#FFFFFF' }}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(201,168,76,0.12)', color: GOLD }}>
               <Icon path={IconPin} size={24} />
@@ -340,21 +391,20 @@ export default function VitrinePage() {
       {/* ── AVIS CLIENTS ──────────────────────────────────────────────────── */}
       <section id="avis" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto px-5 py-20 md:py-28">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Ils nous font confiance</p>
-          <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des clients exigeants, satisfaits durablement</h2>
+          <div data-reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Ils nous font confiance</p>
+            <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des clients exigeants, satisfaits durablement</h2>
+          </div>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {testimonials.map(t => (
-              <figure key={t.name} className="rounded-2xl p-7" style={{ backgroundColor: CREAM, border: `1px solid ${BORDER}` }}>
+            {testimonials.map((t, i) => (
+              <figure key={t.name} data-reveal className="mcp-card rounded-2xl p-7" style={{ backgroundColor: CREAM, border: `1px solid ${BORDER}`, transitionDelay: `${i * 90}ms` }}>
                 <div className="flex gap-1 mb-4" style={{ color: GOLD }} aria-label="5 étoiles">
-                  {[0, 1, 2, 3, 4].map(i => (
-                    <svg key={i} width={16} height={16} viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.8.7-5 4.6 1.4 6.7L12 17.8 5.9 20.9l1.4-6.7-5-4.6 6.8-.7Z" /></svg>
+                  {[0, 1, 2, 3, 4].map(k => (
+                    <svg key={k} width={16} height={16} viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.8.7-5 4.6 1.4 6.7L12 17.8 5.9 20.9l1.4-6.7-5-4.6 6.8-.7Z" /></svg>
                   ))}
                 </div>
                 <blockquote className="text-sm leading-relaxed" style={{ color: INK }}>« {t.text} »</blockquote>
-                <figcaption className="mt-4 text-sm">
-                  <span className="font-bold">{t.name}</span>
-                  <span style={{ color: MUTED }}> · {t.role}</span>
-                </figcaption>
+                <figcaption className="mt-4 text-sm"><span className="font-bold">{t.name}</span><span style={{ color: MUTED }}> · {t.role}</span></figcaption>
               </figure>
             ))}
           </div>
@@ -364,15 +414,15 @@ export default function VitrinePage() {
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section id="faq" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
         <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-12">
-          <div>
+          <div data-reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Questions fréquentes</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Tout ce qu’il faut savoir</h2>
             <p className="mt-4" style={{ color: MUTED }}>Une autre question ? Appelez-nous, on répond vite.</p>
             <div className="mt-6"><Btn href={PHONE_HREF} variant="outline"><Icon path={IconPhone} size={18} /> {PHONE}</Btn></div>
           </div>
-          <div className="divide-y" style={{ borderColor: BORDER }}>
+          <div data-reveal>
             {faq.map(f => (
-              <details key={f.q} className="group py-5" style={{ borderColor: BORDER }}>
+              <details key={f.q} className="mcp-faq group py-5 border-b" style={{ borderColor: BORDER }}>
                 <summary className="flex items-center justify-between cursor-pointer list-none font-semibold">
                   {f.q}
                   <span className="ml-4 shrink-0 transition-transform group-open:rotate-45" style={{ color: GOLD }}><Icon path={<><path d="M12 5v14M5 12h14" /></>} size={20} /></span>
@@ -387,24 +437,34 @@ export default function VitrinePage() {
       {/* ── CTA CONTACT ───────────────────────────────────────────────────── */}
       <section id="contact" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
         <div className="max-w-6xl mx-auto px-5 py-20 md:py-24 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold" style={{ letterSpacing: '-0.02em' }}>
-            Prêt à confier votre nettoyage ?
-          </h2>
-          <p className="mt-5 max-w-xl mx-auto text-lg" style={{ color: '#B8B2A8' }}>
+          <h2 data-reveal className="text-3xl md:text-5xl font-bold" style={{ letterSpacing: '-0.02em' }}>Prêt à confier votre nettoyage ?</h2>
+          <p data-reveal className="mt-5 max-w-xl mx-auto text-lg" style={{ color: '#B8B2A8' }}>
             Recevez un devis gratuit et transparent sous 24h, sans engagement.
           </p>
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
+          <div data-reveal className="mt-9 flex flex-wrap justify-center gap-3">
             <Btn href="/devis-en-ligne" variant="gold"><Icon path={IconSpark} size={18} /> Demander un devis gratuit</Btn>
-            <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
-              style={{ backgroundColor: 'transparent', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>
+            <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer" className="mcp-btn inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'transparent', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>
               <Icon path={IconUsers} size={18} /> Accéder à mon espace
             </a>
           </div>
-          <div className="mt-10 flex flex-wrap justify-center gap-x-10 gap-y-3 text-sm" style={{ color: '#B8B2A8' }}>
-            <a href={PHONE_HREF} className="inline-flex items-center gap-2 hover:opacity-80"><span style={{ color: GOLD }}><Icon path={IconPhone} size={16} /></span> {PHONE}</a>
-            <a href={`mailto:${EMAIL}`} className="inline-flex items-center gap-2 hover:opacity-80"><span style={{ color: GOLD }}><Icon path={IconMail} size={16} /></span> {EMAIL}</a>
+          <div data-reveal className="mt-10 flex flex-wrap justify-center gap-x-10 gap-y-3 text-sm" style={{ color: '#B8B2A8' }}>
+            <a href={PHONE_HREF} className="mcp-link inline-flex items-center gap-2 hover:opacity-80"><span style={{ color: GOLD }}><Icon path={IconPhone} size={16} /></span> {PHONE}</a>
+            <a href={`mailto:${EMAIL}`} className="mcp-link inline-flex items-center gap-2 hover:opacity-80"><span style={{ color: GOLD }}><Icon path={IconMail} size={16} /></span> {EMAIL}</a>
           </div>
+        </div>
+      </section>
+
+      {/* ── ZONES DESSERVIES (SEO local longue traîne) ────────────────────── */}
+      <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-6xl mx-auto px-5 py-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Zones desservies</p>
+          <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon et dans la métropole</h2>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+            {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e',
+              'Villeurbanne', 'Caluire-et-Cuire', 'Bron', 'Vénissieux', 'Écully', 'Tassin-la-Demi-Lune',
+              'Oullins', 'Saint-Priest', 'Vaulx-en-Velin', 'Meyzieu', 'Décines-Charpieu', 'Rillieux-la-Pape',
+              'Sainte-Foy-lès-Lyon', 'Saint-Genis-Laval'].join(' · ')} — et l’ensemble du Rhône-Alpes.
+          </p>
         </div>
       </section>
 
@@ -419,10 +479,10 @@ export default function VitrinePage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm">
-            <a href="#secteurs" className="hover:opacity-80">Secteurs</a>
-            <a href="#prestations" className="hover:opacity-80">Prestations</a>
-            <a href="/devis-en-ligne" className="hover:opacity-80">Devis gratuit</a>
-            <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80">Espace client</a>
+            <a href="#secteurs" className="mcp-link hover:opacity-80">Secteurs</a>
+            <a href="#prestations" className="mcp-link hover:opacity-80">Prestations</a>
+            <a href="/devis-en-ligne" className="mcp-link hover:opacity-80">Devis gratuit</a>
+            <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer" className="mcp-link hover:opacity-80">Espace client</a>
           </div>
         </div>
         <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
