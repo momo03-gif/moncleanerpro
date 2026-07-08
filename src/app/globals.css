@@ -15,6 +15,14 @@
   box-sizing: border-box;
 }
 
+/* Garde-fou anti-débordement horizontal : empêche qu'un élément trop large
+   ne provoque un défilement latéral / un rendu « dézoomé » (effet miniature)
+   sur certains navigateurs, surtout mobiles. `clip` ne casse pas le sticky. */
+html, body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: #FAFAF8;
   color: #1A1A1A;
