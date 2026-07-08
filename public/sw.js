@@ -1,5 +1,26 @@
-const CACHE = 'mcp-v19';
+const CACHE = 'mcp-v20';
 const OFFLINE_URL = '/offline';
+
+// La vitrine ne doit PAS avoir de service worker en cache. Si ce SW se retrouve
+// enregistré sur le domaine vitrine (héritage d'une ancienne version), il
+// s'auto-détruit : purge des caches, désinscription, puis rechargement des
+// onglets → l'utilisateur récupère immédiatement la vraie version fraîche.
+const VITRINE_HOSTS = ['moncleanerpro.fr', 'www.moncleanerpro.fr'];
+const SELF_DESTRUCT = VITRINE_HOSTS.includes(self.location.hostname);
+
+if (SELF_DESTRUCT) {
+  self.addEventListener('install', () => self.skipWaiting());
+  self.addEventListener('activate', e => {
+    e.waitUntil((async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+      await self.registration.unregister();
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach(c => c.navigate(c.url));
+    })());
+  });
+  // On n'intercepte AUCUNE requête : tout passe par le réseau (contenu frais).
+} else {
 
 // On précache la page hors-ligne. Le HTML des navigations est mis en cache au
 // fil de l'eau (network-first) pour que l'app puisse S'OUVRIR hors-ligne — la
@@ -97,3 +118,4 @@ self.addEventListener('notificationclick', e => {
     })
   );
 });
+}

@@ -19,10 +19,13 @@ export default function Motion() {
         el.style.opacity = '1'; el.style.transform = 'none'; el.style.animation = 'none';
       });
     };
-    const failsafe = window.setTimeout(revealAll, 2000);
+    // IMPORTANT : on n'active PLUS le masquage avant animation (classe .mcp-js).
+    // Le contenu reste donc toujours visible, quelle que soit l'exécution du JS
+    // ou des animations. On révèle aussi explicitement par sécurité.
+    revealAll();
+    const failsafe = window.setTimeout(revealAll, 500);
     let onScroll: (() => void) | undefined;
-
-    root.classList.add('mcp-js');
+    void root; // (conservé pour compat, plus utilisé pour masquer)
 
     try {
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
