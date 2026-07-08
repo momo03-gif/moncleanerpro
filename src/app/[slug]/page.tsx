@@ -198,7 +198,11 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
             <img src="/logo-mark.png" alt="MonCleanerPro" width={36} height={36} style={{ width: 36, height: 36, borderRadius: 9 }} />
             <span className="font-bold" style={{ color: '#FFFFFF' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
           </a>
-          <span className="text-sm">{PHONE} · {EMAIL}</span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+            <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
+            <a href="/confidentialite" className="hover:opacity-80">Confidentialité</a>
+            <span>{PHONE} · {EMAIL}</span>
+          </div>
         </div>
       </footer>
     </main>

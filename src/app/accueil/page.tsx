@@ -489,7 +489,11 @@ export default function VitrinePage() {
         <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="max-w-6xl mx-auto px-5 py-5 text-xs flex flex-wrap items-center justify-between gap-3">
             <span>© {new Date().getFullYear()} MonCleanerPro. Tous droits réservés.</span>
-            <span>{PHONE} · {EMAIL}</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              <a href="/mentions-legales" className="mcp-link hover:opacity-80">Mentions légales</a>
+              <a href="/confidentialite" className="mcp-link hover:opacity-80">Confidentialité</a>
+              <span>{PHONE} · {EMAIL}</span>
+            </div>
           </div>
         </div>
       </footer>
