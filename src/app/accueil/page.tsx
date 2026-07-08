@@ -10,9 +10,9 @@ import Motion from './Motion';
 // ════════════════════════════════════════════════════════════════════════════
 
 const APP_URL = 'https://app.moncleanerpro.fr';
-const PHONE = '07 81 56 96 96';
-const PHONE_HREF = 'tel:+33781569696';
-const EMAIL = 'contact@moncleanerpro.fr';
+const PHONE = '07 83 43 17 00';
+const PHONE_HREF = 'tel:+33783431700';
+const EMAIL = 'info@moncleanerpro.fr';
 
 const TITLE = 'MonCleanerPro — Nettoyage professionnel à Lyon & Rhône-Alpes';
 const DESC =
@@ -139,7 +139,7 @@ const faq = [
 const jsonLdBusiness = {
   '@context': 'https://schema.org', '@type': 'CleaningService',
   name: 'MonCleanerPro', description: DESC, url: 'https://moncleanerpro.fr',
-  telephone: '+33781569696', email: EMAIL,
+  telephone: '+33783431700', email: EMAIL,
   image: 'https://moncleanerpro.fr/og-image.png', logo: 'https://moncleanerpro.fr/icon-512.png',
   priceRange: '€€',
   areaServed: [
@@ -159,7 +159,7 @@ const jsonLdOrg = {
   logo: 'https://moncleanerpro.fr/icon-512.png',
   image: 'https://moncleanerpro.fr/og-image.png',
   email: EMAIL,
-  contactPoint: [{ '@type': 'ContactPoint', telephone: '+33781569696', contactType: 'customer service', areaServed: 'FR', availableLanguage: 'French' }],
+  contactPoint: [{ '@type': 'ContactPoint', telephone: '+33783431700', contactType: 'customer service', areaServed: 'FR', availableLanguage: 'French' }],
 };
 const jsonLdWebsite = {
   '@context': 'https://schema.org', '@type': 'WebSite',

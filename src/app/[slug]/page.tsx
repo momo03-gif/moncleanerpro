@@ -12,9 +12,9 @@ export function generateStaticParams() {
 }
 
 const APP_URL = 'https://app.moncleanerpro.fr';
-const PHONE = '07 81 56 96 96';
-const PHONE_HREF = 'tel:+33781569696';
-const EMAIL = 'contact@moncleanerpro.fr';
+const PHONE = '07 83 43 17 00';
+const PHONE_HREF = 'tel:+33783431700';
+const EMAIL = 'info@moncleanerpro.fr';
 const GOLD = '#C9A84C', INK = '#1A1A1A', VOID = '#0D0D0D', CREAM = '#FAFAF8', MUTED = '#7A7068', BORDER = '#E8E4DC';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -71,7 +71,7 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
       '@context': 'https://schema.org', '@type': 'Service',
       name: p.h1, serviceType: p.keyword, description: p.description, url,
       areaServed: { '@type': 'City', name: 'Lyon' },
-      provider: { '@type': 'CleaningService', name: 'MonCleanerPro', url: 'https://moncleanerpro.fr', telephone: '+33781569696', email: EMAIL },
+      provider: { '@type': 'CleaningService', name: 'MonCleanerPro', url: 'https://moncleanerpro.fr', telephone: '+33783431700', email: EMAIL },
     },
     {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',

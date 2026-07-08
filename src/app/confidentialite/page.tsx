@@ -20,7 +20,7 @@ export default function ConfidentialitePage() {
       <h2>Responsable du traitement</h2>
       <p>
         Le responsable du traitement est <strong>MonCleanerPro</strong> — contact :{' '}
-        <a href="mailto:contact@moncleanerpro.fr">contact@moncleanerpro.fr</a>, téléphone 07 81 56 96 96.
+        <a href="mailto:info@moncleanerpro.fr">info@moncleanerpro.fr</a>, téléphone 07 83 43 17 00.
       </p>
 
       <h2>Données que nous collectons</h2>
@@ -61,7 +61,7 @@ export default function ConfidentialitePage() {
       </ul>
       <p>
         Pour exercer ces droits, écrivez-nous à{' '}
-        <a href="mailto:contact@moncleanerpro.fr">contact@moncleanerpro.fr</a>. Vous pouvez également introduire
+        <a href="mailto:info@moncleanerpro.fr">info@moncleanerpro.fr</a>. Vous pouvez également introduire
         une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">cnil.fr</a>).
       </p>
 
@@ -75,7 +75,7 @@ export default function ConfidentialitePage() {
       <h2>Contact</h2>
       <p>
         Pour toute question relative à vos données personnelles :{' '}
-        <a href="mailto:contact@moncleanerpro.fr">contact@moncleanerpro.fr</a>.
+        <a href="mailto:info@moncleanerpro.fr">info@moncleanerpro.fr</a>.
       </p>
     </LegalLayout>
   );

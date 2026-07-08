@@ -16,14 +16,14 @@ export default function MentionsLegalesPage() {
         Le site <strong>moncleanerpro.fr</strong> est édité par <strong>MonCleanerPro</strong>.
       </p>
       <ul>
-        <li>Forme juridique et capital social : <strong>[À COMPLÉTER]</strong></li>
-        <li>Siège social : <strong>[À COMPLÉTER — adresse]</strong></li>
-        <li>SIRET : <strong>[À COMPLÉTER]</strong></li>
-        <li>RCS / Ville d’immatriculation : <strong>[À COMPLÉTER]</strong></li>
-        <li>Numéro de TVA intracommunautaire : <strong>[À COMPLÉTER, le cas échéant]</strong></li>
-        <li>Téléphone : <strong>07 81 56 96 96</strong></li>
-        <li>Email : <a href="mailto:contact@moncleanerpro.fr">contact@moncleanerpro.fr</a></li>
-        <li>Directeur / Responsable de la publication : <strong>[À COMPLÉTER — nom du gérant]</strong></li>
+        <li>Forme juridique : <strong>Société par actions simplifiée (SAS)</strong>, au capital de <strong>[À COMPLÉTER — montant en €]</strong></li>
+        <li>Siège social : <strong>4 rue Albert Thomas, 38200 Vienne</strong></li>
+        <li>SIRET : <strong>930 098 926 00015</strong> (SIREN 930 098 926)</li>
+        <li>RCS : <strong>RCS Vienne 930 098 926</strong></li>
+        <li>Numéro de TVA intracommunautaire : <strong>FR28930098926</strong></li>
+        <li>Téléphone : <strong>07 83 43 17 00</strong></li>
+        <li>Email : <a href="mailto:info@moncleanerpro.fr">info@moncleanerpro.fr</a></li>
+        <li>Responsable de la publication : <strong>Abran Carmen Fieni</strong>, Président(e)</li>
       </ul>
 
       <h2>Hébergement</h2>
@@ -63,7 +63,7 @@ export default function MentionsLegalesPage() {
       <h2>Contact</h2>
       <p>
         Pour toute question relative au site, vous pouvez nous écrire à{' '}
-        <a href="mailto:contact@moncleanerpro.fr">contact@moncleanerpro.fr</a>.
+        <a href="mailto:info@moncleanerpro.fr">info@moncleanerpro.fr</a>.
       </p>
     </LegalLayout>
   );
