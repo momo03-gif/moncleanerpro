@@ -222,7 +222,7 @@ export default function VitrinePage() {
 
       {/* ── NAV ───────────────────────────────────────────────────────────── */}
       <header id="mcp-header" className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.82)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 shrink-0">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
@@ -248,7 +248,7 @@ export default function VitrinePage() {
       <section id="top" className="mcp-hero" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
         <div className="mcp-glow mcp-glow-1" aria-hidden />
         <div className="mcp-glow mcp-glow-2" aria-hidden />
-        <div className="relative max-w-6xl mx-auto px-5 py-24 md:py-32">
+        <div className="relative max-w-7xl mx-auto px-5 py-24 md:py-32">
           <div className="max-w-3xl">
             <div className="mcp-rise inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-7" style={{ animationDelay: '0ms', backgroundColor: 'rgba(201,168,76,0.12)', color: GOLD, border: '1px solid rgba(201,168,76,0.25)' }}>
               <span style={{ color: GOLD }}><Icon path={IconPin} size={14} /></span> Lyon &amp; Rhône-Alpes
@@ -279,7 +279,7 @@ export default function VitrinePage() {
 
       {/* ── CHIFFRES CLÉS ─────────────────────────────────────────────────── */}
       <section style={{ backgroundColor: INK, color: '#FFFFFF' }}>
-        <div className="max-w-6xl mx-auto px-5 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <div className="max-w-7xl mx-auto px-5 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {stats.map((s, i) => (
             <div key={s.label} data-reveal style={{ transitionDelay: `${i * 70}ms` }}>
               <p className="text-3xl md:text-4xl font-bold" data-count={s.value} style={{ color: GOLD, letterSpacing: '-0.02em' }}>{s.value}</p>
@@ -290,7 +290,7 @@ export default function VitrinePage() {
       </section>
 
       {/* ── SECTEURS ──────────────────────────────────────────────────────── */}
-      <section id="secteurs" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+      <section id="secteurs" className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         <div data-reveal>
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos secteurs</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un savoir-faire adapté à chaque activité</h2>
@@ -315,7 +315,7 @@ export default function VitrinePage() {
 
       {/* ── PRESTATIONS ───────────────────────────────────────────────────── */}
       <section id="prestations" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-        <div className="max-w-6xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-2 gap-14 items-center">
+        <div className="max-w-7xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-2 gap-14 items-center">
           <div data-reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos prestations</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des interventions sur mesure, un standard constant</h2>
@@ -340,7 +340,7 @@ export default function VitrinePage() {
       </section>
 
       {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────────── */}
-      <section id="process" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+      <section id="process" className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         <div data-reveal>
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Comment ça marche</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>De la demande à l’intervention, en 3 étapes</h2>
@@ -360,7 +360,7 @@ export default function VitrinePage() {
       </section>
 
       {/* ── POURQUOI NOUS ─────────────────────────────────────────────────── */}
-      <section id="pourquoi" className="max-w-6xl mx-auto px-5 pb-20 md:pb-28">
+      <section id="pourquoi" className="max-w-7xl mx-auto px-5 pb-20 md:pb-28">
         <div data-reveal>
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Pourquoi MonCleanerPro</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un service premium, pensé pour durer</h2>
@@ -392,7 +392,7 @@ export default function VitrinePage() {
 
       {/* ── AVIS CLIENTS ──────────────────────────────────────────────────── */}
       <section id="avis" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-        <div className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+        <div className="max-w-7xl mx-auto px-5 py-20 md:py-28">
           <div data-reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Ils nous font confiance</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des clients exigeants, satisfaits durablement</h2>
@@ -414,7 +414,7 @@ export default function VitrinePage() {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
-      <section id="faq" className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+      <section id="faq" className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-12">
           <div data-reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Questions fréquentes</p>
@@ -438,7 +438,7 @@ export default function VitrinePage() {
 
       {/* ── CTA CONTACT ───────────────────────────────────────────────────── */}
       <section id="contact" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
-        <div className="max-w-6xl mx-auto px-5 py-20 md:py-24 text-center">
+        <div className="max-w-7xl mx-auto px-5 py-20 md:py-24 text-center">
           <h2 data-reveal className="text-3xl md:text-5xl font-bold" style={{ letterSpacing: '-0.02em' }}>Prêt à confier votre nettoyage ?</h2>
           <p data-reveal className="mt-5 max-w-xl mx-auto text-lg" style={{ color: '#B8B2A8' }}>
             Recevez un devis gratuit et transparent sous 24h, sans engagement.
@@ -458,7 +458,7 @@ export default function VitrinePage() {
 
       {/* ── ZONES DESSERVIES (SEO local longue traîne) ────────────────────── */}
       <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
-        <div className="max-w-6xl mx-auto px-5 py-12">
+        <div className="max-w-7xl mx-auto px-5 py-12">
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Zones desservies</p>
           <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon et dans la métropole</h2>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
@@ -472,7 +472,7 @@ export default function VitrinePage() {
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
-        <div className="max-w-6xl mx-auto px-5 py-12 flex flex-wrap items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-5 py-12 flex flex-wrap items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 9 }} />
             <div>
@@ -489,7 +489,7 @@ export default function VitrinePage() {
           </div>
         </div>
         <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <div className="max-w-6xl mx-auto px-5 py-5 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto px-5 py-5 text-xs flex flex-wrap items-center justify-between gap-3">
             <span>© {new Date().getFullYear()} MonCleanerPro. Tous droits réservés.</span>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
               <a href="/mentions-legales" className="mcp-link hover:opacity-80">Mentions légales</a>

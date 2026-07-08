@@ -2,12 +2,33 @@
 
 import { useEffect } from 'react';
 
+// La vitrine (moncleanerpro.fr) ne doit PAS être une PWA en cache : sinon
+// d'anciennes versions restent servies (rendu figé / « pas responsive »).
+// Le service worker est réservé à l'app (offline). Sur la vitrine, on nettoie
+// tout SW/cache résiduel et on recharge une fois pour repartir propre.
+const VITRINE_HOSTS = new Set(['moncleanerpro.fr', 'www.moncleanerpro.fr']);
+
 export default function ServiceWorkerReg() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
+    const host = window.location.hostname.toLowerCase();
 
-    // Recharge une seule fois quand un nouveau service worker prend le contrôle
-    // (auto-guérison après déploiement).
+    // ── Vitrine : purge de tout service worker / cache résiduel ──────────────
+    if (VITRINE_HOSTS.has(host)) {
+      (async () => {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        const had = regs.length > 0;
+        await Promise.all(regs.map(r => r.unregister()));
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if (had) window.location.reload(); // recharge la vraie version, sans cache
+      })().catch(() => {});
+      return;
+    }
+
+    // ── App : service worker normal (offline + auto-guérison au déploiement) ──
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (refreshing) return;
