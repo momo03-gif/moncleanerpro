@@ -1,7 +1,11 @@
-import type { MetadataRoute } from 'next';
+// Manifest PWA servi comme route (et NON via app/manifest.ts) : ainsi Next
+// n'injecte pas automatiquement le <link rel="manifest"> sur toutes les pages.
+// Le lien est ajouté côté client UNIQUEMENT sur le domaine app (voir PwaSetup),
+// pour que la vitrine (moncleanerpro.fr) ne soit jamais installable comme « app ».
+export const dynamic = 'force-static';
 
-export default function manifest(): MetadataRoute.Manifest {
-  return {
+export function GET() {
+  const manifest = {
     name: 'MonCleanerPro',
     short_name: 'MonCleaner',
     description: 'Plateforme professionnelle de nettoyage hôtelier',
@@ -21,4 +25,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: 'Admin', url: '/admin', icons: [{ src: '/icon-192.png', sizes: '192x192' }] },
     ],
   };
+  return new Response(JSON.stringify(manifest), {
+    headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=3600' },
+  });
 }

@@ -2,17 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ServiceWorkerReg from '@/components/ServiceWorkerReg';
-import InstallBanner from '@/components/InstallBanner';
+import PwaSetup from '@/components/PwaSetup';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://moncleanerpro.fr'),
   title: 'MonCleanerPro',
   description: 'Plateforme professionnelle de nettoyage hôtelier',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'MonCleanerPro',
-  },
   icons: {
     icon: [
       { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
@@ -37,15 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" className="h-full">
       <head>
         <link rel="apple-touch-icon" href="/apple-icon-180.png" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="MonCleanerPro" />
       </head>
       <body className="min-h-full">
         <AuthProvider>
           {children}
-          <InstallBanner />
+          <PwaSetup />
         </AuthProvider>
         <ServiceWorkerReg />
       </body>
