@@ -16,7 +16,7 @@ export default function MentionsLegalesPage() {
         Le site <strong>moncleanerpro.fr</strong> est édité par <strong>MonCleanerPro</strong>.
       </p>
       <ul>
-        <li>Forme juridique : <strong>Société par actions simplifiée (SAS)</strong>, au capital de <strong>[À COMPLÉTER — montant en €]</strong></li>
+        <li>Forme juridique : <strong>Société par actions simplifiée (SAS)</strong></li>
         <li>Siège social : <strong>4 rue Albert Thomas, 38200 Vienne</strong></li>
         <li>SIRET : <strong>930 098 926 00015</strong> (SIREN 930 098 926)</li>
         <li>RCS : <strong>RCS Vienne 930 098 926</strong></li>
