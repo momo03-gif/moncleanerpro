@@ -232,6 +232,7 @@ export default function VitrinePage() {
             <a href="#prestations" className="mcp-link hover:opacity-70">Prestations</a>
             <a href="#process" className="mcp-link hover:opacity-70">Déroulé</a>
             <a href="#avis" className="mcp-link hover:opacity-70">Avis</a>
+            <a href="/blog" className="mcp-link hover:opacity-70">Blog</a>
             <a href="#faq" className="mcp-link hover:opacity-70">FAQ</a>
           </nav>
           <div className="flex items-center gap-2.5">
@@ -482,6 +483,7 @@ export default function VitrinePage() {
           <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm">
             <a href="#secteurs" className="mcp-link hover:opacity-80">Secteurs</a>
             <a href="#prestations" className="mcp-link hover:opacity-80">Prestations</a>
+            <a href="/blog" className="mcp-link hover:opacity-80">Blog</a>
             <a href="/devis-en-ligne" className="mcp-link hover:opacity-80">Devis gratuit</a>
             <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer" className="mcp-link hover:opacity-80">Espace client</a>
           </div>
