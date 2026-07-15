@@ -28,6 +28,10 @@ interface PendingPartner {
 
 const KIND_LABEL: Record<PartnerKind, string> = { hotel: 'Hôtel', airbnb: 'Airbnb / Conciergerie' };
 
+// Normalise un nom de partenaire (espaces superflus / casse) pour un rapprochement
+// fiable : les partner_name saisis sur les logements ont des variantes.
+const normName = (s?: string | null) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
 export default function ComptesPage() {
   const [pending, setPending] = useState<PendingPartner[]>([]);
   const [accounts, setAccounts] = useState<PartnerAccount[]>([]);
@@ -66,24 +70,29 @@ export default function ComptesPage() {
     return Math.round((mins / 60) * 100) / 100;
   }
 
-  // Logements/sites rattachés à un compte (conciergerie : par compte ou par nom libre).
+  // Une mission appartient à une conciergerie si elle est liée à un logement de ce
+  // compte : par partner_id (fiable après backfill) ou, à défaut, par nom normalisé.
+  function isAirbnbMissionOf(m: Mission, a: PartnerAccount): boolean {
+    return (!!a.userId && m.partnerId === a.userId) || (!!m.airbnbId && normName(m.partnerName) === normName(a.name));
+  }
+
+  // Logements/sites rattachés à un compte (conciergerie : par compte ou par nom).
   function sitesForAccount(a: PartnerAccount): Apartment[] {
     if (a.kind !== 'airbnb') return [];
-    return apartments.filter(ap => (a.userId && ap.partnerId === a.userId) || (!!ap.partnerName && ap.partnerName === a.name));
+    return apartments.filter(ap => (!!a.userId && ap.partnerId === a.userId) || normName(ap.partnerName) === normName(a.name));
   }
 
   // Missions d'un partenaire (hôtel : par nom ; conciergerie : par compte ou nom).
   function missionsForAccount(a: PartnerAccount): Mission[] {
     if (a.kind === 'hotel') return missions.filter(m => m.source === 'hotel' && (m.requestedBy ?? m.property) === a.name);
-    return missions.filter(m => m.source === 'airbnb' && ((a.userId && m.partnerId === a.userId) || m.partnerName === a.name));
+    return missions.filter(m => isAirbnbMissionOf(m, a));
   }
 
   // CA du mois : hôtel = heures × taux ; conciergerie = somme des ménages terminés.
   function revenueThisMonth(a: PartnerAccount): number {
     if (a.kind === 'hotel') return Math.round(hotelHoursThisMonth(a.name) * (a.billingHourlyRate ?? 0) * 100) / 100;
     const total = missions
-      .filter(m => m.source === 'airbnb' && ((a.userId && m.partnerId === a.userId) || m.partnerName === a.name)
-        && m.status === 'completed' && m.date.startsWith(month))
+      .filter(m => isAirbnbMissionOf(m, a) && m.status === 'completed' && m.date.startsWith(month))
       .reduce((s, m) => s + (m.price ?? 0), 0);
     return Math.round(total * 100) / 100;
   }
