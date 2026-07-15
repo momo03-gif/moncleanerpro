@@ -76,6 +76,35 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
 
+      // ── Création directe d'un compte PARTENAIRE par l'admin (déjà validé) ────
+      case 'createHotelAccount': {
+        const email = (b.email ?? '').toLowerCase().trim();
+        const { data: user, error } = await db.from('users')
+          .insert({ email, password_hash: await hashPassword(b.password || 'hotel123'), role: 'hotel', name: b.name, phone: b.phone ?? null, status: 'active' })
+          .select('id').single();
+        if (error || !user) return NextResponse.json({ error: error?.message ?? 'Création impossible.' }, { status: 400 });
+        const { error: hErr } = await db.from('hotels').insert({
+          user_id: user.id, hotel_name: b.name, address: b.address ?? null, email, phone: b.phone ?? null,
+          status_account: 'approved', billing_hourly_rate: b.rate ?? 0,
+          client_type: b.clientType === 'ehpad' ? 'ehpad' : 'hotel',
+        });
+        if (hErr) return NextResponse.json({ error: hErr.message }, { status: 400 });
+        return NextResponse.json({ ok: true, id: user.id });
+      }
+
+      case 'createAirbnbAccount': {
+        const email = (b.email ?? '').toLowerCase().trim();
+        const { data: user, error } = await db.from('users')
+          .insert({ email, password_hash: await hashPassword(b.password || 'partner123'), role: 'airbnb', name: b.name, phone: b.phone ?? null, status: 'active' })
+          .select('id').single();
+        if (error || !user) return NextResponse.json({ error: error?.message ?? 'Création impossible.' }, { status: 400 });
+        const { error: pErr } = await db.from('airbnb_partners').insert({
+          user_id: user.id, partner_name: b.name, email, phone: b.phone ?? null, status_account: 'approved',
+        });
+        if (pErr) return NextResponse.json({ error: pErr.message }, { status: 400 });
+        return NextResponse.json({ ok: true, id: user.id });
+      }
+
       // ── Administration des comptes PARTENAIRES (hôtels & conciergeries) ──────
       // kind: 'hotel' → table hotels / colonne nom hotel_name
       //       'airbnb' → table airbnb_partners / colonne nom partner_name

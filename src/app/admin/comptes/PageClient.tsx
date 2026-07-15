@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
-  updateHotelRateDB, updateHotelClientTypeDB, getMissionsDB,
+  updateHotelRateDB, updateHotelClientTypeDB, getMissionsDB, getAirbnbs,
   getPartnerAccountsDB, updatePartnerInfoDB, setPartnerPasswordDB, setPartnerStatusDB, deletePartnerAccountDB,
+  createHotelAccountDB, createAirbnbAccountDB,
   type PartnerAccount,
 } from '@/lib/db';
-import type { Mission } from '@/lib/types';
+import type { Mission, Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
 import Icon from '@/components/Icon';
@@ -31,12 +32,18 @@ export default function ComptesPage() {
   const [pending, setPending] = useState<PendingPartner[]>([]);
   const [accounts, setAccounts] = useState<PartnerAccount[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [apartments, setApartments] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
+  // Recherche + tri (partagés par les deux listes).
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState<'name' | 'revenue' | 'sites'>('name');
+  // Formulaire de création d'un compte partenaire.
+  const [creating, setCreating] = useState<null | 'hotel' | 'airbnb'>(null);
 
   async function load() {
-    const [pendHotels, partners, allMissions, partnerAccounts] = await Promise.all([
-      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getMissionsDB(), getPartnerAccountsDB(),
+    const [pendHotels, partners, allMissions, partnerAccounts, apts] = await Promise.all([
+      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getMissionsDB(), getPartnerAccountsDB(), getAirbnbs(),
     ]);
     const list: PendingPartner[] = [
       ...pendHotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
@@ -45,6 +52,7 @@ export default function ComptesPage() {
     setPending(list);
     setAccounts(partnerAccounts);
     setMissions(allMissions);
+    setApartments(apts);
     setLoading(false);
   }
 
@@ -56,6 +64,28 @@ export default function ComptesPage() {
         && m.status === 'completed' && m.date.startsWith(month))
       .reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
     return Math.round((mins / 60) * 100) / 100;
+  }
+
+  // Logements/sites rattachés à un compte (conciergerie : par compte ou par nom libre).
+  function sitesForAccount(a: PartnerAccount): Apartment[] {
+    if (a.kind !== 'airbnb') return [];
+    return apartments.filter(ap => (a.userId && ap.partnerId === a.userId) || (!!ap.partnerName && ap.partnerName === a.name));
+  }
+
+  // Missions d'un partenaire (hôtel : par nom ; conciergerie : par compte ou nom).
+  function missionsForAccount(a: PartnerAccount): Mission[] {
+    if (a.kind === 'hotel') return missions.filter(m => m.source === 'hotel' && (m.requestedBy ?? m.property) === a.name);
+    return missions.filter(m => m.source === 'airbnb' && ((a.userId && m.partnerId === a.userId) || m.partnerName === a.name));
+  }
+
+  // CA du mois : hôtel = heures × taux ; conciergerie = somme des ménages terminés.
+  function revenueThisMonth(a: PartnerAccount): number {
+    if (a.kind === 'hotel') return Math.round(hotelHoursThisMonth(a.name) * (a.billingHourlyRate ?? 0) * 100) / 100;
+    const total = missions
+      .filter(m => m.source === 'airbnb' && ((a.userId && m.partnerId === a.userId) || m.partnerName === a.name)
+        && m.status === 'completed' && m.date.startsWith(month))
+      .reduce((s, m) => s + (m.price ?? 0), 0);
+    return Math.round(total * 100) / 100;
   }
 
   useEffect(() => { load(); }, []);
@@ -72,8 +102,20 @@ export default function ComptesPage() {
 
   const active = pending.filter(h => !done[h.id]);
   const processed = pending.filter(h => done[h.id]);
-  const hotelAccounts = accounts.filter(a => a.kind === 'hotel');
-  const airbnbAccounts = accounts.filter(a => a.kind === 'airbnb');
+
+  // Filtre par nom + tri, appliqué à chaque liste.
+  function prepare(list: PartnerAccount[]): PartnerAccount[] {
+    const q = query.toLowerCase().trim();
+    const out = q ? list.filter(a => a.name.toLowerCase().includes(q)) : [...list];
+    out.sort((a, b) => {
+      if (sortKey === 'revenue') return revenueThisMonth(b) - revenueThisMonth(a);
+      if (sortKey === 'sites') return sitesForAccount(b).length - sitesForAccount(a).length;
+      return a.name.localeCompare(b.name);
+    });
+    return out;
+  }
+  const hotelAccounts = prepare(accounts.filter(a => a.kind === 'hotel'));
+  const airbnbAccounts = prepare(accounts.filter(a => a.kind === 'airbnb'));
 
   const updateAccount = (u: PartnerAccount) =>
     setAccounts(list => list.map(x => (x.kind === u.kind && x.id === u.id ? u : x)));
@@ -84,10 +126,26 @@ export default function ComptesPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Partenaires</h1>
-        <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription des partenaires hôtel et Airbnb / conciergerie</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Partenaires</h1>
+          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription, comptes hôtels et conciergeries</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setCreating(c => (c === 'hotel' ? null : 'hotel'))}
+            className="px-3 py-2 rounded-xl text-sm font-semibold border" style={{ borderColor: creating === 'hotel' ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>
+            + Hôtel
+          </button>
+          <button onClick={() => setCreating(c => (c === 'airbnb' ? null : 'airbnb'))}
+            className="px-3 py-2 rounded-xl text-sm font-semibold border" style={{ borderColor: creating === 'airbnb' ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>
+            + Conciergerie
+          </button>
+        </div>
       </div>
+
+      {creating && (
+        <CreatePartnerForm kind={creating} onClose={() => setCreating(null)} onCreated={() => { setCreating(null); load(); }} />
+      )}
 
       {active.length === 0 && processed.length === 0 && (
         <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
@@ -149,14 +207,35 @@ export default function ComptesPage() {
         </>
       )}
 
+      {/* Recherche + tri, partagés par les deux listes de fiches. */}
+      {accounts.length > 0 && (
+        <div className="mt-10 flex flex-wrap items-center gap-2">
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un partenaire…"
+            className="flex-1 min-w-[180px] px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          <div className="flex gap-1">
+            {([['name', 'Nom'], ['revenue', 'CA'], ['sites', 'Sites']] as const).map(([key, label]) => {
+              const on = sortKey === key;
+              return (
+                <button key={key} onClick={() => setSortKey(key)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border"
+                  style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#A8A09A' }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Fiches partenaires, classées : Hôtels d'un côté, Conciergeries de l'autre. */}
       {hotelAccounts.length > 0 && (
-        <div className="mt-10">
+        <div className="mt-6">
           <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Hôtels</h2>
           <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Fiche, taux horaire facturé, type, et administration du compte.</p>
           <div className="space-y-3">
             {hotelAccounts.map(a => (
               <AccountCard key={`${a.kind}-${a.id}`} account={a} hoursThisMonth={hotelHoursThisMonth}
+                revenue={revenueThisMonth(a)} sites={sitesForAccount(a)} recentMissions={missionsForAccount(a)}
                 onUpdate={updateAccount} onDelete={() => removeAccount(a)} />
             ))}
           </div>
@@ -166,10 +245,11 @@ export default function ComptesPage() {
       {airbnbAccounts.length > 0 && (
         <div className="mt-10">
           <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Conciergeries Airbnb</h2>
-          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Coordonnées, mot de passe, suspension et suppression du compte.</p>
+          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Coordonnées, logements, CA, et administration du compte.</p>
           <div className="space-y-3">
             {airbnbAccounts.map(a => (
               <AccountCard key={`${a.kind}-${a.id}`} account={a}
+                revenue={revenueThisMonth(a)} sites={sitesForAccount(a)} recentMissions={missionsForAccount(a)}
                 onUpdate={updateAccount} onDelete={() => removeAccount(a)} />
             ))}
           </div>
@@ -179,14 +259,83 @@ export default function ComptesPage() {
   );
 }
 
+// ── Formulaire de création directe d'un compte partenaire (admin). ────────────────
+function CreatePartnerForm({ kind, onClose, onCreated }: {
+  kind: 'hotel' | 'airbnb';
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const isHotel = kind === 'hotel';
+  const [f, setF] = useState({ name: '', email: '', phone: '', address: '', password: '', rate: '', clientType: 'hotel' as 'hotel' | 'ehpad' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    if (!f.name.trim() || !f.email.trim() || f.password.length < 6) {
+      setErr('Nom, email et mot de passe (6 caractères min) requis.'); return;
+    }
+    setBusy(true);
+    const res = isHotel
+      ? await createHotelAccountDB({ name: f.name, address: f.address, email: f.email, phone: f.phone, password: f.password, rate: Number(f.rate) || 0, clientType: f.clientType })
+      : await createAirbnbAccountDB({ name: f.name, email: f.email, phone: f.phone, password: f.password });
+    setBusy(false);
+    if (res.error) { setErr(res.error); return; }
+    onCreated();
+  }
+
+  return (
+    <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
+      <p className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>Nouveau compte {isHotel ? 'hôtel' : 'conciergerie'}</p>
+      <div className="grid gap-2">
+        <input value={f.name} onChange={e => setF(s => ({ ...s, name: e.target.value }))} placeholder={isHotel ? 'Nom de l’hôtel' : 'Nom de la conciergerie'} className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.email} onChange={e => setF(s => ({ ...s, email: e.target.value }))} placeholder="Email (identifiant de connexion)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.phone} onChange={e => setF(s => ({ ...s, phone: e.target.value }))} placeholder="Téléphone" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        {isHotel && (
+          <input value={f.address} onChange={e => setF(s => ({ ...s, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        )}
+        <input value={f.password} onChange={e => setF(s => ({ ...s, password: e.target.value }))} placeholder="Mot de passe provisoire" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        {isHotel && (
+          <div className="flex items-center gap-2">
+            <input type="number" min="0" step="0.5" value={f.rate} onChange={e => setF(s => ({ ...s, rate: e.target.value }))} placeholder="Taux €/h" className="w-28 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
+            <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
+            <div className="flex gap-1 ml-2">
+              {(['hotel', 'ehpad'] as const).map(ct => {
+                const on = f.clientType === ct;
+                return (
+                  <button key={ct} onClick={() => setF(s => ({ ...s, clientType: ct }))}
+                    className="text-[11px] px-2.5 py-1 rounded-full font-semibold border"
+                    style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#A8A09A' }}>
+                    {ct === 'hotel' ? 'Hôtel' : 'EHPAD'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      {err && <p className="text-xs mt-2" style={{ color: '#B85A50' }}>{err}</p>}
+      <div className="flex gap-2 mt-3">
+        <button disabled={busy} onClick={submit} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          {busy ? 'Création…' : 'Créer le compte'}
+        </button>
+        <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Fiche d'un compte partenaire : coordonnées + actions d'administration. ────────
-function AccountCard({ account, onUpdate, onDelete, hoursThisMonth }: {
+function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0, sites = [], recentMissions = [] }: {
   account: PartnerAccount;
   onUpdate: (a: PartnerAccount) => void;
   onDelete: () => void;
   hoursThisMonth?: (name: string) => number;
+  revenue?: number;
+  sites?: Apartment[];
+  recentMissions?: Mission[];
 }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
+  const [showDetail, setShowDetail] = useState(false);
   const [form, setForm] = useState({ name: account.name, email: account.email, phone: account.phone, address: account.address });
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -270,9 +419,15 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth }: {
             {suspended && (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#B85A5015', color: '#B85A50' }}>Suspendu</span>
             )}
+            {!isHotel && sites.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>{sites.length} logement{sites.length > 1 ? 's' : ''}</span>
+            )}
           </div>
           {account.address && <p className="text-xs mt-0.5" style={{ color: '#7A7068' }}>{account.address}</p>}
           <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{account.email}{account.phone ? ` · ${account.phone}` : ''}</p>
+          {!isHotel && (
+            <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>CA ce mois : <span className="font-semibold" style={{ color: '#5A8A6A' }}>{revenue} €</span></p>
+          )}
         </div>
         {msg && <span className="text-xs font-medium" style={{ color: '#5A8A6A' }}>{msg}</span>}
       </div>
@@ -338,6 +493,7 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth }: {
 
       {mode === 'view' && (
         <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: '#F2EFE9' }}>
+          <button onClick={() => setShowDetail(d => !d)} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: showDetail ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>Détail</button>
           <button onClick={() => setMode('edit')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Modifier</button>
           <button onClick={() => setMode('password')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Mot de passe</button>
           <button disabled={busy} onClick={toggleSuspend} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: suspended ? '#5A8A6A' : '#C48A2A' }}>
@@ -351,6 +507,44 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth }: {
           ) : (
             <button onClick={() => setConfirmDel(true)} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#B85A5040', color: '#B85A50' }}>Supprimer</button>
           )}
+        </div>
+      )}
+
+      {/* Panneau détail : logements rattachés + missions récentes. */}
+      {showDetail && mode === 'view' && (
+        <div className="mt-3 pt-3 border-t grid gap-4 sm:grid-cols-2" style={{ borderColor: '#F2EFE9' }}>
+          {!isHotel && (
+            <div>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: '#1A1A1A' }}>Logements ({sites.length})</p>
+              {sites.length === 0 ? (
+                <p className="text-xs" style={{ color: '#A8A09A' }}>Aucun logement rattaché.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {sites.map(s => (
+                    <li key={s.id} className="text-xs" style={{ color: '#7A7068' }}>
+                      <span className="font-medium" style={{ color: '#1A1A1A' }}>{s.name}</span>
+                      {s.clientPrice != null ? ` · ${s.clientPrice} €/ménage` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <div className={isHotel ? 'sm:col-span-2' : ''}>
+            <p className="text-xs font-semibold mb-1.5" style={{ color: '#1A1A1A' }}>Missions récentes</p>
+            {recentMissions.length === 0 ? (
+              <p className="text-xs" style={{ color: '#A8A09A' }}>Aucune mission.</p>
+            ) : (
+              <ul className="space-y-1">
+                {[...recentMissions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map(m => (
+                  <li key={m.id} className="text-xs flex items-center justify-between gap-2" style={{ color: '#7A7068' }}>
+                    <span>{m.date} · {m.property}</span>
+                    <span className="font-medium" style={{ color: m.status === 'completed' ? '#5A8A6A' : '#A8A09A' }}>{m.price ? `${m.price} €` : '—'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     </div>

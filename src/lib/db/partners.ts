@@ -102,6 +102,23 @@ export interface PartnerAccount {
   clientType?: 'hotel' | 'ehpad';
 }
 
+// Crée directement un compte hôtel (déjà validé) — onboarding admin.
+export async function createHotelAccountDB(fields: {
+  name: string; address?: string; email: string; phone?: string; password: string;
+  rate?: number; clientType?: 'hotel' | 'ehpad';
+}): Promise<{ error: string | null }> {
+  try { await postServer('/api/admin/users', { action: 'createHotelAccount', ...fields }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Création impossible.' }; }
+}
+
+// Crée directement un compte conciergerie Airbnb (déjà validé) — onboarding admin.
+export async function createAirbnbAccountDB(fields: {
+  name: string; email: string; phone?: string; password: string;
+}): Promise<{ error: string | null }> {
+  try { await postServer('/api/admin/users', { action: 'createAirbnbAccount', ...fields }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Création impossible.' }; }
+}
+
 export async function getPartnerAccountsDB(): Promise<PartnerAccount[]> {
   try { const d = await getServer('/api/partners?op=partnerAccounts'); return d.accounts ?? []; }
   catch { return []; }
