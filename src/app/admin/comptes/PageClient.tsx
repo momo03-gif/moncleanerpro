@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
-  getApprovedHotelsDB, updateHotelRateDB, updateHotelClientTypeDB, getMissionsDB,
+  updateHotelRateDB, updateHotelClientTypeDB, getMissionsDB,
   getPartnerAccountsDB, updatePartnerInfoDB, setPartnerPasswordDB, setPartnerStatusDB, deletePartnerAccountDB,
   type PartnerAccount,
 } from '@/lib/db';
@@ -29,27 +29,22 @@ const KIND_LABEL: Record<PartnerKind, string> = { hotel: 'Hôtel', airbnb: 'Airb
 
 export default function ComptesPage() {
   const [pending, setPending] = useState<PendingPartner[]>([]);
-  const [hotels, setHotels] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<PartnerAccount[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [rates, setRates] = useState<Record<string, string>>({});
-  const [savedId, setSavedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
 
   async function load() {
-    const [pendHotels, partners, approvedHotels, allMissions, partnerAccounts] = await Promise.all([
-      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getApprovedHotelsDB(), getMissionsDB(), getPartnerAccountsDB(),
+    const [pendHotels, partners, allMissions, partnerAccounts] = await Promise.all([
+      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getMissionsDB(), getPartnerAccountsDB(),
     ]);
     const list: PendingPartner[] = [
       ...pendHotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
       ...partners.map((p: any) => ({ ...p, kind: 'airbnb' as const })),
     ];
     setPending(list);
-    setHotels(approvedHotels);
     setAccounts(partnerAccounts);
     setMissions(allMissions);
-    setRates(Object.fromEntries(approvedHotels.map((h: any) => [h.id, h.billing_hourly_rate != null ? String(h.billing_hourly_rate) : ''])));
     setLoading(false);
   }
 
@@ -65,21 +60,6 @@ export default function ComptesPage() {
 
   useEffect(() => { load(); }, []);
 
-  // Corrige le type d'un compte (hôtel ↔ EHPAD), mise à jour optimiste.
-  async function saveType(h: any, ct: 'hotel' | 'ehpad') {
-    const prev = h.client_type ?? 'hotel';
-    if (prev === ct) return;
-    setHotels(list => list.map(x => x.id === h.id ? { ...x, client_type: ct } : x));
-    const res = await updateHotelClientTypeDB(h.id, ct);
-    if (res.error) setHotels(list => list.map(x => x.id === h.id ? { ...x, client_type: prev } : x));
-  }
-
-  async function saveRate(hotelId: string) {
-    await updateHotelRateDB(hotelId, Number(rates[hotelId]) || 0);
-    setSavedId(hotelId);
-    setTimeout(() => setSavedId(s => (s === hotelId ? null : s)), 1500);
-  }
-
   async function handleApprove(p: PendingPartner) {
     if (p.kind === 'hotel') await approveHotelDB(p.id); else await approveAirbnbPartnerDB(p.id);
     setDone(d => ({ ...d, [p.id]: 'approved' }));
@@ -92,6 +72,13 @@ export default function ComptesPage() {
 
   const active = pending.filter(h => !done[h.id]);
   const processed = pending.filter(h => done[h.id]);
+  const hotelAccounts = accounts.filter(a => a.kind === 'hotel');
+  const airbnbAccounts = accounts.filter(a => a.kind === 'airbnb');
+
+  const updateAccount = (u: PartnerAccount) =>
+    setAccounts(list => list.map(x => (x.kind === u.kind && x.id === u.id ? u : x)));
+  const removeAccount = (a: PartnerAccount) =>
+    setAccounts(list => list.filter(x => !(x.kind === a.kind && x.id === a.id)));
 
   if (loading) return <Loading className="p-6 text-sm" />;
 
@@ -162,73 +149,28 @@ export default function ComptesPage() {
         </>
       )}
 
-      {/* Hôtels validés : taux horaire FACTURÉ (propre à chaque hôtel). */}
-      {hotels.length > 0 && (
+      {/* Fiches partenaires, classées : Hôtels d'un côté, Conciergeries de l'autre. */}
+      {hotelAccounts.length > 0 && (
         <div className="mt-10">
-          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Hôtels partenaires — taux horaire facturé</h2>
-          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Ce qu'on facture à l'hôtel, par heure. Le CA hôtel = taux × heures réalisées.</p>
+          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Hôtels</h2>
+          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Fiche, taux horaire facturé, type, et administration du compte.</p>
           <div className="space-y-3">
-            {hotels.map((h: any) => {
-              const hours = hotelHoursThisMonth(h.hotel_name);
-              const rate = Number(rates[h.id]) || 0;
-              const toBill = Math.round(hours * rate * 100) / 100;
-              return (
-              <div key={h.id} className="rounded-2xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{h.hotel_name}</p>
-                    {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
-                    <div className="flex gap-1 mt-1.5">
-                      {(['hotel', 'ehpad'] as const).map(ct => {
-                        const on = (h.client_type ?? 'hotel') === ct;
-                        return (
-                          <button key={ct} onClick={() => saveType(h, ct)}
-                            className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold border transition-all"
-                            style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#A8A09A' }}>
-                            {ct === 'hotel' ? 'Hôtel' : 'EHPAD'}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <input type="number" min="0" step="0.5" value={rates[h.id] ?? ''}
-                        onChange={e => setRates(r => ({ ...r, [h.id]: e.target.value }))}
-                        placeholder="0" className="w-24 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
-                      <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
-                    </div>
-                    <button onClick={() => saveRate(h.id)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: savedId === h.id ? '#5A8A6A' : '#C9A84C', color: savedId === h.id ? '#FFFFFF' : '#1A1A1A' }}>
-                      {savedId === h.id ? '✓ Enregistré' : 'Enregistrer'}
-                    </button>
-                  </div>
-                </div>
-                {/* Heures réalisées ce mois + montant à facturer (heures × taux). */}
-                <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-x-6 gap-y-1" style={{ borderColor: '#F2EFE9' }}>
-                  <span className="text-xs" style={{ color: '#A8A09A' }}>Heures réalisées ce mois : <span className="font-semibold" style={{ color: '#1A1A1A' }}>{hours} h</span></span>
-                  <span className="text-xs" style={{ color: '#A8A09A' }}>À facturer ce mois : <span className="font-semibold" style={{ color: '#5A8A6A' }}>{toBill} €</span></span>
-                </div>
-              </div>
-              );
-            })}
+            {hotelAccounts.map(a => (
+              <AccountCard key={`${a.kind}-${a.id}`} account={a} hoursThisMonth={hotelHoursThisMonth}
+                onUpdate={updateAccount} onDelete={() => removeAccount(a)} />
+            ))}
           </div>
         </div>
       )}
 
-      {/* Fiches partenaires : administration des comptes (hôtels + conciergeries). */}
-      {accounts.length > 0 && (
+      {airbnbAccounts.length > 0 && (
         <div className="mt-10">
-          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Fiches partenaires — administration des comptes</h2>
-          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Coordonnées, mot de passe, suspension et suppression de chaque compte partenaire.</p>
+          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Conciergeries Airbnb</h2>
+          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Coordonnées, mot de passe, suspension et suppression du compte.</p>
           <div className="space-y-3">
-            {accounts.map(a => (
-              <AccountCard
-                key={`${a.kind}-${a.id}`}
-                account={a}
-                onUpdate={u => setAccounts(list => list.map(x => (x.kind === u.kind && x.id === u.id ? u : x)))}
-                onDelete={() => setAccounts(list => list.filter(x => !(x.kind === a.kind && x.id === a.id)))}
-              />
+            {airbnbAccounts.map(a => (
+              <AccountCard key={`${a.kind}-${a.id}`} account={a}
+                onUpdate={updateAccount} onDelete={() => removeAccount(a)} />
             ))}
           </div>
         </div>
@@ -238,10 +180,11 @@ export default function ComptesPage() {
 }
 
 // ── Fiche d'un compte partenaire : coordonnées + actions d'administration. ────────
-function AccountCard({ account, onUpdate, onDelete }: {
+function AccountCard({ account, onUpdate, onDelete, hoursThisMonth }: {
   account: PartnerAccount;
   onUpdate: (a: PartnerAccount) => void;
   onDelete: () => void;
+  hoursThisMonth?: (name: string) => number;
 }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
   const [form, setForm] = useState({ name: account.name, email: account.email, phone: account.phone, address: account.address });
@@ -250,6 +193,30 @@ function AccountCard({ account, onUpdate, onDelete }: {
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const suspended = account.status === 'suspended';
+
+  // Facturation hôtel (fusionnée dans la fiche) : taux €/h + type + heures réalisées.
+  const isHotel = account.kind === 'hotel';
+  const [rate, setRate] = useState(account.billingHourlyRate != null ? String(account.billingHourlyRate) : '');
+  const [clientType, setClientType] = useState<'hotel' | 'ehpad'>(account.clientType ?? 'hotel');
+  const [rateSaved, setRateSaved] = useState(false);
+  const hours = isHotel && hoursThisMonth ? hoursThisMonth(account.name) : 0;
+  const toBill = Math.round(hours * (Number(rate) || 0) * 100) / 100;
+
+  async function saveRate() {
+    await updateHotelRateDB(account.id, Number(rate) || 0);
+    onUpdate({ ...account, billingHourlyRate: Number(rate) || 0 });
+    setRateSaved(true);
+    setTimeout(() => setRateSaved(false), 1500);
+  }
+
+  async function saveType(ct: 'hotel' | 'ehpad') {
+    if (ct === clientType) return;
+    const prev = clientType;
+    setClientType(ct);
+    const res = await updateHotelClientTypeDB(account.id, ct);
+    if (res.error) { setClientType(prev); flash(res.error); return; }
+    onUpdate({ ...account, clientType: ct });
+  }
 
   function flash(text: string) { setMsg(text); setTimeout(() => setMsg(m => (m === text ? null : m)), 1800); }
 
@@ -309,6 +276,42 @@ function AccountCard({ account, onUpdate, onDelete }: {
         </div>
         {msg && <span className="text-xs font-medium" style={{ color: '#5A8A6A' }}>{msg}</span>}
       </div>
+
+      {/* Bloc facturation — hôtels uniquement : taux €/h, type, heures réalisées. */}
+      {isHotel && (
+        <div className="mt-3 pt-3 border-t" style={{ borderColor: '#F2EFE9' }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-1">
+              {(['hotel', 'ehpad'] as const).map(ct => {
+                const on = clientType === ct;
+                return (
+                  <button key={ct} onClick={() => saveType(ct)}
+                    className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold border transition-all"
+                    style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#A8A09A' }}>
+                    {ct === 'hotel' ? 'Hôtel' : 'EHPAD'}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <input type="number" min="0" step="0.5" value={rate}
+                  onChange={e => setRate(e.target.value)}
+                  placeholder="0" className="w-24 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
+                <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
+              </div>
+              <button onClick={saveRate}
+                className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: rateSaved ? '#5A8A6A' : '#C9A84C', color: rateSaved ? '#FFFFFF' : '#1A1A1A' }}>
+                {rateSaved ? '✓ Enregistré' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1">
+            <span className="text-xs" style={{ color: '#A8A09A' }}>Heures réalisées ce mois : <span className="font-semibold" style={{ color: '#1A1A1A' }}>{hours} h</span></span>
+            <span className="text-xs" style={{ color: '#A8A09A' }}>À facturer ce mois : <span className="font-semibold" style={{ color: '#5A8A6A' }}>{toBill} €</span></span>
+          </div>
+        </div>
+      )}
 
       {mode === 'edit' && (
         <div className="mt-3 pt-3 border-t grid gap-2" style={{ borderColor: '#F2EFE9' }}>

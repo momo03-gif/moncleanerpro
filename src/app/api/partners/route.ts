@@ -126,7 +126,7 @@ export async function GET(req: Request) {
       if (!isAdmin) return adminOnly();
       const [{ data: hotels }, { data: partners }] = await Promise.all([
         db.from('hotels')
-          .select('id, user_id, hotel_name, address, email, phone, status_account, users(email, phone)')
+          .select('id, user_id, hotel_name, address, email, phone, status_account, billing_hourly_rate, client_type, users(email, phone)')
           .in('status_account', ['approved', 'suspended']).order('hotel_name'),
         db.from('airbnb_partners')
           .select('id, user_id, partner_name, email, phone, status_account, users(email, phone)')
@@ -137,6 +137,7 @@ export async function GET(req: Request) {
           id: h.id, userId: h.user_id, kind: 'hotel' as const, name: h.hotel_name,
           email: h.email ?? h.users?.email ?? '', phone: h.phone ?? h.users?.phone ?? '',
           address: h.address ?? '', status: h.status_account,
+          billingHourlyRate: h.billing_hourly_rate ?? null, clientType: h.client_type ?? 'hotel',
         })),
         ...(partners ?? []).map((p: any) => ({
           id: p.id, userId: p.user_id, kind: 'airbnb' as const, name: p.partner_name,

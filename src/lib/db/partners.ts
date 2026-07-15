@@ -97,6 +97,9 @@ export interface PartnerAccount {
   phone: string;
   address: string;
   status: 'approved' | 'suspended';
+  // Hôtels uniquement : facturation propre à la fiche.
+  billingHourlyRate?: number | null;
+  clientType?: 'hotel' | 'ehpad';
 }
 
 export async function getPartnerAccountsDB(): Promise<PartnerAccount[]> {
