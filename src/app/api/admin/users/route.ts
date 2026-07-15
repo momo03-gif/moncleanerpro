@@ -76,6 +76,53 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
 
+      // ── Administration des comptes PARTENAIRES (hôtels & conciergeries) ──────
+      // kind: 'hotel' → table hotels / colonne nom hotel_name
+      //       'airbnb' → table airbnb_partners / colonne nom partner_name
+      case 'updatePartnerInfo': {
+        const isAirbnb = b.kind === 'airbnb';
+        const table = isAirbnb ? 'airbnb_partners' : 'hotels';
+        const nameCol = isAirbnb ? 'partner_name' : 'hotel_name';
+        const email = (b.email ?? '').toLowerCase().trim();
+        const patch: any = { [nameCol]: b.name, email, phone: b.phone ?? null };
+        if (!isAirbnb && b.address !== undefined) patch.address = b.address ?? null;
+        const { data: row, error } = await db.from(table).update(patch).eq('id', b.id).select('user_id').single();
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        const userId = row?.user_id ?? b.userId;
+        if (userId) await db.from('users').update({ name: b.name, email, phone: b.phone ?? null }).eq('id', userId);
+        return NextResponse.json({ ok: true });
+      }
+
+      case 'setPartnerPassword': {
+        const table = b.kind === 'airbnb' ? 'airbnb_partners' : 'hotels';
+        const { data: row } = await db.from(table).select('user_id').eq('id', b.id).single();
+        const userId = row?.user_id ?? b.userId;
+        if (!userId) return NextResponse.json({ error: 'Compte introuvable.' }, { status: 404 });
+        await db.from('users').update({ password_hash: await hashPassword(b.password) }).eq('id', userId);
+        return NextResponse.json({ ok: true });
+      }
+
+      case 'setPartnerStatus': {
+        // Suspend (bloque la connexion) / réactive un compte partenaire.
+        // Le gating de connexion se fait sur status_account, pas users.status.
+        const table = b.kind === 'airbnb' ? 'airbnb_partners' : 'hotels';
+        const status = b.suspend ? 'suspended' : 'approved';
+        const { error } = await db.from(table).update({ status_account: status }).eq('id', b.id);
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ ok: true });
+      }
+
+      case 'deletePartner': {
+        // Supprime la fiche partenaire + son compte users. Les missions liées
+        // sont conservées (FK partner_id ON DELETE SET NULL).
+        const table = b.kind === 'airbnb' ? 'airbnb_partners' : 'hotels';
+        const { data: row } = await db.from(table).select('user_id').eq('id', b.id).single();
+        const userId = row?.user_id ?? b.userId;
+        await db.from(table).delete().eq('id', b.id);
+        if (userId) await db.from('users').delete().eq('id', userId);
+        return NextResponse.json({ ok: true });
+      }
+
       default:
         return NextResponse.json({ error: 'Action inconnue.' }, { status: 400 });
     }

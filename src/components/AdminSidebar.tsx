@@ -15,7 +15,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/airbnb', label: 'Sites', icon: 'building' },
   { href: '/admin/reservations', label: 'Réservations', icon: 'sync' },
   { href: '/admin/carte', label: 'Carte', icon: 'map' },
-  { href: '/admin/comptes', label: 'Comptes', icon: 'accounts' },
+  { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
   { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
   { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
   { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },

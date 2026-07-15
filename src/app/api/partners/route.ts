@@ -120,6 +120,32 @@ export async function GET(req: Request) {
       const { data } = await db.from('hotels').select('*').eq('status_account', 'approved').order('hotel_name');
       return NextResponse.json({ hotels: data ?? [] });
     }
+    case 'partnerAccounts': {
+      // Fiches d'administration : tous les comptes partenaires actifs (validés)
+      // ET suspendus — l'admin doit voir les suspendus pour les réactiver.
+      if (!isAdmin) return adminOnly();
+      const [{ data: hotels }, { data: partners }] = await Promise.all([
+        db.from('hotels')
+          .select('id, user_id, hotel_name, address, email, phone, status_account, users(email, phone)')
+          .in('status_account', ['approved', 'suspended']).order('hotel_name'),
+        db.from('airbnb_partners')
+          .select('id, user_id, partner_name, email, phone, status_account, users(email, phone)')
+          .in('status_account', ['approved', 'suspended']).order('partner_name'),
+      ]);
+      const accounts = [
+        ...(hotels ?? []).map((h: any) => ({
+          id: h.id, userId: h.user_id, kind: 'hotel' as const, name: h.hotel_name,
+          email: h.email ?? h.users?.email ?? '', phone: h.phone ?? h.users?.phone ?? '',
+          address: h.address ?? '', status: h.status_account,
+        })),
+        ...(partners ?? []).map((p: any) => ({
+          id: p.id, userId: p.user_id, kind: 'airbnb' as const, name: p.partner_name,
+          email: p.email ?? p.users?.email ?? '', phone: p.phone ?? p.users?.phone ?? '',
+          address: '', status: p.status_account,
+        })),
+      ];
+      return NextResponse.json({ accounts });
+    }
     case 'hotelByUser': {
       const userId = url.searchParams.get('userId') ?? '';
       if (!isAdmin && userId !== session.id) return adminOnly();

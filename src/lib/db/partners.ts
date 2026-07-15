@@ -84,6 +84,55 @@ export async function refuseAirbnbPartnerDB(id: string) {
   catch (e) { console.error('refuseAirbnbPartnerDB:', e); }
 }
 
+// ── FICHES D'ADMINISTRATION DES COMPTES PARTENAIRES ─────────────────────────────
+// Vue unifiée (hôtels + conciergeries) validés/suspendus + actions admin.
+
+export type PartnerKind = 'hotel' | 'airbnb';
+export interface PartnerAccount {
+  id: string;
+  userId: string | null;
+  kind: PartnerKind;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  status: 'approved' | 'suspended';
+}
+
+export async function getPartnerAccountsDB(): Promise<PartnerAccount[]> {
+  try { const d = await getServer('/api/partners?op=partnerAccounts'); return d.accounts ?? []; }
+  catch { return []; }
+}
+
+// Modifie les coordonnées d'un partenaire (fiche + compte users lié).
+export async function updatePartnerInfoDB(
+  kind: PartnerKind, id: string,
+  fields: { name: string; email: string; phone?: string; address?: string },
+): Promise<{ error: string | null }> {
+  try {
+    await postServer('/api/admin/users', { action: 'updatePartnerInfo', kind, id, ...fields });
+    return { error: null };
+  } catch (e) { return { error: e instanceof Error ? e.message : 'Modification impossible.' }; }
+}
+
+// Réinitialise le mot de passe du compte partenaire.
+export async function setPartnerPasswordDB(kind: PartnerKind, id: string, password: string): Promise<{ error: string | null }> {
+  try { await postServer('/api/admin/users', { action: 'setPartnerPassword', kind, id, password }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Modification impossible.' }; }
+}
+
+// Suspend (bloque la connexion) ou réactive un compte partenaire.
+export async function setPartnerStatusDB(kind: PartnerKind, id: string, suspend: boolean): Promise<{ error: string | null }> {
+  try { await postServer('/api/admin/users', { action: 'setPartnerStatus', kind, id, suspend }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Modification impossible.' }; }
+}
+
+// Supprime définitivement la fiche partenaire + son compte.
+export async function deletePartnerAccountDB(kind: PartnerKind, id: string): Promise<{ error: string | null }> {
+  try { await postServer('/api/admin/users', { action: 'deletePartner', kind, id }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Suppression impossible.' }; }
+}
+
 // Liste des noms de partenaires connus (comptes + libellés saisis sur les apparts)
 // — utile pour proposer une auto-complétion côté admin.
 export async function getPartnerNamesDB(): Promise<string[]> {

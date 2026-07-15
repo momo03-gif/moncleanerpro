@@ -5,6 +5,8 @@ import {
   getPendingHotelsDB, approveHotelDB, refuseHotelDB,
   getPendingAirbnbPartnersDB, approveAirbnbPartnerDB, refuseAirbnbPartnerDB,
   getApprovedHotelsDB, updateHotelRateDB, updateHotelClientTypeDB, getMissionsDB,
+  getPartnerAccountsDB, updatePartnerInfoDB, setPartnerPasswordDB, setPartnerStatusDB, deletePartnerAccountDB,
+  type PartnerAccount,
 } from '@/lib/db';
 import type { Mission } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
@@ -28,6 +30,7 @@ const KIND_LABEL: Record<PartnerKind, string> = { hotel: 'Hôtel', airbnb: 'Airb
 export default function ComptesPage() {
   const [pending, setPending] = useState<PendingPartner[]>([]);
   const [hotels, setHotels] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<PartnerAccount[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [rates, setRates] = useState<Record<string, string>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -35,8 +38,8 @@ export default function ComptesPage() {
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
 
   async function load() {
-    const [pendHotels, partners, approvedHotels, allMissions] = await Promise.all([
-      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getApprovedHotelsDB(), getMissionsDB(),
+    const [pendHotels, partners, approvedHotels, allMissions, partnerAccounts] = await Promise.all([
+      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getApprovedHotelsDB(), getMissionsDB(), getPartnerAccountsDB(),
     ]);
     const list: PendingPartner[] = [
       ...pendHotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
@@ -44,6 +47,7 @@ export default function ComptesPage() {
     ];
     setPending(list);
     setHotels(approvedHotels);
+    setAccounts(partnerAccounts);
     setMissions(allMissions);
     setRates(Object.fromEntries(approvedHotels.map((h: any) => [h.id, h.billing_hourly_rate != null ? String(h.billing_hourly_rate) : ''])));
     setLoading(false);
@@ -94,7 +98,7 @@ export default function ComptesPage() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Comptes en attente</h1>
+        <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Partenaires</h1>
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription des partenaires hôtel et Airbnb / conciergerie</p>
       </div>
 
@@ -209,6 +213,141 @@ export default function ComptesPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Fiches partenaires : administration des comptes (hôtels + conciergeries). */}
+      {accounts.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Fiches partenaires — administration des comptes</h2>
+          <p className="text-sm mb-4" style={{ color: '#A8A09A' }}>Coordonnées, mot de passe, suspension et suppression de chaque compte partenaire.</p>
+          <div className="space-y-3">
+            {accounts.map(a => (
+              <AccountCard
+                key={`${a.kind}-${a.id}`}
+                account={a}
+                onUpdate={u => setAccounts(list => list.map(x => (x.kind === u.kind && x.id === u.id ? u : x)))}
+                onDelete={() => setAccounts(list => list.filter(x => !(x.kind === a.kind && x.id === a.id)))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Fiche d'un compte partenaire : coordonnées + actions d'administration. ────────
+function AccountCard({ account, onUpdate, onDelete }: {
+  account: PartnerAccount;
+  onUpdate: (a: PartnerAccount) => void;
+  onDelete: () => void;
+}) {
+  const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
+  const [form, setForm] = useState({ name: account.name, email: account.email, phone: account.phone, address: account.address });
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const suspended = account.status === 'suspended';
+
+  function flash(text: string) { setMsg(text); setTimeout(() => setMsg(m => (m === text ? null : m)), 1800); }
+
+  async function saveEdit() {
+    setBusy(true);
+    const { error } = await updatePartnerInfoDB(account.kind, account.id, form);
+    setBusy(false);
+    if (error) { flash(error); return; }
+    onUpdate({ ...account, ...form });
+    setMode('view'); flash('Coordonnées enregistrées');
+  }
+
+  async function savePassword() {
+    if (password.length < 6) { flash('6 caractères minimum'); return; }
+    setBusy(true);
+    const { error } = await setPartnerPasswordDB(account.kind, account.id, password);
+    setBusy(false);
+    if (error) { flash(error); return; }
+    setPassword(''); setMode('view'); flash('Mot de passe réinitialisé');
+  }
+
+  async function toggleSuspend() {
+    setBusy(true);
+    const { error } = await setPartnerStatusDB(account.kind, account.id, !suspended);
+    setBusy(false);
+    if (error) { flash(error); return; }
+    onUpdate({ ...account, status: suspended ? 'approved' : 'suspended' });
+    flash(suspended ? 'Compte réactivé' : 'Compte suspendu');
+  }
+
+  async function remove() {
+    setBusy(true);
+    const { error } = await deletePartnerAccountDB(account.kind, account.id);
+    setBusy(false);
+    if (error) { flash(error); return; }
+    onDelete();
+  }
+
+  const kindLabel = account.kind === 'airbnb' ? 'Airbnb / Conciergerie' : 'Hôtel';
+
+  return (
+    <div className="rounded-2xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: suspended ? '#B85A5040' : '#E8E4DC' }}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{account.name}</p>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: account.kind === 'airbnb' ? '#C9A84C15' : '#F5F3EF', color: account.kind === 'airbnb' ? '#C9A84C' : '#7A7068' }}>
+              {kindLabel}
+            </span>
+            {suspended && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#B85A5015', color: '#B85A50' }}>Suspendu</span>
+            )}
+          </div>
+          {account.address && <p className="text-xs mt-0.5" style={{ color: '#7A7068' }}>{account.address}</p>}
+          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{account.email}{account.phone ? ` · ${account.phone}` : ''}</p>
+        </div>
+        {msg && <span className="text-xs font-medium" style={{ color: '#5A8A6A' }}>{msg}</span>}
+      </div>
+
+      {mode === 'edit' && (
+        <div className="mt-3 pt-3 border-t grid gap-2" style={{ borderColor: '#F2EFE9' }}>
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          {account.kind === 'hotel' && (
+            <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          )}
+          <div className="flex gap-2 mt-1">
+            <button disabled={busy} onClick={saveEdit} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
+            <button onClick={() => { setMode('view'); setForm({ name: account.name, email: account.email, phone: account.phone, address: account.address }); }} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'password' && (
+        <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2" style={{ borderColor: '#F2EFE9' }}>
+          <input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Nouveau mot de passe" className="flex-1 min-w-[180px] px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          <button disabled={busy} onClick={savePassword} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Définir</button>
+          <button onClick={() => { setMode('view'); setPassword(''); }} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+        </div>
+      )}
+
+      {mode === 'view' && (
+        <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: '#F2EFE9' }}>
+          <button onClick={() => setMode('edit')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Modifier</button>
+          <button onClick={() => setMode('password')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Mot de passe</button>
+          <button disabled={busy} onClick={toggleSuspend} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: suspended ? '#5A8A6A' : '#C48A2A' }}>
+            {suspended ? 'Réactiver' : 'Suspendre'}
+          </button>
+          {confirmDel ? (
+            <span className="flex items-center gap-2">
+              <button disabled={busy} onClick={remove} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ backgroundColor: '#B85A50', color: '#FFFFFF' }}>Confirmer la suppression</button>
+              <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 rounded-lg text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+            </span>
+          ) : (
+            <button onClick={() => setConfirmDel(true)} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#B85A5040', color: '#B85A50' }}>Supprimer</button>
+          )}
         </div>
       )}
     </div>

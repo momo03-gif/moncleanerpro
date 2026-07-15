@@ -43,12 +43,18 @@ export async function POST(req: Request) {
   }
   if (u.role === 'hotel') {
     const { data: h } = await db.from('hotels').select('status_account').eq('user_id', u.id).single();
+    if (h?.status_account === 'suspended') {
+      return NextResponse.json({ error: 'Compte suspendu. Contactez MonCleanerPro.' }, { status: 403 });
+    }
     if (h?.status_account === 'pending' || h?.status_account === 'refused') {
       return NextResponse.json({ error: 'Compte en attente de validation.' }, { status: 403 });
     }
   }
   if (u.role === 'airbnb') {
     const { data: p } = await db.from('airbnb_partners').select('status_account').eq('user_id', u.id).single();
+    if (p?.status_account === 'suspended') {
+      return NextResponse.json({ error: 'Compte suspendu. Contactez MonCleanerPro.' }, { status: 403 });
+    }
     if (p?.status_account === 'pending' || p?.status_account === 'refused') {
       return NextResponse.json({ error: 'Compte en attente de validation.' }, { status: 403 });
     }
