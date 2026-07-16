@@ -178,7 +178,10 @@ export default function ComptesPage() {
                     </span>
                   </div>
                   {h.address && <p className="text-sm" style={{ color: '#7A7068' }}>{h.address}</p>}
-                  <p className="text-sm" style={{ color: '#A8A09A' }}>{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
+                  <p className="text-sm" style={{ color: '#A8A09A' }}>
+                    {h.email && <a href={`mailto:${h.email}`} className="hover:underline" style={{ color: '#A8A09A' }}>{h.email}</a>}
+                    {h.phone && (<>{h.email ? ' · ' : ''}<a href={`tel:${h.phone.replace(/\s+/g, '')}`} className="font-medium hover:underline" style={{ color: '#C9A84C' }}>{h.phone}</a></>)}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleApprove(h)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -433,7 +436,17 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
             )}
           </div>
           {account.address && <p className="text-xs mt-0.5" style={{ color: '#7A7068' }}>{account.address}</p>}
-          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{account.email}{account.phone ? ` · ${account.phone}` : ''}</p>
+          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>
+            {account.email && (
+              <a href={`mailto:${account.email}`} className="hover:underline" style={{ color: '#A8A09A' }}>{account.email}</a>
+            )}
+            {account.phone && (
+              <>
+                {account.email ? ' · ' : ''}
+                <a href={`tel:${account.phone.replace(/\s+/g, '')}`} className="font-medium hover:underline" style={{ color: '#C9A84C' }}>{account.phone}</a>
+              </>
+            )}
+          </p>
           {!isHotel && (
             <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>CA ce mois : <span className="font-semibold" style={{ color: '#5A8A6A' }}>{revenue} €</span></p>
           )}
