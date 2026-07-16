@@ -40,6 +40,21 @@ function aptToForm(a: Apartment): FormState {
   };
 }
 
+const NO_PARTNER = 'Sans partenaire';
+
+// Regroupe les sites par partenaire, triés par nom (partenaire vide en dernier).
+function groupByPartner(list: Apartment[]): { name: string; apts: Apartment[] }[] {
+  const m = new Map<string, Apartment[]>();
+  for (const a of list) {
+    const k = a.partnerName || NO_PARTNER;
+    if (!m.has(k)) m.set(k, []);
+    m.get(k)!.push(a);
+  }
+  return [...m.entries()]
+    .sort((a, b) => (a[0] === NO_PARTNER ? 1 : b[0] === NO_PARTNER ? -1 : a[0].localeCompare(b[0])))
+    .map(([name, apts]) => ({ name, apts }));
+}
+
 export default function AirbnbPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [partnerNames, setPartnerNames] = useState<string[]>([]);
@@ -50,7 +65,8 @@ export default function AirbnbPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [search, setSearch] = useState('');
   const [partnerFilter, setPartnerFilter] = useState<string>('all');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [openPartners, setOpenPartners] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(60);
   const [mapsModal, setMapsModal] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -61,11 +77,13 @@ export default function AirbnbPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  // Réinitialise la pagination quand la recherche / le filtre change.
+  useEffect(() => { setVisibleCount(60); }, [search, partnerFilter]);
 
-  function toggleExpand(id: string) {
-    setExpanded(prev => {
+  function togglePartner(name: string) {
+    setOpenPartners(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(name)) next.delete(name); else next.add(name);
       return next;
     });
   }
@@ -84,6 +102,23 @@ export default function AirbnbPage() {
     const q = search.toLowerCase();
     return !q || a.name.toLowerCase().includes(q) || a.address.toLowerCase().includes(q) || (a.partnerName ?? '').toLowerCase().includes(q);
   });
+
+  // Sections repliables par partenaire. Une section est ouverte si l'utilisateur l'a
+  // ouverte, ou si une recherche / un filtre partenaire est actif (résultats visibles).
+  const forceOpen = search.trim() !== '' || partnerFilter !== 'all';
+  const groups = groupByPartner(visible);
+  const isPartnerOpen = (name: string) => forceOpen || openPartners.has(name);
+  // Pagination : on ne compte que les lignes des sections ouvertes.
+  let budget = visibleCount;
+  const renderGroups = groups.map(g => {
+    const open = isPartnerOpen(g.name);
+    if (!open) return { name: g.name, total: g.apts.length, open, shown: [] as Apartment[] };
+    const shown = g.apts.slice(0, Math.max(0, budget));
+    budget -= shown.length;
+    return { name: g.name, total: g.apts.length, open, shown };
+  });
+  const openRowsTotal = groups.reduce((s, g) => s + (isPartnerOpen(g.name) ? g.apts.length : 0), 0);
+  const hasMore = openRowsTotal > visibleCount;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -264,137 +299,148 @@ export default function AirbnbPage() {
         </form>
       )}
 
-      <div className="relative mb-4">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom, adresse ou partenaire..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
-          onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+      {/* Recherche + filtre partenaire (menu déroulant, scalable à 100+ partenaires) */}
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <div className="relative flex-1 min-w-[200px]">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom, adresse ou partenaire..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
+            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+        </div>
+        {partners.length > 0 && (
+          <select value={partnerFilter} onChange={e => setPartnerFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-xl text-sm border appearance-none cursor-pointer min-w-[180px]"
+            style={{ ...inputStyle, color: partnerFilter === 'all' ? '#7A7068' : '#1A1A1A' }}>
+            <option value="all">Tous les partenaires ({apartments.length})</option>
+            {partners.map(p => <option key={p} value={p}>{p} ({apartments.filter(a => a.partnerName === p).length})</option>)}
+          </select>
+        )}
       </div>
 
-      {/* Filtre par partenaire */}
-      {partners.length > 0 && (
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {[{ v: 'all', label: 'Tous' }, ...partners.map(p => ({ v: p, label: p }))].map(({ v, label }) => (
-            <button key={v} onClick={() => setPartnerFilter(v)}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-              style={{
-                backgroundColor: partnerFilter === v ? '#C9A84C' : '#FFFFFF',
-                color: partnerFilter === v ? '#1A1A1A' : '#7A7068',
-                border: `1px solid ${partnerFilter === v ? '#C9A84C' : '#E8E4DC'}`,
-              }}>
-              {label}
-              <span className="ml-1.5 opacity-60">{v === 'all' ? apartments.length : apartments.filter(a => a.partnerName === v).length}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {visible.length === 0 && (
+      {visible.length === 0 ? (
         <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucun appartement trouvé</p>
+          <p className="text-sm" style={{ color: '#A8A09A' }}>Aucun site trouvé</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Sections repliables par partenaire (en-têtes légers → OK avec 100 partenaires). */}
+          {renderGroups.map(g => (
+            <section key={g.name} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+              <button onClick={() => togglePartner(g.name)} disabled={forceOpen}
+                className="w-full px-5 py-3.5 flex items-center gap-2 text-left disabled:cursor-default"
+                style={{ backgroundColor: g.open ? '#FAFAF8' : '#FFFFFF' }}>
+                <span className="font-semibold truncate" style={{ color: g.name === NO_PARTNER ? '#C48A2A' : '#1A1A1A' }}>{g.name}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>{g.total}</span>
+                {!forceOpen && (
+                  <span className="ml-auto text-sm transition-transform" style={{ color: '#A8A09A', transform: g.open ? 'rotate(180deg)' : 'none' }}>⌄</span>
+                )}
+              </button>
+              {g.open && (
+                <div className="px-3 pb-3 pt-1 space-y-2 border-t" style={{ borderColor: '#F2EFE9' }}>
+                  {g.shown.map(apt => (
+                    <SiteRow key={apt.id} apt={apt}
+                      onEdit={() => openEdit(apt)} onDelete={() => handleDelete(apt.id)} onMaps={() => setMapsModal(apt.address)} />
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+          {hasMore && (
+            <div className="text-center pt-1">
+              <button onClick={() => setVisibleCount(c => c + 60)}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+                Afficher plus ({openRowsTotal - visibleCount} restants)
+              </button>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {visible.map(apt => {
-          const isExpanded = expanded.has(apt.id);
-          const isLong = apt.entryDirectives && apt.entryDirectives.length > 100;
+// ── Ligne compacte d'un site : résumé + détail au clic. ──────────────────────────
+function SiteRow({ apt, onEdit, onDelete, onMaps }: {
+  apt: Apartment;
+  onEdit: () => void;
+  onDelete: () => void;
+  onMaps: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasBeds = apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null;
 
-          return (
-            <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-              <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{apt.name}</h3>
-                    <button onClick={() => setMapsModal(apt.address)}
-                      className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full"
-                      style={{ color: '#A8A09A' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
-                      <span className="text-xs shrink-0">◎</span>
-                      <span className="text-xs truncate">{apt.address}</span>
-                    </button>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => openEdit(apt)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
-                    <button onClick={() => handleDelete(apt.id)} className="text-xs px-2.5 py-1.5 rounded-lg" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>✕</button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  {apt.partnerName && (
-                    <span className="inline-block text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#C9A84C15', color: '#C9A84C' }}>
-                      {apt.partnerName}
-                    </span>
-                  )}
-                  {/* Type de site (badge) — affiché pour les non-appartements. */}
-                  {apt.structureType && apt.structureType !== 'apartment' && (
-                    <span className="text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#7C5CBF12', color: '#7C5CBF' }}>
-                      {structureLabel(apt.structureType, apt.structureLabel)}
-                    </span>
-                  )}
-                  {apt.zoneName && (
-                    <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: apt.zoneColor ?? '#9CA3AF' }} />
-                      {apt.zoneName}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="px-5 py-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  {apt.clientPrice != null && (
-                    <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>/ ménage</span></p>
-                  )}
-                  {apt.estimatedCleaningMinutes != null && (
-                    <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{formatDuration(apt.estimatedCleaningMinutes)} <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>de ménage</span></p>
-                  )}
-                </div>
-                {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
-                  <p className="text-xs" style={{ color: '#7A7068' }}>
-                    {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
-                    {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
-                    {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
-                    {apt.beds != null && apt.sofaBeds != null && ' · '}
-                    {apt.sofaBeds != null && <>{apt.sofaBeds} canapé-lit{apt.sofaBeds > 1 ? 's' : ''}</>}
-                  </p>
-                )}
-                {apt.portalCode && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code portail</span>
-                    <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.portalCode}</span>
-                  </div>
-                )}
-                {apt.keyboxCode && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Boîte à clé</span>
-                    <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.keyboxCode}</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-3">
-                  <span className="text-xs w-28 shrink-0 mt-0.5" style={{ color: '#A8A09A' }}>Entrée</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug" style={{
-                      color: '#7A7068',
-                      ...(isLong && !isExpanded ? { overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' } : {}),
-                    }}>
-                      {apt.entryDirectives}
-                    </p>
-                    {isLong && (
-                      <button onClick={() => toggleExpand(apt.id)} className="text-xs mt-1.5 font-medium" style={{ color: '#C9A84C' }}>
-                        {isExpanded ? 'Voir moins ↑' : 'Voir plus ↓'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {apt.notes && (
-                  <div className="px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: open ? '#D8D0C4' : '#EDEAE3' }}>
+      {/* Ligne compacte */}
+      <div className="px-4 py-2.5 flex items-center gap-3 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: apt.zoneColor ?? '#D8D0C4' }} title={apt.zoneName ?? 'Zone auto'} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{apt.name}</p>
+          <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{apt.address}</p>
+        </div>
+        {apt.structureType && apt.structureType !== 'apartment' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#7C5CBF12', color: '#7C5CBF' }}>
+            {structureLabel(apt.structureType, apt.structureLabel)}
+          </span>
+        )}
+        {apt.clientPrice != null && (
+          <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#5A8A6A' }}>{apt.clientPrice} €</span>
+        )}
+        <span className="shrink-0 text-sm transition-transform" style={{ color: '#A8A09A', transform: open ? 'rotate(180deg)' : 'none' }}>⌄</span>
       </div>
+
+      {/* Détail */}
+      {open && (
+        <div className="px-4 pb-4 pt-1 border-t space-y-3" style={{ borderColor: '#F2EFE9' }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={onMaps} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>◎ Itinéraire</button>
+            <button onClick={onEdit} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
+            <button onClick={onDelete} className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>Supprimer</button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {apt.estimatedCleaningMinutes != null && (
+              <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{formatDuration(apt.estimatedCleaningMinutes)} <span className="text-xs font-normal" style={{ color: '#A8A09A' }}>de ménage</span></p>
+            )}
+            {apt.zoneName && (
+              <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: '#7A7068' }}>
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: apt.zoneColor ?? '#9CA3AF' }} />{apt.zoneName}
+              </span>
+            )}
+          </div>
+
+          {hasBeds && (
+            <p className="text-xs" style={{ color: '#7A7068' }}>
+              {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
+              {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
+              {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
+              {apt.beds != null && apt.sofaBeds != null && ' · '}
+              {apt.sofaBeds != null && <>{apt.sofaBeds} canapé-lit{apt.sofaBeds > 1 ? 's' : ''}</>}
+            </p>
+          )}
+          {apt.portalCode && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Code portail</span>
+              <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.portalCode}</span>
+            </div>
+          )}
+          {apt.keyboxCode && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs w-28 shrink-0" style={{ color: '#A8A09A' }}>Boîte à clé</span>
+              <span className="text-sm font-mono font-semibold px-2 py-0.5 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>{apt.keyboxCode}</span>
+            </div>
+          )}
+          {apt.entryDirectives && (
+            <div className="flex items-start gap-3">
+              <span className="text-xs w-28 shrink-0 mt-0.5" style={{ color: '#A8A09A' }}>Entrée</span>
+              <p className="text-sm leading-snug flex-1 min-w-0" style={{ color: '#7A7068' }}>{apt.entryDirectives}</p>
+            </div>
+          )}
+          {apt.notes && (
+            <div className="px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
