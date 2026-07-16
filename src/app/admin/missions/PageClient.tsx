@@ -255,6 +255,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   onMoveDown?: () => void;
 }) {
   const { user } = useAuth();
+  const [expanded, setExpanded] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [newCleaner, setNewCleaner] = useState('');
   const [busy, setBusy] = useState(false);
@@ -378,8 +379,20 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
   const source = mission.source ?? 'hotel';
 
+  // ── Repères pour la LIGNE COMPACTE (résumé au coup d'œil) ──
+  const billable = mission.service !== 'delivery' && mission.service !== 'appointment';
+  const unassigned = !mission.cleanerName && !mission.assigneeName;
+  const arrivalToday = !!mission.nextArrival && mission.nextArrival === mission.date;
+  // Pointage : temps réel vs prévu.
+  const cPlanned = mission.missionDurationMinutes ?? 0;
+  const cReal = mission.actualDurationMinutes;
+  const cEcart = cReal != null ? cReal - cPlanned : null;
+  const inProgress = !!mission.startedAt && mission.status !== 'completed' && mission.status !== 'cancelled';
+  const ecartColor = cEcart == null ? '#7A7068' : cEcart > 5 ? '#B85A50' : cEcart < -5 ? '#5A8A6A' : '#7A7068';
+  const ecartBg = cEcart == null ? '#F5F3EF' : cEcart > 5 ? '#B85A5015' : cEcart < -5 ? '#5A8A6A15' : '#F5F3EF';
+
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: expanded ? '#D8D0C4' : '#E8E4DC' }}>
       {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
 
       {/* ── Ordre manuel (classement par cleaner) ── */}
@@ -397,16 +410,49 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
         </div>
       )}
 
+      {/* ── LIGNE COMPACTE (toujours visible) : résumé + toggle détail ── */}
+      <div className="px-4 py-3 flex items-center gap-3 cursor-pointer select-none"
+        onClick={() => setExpanded(e => !e)}>
+        {selectable && (
+          <button onClick={e => { e.stopPropagation(); onToggleSelect?.(mission.id); }} aria-label="Sélectionner"
+            className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
+            style={{ borderColor: selected ? '#C9A84C' : '#C8C2BA', backgroundColor: selected ? '#C9A84C' : '#FFFFFF' }}>
+            {selected && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
+          </button>
+        )}
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }}
+          title={missionStatusLabel(mission.status, mission.service)} />
+        <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A', width: 44 }}>
+          {mission.time ? formatHour(mission.time) : '—'}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</p>
+          <p className="text-xs truncate" style={{ color: unassigned ? '#C48A2A' : '#A8A09A' }}>
+            {mission.cleanerName ?? mission.assigneeName ?? 'Non assigné'}
+            {arrivalToday && <span className="font-semibold" style={{ color: '#B91C1C' }}> · Arrivée jour-même</span>}
+          </p>
+        </div>
+        {/* Pointage au coup d'œil */}
+        {inProgress && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: '#5B6EF515', color: '#5B6EF5' }}>● en cours</span>
+        )}
+        {mission.status === 'completed' && cReal != null && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: ecartBg, color: ecartColor }}
+            title={`Réel ${formatDuration(cReal)} · prévu ${formatDuration(cPlanned)}`}>
+            {formatDuration(cReal)}{cEcart != null && Math.abs(cEcart) > 5 ? ` (${cEcart > 0 ? '+' : ''}${cEcart})` : ''}
+          </span>
+        )}
+        {billable && (mission.price ?? 0) > 0 && (
+          <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A' }}>{mission.price} €</span>
+        )}
+        <span className="shrink-0 text-sm transition-transform" style={{ color: '#A8A09A', transform: expanded ? 'rotate(180deg)' : 'none' }}>⌄</span>
+      </div>
+
+      {expanded && (
+      <>
       {/* ── Header : source + type / statut */}
       <div className="px-5 py-3.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
         <div className="flex items-center gap-2">
-          {selectable && (
-            <button onClick={() => onToggleSelect?.(mission.id)} aria-label="Sélectionner"
-              className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
-              style={{ borderColor: selected ? '#C9A84C' : '#C8C2BA', backgroundColor: selected ? '#C9A84C' : '#FFFFFF' }}>
-              {selected && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
-            </button>
-          )}
           {/* Source (Hôtel/Airbnb) — sans objet pour un rendez-vous. */}
           {mission.service !== 'appointment' && (
             <span className="text-xs px-2.5 py-1 rounded-lg font-semibold"
@@ -865,6 +911,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           </>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -886,6 +934,8 @@ export default function MissionsPage() {
   const [bulkLivreur, setBulkLivreur] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
+  // Pagination douce : nombre de missions affichées (compact + léger → gros volumes OK).
+  const [visibleCount, setVisibleCount] = useState(60);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [loading, setLoading] = useState(true);
@@ -937,6 +987,9 @@ export default function MissionsPage() {
     const ch2 = supabase.channel('rt-missions').on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, [load]);
+
+  // Réinitialise la pagination quand la portée de la vue change.
+  useEffect(() => { setVisibleCount(60); }, [tab, filter, zoneFilter, range]);
 
   async function handleValidate(id: string) {
     if (!selectedCleaner) return;
@@ -1274,6 +1327,18 @@ export default function MissionsPage() {
   const statusScoped = filter === 'all' ? dateScoped : dateScoped.filter(m => m.status === filter);
   const filtered = zoneFilter === 'all' ? statusScoped : statusScoped.filter(m => (m.zoneName ?? '') === zoneFilter);
 
+  // Groupes par cleaner, tronqués à visibleCount (pagination « Afficher plus »).
+  const allGroups = groupMissionsByCleaner(filtered);
+  const shownGroups: typeof allGroups = [];
+  let budget = visibleCount;
+  for (const g of allGroups) {
+    if (budget <= 0) break;
+    const ms = g.missions.slice(0, budget);
+    budget -= ms.length;
+    shownGroups.push({ ...g, missions: ms });
+  }
+  const hasMore = filtered.length > visibleCount;
+
   // Zones présentes dans les missions de la période (pour le filtre).
   const zonesInScope = (() => {
     const map = new Map<string, string>(); // name → color
@@ -1460,49 +1525,32 @@ export default function MissionsPage() {
             className="mb-4"
           />
 
-          {/* Filtres statut (comptes calculés sur la période sélectionnée) */}
-          <div className="flex gap-2 mb-6 flex-wrap">
-            {FILTERS.map(({ value, label }) => (
-              <button key={value} onClick={() => setFilter(value)}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                style={{
-                  backgroundColor: filter === value ? '#C9A84C' : '#FFFFFF',
-                  color: filter === value ? '#1A1A1A' : '#7A7068',
-                  border: `1px solid ${filter === value ? '#C9A84C' : '#E8E4DC'}`,
-                }}>
-                {label}
-                <span className="ml-1.5 opacity-60">
-                  {value === 'all' ? dateScoped.length : dateScoped.filter(m => m.status === value).length}
-                </span>
-              </button>
-            ))}
+          {/* Filtres statut + zone — barre compacte (comptes sur la période) */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            {FILTERS.map(({ value, label }) => {
+              const on = filter === value;
+              const count = value === 'all' ? dateScoped.length : dateScoped.filter(m => m.status === value).length;
+              return (
+                <button key={value} onClick={() => setFilter(value)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#7A7068', border: `1px solid ${on ? '#C9A84C' : '#E8E4DC'}` }}>
+                  {label}<span className="ml-1.5 opacity-60">{count}</span>
+                </button>
+              );
+            })}
+            {/* Zone en menu déroulant : compact et scalable (beaucoup de zones). */}
+            {zonesInScope.length > 0 && (
+              <select value={zoneFilter} onChange={e => setZoneFilter(e.target.value)}
+                className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium border appearance-none cursor-pointer"
+                style={{ ...inputStyle, color: zoneFilter === 'all' ? '#7A7068' : '#1A1A1A' }}>
+                <option value="all">Toutes les zones</option>
+                {zonesInScope.map(z => <option key={z.name} value={z.name}>{z.name}</option>)}
+              </select>
+            )}
           </div>
 
-          {/* Filtre par zone */}
-          {zonesInScope.length > 0 && (
-            <div className="flex gap-2 mb-4 flex-wrap items-center">
-              <span className="text-xs font-semibold uppercase tracking-wider mr-1" style={{ color: '#A8A09A' }}>Zone</span>
-              <button onClick={() => setZoneFilter('all')}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                style={{ backgroundColor: zoneFilter === 'all' ? '#C9A84C' : '#FFFFFF', color: zoneFilter === 'all' ? '#1A1A1A' : '#7A7068', border: `1px solid ${zoneFilter === 'all' ? '#C9A84C' : '#E8E4DC'}` }}>
-                Toutes
-              </button>
-              {zonesInScope.map(z => (
-                <button key={z.name} onClick={() => setZoneFilter(z.name)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                  style={{ backgroundColor: zoneFilter === z.name ? '#C9A84C' : '#FFFFFF', color: zoneFilter === z.name ? '#1A1A1A' : '#7A7068', border: `1px solid ${zoneFilter === z.name ? '#C9A84C' : '#E8E4DC'}` }}>
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: z.color }} />
-                  {z.name}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Barre d'assignation groupée (tournée) */}
-          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-            <p className="text-xs" style={{ color: '#A8A09A' }}>
-              {filtered.length} mission{filtered.length > 1 ? 's' : ''}
-            </p>
+          <div className="flex items-center justify-end gap-2 mb-4 flex-wrap">
             <button onClick={selectAllVisible} className="text-xs font-medium" style={{ color: '#C9A84C' }}>
               Tout sélectionner (assignables)
             </button>
@@ -1566,10 +1614,16 @@ export default function MissionsPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-8">
-              {groupMissionsByCleaner(filtered).map(group => (
+            <div className="space-y-6">
+              {/* Récap de la période (compteurs au coup d'œil). */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: '#7A7068' }}>
+                <span><span className="font-semibold" style={{ color: '#1A1A1A' }}>{filtered.length}</span> mission{filtered.length > 1 ? 's' : ''}</span>
+                {(() => { const n = filtered.filter(m => !m.cleanerName && !m.assigneeName && m.status !== 'cancelled' && m.status !== 'completed').length; return n > 0 ? <span style={{ color: '#C48A2A' }}><span className="font-semibold">{n}</span> non assignée{n > 1 ? 's' : ''}</span> : null; })()}
+                {(() => { const n = filtered.filter(m => m.nextArrival && m.nextArrival === m.date).length; return n > 0 ? <span style={{ color: '#B91C1C' }}><span className="font-semibold">{n}</span> arrivée{n > 1 ? 's' : ''} jour-même</span> : null; })()}
+              </div>
+              {shownGroups.map(group => (
                 <section key={group.cleanerId ?? '__unassigned__'}>
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-semibold text-base"
                       style={{ color: group.cleanerId ? '#1A1A1A' : '#C48A2A' }}>
                       {group.cleanerName}
@@ -1579,7 +1633,7 @@ export default function MissionsPage() {
                       {group.missions.length}
                     </span>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     {group.missions.map((m, i) => (
                       <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
@@ -1594,6 +1648,14 @@ export default function MissionsPage() {
                   </div>
                 </section>
               ))}
+              {hasMore && (
+                <div className="text-center pt-2">
+                  <button onClick={() => setVisibleCount(c => c + 60)}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+                    Afficher plus ({filtered.length - visibleCount} restantes)
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>
