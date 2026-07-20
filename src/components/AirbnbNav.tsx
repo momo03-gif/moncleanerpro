@@ -11,6 +11,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/airbnb/accueil', label: 'Accueil', icon: 'today' },
   { href: '/airbnb', label: 'Logements', icon: 'building' },
   { href: '/airbnb/missions', label: 'Planning', icon: 'missions' },
+  { href: '/airbnb/reparations', label: 'Réparations', icon: 'wrench' },
   { href: '/airbnb/sync', label: 'Synchro', icon: 'sync' },
 ];
 

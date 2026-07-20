@@ -65,6 +65,20 @@ export function sortMissionsByPriority(missions: Mission[]): Mission[] {
   return [...missions].sort(compareMissionPriority);
 }
 
+/**
+ * Ordre d'exécution côté cleaner : une mission TERMINÉE bascule en bas de la
+ * liste, et la suivante à faire remonte en tête. À l'intérieur de chaque bloc
+ * (à faire / terminées), la priorité commune s'applique normalement.
+ */
+export function sortMissionsForCleaner(missions: Mission[]): Mission[] {
+  return [...missions].sort((a, b) => {
+    const aDone = a.status === 'completed';
+    const bDone = b.status === 'completed';
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return compareMissionPriority(a, b);
+  });
+}
+
 // ── Regroupement « intervention » (one-shot multi-cleaners) ──────────────────────
 // Une intervention ponctuelle réalisée par plusieurs cleaners = N lignes mission
 // partageant un group_id. Pour le PLANNING, on les présente comme UNE seule

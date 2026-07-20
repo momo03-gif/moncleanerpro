@@ -10,7 +10,7 @@ import {
 } from '@/lib/offline/queue';
 import { supabase } from '@/lib/supabase';
 import type { Mission, ParkingPayment } from '@/lib/types';
-import { sortMissionsByPriority } from '@/lib/missionOrder';
+import { sortMissionsForCleaner } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import { cacheMissions, readCachedMissions } from '@/lib/offline/store';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
@@ -19,6 +19,7 @@ import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
+import RepairsPanel from '@/components/RepairsPanel';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -130,8 +131,10 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
     onUpdate();
   }
 
+  // Désistement : le cleaner renonce à SA mission. Elle n'est ni annulée ni
+  // supprimée (il n'en a pas le droit) — elle retourne à l'admin qui la réattribue.
   async function withdraw() {
-    if (!confirm('Se désister de cette mission ? Elle sera annulée et l’administrateur en sera informé.')) return;
+    if (!confirm("Se désister de cette mission ? Elle sera rendue à l'administrateur, qui la confiera à un autre cleaner.")) return;
     setBusy(true); setGeoError('');
     const res = await submitWithdraw({ missionId: mission.id, userId });
     setBusy(false);
@@ -332,6 +335,12 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
         <div className="px-5 pb-4 space-y-3">
           <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
           <MissionReport missionId={mission.id} mode="cleaner" userId={userId} />
+          {/* Réparations du logement : ce que le cleaner signale ici reste ouvert
+              jusqu'à ce que le propriétaire l'ait fait réparer. */}
+          {mission.airbnbId && (
+            <RepairsPanel airbnbId={mission.airbnbId} missionId={mission.id}
+              role="cleaner" authorName={mission.cleanerName} />
+          )}
 
           {/* Temps supplémentaire : utile uniquement pour le NETTOYAGE (rallonger une
               durée de ménage). Masqué sur les missions de livraison pure. */}
@@ -491,6 +500,8 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
               {busy ? '...' : '✓  Terminer la mission'}
             </button>
           )}
+          {/* Seule sortie possible pour le cleaner : rendre la mission à l'admin.
+              Il ne peut ni l'annuler ni la supprimer. */}
           <button onClick={withdraw} disabled={busy}
             className="w-full py-2 rounded-xl text-xs font-medium disabled:opacity-50 transition-all"
             style={{ color: '#B85A50' }}>
@@ -582,7 +593,8 @@ export default function CleanerDashboard() {
   const tomorrow = toDateStr(new Date(Date.now() + 86400000));
   const { start: weekStart, end: weekEnd } = getWeekBounds();
 
-  const filteredMissions = sortMissionsByPriority(
+  // Les missions terminées passent en bas : la prochaine à faire est toujours en tête.
+  const filteredMissions = sortMissionsForCleaner(
     missions.filter(m => m.date >= dateStart && m.date <= dateEnd && m.status !== 'cancelled')
   );
 

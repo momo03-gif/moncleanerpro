@@ -17,7 +17,7 @@ const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 const TYPE_ICON: Record<string, IconName> = {
   mission_created: 'request', mission_new: 'missions', mission_modified: 'missions',
-  mission_cancelled: 'close', mission_completed: 'check',
+  mission_cancelled: 'close', mission_completed: 'check', mission_withdrawn: 'cleaners',
   reminder_today: 'today', reminder_tomorrow: 'today',
   extra_time_requested: 'history', extra_time_resolved: 'check',
 };

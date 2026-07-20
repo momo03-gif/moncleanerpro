@@ -7,7 +7,7 @@ import { getBlockingFormationsDB } from './formation';
 import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR, GPS_REQUIRED_ERROR, type GeoPoint } from './geo';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
-  notifyMissionCancelled, notifyMissionCompleted,
+  notifyMissionCancelled, notifyMissionCompleted, notifyMissionWithdrawn,
   notifyExtraTimeRequested, notifyExtraTimeResolved,
 } from './notifications';
 import { postServer, getServer, trimTime } from './db/shared';
@@ -874,24 +874,30 @@ export async function finishMissionDB(
   return { error: null };
 }
 
-// Désistement du cleaner : il renonce à SA mission non clôturée → statut 'annulée'
-// (DB 'cancelled'), visible côté admin (liste missions + notification). Garde
-// atomique : impossible sur une mission déjà terminée/annulée.
+// Désistement du cleaner : il renonce à SA mission non clôturée. La mission n'est
+// NI annulée NI supprimée — le cleaner n'a pas ce pouvoir. Elle est simplement
+// DÉTACHÉE de lui et repart dans le pool non assigné (statut 'pending'), à charge
+// pour l'admin de la réattribuer ; l'admin est notifié.
+// Garde atomique : impossible sur une mission déjà terminée/annulée, ou qui
+// n'appartient pas au cleaner qui la demande.
 export async function withdrawMissionDB(
   missionId: string, userId: string,
 ): Promise<{ error: string | null }> {
   const cleanerTableId = await resolveToCleanerTableId(userId);
   if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
 
+  // Nom du cleaner AVANT détachement : la notification doit dire qui s'est désisté.
+  const { data: before } = await supabase.from('missions')
+    .select('cleaner_name').eq('id', missionId).maybeSingle();
+
   const { data, error } = await supabase.from('missions')
-    .update({ status: 'cancelled' })
+    .update({ status: 'pending', cleaner_id: null, cleaner_name: null })
     .eq('id', missionId).eq('cleaner_id', cleanerTableId)
     .not('status', 'in', '(done,cancelled)').select('id');
   if (error) return { error: error.message };
   if (!data || data.length === 0) return { error: 'Désistement impossible sur cette mission.' };
 
-  // Notifie l'admin du désistement (réutilise la notif d'annulation existante).
-  await notifyMissionCancelled(missionId, 'cleaner', userId);
+  await notifyMissionWithdrawn(missionId, before?.cleaner_name ?? null);
   return { error: null };
 }
 

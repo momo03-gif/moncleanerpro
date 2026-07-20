@@ -8,6 +8,7 @@ import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import MapsModal from '@/components/MapsModal';
+import RepairsPanel from '@/components/RepairsPanel';
 import Loading from "@/components/Loading";
 
 const emptyForm = {
@@ -439,6 +440,10 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
           {apt.notes && (
             <div className="px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</div>
           )}
+
+          {/* Réparations du site : l'admin en ajoute et les clôture. Elles restent
+              ouvertes tant que le propriétaire n'a pas fait réparer. */}
+          <RepairsPanel airbnbId={apt.id} role="admin" authorName="Admin" />
         </div>
       )}
     </div>

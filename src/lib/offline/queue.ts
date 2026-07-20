@@ -83,7 +83,10 @@ export async function submitDeliver(p: { missionId: string; userId: string }): P
 export async function submitWithdraw(p: { missionId: string; userId: string }): Promise<SubmitResult> {
   if (isOnline()) { const r = await withdrawMissionDB(p.missionId, p.userId); return { queued: false, error: r.error }; }
   await enqueue('withdraw', p.userId, p.missionId, {}, null);
-  await patchCachedMission(p.userId, p.missionId, { status: 'cancelled' });
+  // Désistement : la mission n'est pas annulée, elle est détachée du cleaner et
+  // repart dans le pool de l'admin. Localement on la retire du planning du cleaner
+  // (elle ne lui appartient plus) en la basculant hors de sa vue.
+  await patchCachedMission(p.userId, p.missionId, { status: 'pending', cleanerId: undefined, cleanerName: undefined });
   return { queued: true, error: null };
 }
 

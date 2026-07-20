@@ -200,6 +200,25 @@ export async function notifyMissionCancelled(missionId: string, actorRole: strin
   } catch (e) { console.error('notifyMissionCancelled:', e); }
 }
 
+// D bis. Désistement d'un cleaner → admin uniquement.
+// La mission n'est pas annulée : elle est retombée dans le pool non assigné et
+// attend une réattribution. Le message doit donc appeler à l'action, pas annoncer
+// une annulation. `cleanerName` est passé par l'appelant car la mission vient
+// justement d'être détachée du cleaner.
+export async function notifyMissionWithdrawn(missionId: string, cleanerName: string | null) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx) return;
+    const admins = await adminUserIds();
+    const who = cleanerName ?? 'Un cleaner';
+    const message = `${who} s'est désisté de la mission ${ctx.place} du ${fmtDate(ctx.date)}. Elle est à réattribuer.`;
+    await dispatch(admins.map(id => ({
+      userId: id, role: 'admin' as const, title: 'Désistement cleaner',
+      message, type: 'mission_withdrawn', missionId,
+    })));
+  } catch (e) { console.error('notifyMissionWithdrawn:', e); }
+}
+
 // E. Mission terminée → admin + partenaire/client créateur
 export async function notifyMissionCompleted(missionId: string) {
   try {

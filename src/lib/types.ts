@@ -124,6 +124,30 @@ export interface MissionReport {
   updatedAt?: string;
 }
 
+// ── Réparation rattachée à un site (appartement) ────────────────────────────────
+// Créée depuis un dégât constaté (cleaner en fin de mission, ou admin). Elle vit
+// sur l'APPARTEMENT, pas sur la mission : elle reste ouverte tant que le
+// propriétaire (ou l'admin) ne l'a pas marquée réparée.
+export type RepairStatus = 'open' | 'done';
+
+export interface Repair {
+  id: string;
+  airbnbId: string;
+  partnerId?: string;
+  missionId?: string;        // mission d'origine (trace), sa clôture ne ferme pas la réparation
+  description: string;
+  status: RepairStatus;
+  createdBy?: string;
+  createdRole?: 'cleaner' | 'admin' | 'airbnb';
+  resolvedBy?: string;
+  resolvedNote?: string;
+  resolvedAt?: string;
+  createdAt?: string;
+  // Dénormalisé depuis le site joint (affichage).
+  propertyName?: string;
+  propertyAddress?: string;
+}
+
 // Consommables proposés en cases à cocher (liste fermée, ordre stable).
 export const CONSUMABLE_ITEMS = [
   'Papier toilette', 'Essuie-tout', 'Savon / gel douche', 'Liquide vaisselle',
