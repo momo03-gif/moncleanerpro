@@ -38,8 +38,10 @@ export default function PartnerHomeClient() {
 
   const autoSynced = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!user) return;
+  // Chargement pur des données (aucune logique de synchro) : réutilisable tel quel
+  // après une synchro, sans auto-référence.
+  const refetch = useCallback(async () => {
+    if (!user) return null;
     const [a, r, m, f] = await Promise.all([
       getAirbnbsForPartner(user.id),
       getReservationsForPartner(user.id),
@@ -48,24 +50,31 @@ export default function PartnerHomeClient() {
     ]);
     setApartments(a); setReservations(r); setMissions(m); setFeeds(f);
     setLoading(false);
-
-    // Synchro auto à l'ouverture (une fois par visite) si les données datent de
-    // plus de 30 min : les départs/arrivées sont frais au moment où le partenaire
-    // regarde, sans dépendre uniquement des crons 2×/jour. Non bloquant.
-    if (!autoSynced.current && f.length > 0) {
-      autoSynced.current = true;
-      const latest = f.map(x => x.lastSyncAt).filter(Boolean).sort().pop();
-      const stale = !latest || Date.now() - new Date(latest).getTime() > 30 * 60 * 1000;
-      if (stale) {
-        fetch('/api/reservations/sync', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ partnerId: user.id }),
-        }).then(() => load()).catch(() => { /* silencieux : le cron prendra le relais */ });
-      }
-    }
+    return f;
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const f = await refetch();
+      if (cancelled || !f || !user) return;
+      // Synchro auto à l'ouverture (une fois par visite) si les données datent de
+      // plus de 30 min : les départs/arrivées sont frais au moment où le partenaire
+      // regarde, sans dépendre uniquement des crons 2×/jour. Non bloquant.
+      if (!autoSynced.current && f.length > 0) {
+        autoSynced.current = true;
+        const latest = f.map(x => x.lastSyncAt).filter(Boolean).sort().pop();
+        const stale = !latest || Date.now() - new Date(latest).getTime() > 30 * 60 * 1000;
+        if (stale) {
+          fetch('/api/reservations/sync', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ partnerId: user.id }),
+          }).then(() => refetch()).catch(() => { /* silencieux : le cron prendra le relais */ });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [refetch, user]);
 
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 

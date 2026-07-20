@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import type { AppNotification } from '@/lib/types';
 import Icon, { type IconName } from '@/components/Icon';
 
@@ -68,6 +69,7 @@ function alertUser() {
 
 export default function NotificationBell({ light = false }: { light?: boolean }) {
   const { user } = useAuth();
+  const { toast } = useFeedback();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -76,7 +78,9 @@ export default function NotificationBell({ light = false }: { light?: boolean })
   const firstLoad = useRef(true);
   // Identifiant unique par instance : évite la collision de canaux temps réel
   // quand la cloche est rendue plusieurs fois (ex. sidebar admin desktop + mobile).
-  const channelId = useRef(Math.random().toString(36).slice(2));
+  // useId() est stable, unique et SSR-safe (pas d'impureté au render, pas de
+  // divergence d'hydratation contrairement à Math.random()).
+  const channelId = useRef(useId().replace(/:/g, ''));
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -139,7 +143,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
   async function enablePush() {
     if (!user) return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID) {
-      alert("Les notifications push ne sont pas disponibles sur cet appareil/navigateur.");
+      toast("Notifications push indisponibles sur cet appareil.", 'error');
       return;
     }
     setPushBusy(true);

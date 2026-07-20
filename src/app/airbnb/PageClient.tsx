@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { getAirbnbsForPartner, getReservationsForPartner, createAirbnb, updateAirbnb, deleteAirbnb } from '@/lib/db';
 import type { Apartment, Reservation } from '@/lib/types';
 import Icon from '@/components/Icon';
@@ -40,6 +41,7 @@ const TEXT_FIELDS: { label: string; key: keyof FormState; placeholder: string; r
 
 export default function AirbnbApartmentsPage() {
   const { user } = useAuth();
+  const { confirm, toast } = useFeedback();
   const router = useRouter();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -119,9 +121,11 @@ export default function AirbnbApartmentsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer cet appartement ?')) return;
+    const ok = await confirm({ title: 'Supprimer cet appartement ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', danger: true });
+    if (!ok) return;
     await deleteAirbnb(id);
     await load();
+    toast('Appartement supprimé.', 'success');
   }
 
   const visible = apartments.filter(a => {

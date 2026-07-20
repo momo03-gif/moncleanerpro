@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { getMissionsForCleanerDB } from '@/lib/db';
 import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
 import {
@@ -63,7 +64,8 @@ function getWeekBounds() {
 
 // ── Carte mission ─────────────────────────────────────────────────────────────
 
-function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: string; onUpdate: () => void }) {
+function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean }) {
+  const { confirm, toast } = useFeedback();
   const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -134,11 +136,17 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
   // Désistement : le cleaner renonce à SA mission. Elle n'est ni annulée ni
   // supprimée (il n'en a pas le droit) — elle retourne à l'admin qui la réattribue.
   async function withdraw() {
-    if (!confirm("Se désister de cette mission ? Elle sera rendue à l'administrateur, qui la confiera à un autre cleaner.")) return;
+    const ok = await confirm({
+      title: 'Se désister de cette mission ?',
+      message: "Elle sera rendue à l'administrateur, qui la confiera à un autre cleaner.",
+      confirmLabel: 'Me désister', danger: true,
+    });
+    if (!ok) return;
     setBusy(true); setGeoError('');
     const res = await submitWithdraw({ missionId: mission.id, userId });
     setBusy(false);
-    if (res.error) { setGeoError(res.error); return; }
+    if (res.error) { setGeoError(res.error); toast(res.error, 'error'); return; }
+    toast('Mission rendue à l’administrateur.', 'success');
     onUpdate();
   }
 
@@ -193,9 +201,23 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
 
   const extraStatus = mission.extraTimeStatus;
 
+  // Mise en avant de la mission active (en cours / prochaine à faire) : anneau doré.
+  const inProgress = mission.status === 'in_progress';
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+    <div className="rounded-2xl border overflow-hidden transition-all"
+      style={{
+        backgroundColor: '#FFFFFF',
+        borderColor: highlight ? '#C9A84C' : '#E8E4DC',
+        boxShadow: highlight ? '0 0 0 3px #C9A84C22' : 'none',
+      }}>
       {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
+
+      {/* Bandeau « en cours » pour repérer instantanément la mission active. */}
+      {highlight && inProgress && (
+        <div className="px-5 py-1.5 text-xs font-semibold flex items-center gap-1.5" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#1A1A1A' }} /> En cours
+        </div>
+      )}
 
       {/* Header */}
       <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
@@ -211,7 +233,7 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
                 style={{ color: '#A8A09A' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
-                <span className="text-xs shrink-0">◎</span>
+                <Icon name="pin" size={13} className="shrink-0" />
                 <span className="text-xs truncate max-w-[220px]">{mission.address}</span>
               </button>
             )}
@@ -236,14 +258,14 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
         )}
         <div className="flex flex-wrap items-center gap-3">
           {mission.time && (
-            <div className="flex items-center gap-1.5">
-              <span style={{ color: '#C9A84C' }}>◷</span>
+            <div className="flex items-center gap-1.5" style={{ color: '#C9A84C' }}>
+              <Icon name="clock" size={15} />
               <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatHour(mission.time)}</span>
             </div>
           )}
           {(mission.missionDurationMinutes ?? 0) > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span style={{ color: '#C9A84C' }}>⟳</span>
+            <div className="flex items-center gap-1.5" style={{ color: '#C9A84C' }}>
+              <Icon name="timer" size={15} />
               <span className="text-sm" style={{ color: '#7A7068' }}>{formatDuration(mission.missionDurationMinutes)}</span>
             </div>
           )}
@@ -358,9 +380,9 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
             </div>
           ) : !extraOpen ? (
             <button onClick={() => setExtraOpen(true)}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold border"
+              className="w-full py-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2"
               style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-              ⏱ Demander plus de temps
+              <Icon name="timer" size={14} /> Demander plus de temps
             </button>
           ) : (
             <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
@@ -495,9 +517,9 @@ function MissionCard({ mission, userId, onUpdate }: { mission: Mission; userId: 
           )}
           {canFinish && (
             <button onClick={finish} disabled={busy}
-              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
-              {busy ? '...' : '✓  Terminer la mission'}
+              {busy ? '...' : <><Icon name="check" size={16} /> Terminer la mission</>}
             </button>
           )}
           {/* Seule sortie possible pour le cleaner : rendre la mission à l'admin.
@@ -519,6 +541,8 @@ export default function CleanerDashboard() {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
+  // Terminées repliées par défaut : le cleaner voit d'abord ce qu'il lui reste.
+  const [showDone, setShowDone] = useState(false);
   // Horodatage de la dernière synchro quand on affiche des données du cache
   // (hors-ligne). null = données à jour (en ligne).
   const [offlineSince, setOfflineSince] = useState<string | null>(null);
@@ -717,19 +741,30 @@ export default function CleanerDashboard() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <div className="rounded-2xl p-4" style={{ backgroundColor: '#C9A84C' }}>
-          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{filteredMissions.length}</p>
-          <p className="text-xs mt-1" style={{ color: '#7A6030' }}>
-            Mission{filteredMissions.length > 1 ? 's' : ''}
-          </p>
-        </div>
-        <div className="rounded-2xl p-4 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{completedCount}</p>
-          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Terminée{completedCount > 1 ? 's' : ''}</p>
-        </div>
-      </div>
+      {/* Progression : ce que le cleaner a fait / ce qui reste, en un coup d'œil. */}
+      {filteredMissions.length > 0 && (() => {
+        const total = filteredMissions.length;
+        const pct = Math.round((completedCount / total) * 100);
+        const allDone = completedCount === total;
+        return (
+          <div className="rounded-2xl p-4 mb-5" style={{ backgroundColor: allDone ? '#5A8A6A' : '#C9A84C' }}>
+            <div className="flex items-end justify-between mb-2.5">
+              <div>
+                <p className="text-2xl font-bold leading-none" style={{ color: allDone ? '#FFFFFF' : '#1A1A1A' }}>
+                  {completedCount}<span className="text-base font-semibold opacity-60">/{total}</span>
+                </p>
+                <p className="text-xs mt-1.5" style={{ color: allDone ? '#E4F0E8' : '#7A6030' }}>
+                  {allDone ? 'Tout est terminé, bravo' : `${total - completedCount} ménage${total - completedCount > 1 ? 's' : ''} à faire`}
+                </p>
+              </div>
+              <span className="text-sm font-bold" style={{ color: allDone ? '#FFFFFF' : '#7A6030' }}>{pct}%</span>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.35)' }}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: allDone ? '#FFFFFF' : '#1A1A1A' }} />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Liste missions */}
       <h2 className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>{getPeriodLabel()}</h2>
@@ -746,11 +781,38 @@ export default function CleanerDashboard() {
             </button>
           )}
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredMissions.map(m => <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} />)}
-        </div>
-      )}
+      ) : (() => {
+        const todo = filteredMissions.filter(m => m.status !== 'completed');
+        const done = filteredMissions.filter(m => m.status === 'completed');
+        // Mission active mise en avant : celle en cours, sinon la prochaine à faire.
+        const activeId = (todo.find(m => m.status === 'in_progress') ?? todo[0])?.id;
+        return (
+          <div className="space-y-3">
+            {todo.map(m => (
+              <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} highlight={m.id === activeId} />
+            ))}
+
+            {/* Terminées : repliées, hors du chemin, dépliables au besoin. */}
+            {done.length > 0 && (
+              <div className="pt-1">
+                <button onClick={() => setShowDone(s => !s)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold"
+                  style={{ color: '#A8A09A' }}>
+                  {done.length} terminée{done.length > 1 ? 's' : ''}
+                  <span className="transition-transform" style={{ transform: showDone ? 'rotate(180deg)' : 'none' }}>
+                    <Icon name="chevronDown" size={14} />
+                  </span>
+                </button>
+                {showDone && (
+                  <div className="space-y-3 mt-1">
+                    {done.map(m => <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} />)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

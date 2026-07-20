@@ -10,11 +10,13 @@ import { currentMonth } from '@/lib/mockData';
 import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
+import { useFeedback } from '@/contexts/FeedbackContext';
 
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false, deliveryRate: '' };
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
 export default function CleanersPage() {
+  const { confirm, toast } = useFeedback();
   const [tab, setTab] = useState<typeof TABS_MAIN[number]>('Profils');
   const [cleaners, setCleaners] = useState<CleanerRow[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -71,9 +73,15 @@ export default function CleanersPage() {
   }
 
   async function handleDeleteCleaner(id: string, name: string) {
-    if (!confirm(`Supprimer définitivement le cleaner « ${name} » ? Ses missions passées sont conservées (sans cleaner assigné).`)) return;
+    const ok = await confirm({
+      title: `Supprimer « ${name} » ?`,
+      message: 'Ses missions passées sont conservées (sans cleaner assigné). Cette action est définitive.',
+      confirmLabel: 'Supprimer', danger: true,
+    });
+    if (!ok) return;
     await deleteCleanerDB(id);
     await load();
+    toast('Cleaner supprimé.', 'success');
   }
 
   async function handleAddCleaner(e: React.FormEvent) {

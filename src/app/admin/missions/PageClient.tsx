@@ -13,6 +13,7 @@ import { listRecurringDB, createRecurringDB, updateRecurringDB, setRecurringActi
 import { geocodeAddress } from '@/lib/zones';
 import type { RecurringMission } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { supabase } from '@/lib/supabase';
 import type { Mission, HotelAnnounce, MissionType, MissionSource, MissionService, Apartment, MissionStatus } from '@/lib/types';
 import { serviceLabel, SERVICE_LABEL, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
@@ -256,6 +257,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   onMoveDown?: () => void;
 }) {
   const { user } = useAuth();
+  const { confirm, toast } = useFeedback();
   const [expanded, setExpanded] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [newCleaner, setNewCleaner] = useState('');
@@ -326,22 +328,25 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
   async function handleDelete() {
     if (!user) return;
-    if (!confirm('Supprimer définitivement cette mission ?')) return;
+    const ok = await confirm({ title: 'Supprimer cette mission ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', danger: true });
+    if (!ok) return;
     setBusy(true); setActionError('');
     const res = await deleteMissionDB(mission.id, { id: user.id, role: 'admin' });
     setBusy(false);
-    if (res.error) { setActionError(res.error); return; }
+    if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
+    toast('Mission supprimée.', 'success');
     onRefresh();
   }
 
   // Admin : reprendre une mission terminée → repasse « en cours ».
   async function handleReopen() {
     if (!user) return;
-    if (!confirm('Remettre cette mission en cours ? Elle ne sera plus comptée comme réalisée.')) return;
+    const ok = await confirm({ title: 'Remettre en cours ?', message: 'La mission ne sera plus comptée comme réalisée.', confirmLabel: 'Remettre en cours' });
+    if (!ok) return;
     setBusy(true); setActionError('');
     const res = await reopenMissionDB(mission.id, { id: user.id, role: 'admin' });
     setBusy(false);
-    if (res.error) { setActionError(res.error); return; }
+    if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     onRefresh();
   }
 
@@ -927,6 +932,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
 export default function MissionsPage() {
   const { user } = useAuth();
+  const { confirm, toast } = useFeedback();
   const [tab, setTab] = useState<typeof TABS[number]>('Demandes hôtel');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
@@ -1137,8 +1143,10 @@ export default function MissionsPage() {
   }
   async function toggleRecActive(id: string, active: boolean) { await setRecurringActiveDB(id, active); await load(); }
   async function removeRec(id: string) {
-    if (!confirm('Supprimer ce ménage récurrent ? Les missions déjà créées sont conservées.')) return;
+    const ok = await confirm({ title: 'Supprimer ce ménage récurrent ?', message: 'Les missions déjà créées sont conservées.', confirmLabel: 'Supprimer', danger: true });
+    if (!ok) return;
     await deleteRecurringDB(id); await load();
+    toast('Ménage récurrent supprimé.', 'success');
   }
 
   function selectHotel(hotelId: string) {
@@ -2139,7 +2147,7 @@ export default function MissionsPage() {
                 const on = osCleaners.has(c.id);
                 return (
                   <button type="button" key={c.id}
-                    onClick={() => setOsCleaners(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })}
+                    onClick={() => setOsCleaners(prev => { const n = new Set(prev); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })}
                     className="px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all"
                     style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C12' : '#FFFFFF', color: on ? '#C9A84C' : '#7A7068' }}>
                     {on ? '✓ ' : ''}{c.name}
@@ -2205,7 +2213,7 @@ export default function MissionsPage() {
                   const on = recWeekdays.has(w.n);
                   return (
                     <button type="button" key={w.n}
-                      onClick={() => setRecWeekdays(prev => { const n = new Set(prev); n.has(w.n) ? n.delete(w.n) : n.add(w.n); return n; })}
+                      onClick={() => setRecWeekdays(prev => { const n = new Set(prev); if (n.has(w.n)) n.delete(w.n); else n.add(w.n); return n; })}
                       className="flex-1 min-w-[56px] py-2.5 rounded-xl text-sm font-semibold border-2 transition-all"
                       style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C12' : '#FFFFFF', color: on ? '#C9A84C' : '#7A7068' }}>
                       {w.l}

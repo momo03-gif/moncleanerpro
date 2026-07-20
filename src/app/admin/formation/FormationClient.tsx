@@ -11,6 +11,7 @@ import {
 import { inputStyle } from '@/lib/ui';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
+import { useFeedback } from '@/contexts/FeedbackContext';
 
 export default function AdminFormationPage() {
   const [tab, setTab] = useState<'contenu' | 'assignations'>('contenu');
@@ -53,6 +54,7 @@ export default function AdminFormationPage() {
 
 // ── CONTENU : catégories + vidéos ───────────────────────────────────────────────
 function ContentPanel({ categories, formations, onChanged }: { categories: FormationCategory[]; formations: Formation[]; onChanged: () => void }) {
+  const { confirm } = useFeedback();
   const [newCat, setNewCat] = useState('');
   const [openCat, setOpenCat] = useState<string | null>(null);
 
@@ -84,7 +86,7 @@ function ContentPanel({ categories, formations, onChanged }: { categories: Forma
                     <p className="text-xs" style={{ color: '#A8A09A' }}>{vids.length} vidéo{vids.length > 1 ? 's' : ''}</p>
                   </div>
                 </button>
-                <button onClick={async () => { if (confirm(`Supprimer la catégorie « ${cat.titre} » et ses vidéos ?`)) { await deleteCategoryDB(cat.id); onChanged(); } }} style={{ color: '#B85A50' }}><Icon name="close" size={16} /></button>
+                <button onClick={async () => { if (await confirm({ title: `Supprimer « ${cat.titre} » ?`, message: 'La catégorie et ses vidéos seront supprimées.', confirmLabel: 'Supprimer', danger: true })) { await deleteCategoryDB(cat.id); onChanged(); } }} style={{ color: '#B85A50' }}><Icon name="close" size={16} /></button>
               </div>
               {isOpen && <VideoEditor category={cat} videos={vids} onChanged={onChanged} />}
             </div>
@@ -158,7 +160,7 @@ function AssignPanel({ categories, formations, cleaners }: { categories: Formati
   useEffect(() => { loadStatuses(); }, [loadStatuses]);
 
   function toggle(id: string) {
-    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
   function selectAll() { setSelected(new Set(cleaners.map(c => c.id))); }
 

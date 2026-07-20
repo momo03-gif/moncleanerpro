@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import {
   getAirbnbsForPartner, getReservationFeedsForPartner, getReservationsForPartner,
   createReservationFeed, updateReservationFeed, deleteReservationFeed,
@@ -47,6 +48,7 @@ function fmtDateTime(iso?: string) {
 
 export default function AirbnbSyncPage() {
   const { user } = useAuth();
+  const { confirm, toast } = useFeedback();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [feeds, setFeeds] = useState<ReservationFeed[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -128,9 +130,11 @@ export default function AirbnbSyncPage() {
     load();
   }
   async function removeFeed(f: ReservationFeed) {
-    if (!confirm('Déconnecter ce calendrier ? Les réservations déjà importées sont conservées.')) return;
+    const ok = await confirm({ title: 'Déconnecter ce calendrier ?', message: 'Les réservations déjà importées sont conservées.', confirmLabel: 'Déconnecter', danger: true });
+    if (!ok) return;
     await deleteReservationFeed(f.id);
     load();
+    toast('Calendrier déconnecté.', 'success');
   }
 
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;

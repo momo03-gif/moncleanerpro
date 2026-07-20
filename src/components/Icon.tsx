@@ -10,7 +10,8 @@ export type IconName =
   | 'accounts' | 'invoice' | 'stats' | 'wallet'
   | 'today' | 'inbox' | 'user' | 'request' | 'history'
   | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play'
-  | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking' | 'wrench';
+  | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking' | 'wrench'
+  | 'clock' | 'timer' | 'pin' | 'chevronDown';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -135,6 +136,21 @@ const PATHS: Record<IconName, React.ReactNode> = {
   </>),
   wrench: (<>
     <path d="M15.2 3.3a5.4 5.4 0 0 0-4.9 8.2L3.6 18.2a2 2 0 0 0 2.8 2.8l6.7-6.7a5.4 5.4 0 0 0 6.5-7.4l-3 3-2.7-.7-.7-2.7 3-3a5.4 5.4 0 0 0-1-.2Z" />
+  </>),
+  clock: (<>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </>),
+  timer: (<>
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 13V9M9 2h6M18.5 6.5l1.5-1.5" />
+  </>),
+  pin: (<>
+    <path d="M12 21s-6.5-5.5-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.5 12 21 12 21Z" />
+    <circle cx="12" cy="10.5" r="2.4" />
+  </>),
+  chevronDown: (<>
+    <path d="M6 9l6 6 6-6" />
   </>),
 };
 

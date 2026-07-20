@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { useRouter } from 'next/navigation';
 import { getAirbnbsForPartner, getMissionsForPartnerDB, getReservationsForPartner, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
@@ -33,6 +34,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
   userId: string;
   onRefresh: () => void;
 }) {
+  const { confirm, toast } = useFeedback();
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const locked = isMissionLocked(mission.status);
   const [editOpen, setEditOpen] = useState(false);
@@ -80,11 +82,13 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
   }
 
   async function remove() {
-    if (!confirm('Supprimer définitivement cette mission ?')) return;
+    const ok = await confirm({ title: 'Supprimer cette mission ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', danger: true });
+    if (!ok) return;
     setBusy(true); setError('');
     const res = await deleteMissionDB(mission.id, { id: userId, role: 'airbnb' });
     setBusy(false);
-    if (res.error) { setError(res.error); return; }
+    if (res.error) { setError(res.error); toast(res.error, 'error'); return; }
+    toast('Mission supprimée.', 'success');
     onRefresh();
   }
 

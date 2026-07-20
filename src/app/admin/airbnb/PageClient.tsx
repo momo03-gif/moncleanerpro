@@ -10,6 +10,7 @@ import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import MapsModal from '@/components/MapsModal';
 import RepairsPanel from '@/components/RepairsPanel';
 import Loading from "@/components/Loading";
+import { useFeedback } from '@/contexts/FeedbackContext';
 
 const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
@@ -57,6 +58,7 @@ function groupByPartner(list: Apartment[]): { name: string; apts: Apartment[] }[
 }
 
 export default function AirbnbPage() {
+  const { confirm, toast } = useFeedback();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [partnerNames, setPartnerNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,15 +111,18 @@ export default function AirbnbPage() {
   const forceOpen = search.trim() !== '' || partnerFilter !== 'all';
   const groups = groupByPartner(visible);
   const isPartnerOpen = (name: string) => forceOpen || openPartners.has(name);
-  // Pagination : on ne compte que les lignes des sections ouvertes.
-  let budget = visibleCount;
-  const renderGroups = groups.map(g => {
+  // Pagination : on ne compte que les lignes des sections ouvertes. Le budget de
+  // lignes se consomme au fil des groupes ouverts — boucle explicite (plutôt qu'un
+  // accumulateur muté dans un .map) pour rester « pur » au sens du render.
+  const renderGroups: { name: string; total: number; open: boolean; shown: Apartment[] }[] = [];
+  let remaining = visibleCount;
+  for (const g of groups) {
     const open = isPartnerOpen(g.name);
-    if (!open) return { name: g.name, total: g.apts.length, open, shown: [] as Apartment[] };
-    const shown = g.apts.slice(0, Math.max(0, budget));
-    budget -= shown.length;
-    return { name: g.name, total: g.apts.length, open, shown };
-  });
+    if (!open) { renderGroups.push({ name: g.name, total: g.apts.length, open, shown: [] }); continue; }
+    const shown = g.apts.slice(0, Math.max(0, remaining));
+    remaining -= shown.length;
+    renderGroups.push({ name: g.name, total: g.apts.length, open, shown });
+  }
   const openRowsTotal = groups.reduce((s, g) => s + (isPartnerOpen(g.name) ? g.apts.length : 0), 0);
   const hasMore = openRowsTotal > visibleCount;
 
@@ -158,9 +163,11 @@ export default function AirbnbPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer cet appartement ?')) return;
+    const ok = await confirm({ title: 'Supprimer cet appartement ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', danger: true });
+    if (!ok) return;
     await deleteAirbnb(id);
     await load();
+    toast('Appartement supprimé.', 'success');
   }
 
   if (loading) return <Loading className="p-4 md:p-6 text-sm" />;

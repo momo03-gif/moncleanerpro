@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { FeedbackProvider } from '@/contexts/FeedbackContext';
 import ServiceWorkerReg from '@/components/ServiceWorkerReg';
 import PwaSetup from '@/components/PwaSetup';
 
@@ -35,8 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full">
         <AuthProvider>
-          {children}
-          <PwaSetup />
+          <FeedbackProvider>
+            {children}
+            <PwaSetup />
+          </FeedbackProvider>
         </AuthProvider>
         <ServiceWorkerReg />
       </body>

@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import type { HotelAnnounce } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, overlapsRange, type DateRange } from '@/lib/dateRange';
@@ -111,6 +112,7 @@ function RequestCard({ a, onReuse, onCancel, cancelBusy, cancelError }: {
 
 export default function HistoriqueClient({ announces }: { announces: HotelAnnounce[] }) {
   const router = useRouter();
+  const { confirm, toast } = useFeedback();
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
   // Copie locale (les données viennent du serveur) pour refléter une annulation
   // immédiatement, tout en resynchronisant quand le serveur renvoie des données fraîches.
@@ -131,14 +133,16 @@ export default function HistoriqueClient({ announces }: { announces: HotelAnnoun
   }
 
   async function cancelRequest(a: HotelAnnounce) {
-    if (!confirm('Annuler cette demande ?')) return;
+    const ok = await confirm({ title: 'Annuler cette demande ?', message: 'La demande sera clôturée.', confirmLabel: 'Annuler la demande', danger: true });
+    if (!ok) return;
     setCancelBusy(a.id); setCancelError(null);
     // Import différé de la couche données (garde supabase hors du bundle de la page).
     const { cancelHotelRequestDB } = await import('@/lib/db');
     const res = await cancelHotelRequestDB(a.id);
     setCancelBusy(null);
-    if (res.error) { setCancelError({ id: a.id, msg: res.error }); return; }
+    if (res.error) { setCancelError({ id: a.id, msg: res.error }); toast(res.error, 'error'); return; }
     setList(prev => prev.map(x => x.id === a.id ? { ...x, status: 'cancelled' } : x));
+    toast('Demande annulée.', 'success');
     router.refresh();
   }
 
