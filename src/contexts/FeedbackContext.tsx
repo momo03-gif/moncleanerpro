@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Feedback global — remplace les confirm()/alert() natifs (moches sur mobile,
@@ -66,12 +66,26 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     setPending(null);
   }
 
+  // Accessibilité de la modale : focus le bouton de confirmation à l'ouverture et
+  // permet de fermer (annuler) avec la touche Échap.
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!pending) return;
+    confirmBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { pending.resolve(false); setPending(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pending]);
+
   return (
     <FeedbackContext.Provider value={{ toast, confirm }}>
       {children}
 
       {/* ── Toasts (empilés en haut, au-dessus de tout) ── */}
-      <div className="fixed top-0 left-0 right-0 z-[100] flex flex-col items-center gap-2 px-4 pointer-events-none"
+      <div role="status" aria-live="polite" aria-atomic="false"
+        className="fixed top-0 left-0 right-0 z-[100] flex flex-col items-center gap-2 px-4 pointer-events-none"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         {toasts.map(t => {
           const s = TONE_STYLE[t.tone];
@@ -79,7 +93,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
             <div key={t.id}
               className="pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg w-full max-w-sm"
               style={{ backgroundColor: s.bg, color: s.color, animation: 'mcp-toast-in 0.18s ease-out' }}>
-              <span className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs font-bold"
+              <span aria-hidden="true" className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs font-bold"
                 style={{ backgroundColor: 'rgba(255,255,255,0.22)' }}>{s.icon}</span>
               <span className="flex-1">{t.message}</span>
             </div>
@@ -92,7 +106,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4"
           style={{ backgroundColor: 'rgba(26,26,26,0.45)', animation: 'mcp-fade-in 0.15s ease-out' }}
           onClick={() => closeConfirm(false)}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-xl"
+          <div role="dialog" aria-modal="true"
+            aria-label={pending.title ?? pending.message}
+            className="w-full max-w-sm rounded-2xl overflow-hidden shadow-xl"
             style={{ backgroundColor: '#FFFFFF', animation: 'mcp-sheet-in 0.2s ease-out' }}
             onClick={e => e.stopPropagation()}>
             <div className="px-5 pt-5 pb-4">
@@ -107,7 +123,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 style={{ borderColor: '#E8E4DC', color: '#7A7068', backgroundColor: '#FFFFFF' }}>
                 {pending.cancelLabel ?? 'Annuler'}
               </button>
-              <button onClick={() => closeConfirm(true)}
+              <button ref={confirmBtnRef} onClick={() => closeConfirm(true)}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold"
                 style={{ backgroundColor: pending.danger ? '#B85A50' : '#C9A84C', color: pending.danger ? '#FFFFFF' : '#1A1A1A' }}>
                 {pending.confirmLabel ?? 'Confirmer'}

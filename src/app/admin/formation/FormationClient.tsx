@@ -86,7 +86,7 @@ function ContentPanel({ categories, formations, onChanged }: { categories: Forma
                     <p className="text-xs" style={{ color: '#A8A09A' }}>{vids.length} vidéo{vids.length > 1 ? 's' : ''}</p>
                   </div>
                 </button>
-                <button onClick={async () => { if (await confirm({ title: `Supprimer « ${cat.titre} » ?`, message: 'La catégorie et ses vidéos seront supprimées.', confirmLabel: 'Supprimer', danger: true })) { await deleteCategoryDB(cat.id); onChanged(); } }} style={{ color: '#B85A50' }}><Icon name="close" size={16} /></button>
+                <button aria-label={`Supprimer la catégorie ${cat.titre}`} onClick={async () => { if (await confirm({ title: `Supprimer « ${cat.titre} » ?`, message: 'La catégorie et ses vidéos seront supprimées.', confirmLabel: 'Supprimer', danger: true })) { await deleteCategoryDB(cat.id); onChanged(); } }} style={{ color: '#B85A50' }}><Icon name="close" size={16} /></button>
               </div>
               {isOpen && <VideoEditor category={cat} videos={vids} onChanged={onChanged} />}
             </div>
@@ -120,7 +120,7 @@ function VideoEditor({ category, videos, onChanged }: { category: FormationCateg
               className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: v.obligatoire ? '#B85A5015' : '#F5F3EF', color: v.obligatoire ? '#B85A50' : '#A8A09A' }}>
               {v.obligatoire ? 'Obligatoire' : 'Facultative'}
             </button>
-            <button onClick={() => deleteFormationDB(v.id).then(onChanged)} style={{ color: '#B85A50' }}><Icon name="close" size={14} /></button>
+            <button aria-label="Supprimer la vidéo" onClick={() => deleteFormationDB(v.id).then(onChanged)} style={{ color: '#B85A50' }}><Icon name="close" size={14} /></button>
           </div>
         </div>
       ))}
@@ -252,7 +252,7 @@ function AssignPanel({ categories, formations, cleaners }: { categories: Formati
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: a.statut === 'terminee' ? '#5A8A6A15' : '#C48A2A15', color: a.statut === 'terminee' ? '#5A8A6A' : '#C48A2A' }}>
                           {a.statut === 'terminee' ? 'Terminée' : 'À faire'}
                         </span>
-                        <button onClick={() => deleteAssignmentDB(a.id).then(loadStatuses)} style={{ color: '#A8A09A' }}><Icon name="close" size={13} /></button>
+                        <button aria-label="Retirer l'attribution" onClick={() => deleteAssignmentDB(a.id).then(loadStatuses)} style={{ color: '#A8A09A' }}><Icon name="close" size={13} /></button>
                       </div>
                     </div>
                   ))}
