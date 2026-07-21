@@ -95,25 +95,33 @@ export async function updateAirbnb(id: string, fields: {
   structureType?: string; structureLabel?: string; productCostCents?: number;
 }) {
   const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
-  const { error } = await supabase.from('airbnbs').update({
+  // Champs éditables par TOUT propriétaire de fiche (admin ET partenaire).
+  const patch: Record<string, unknown> = {
     name: fields.name,
     address: fields.address,
-    structure_type: fields.structureType ?? 'apartment',
-    structure_label: fields.structureLabel || null,
-    product_cost_cents: fields.productCostCents ?? null,
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
-    partner_name: fields.partnerName || null,
     bedrooms: isApartment ? (fields.bedrooms ?? null) : null,
     beds: isApartment ? (fields.beds ?? null) : null,
     sofa_beds: isApartment ? (fields.sofaBeds ?? null) : null,
     client_price: fields.clientPrice ?? null,
-    estimated_cleaning_minutes: fields.estimatedCleaningMinutes ?? 60,
-    zone_color: fields.zoneColor || null,
-    zone_name: fields.zoneName || null,
     notes: fields.notes || null,
-  }).eq('id', id);
+  };
+  // Champs INTERNES / réservés à l'admin : on ne les écrit QUE s'ils sont
+  // explicitement fournis. Ainsi une modification côté partenaire (son formulaire
+  // ne les envoie pas) ne les écrase plus — notamment le temps de ménage, qui
+  // sert à la paie des cleaners et nous est propre. Idem coût produits, zone,
+  // nom du partenaire et type de structure.
+  if (fields.estimatedCleaningMinutes !== undefined) patch.estimated_cleaning_minutes = fields.estimatedCleaningMinutes;
+  if (fields.productCostCents !== undefined) patch.product_cost_cents = fields.productCostCents;
+  if (fields.zoneColor !== undefined) patch.zone_color = fields.zoneColor || null;
+  if (fields.zoneName !== undefined) patch.zone_name = fields.zoneName || null;
+  if (fields.partnerName !== undefined) patch.partner_name = fields.partnerName || null;
+  if (fields.structureType !== undefined) patch.structure_type = fields.structureType;
+  if (fields.structureLabel !== undefined) patch.structure_label = fields.structureLabel || null;
+
+  const { error } = await supabase.from('airbnbs').update(patch).eq('id', id);
   if (error) console.error('updateAirbnb error:', error.code, error.message);
   return { error: error?.message ?? null };
 }
