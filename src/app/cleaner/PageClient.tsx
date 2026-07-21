@@ -22,6 +22,7 @@ import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
+import { getSiteVideosMap } from '@/lib/siteVideos';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -581,11 +582,17 @@ export default function CleanerDashboard() {
     // évite que la requête ralentisse à mesure que les missions s'accumulent.
     const since = toDateStr(new Date(Date.now() - 183 * 86400000));
     const m = await getMissionsForCleanerDB(user.id, since);
-    setMissions(m);
+    // Enrichissement vidéo d'accès : UNE requête dédiée et résiliente (découplée du
+    // chargement des missions → si la colonne/feature n'existe pas, aucun impact).
+    const videoMap = await getSiteVideosMap(m.map(x => x.airbnbId ?? '').filter(Boolean));
+    const enriched = Object.keys(videoMap).length > 0
+      ? m.map(x => (x.airbnbId && videoMap[x.airbnbId] ? { ...x, accessVideoUrl: videoMap[x.airbnbId] } : x))
+      : m;
+    setMissions(enriched);
     setOfflineSince(null);
     // On ne persiste pas un planning vide par-dessus un cache existant (une requête
     // en échec renvoie [] — inutile d'écraser des données valides).
-    if (m.length > 0) await cacheMissions(user.id, m);
+    if (enriched.length > 0) await cacheMissions(user.id, enriched);
     setLoading(false);
   }, [user]);
 

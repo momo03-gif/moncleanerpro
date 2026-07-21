@@ -15,6 +15,28 @@ import { supabase } from './supabase';
 
 export const SITE_VIDEOS_BUCKET = 'site_videos';
 
+// Récupère les URL de vidéo d'accès pour une liste de sites, en UNE requête.
+// RÉSILIENT : si la colonne access_video_url n'existe pas encore (migration non
+// exécutée) ou en cas d'erreur, renvoie une map vide → la fonctionnalité est
+// simplement inactive, SANS jamais casser le reste (ex. l'affichage des missions).
+export async function getSiteVideosMap(airbnbIds: string[]): Promise<Record<string, string>> {
+  const ids = Array.from(new Set(airbnbIds.filter(Boolean)));
+  if (ids.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from('airbnbs').select('id, access_video_url').in('id', ids);
+    if (error) return {};
+    const map: Record<string, string> = {};
+    for (const r of data ?? []) {
+      const url = (r as { access_video_url?: string }).access_video_url;
+      if (url) map[(r as { id: string }).id] = url;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 // Plafond volontairement bas (plan gratuit) : une vidéo d'accès n'a besoin que de
 // quelques secondes. Au-delà, on refuse avec un message clair.
 export const MAX_VIDEO_MB = 30;
