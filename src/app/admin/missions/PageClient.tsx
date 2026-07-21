@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getMissionsDB, getHotelRequestsDB, getActiveCleanersDB,
   createMissionDB, validateRequestDB, refuseRequestDB,
@@ -45,7 +45,11 @@ const TABS = ['Demandes hôtel', 'Missions', 'Créer'] as const;
 export default function MissionsPage() {
   const { user } = useAuth();
   const { toast } = useFeedback();
-  const [tab, setTab] = useState<typeof TABS[number]>('Demandes hôtel');
+  // Onglet par défaut « malin » : on ouvre sur les Missions (vue opérationnelle du
+  // quotidien) et on ne bascule sur les Demandes hôtel au 1er chargement QUE s'il y
+  // en a en attente. Le badge de comptage sur l'onglet évite d'en manquer.
+  const [tab, setTab] = useState<typeof TABS[number]>('Missions');
+  const didAutoTab = useRef(false);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
@@ -75,6 +79,12 @@ export default function MissionsPage() {
     setMissions(m); setRequests(r); setCleaners(c); setStaff(s); setRecurrings(rec);
     // Appartements triés par ordre alphabétique (listes de sélection).
     setHotels(h); setAirbnbs([...a].sort((x, y) => x.name.localeCompare(y.name, 'fr', { sensitivity: 'base', numeric: true })));
+    // Choix de l'onglet initial : une seule fois, avant le 1er affichage (couvert par
+    // l'écran de chargement → pas de flash). Ne réécrit jamais un choix manuel.
+    if (!didAutoTab.current) {
+      didAutoTab.current = true;
+      if (r.some(x => x.status === 'pending')) setTab('Demandes hôtel');
+    }
     setLoading(false);
   }, []);
 
