@@ -206,8 +206,15 @@ export default function CleanersPage() {
                         )}
                         {!isActive && <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#F5F3EF', color: '#B85A50' }}>Désactivé</span>}
                       </div>
-                      <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{cleaner.email}</p>
-                      {cleaner.phone && <p className="text-xs" style={{ color: '#A8A09A' }}>{cleaner.phone}</p>}
+                      {cleaner.email && (
+                        <a href={`mailto:${cleaner.email}`} className="text-xs mt-0.5 block hover:underline" style={{ color: '#A8A09A' }}>{cleaner.email}</a>
+                      )}
+                      {cleaner.phone && (
+                        <a href={`tel:${cleaner.phone.replace(/\s+/g, '')}`}
+                          className="inline-flex items-center gap-1.5 text-xs mt-0.5 font-medium hover:underline" style={{ color: '#3E63DD' }}>
+                          <Icon name="phone" size={11} />{cleaner.phone}
+                        </a>
+                      )}
                     </div>
                     <button onClick={() => (managing === cleaner.id ? setManaging(null) : openManage(cleaner))}
                       className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold border transition-all"
