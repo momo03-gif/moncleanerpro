@@ -169,7 +169,10 @@ export default function AdminDashboard() {
                   </span>
                 </div>
                 {h.address && <p className="text-xs" style={{ color: '#A8A09A' }}>{h.address}</p>}
-                <p className="text-xs" style={{ color: '#A8A09A' }}>{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
+                <p className="text-xs" style={{ color: '#A8A09A' }}>
+                  {h.email && <a href={`mailto:${h.email}`} className="hover:underline" style={{ color: '#A8A09A' }}>{h.email}</a>}
+                  {h.phone && <>{h.email ? ' · ' : ''}<a href={`tel:${h.phone.replace(/\s+/g, '')}`} className="font-medium hover:underline" style={{ color: '#C9A84C' }}>{h.phone}</a></>}
+                </p>
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => handleApprove(h)} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Valider</button>
