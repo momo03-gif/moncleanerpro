@@ -105,14 +105,14 @@ export async function updateAirbnb(id: string, fields: {
     bedrooms: isApartment ? (fields.bedrooms ?? null) : null,
     beds: isApartment ? (fields.beds ?? null) : null,
     sofa_beds: isApartment ? (fields.sofaBeds ?? null) : null,
-    client_price: fields.clientPrice ?? null,
     notes: fields.notes || null,
   };
   // Champs INTERNES / réservés à l'admin : on ne les écrit QUE s'ils sont
   // explicitement fournis. Ainsi une modification côté partenaire (son formulaire
-  // ne les envoie pas) ne les écrase plus — notamment le temps de ménage, qui
-  // sert à la paie des cleaners et nous est propre. Idem coût produits, zone,
+  // ne les envoie pas) ne les écrase plus — notamment le temps de ménage (paie
+  // cleaners) et le PRIX facturé, qui nous sont propres. Idem coût produits, zone,
   // nom du partenaire et type de structure.
+  if (fields.clientPrice !== undefined) patch.client_price = fields.clientPrice;
   if (fields.estimatedCleaningMinutes !== undefined) patch.estimated_cleaning_minutes = fields.estimatedCleaningMinutes;
   if (fields.productCostCents !== undefined) patch.product_cost_cents = fields.productCostCents;
   if (fields.zoneColor !== undefined) patch.zone_color = fields.zoneColor || null;

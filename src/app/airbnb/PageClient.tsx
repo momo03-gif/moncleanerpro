@@ -107,7 +107,8 @@ export default function AirbnbApartmentsPage() {
       bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
       beds: form.beds ? Number(form.beds) : undefined,
       sofaBeds: form.sofaBeds ? Number(form.sofaBeds) : undefined,
-      clientPrice: form.clientPrice ? Number(form.clientPrice) : undefined,
+      // Le PRIX facturé est fixé par l'admin : le partenaire ne l'envoie jamais
+      // (clientPrice absent du payload → updateAirbnb ne le touche pas).
       notes: form.notes || undefined,
     };
     if (editingId) {
@@ -194,12 +195,18 @@ export default function AirbnbApartmentsPage() {
               </div>
             </div>
 
+            {/* Prix facturé : fixé par MonCleanerPro. Visible en transparence, mais
+                NON modifiable par le partenaire (lecture seule). */}
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Prix par ménage (€) — facturé</label>
-              <input type="number" min="0" step="0.01" value={form.clientPrice} onChange={e => setForm(p => ({ ...p, clientPrice: e.target.value }))}
-                placeholder="Ex : 45" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-              <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Repris automatiquement sur chaque mission de cet appartement.</p>
+              <div className="w-full px-4 py-3 rounded-xl text-sm border flex items-center justify-between"
+                style={{ backgroundColor: '#F5F3EF', borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+                <span className="font-semibold">{form.clientPrice ? `${form.clientPrice} €` : 'À définir par MonCleanerPro'}</span>
+                <span className="text-xs" style={{ color: '#A8A09A' }}>Fixé par MonCleanerPro</span>
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>
+                Tarif convenu, appliqué à chaque ménage de cet appartement. Pour le modifier, contactez MonCleanerPro.
+              </p>
             </div>
 
             <div className="md:col-span-2">
