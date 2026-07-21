@@ -11,6 +11,7 @@ import {
 import { listRecurringDB } from '@/lib/recurring';
 import type { RecurringMission } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { supabase } from '@/lib/supabase';
 import type { Mission, HotelAnnounce, Apartment } from '@/lib/types';
 import { canCleanerDoService } from '@/lib/service';
@@ -43,6 +44,7 @@ const TABS = ['Demandes hôtel', 'Missions', 'Créer'] as const;
 
 export default function MissionsPage() {
   const { user } = useAuth();
+  const { toast } = useFeedback();
   const [tab, setTab] = useState<typeof TABS[number]>('Demandes hôtel');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
@@ -92,9 +94,13 @@ export default function MissionsPage() {
     await validateRequestDB(id, selectedCleaner, c?.name ?? '');
     setAssigningId(null); setSelectedCleaner('');
     await load();
+    toast(`Demande acceptée${c?.name ? ` — assignée à ${c.name}` : ''}.`, 'success');
   }
 
-  async function handleRefuse(id: string) { await refuseRequestDB(id); await load(); }
+  async function handleRefuse(id: string) {
+    await refuseRequestDB(id); await load();
+    toast('Demande refusée.', 'info');
+  }
 
   const pendingReqs = requests.filter(r => r.status === 'pending').length;
 
@@ -172,12 +178,14 @@ export default function MissionsPage() {
     if (!bulkCleaner || selectedIds.size === 0) return;
     const c = bulkEligible.find(x => x.id === bulkCleaner);
     if (!c) return;  // garde-fou : la personne doit pouvoir faire tous les services cochés
+    const count = selectedIds.size;
     setBulkBusy(true);
     await assignCleanerToMissionsDB(Array.from(selectedIds), bulkCleaner, c.name ?? '');
     setBulkBusy(false);
     clearSelection();
     setBulkCleaner('');
     await load();
+    toast(`${count} mission${count > 1 ? 's' : ''} assignée${count > 1 ? 's' : ''} à ${c.name}.`, 'success');
   }
 
   // Livreurs disponibles (cleaners habilités livraison).
@@ -194,10 +202,12 @@ export default function MissionsPage() {
     const liv: any = livreurs.find((c: any) => c.id === bulkLivreur);
     if (!liv) return;
     setBulkBusy(true);
+    let created = 0, skipped = 0;
     for (const m of selectedForDelivery) {
       const exists = missions.some(x => (x.service === 'delivery') && x.date === m.date
         && (m.airbnbId ? x.airbnbId === m.airbnbId : x.property === m.property));
-      if (exists) continue;
+      if (exists) { skipped++; continue; }
+      created++;
       await createMissionDB({
         type: 'regular', source: m.source ?? 'airbnb', service: 'delivery',
         propertyName: m.property, address: m.address,
@@ -214,6 +224,12 @@ export default function MissionsPage() {
     clearSelection();
     setBulkLivreur('');
     await load();
+    toast(
+      created > 0
+        ? `${created} livraison${created > 1 ? 's' : ''} créée${created > 1 ? 's' : ''}${skipped > 0 ? ` · ${skipped} déjà existante${skipped > 1 ? 's' : ''}` : ''}.`
+        : 'Livraisons déjà existantes pour cette sélection.',
+      created > 0 ? 'success' : 'info',
+    );
   }
 
   // Bornes (1re → dernière mission) pour le bouton « voir toutes les dates »

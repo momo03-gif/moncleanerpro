@@ -116,6 +116,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     setApptBusy(false);
     if (res.error) { setApptError(res.error); return; }
     setApptForm({ title: '', description: '', date: '', time: '', assigneeId: '' });
+    toast('Rendez-vous créé.', 'success');
     await onReload(); onGoToMissions();
   }
 
@@ -160,6 +161,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     if (res.error) { setOsError(res.error); return; }
     setOsForm({ siteId: '', property: '', address: '', date: '', time: '', durationMinutes: '120', price: '', instructions: '' });
     setOsCleaners(new Set());
+    toast('Intervention ponctuelle créée.', 'success');
     await onReload(); onGoToMissions();
   }
 
@@ -220,7 +222,9 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
       : await createRecurringDB({ ...payload, createdBy: userId });
     setRecBusy(false);
     if (res.error) { setRecError(res.error); return; }
+    const wasEditing = !!editingRecId;
     resetRecForm();
+    toast(wasEditing ? 'Ménage récurrent mis à jour.' : 'Ménage récurrent programmé.', 'success');
     await onReload(); onGoToMissions();
   }
   async function regenRecurring() {
@@ -353,6 +357,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     }
 
     setForm(emptyForm);
+    toast('Mission créée.', 'success');
     await onReload();
     onGoToMissions();
     setCreating(false);
@@ -400,6 +405,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     setBatchDone(`${res.count} mission${res.count > 1 ? 's' : ''} créée${res.count > 1 ? 's' : ''}.`);
     setBatchApts(new Set());
     setBatchDate(''); setBatchTime(''); setBatchCleaner('');
+    toast(`${res.count} mission${res.count > 1 ? 's' : ''} créée${res.count > 1 ? 's' : ''}.`, 'success');
     await onReload();
     onGoToMissions();
   }
