@@ -14,6 +14,7 @@ import { missionStatusCfg, missionStatusLabel } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import { formatHour } from '@/lib/format';
 import Icon from '@/components/Icon';
+import SiteAccessVideo from '@/components/SiteAccessVideo';
 import Loading from '@/components/Loading';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -175,6 +176,13 @@ export default function LogementDetailClient() {
         {apt.notes && (
           <p className="text-xs px-3 py-2 rounded-xl mt-3" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</p>
         )}
+
+        {/* Vidéo d'accès (facultative) : le propriétaire peut expliquer comment
+            s'y rendre / trouver la clé. Le cleaner la verra sur sa mission. */}
+        <div className="mt-4">
+          <SiteAccessVideo airbnbId={apt.id} videoUrl={apt.accessVideoUrl} mode="manage"
+            onChange={url => setApt(a => (a ? { ...a, accessVideoUrl: url ?? undefined } : a))} />
+        </div>
 
         <div className="mt-4 flex items-center gap-4">
           <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="text-xs font-medium" style={{ color: '#C9A84C' }}>

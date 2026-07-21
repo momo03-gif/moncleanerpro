@@ -32,6 +32,8 @@ function rowToApartment(a: any): Apartment {
     beds: a.beds ?? undefined,
     sofaBeds: a.sofa_beds ?? undefined,
     notes: a.notes ?? undefined,
+    accessVideoUrl: a.access_video_url ?? undefined,
+    accessVideoPath: a.access_video_path ?? undefined,
   };
 }
 

@@ -21,6 +21,7 @@ import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
+import SiteAccessVideo from '@/components/SiteAccessVideo';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -338,6 +339,12 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
               </div>
             )}
           </>
+        )}
+
+        {/* Vidéo d'accès du logement (si le site en a une) : comment s'y rendre,
+            où trouver la clé. Chargée à la demande — aucun téléchargement auto. */}
+        {mission.accessVideoUrl && mission.airbnbId && (
+          <SiteAccessVideo airbnbId={mission.airbnbId} videoUrl={mission.accessVideoUrl} mode="view" />
         )}
 
         {/* Consignes de livraison — affichées quand la mission inclut une livraison. */}

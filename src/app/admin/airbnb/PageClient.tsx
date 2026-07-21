@@ -10,6 +10,7 @@ import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
 import MapsModal from '@/components/MapsModal';
 import RepairsPanel from '@/components/RepairsPanel';
+import SiteAccessVideo from '@/components/SiteAccessVideo';
 import Loading from "@/components/Loading";
 import { useFeedback } from '@/contexts/FeedbackContext';
 
@@ -448,6 +449,10 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
           {apt.notes && (
             <div className="px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</div>
           )}
+
+          {/* Vidéo d'accès du site : ajout / remplacement / suppression. Le cleaner
+              la voit sur sa mission (chargée à la demande). */}
+          <SiteAccessVideo airbnbId={apt.id} videoUrl={apt.accessVideoUrl} mode="manage" />
 
           {/* Réparations du site : l'admin en ajoute et les clôture. Elles restent
               ouvertes tant que le propriétaire n'a pas fait réparer. */}

@@ -47,6 +47,9 @@ export interface Mission {
   zoneId?: string;
   zoneColor?: string;
   zoneName?: string;
+  // Vidéo d'accès du logement (dérivée du site lié, lecture seule). Aide le cleaner
+  // à s'y rendre / trouver la clé. Chargée à la demande (aucun téléchargement auto).
+  accessVideoUrl?: string;
   // Type du site lié (dérivé du join) — pilote le badge d'origine affiché.
   siteType?: StructureType;
   siteLabel?: string;
@@ -210,6 +213,10 @@ export interface Apartment {
   beds?: number;
   sofaBeds?: number;
   notes?: string;
+  // Vidéo d'accès (facultative) : comment s'y rendre / trouver la clé / entrer.
+  // Fichier dans Storage ; ici on ne garde que l'URL publique + le chemin.
+  accessVideoUrl?: string;
+  accessVideoPath?: string;
 }
 
 export interface Payment {
