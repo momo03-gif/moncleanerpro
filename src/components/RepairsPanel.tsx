@@ -5,6 +5,7 @@ import {
   getRepairsForApartmentDB, createRepairDB, resolveRepairDB, reopenRepairDB,
 } from '@/lib/repairs';
 import Icon from '@/components/Icon';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import type { Repair } from '@/lib/types';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -29,6 +30,7 @@ interface Props {
 const cardStyle = { borderColor: '#F2EFE9', backgroundColor: '#FCFBF8' };
 
 export default function RepairsPanel({ airbnbId, missionId, role, authorName, defaultOpen }: Props) {
+  const { toast } = useFeedback();
   const [open, setOpen] = useState(!!defaultOpen);
   const [loaded, setLoaded] = useState(false);
   const [repairs, setRepairs] = useState<Repair[]>([]);
@@ -57,6 +59,7 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
     setBusy(false);
     if (res.error) { setError(res.error); return; }
     setDescription(''); setAdding(false);
+    toast('Réparation signalée.', 'success');
     load();
   }
 
@@ -64,6 +67,7 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
     setBusy(true);
     await resolveRepairDB(r.id, authorName);
     setBusy(false);
+    toast('Marqué comme réparé.', 'success');
     load();
   }
 
@@ -71,6 +75,7 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
     setBusy(true);
     await reopenRepairDB(r.id);
     setBusy(false);
+    toast('Réparation rouverte.', 'info');
     load();
   }
 

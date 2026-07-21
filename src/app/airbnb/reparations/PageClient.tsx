@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { getRepairsForPartnerDB, resolveRepairDB, reopenRepairDB } from '@/lib/repairs';
 import type { Repair } from '@/lib/types';
 import { RepairRow } from '@/components/RepairsPanel';
@@ -15,6 +16,7 @@ import Loading from '@/components/Loading';
 
 export default function PartnerRepairsClient() {
   const { user } = useAuth();
+  const { toast } = useFeedback();
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -33,6 +35,7 @@ export default function PartnerRepairsClient() {
     await resolveRepairDB(r.id, user?.name);
     setBusy(false);
     load();
+    toast('Marqué comme réparé.', 'success');
   }
 
   async function reopen(r: Repair) {
@@ -40,6 +43,7 @@ export default function PartnerRepairsClient() {
     await reopenRepairDB(r.id);
     setBusy(false);
     load();
+    toast('Réparation rouverte.', 'info');
   }
 
   if (!user) return null;
