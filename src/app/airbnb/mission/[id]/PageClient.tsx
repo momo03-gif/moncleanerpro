@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedback } from '@/contexts/FeedbackContext';
 import { getMissionsForPartnerDB } from '@/lib/db';
 import Icon from '@/components/Icon';
 import { getMissionReportDB, reportHasContent } from '@/lib/missionReports';
@@ -18,6 +19,30 @@ import { serviceParts } from '@/lib/service';
 import { formatHour } from '@/lib/format';
 import MissionPhotos from '@/components/MissionPhotos';
 import Loading from '@/components/Loading';
+
+// Construit un compte-rendu TEXTE que la conciergerie peut transférer à son
+// propriétaire (les photos restent consultables dans l'app).
+function buildRecapText(mission: Mission, report: MissionReport | null): string {
+  const lines: string[] = [];
+  lines.push(`Compte-rendu de ménage — ${mission.property || 'Logement'}`);
+  lines.push(fmtDate(mission.date) + (mission.time ? ` · ${formatHour(mission.time)}` : ''));
+  lines.push('Statut : Terminé ✓');
+  if (mission.cleanerName) lines.push(`Intervenant : ${mission.cleanerName}`);
+  lines.push('');
+  const pts: string[] = [];
+  if (report?.issues) pts.push(`⚠ Dégât / problème : ${report.issues}`);
+  if (report?.consumables?.length || report?.consumablesNote) {
+    const items = [report?.consumables?.join(', '), report?.consumablesNote].filter(Boolean).join(' — ');
+    pts.push(`À réapprovisionner : ${items}`);
+  }
+  if (report?.lostFound) pts.push(`Objet oublié : ${report.lostFound}`);
+  if (report?.note) pts.push(`Remarque : ${report.note}`);
+  if (pts.length === 0) pts.push('Aucun point particulier signalé — logement propre et conforme.');
+  lines.push(...pts);
+  lines.push('');
+  lines.push('Photos avant/après disponibles dans l’espace MonCleanerPro.');
+  return lines.join('\n');
+}
 
 function fmtDate(d?: string) {
   if (!d) return '—';
@@ -29,10 +54,24 @@ export default function PartnerMissionDetailClient() {
   const router = useRouter();
   const id = String(params?.id ?? '');
   const { user } = useAuth();
+  const { toast } = useFeedback();
 
   const [mission, setMission] = useState<Mission | null>(null);
   const [report, setReport] = useState<MissionReport | null>(null);
   const [loading, setLoading] = useState(true);
+
+  async function shareRecap() {
+    if (!mission) return;
+    const text = buildRecapText(mission, report);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: `Compte-rendu — ${mission.property || 'Logement'}`, text });
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        toast('Compte-rendu copié — collez-le où vous voulez.', 'success');
+      }
+    } catch { /* partage annulé par l'utilisateur : silencieux */ }
+  }
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -92,8 +131,30 @@ export default function PartnerMissionDetailClient() {
         </div>
       </div>
 
+      {/* Confirmation « terminé » — le compte-rendu fait office de preuve de prestation. */}
+      {isDone && (
+        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: '#5A8A6A12', border: '1px solid #5A8A6A30' }}>
+          <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
+            <Icon name="check" size={18} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: '#3E6B4F' }}>Ménage terminé</p>
+            <p className="text-xs" style={{ color: '#5A8A6A' }}>Photos et compte-rendu ci-dessous.</p>
+          </div>
+        </div>
+      )}
+
       {/* Compte-rendu de fin de ménage */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Compte-rendu</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Compte-rendu</h2>
+        {isDone && (
+          <button onClick={shareRecap}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5"
+            style={{ borderColor: '#C9A84C', color: '#9A7B22' }}>
+            <Icon name="link" size={13} /> Partager
+          </button>
+        )}
+      </div>
       {!isDone && !hasReport ? (
         <div className="rounded-2xl p-6 text-center border mb-5" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
           <p className="text-xs" style={{ color: '#A8A09A' }}>Le compte-rendu sera disponible une fois le ménage terminé.</p>

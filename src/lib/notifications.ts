@@ -231,9 +231,11 @@ export async function notifyMissionCompleted(missionId: string) {
     }));
     // Le partenaire est identifié par partner_id (autoritaire, y compris pour les
     // ménages AUTO-synchronisés dont created_by est null), sinon par le créateur.
+    // Message orienté « compte-rendu » : on l'invite à consulter photos + rapport.
     const partnerRecipient = ctx.partnerId ?? ctx.createdBy;
     if (partnerRecipient) {
-      rows.push({ userId: partnerRecipient, role: 'partner', title: 'Ménage terminé', message, type: 'mission_completed', missionId });
+      const partnerMsg = `Ménage terminé à ${ctx.place}. Compte-rendu disponible : photos avant/après et rapport.`;
+      rows.push({ userId: partnerRecipient, role: 'partner', title: 'Ménage terminé — compte-rendu prêt', message: partnerMsg, type: 'mission_completed', missionId });
     }
     await dispatch(rows);
   } catch (e) { console.error('notifyMissionCompleted:', e); }
