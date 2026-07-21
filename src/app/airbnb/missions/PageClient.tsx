@@ -100,7 +100,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
       </div>
 
       <div className="px-5 py-4">
-        {mission.address && <p className="text-xs mb-2 truncate" style={{ color: '#A8A09A' }}>◎ {mission.address}</p>}
+        {mission.address && <p className="text-xs mb-2 truncate flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={12} className="shrink-0" /> {mission.address}</p>}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
           {mission.time && <span>Départ {formatHour(mission.time)}</span>}
@@ -424,7 +424,7 @@ export default function AirbnbMissionsPage() {
                 <div className="rounded-xl p-4 text-sm space-y-1.5" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
                   <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#A8A09A' }}>Coordonnées reprises automatiquement</p>
                   <p style={{ color: '#1A1A1A', fontWeight: 600 }}>{a.name}</p>
-                  <p className="text-xs">◎ {a.address}</p>
+                  <p className="text-xs flex items-center gap-1.5"><Icon name="pin" size={12} className="shrink-0" /> {a.address}</p>
                   {a.clientPrice != null && <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{a.clientPrice}€ / ménage</p>}
                   {(a.bedrooms != null || a.beds != null || a.sofaBeds != null) && (
                     <p className="text-xs">

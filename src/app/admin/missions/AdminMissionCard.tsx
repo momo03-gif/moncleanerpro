@@ -384,7 +384,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         {billable && (mission.price ?? 0) > 0 && (
           <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A' }}>{mission.price} €</span>
         )}
-        <span className="shrink-0 text-sm transition-transform" style={{ color: '#A8A09A', transform: expanded ? 'rotate(180deg)' : 'none' }}>⌄</span>
+        <span className="shrink-0 transition-transform" style={{ color: '#A8A09A', transform: expanded ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={16} /></span>
       </div>
 
       {expanded && (
@@ -437,7 +437,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               style={{ color: '#A8A09A' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
               onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
-              <span className="text-xs shrink-0">◎</span>
+              <Icon name="pin" size={13} className="shrink-0" />
               <span className="text-xs truncate">{mission.address}</span>
             </button>
           )}
@@ -446,8 +446,8 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         {/* Date / heure / durée */}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
-          {mission.time && <span>{source === 'airbnb' ? 'Départ ' : '◷ '}{formatHour(mission.time)}</span>}
-          {(mission.missionDurationMinutes ?? 0) > 0 && <span>⟳ {formatDuration(mission.missionDurationMinutes)}</span>}
+          {mission.time && <span className="inline-flex items-center gap-1">{source === 'airbnb' ? 'Départ ' : <Icon name="clock" size={14} />}{formatHour(mission.time)}</span>}
+          {(mission.missionDurationMinutes ?? 0) > 0 && <span className="inline-flex items-center gap-1"><Icon name="timer" size={14} />{formatDuration(mission.missionDurationMinutes)}</span>}
         </div>
 
         {mission.nextArrival && (
@@ -570,7 +570,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
           const ecartColor = ecart == null ? '#A8A09A' : ecart > 5 ? '#B85A50' : ecart < -5 ? '#5A8A6A' : '#7A7068';
           return (
             <div className="rounded-xl p-3" style={{ backgroundColor: '#F4F6FA', border: '1px solid #DfE3EC' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: '#5B6EF5' }}>⏱ Pointage</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5" style={{ color: '#5B6EF5' }}><Icon name="clock" size={13} /> Pointage</p>
               <div className="grid grid-cols-3 gap-x-3 gap-y-2">
                 <div>
                   <p className="text-[11px]" style={{ color: '#A8A09A' }}>Début</p>
@@ -608,17 +608,17 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         {/* Demande de temps supplémentaire du cleaner */}
         {mission.extraTimeStatus === 'pending' && (
           <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: '#C9A84C12', border: '1px solid #E7D9A8' }}>
-            <p className="text-xs font-semibold" style={{ color: '#C48A2A' }}>
-              ⏱ Demande de +{mission.extraTimeMinutes} min
+            <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: '#C48A2A' }}>
+              <Icon name="timer" size={13} /> Demande de +{mission.extraTimeMinutes} min
             </p>
             {mission.extraTimeReason && (
               <p className="text-xs" style={{ color: '#7A7068' }}>« {mission.extraTimeReason} »</p>
             )}
             <div className="flex gap-2">
               <button onClick={() => resolveExtra(true)} disabled={busy}
-                className="flex-1 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+                className="flex-1 py-2 rounded-lg text-xs font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                 style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
-                ✓ Accorder
+                <Icon name="check" size={13} /> Accorder
               </button>
               <button onClick={() => resolveExtra(false)} disabled={busy}
                 className="flex-1 py-2 rounded-lg text-xs font-semibold border disabled:opacity-50"
@@ -629,10 +629,10 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
           </div>
         )}
         {mission.extraTimeStatus === 'approved' && (
-          <p className="text-xs" style={{ color: '#5A8A6A' }}>⏱ Temps supplémentaire accordé (+{mission.extraTimeMinutes} min, inclus dans la durée).</p>
+          <p className="text-xs inline-flex items-center gap-1.5" style={{ color: '#5A8A6A' }}><Icon name="timer" size={13} /> Temps supplémentaire accordé (+{mission.extraTimeMinutes} min, inclus dans la durée).</p>
         )}
         {mission.extraTimeStatus === 'refused' && (
-          <p className="text-xs" style={{ color: '#A8A09A' }}>⏱ Demande de temps refusée.</p>
+          <p className="text-xs inline-flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="timer" size={13} /> Demande de temps refusée.</p>
         )}
 
         {/* Photos avant/après (consultation, zoom, téléchargement) */}
@@ -832,9 +832,9 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 </div>
               ) : (
                 <button onClick={() => setAddTimeOpen(true)} disabled={busy}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                   style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  ⏱ Ajouter du temps{mission.status === 'completed' ? ' (mission terminée)' : ''}
+                  <Icon name="timer" size={14} /> Ajouter du temps{mission.status === 'completed' ? ' (mission terminée)' : ''}
                 </button>
               )
             )}

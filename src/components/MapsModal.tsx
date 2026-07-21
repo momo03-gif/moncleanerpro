@@ -1,5 +1,7 @@
 'use client';
 
+import Icon from '@/components/Icon';
+
 export default function MapsModal({ address, onClose }: { address: string; onClose: () => void }) {
   const encoded = encodeURIComponent(address);
   return (
@@ -19,13 +21,13 @@ export default function MapsModal({ address, onClose }: { address: string; onClo
         </div>
         <div className="p-3 space-y-2">
           {[
-            { href: `https://maps.google.com/?q=${encoded}`, icon: '◎', label: 'Ouvrir dans Google Maps' },
-            { href: `https://maps.apple.com/?q=${encoded}`, icon: '◎', label: 'Ouvrir dans Plans (Apple Maps)' },
-          ].map(({ href, icon, label }) => (
+            { href: `https://maps.google.com/?q=${encoded}`, label: 'Ouvrir dans Google Maps' },
+            { href: `https://maps.apple.com/?q=${encoded}`, label: 'Ouvrir dans Plans (Apple Maps)' },
+          ].map(({ href, label }) => (
             <a key={href} href={href} target="_blank" rel="noopener noreferrer" onClick={onClose}
               className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
               style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
-              <span className="text-base">{icon}</span>
+              <Icon name="pin" size={17} />
               {label}
             </a>
           ))}

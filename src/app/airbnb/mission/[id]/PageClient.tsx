@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForPartnerDB } from '@/lib/db';
+import Icon from '@/components/Icon';
 import { getMissionReportDB, reportHasContent } from '@/lib/missionReports';
 import type { Mission, MissionReport } from '@/lib/types';
 import { missionStatusCfg, missionStatusLabel, missionTypeLabel } from '@/lib/labels';
@@ -74,7 +75,7 @@ export default function PartnerMissionDetailClient() {
             {missionStatusLabel(mission.status, mission.service)}
           </span>
         </div>
-        {mission.address && <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>◎ {mission.address}</p>}
+        {mission.address && <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={12} className="shrink-0" /> {mission.address}</p>}
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <div>
             <p className="text-[11px]" style={{ color: '#A8A09A' }}>Date</p>

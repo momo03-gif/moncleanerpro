@@ -249,7 +249,7 @@ export default function AirbnbApartmentsPage() {
                       {apt.name}
                       <span className="text-xs shrink-0" style={{ color: '#C9A84C' }}>›</span>
                     </h3>
-                    <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>◎ {apt.address}</p>
+                    <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={12} className="shrink-0" /> {apt.address}</p>
                   </button>
                   <div className="flex gap-1.5 shrink-0">
                     <button onClick={() => openEdit(apt)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>

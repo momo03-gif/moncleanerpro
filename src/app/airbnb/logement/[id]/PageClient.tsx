@@ -137,7 +137,7 @@ export default function LogementDetailClient() {
       {/* En-tête */}
       <div className="mb-5">
         <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>{apt.name}</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>◎ {apt.address}</p>
+        <p className="text-sm mt-0.5 flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={14} /> {apt.address}</p>
       </div>
 
       {/* Carte infos clés */}

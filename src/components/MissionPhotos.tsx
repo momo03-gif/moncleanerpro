@@ -6,6 +6,7 @@ import {
   MAX_PHOTOS_PER_MISSION, PHOTO_RETENTION_DAYS,
 } from '@/lib/missionPhotos';
 import type { MissionPhoto, MissionPhotoKind } from '@/lib/types';
+import Icon from '@/components/Icon';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Photos avant/après d'une mission — composant réutilisable.
@@ -55,10 +56,10 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen }: 
     <div className="rounded-xl border" style={{ borderColor: '#F2EFE9', backgroundColor: '#FCFBF8' }}>
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-left">
-        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7A7068' }}>
-          📷 Photos {loaded || total ? `(${total})` : ''}
+        <span className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: '#7A7068' }}>
+          <Icon name="camera" size={14} /> Photos {loaded || total ? `(${total})` : ''}
         </span>
-        <span className="text-xs" style={{ color: '#A8A09A' }}>{open ? '▲' : '▼'}</span>
+        <span className="transition-transform" style={{ color: '#A8A09A', transform: open ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={15} /></span>
       </button>
 
       {open && (

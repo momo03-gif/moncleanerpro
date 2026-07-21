@@ -9,6 +9,7 @@ import { serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import { clientKindOf, CLIENT_KIND_LABEL, CLIENT_KIND_COLOR, type ClientKind } from '@/lib/clientKind';
 import Loading from "@/components/Loading";
+import Icon, { type IconName } from '@/components/Icon';
 
 // Perf : les panneaux lourds (RH, rentabilité) tirent la couche données ; on les
 // charge en différé (chunks séparés) pour qu'ils ne pèsent pas sur le chargement
@@ -144,14 +145,14 @@ export default function StatsPage() {
 
       {view === 'overview' && (<>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Total missions', value: total, icon: '◎' },
-          { label: 'Taux de completion', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '0%', icon: '◈' },
-          { label: 'Revenus générés', value: `${revenue}€`, icon: '◇', accent: true },
-          { label: 'Prix moyen', value: `${avgPrice}€`, icon: '◉' },
-        ].map(kpi => (
+        {([
+          { label: 'Total missions', value: total, icon: 'missions' as IconName },
+          { label: 'Taux de completion', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '0%', icon: 'check' as IconName },
+          { label: 'Revenus générés', value: `${revenue}€`, icon: 'wallet' as IconName, accent: true },
+          { label: 'Prix moyen', value: `${avgPrice}€`, icon: 'stats' as IconName },
+        ]).map(kpi => (
           <div key={kpi.label} className="rounded-2xl p-5 border" style={{ backgroundColor: kpi.accent ? '#C9A84C' : '#FFFFFF', borderColor: kpi.accent ? '#C9A84C' : '#E8E4DC' }}>
-            <span className="text-2xl mb-3 block" style={{ color: kpi.accent ? '#7A6030' : '#C9A84C' }}>{kpi.icon}</span>
+            <span className="mb-3 block" style={{ color: kpi.accent ? '#7A6030' : '#C9A84C' }}><Icon name={kpi.icon} size={24} /></span>
             <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{kpi.value}</p>
             <p className="text-xs mt-1" style={{ color: kpi.accent ? '#7A6030' : '#A8A09A' }}>{kpi.label}</p>
           </div>

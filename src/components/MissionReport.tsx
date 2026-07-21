@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMissionReportDB, saveMissionReportDB, reportHasContent } from '@/lib/missionReports';
 import { CONSUMABLE_ITEMS, type MissionReport as Report } from '@/lib/types';
+import Icon from '@/components/Icon';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Rapport d'état du logement — composant repliable réutilisable.
@@ -88,7 +89,7 @@ export default function MissionReport({ missionId, mode, userId, defaultOpen }: 
           Rapport d'état du logement
           {filled && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>rempli</span>}
         </span>
-        <span style={{ color: '#B0A795', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+        <span className="transition-transform" style={{ color: '#B0A795', transform: open ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={15} /></span>
       </button>
 
       {open && (

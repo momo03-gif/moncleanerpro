@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   getRepairsForApartmentDB, createRepairDB, resolveRepairDB, reopenRepairDB,
 } from '@/lib/repairs';
+import Icon from '@/components/Icon';
 import type { Repair } from '@/lib/types';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -86,7 +87,7 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
             </span>
           )}
         </span>
-        <span style={{ color: '#B0A795', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+        <span className="transition-transform" style={{ color: '#B0A795', transform: open ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={15} /></span>
       </button>
 
       {open && (

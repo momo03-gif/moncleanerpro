@@ -7,6 +7,7 @@ import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
+import Icon from '@/components/Icon';
 import MapsModal from '@/components/MapsModal';
 import RepairsPanel from '@/components/RepairsPanel';
 import Loading from "@/components/Loading";
@@ -340,7 +341,7 @@ export default function AirbnbPage() {
                 <span className="font-semibold truncate" style={{ color: g.name === NO_PARTNER ? '#C48A2A' : '#1A1A1A' }}>{g.name}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>{g.total}</span>
                 {!forceOpen && (
-                  <span className="ml-auto text-sm transition-transform" style={{ color: '#A8A09A', transform: g.open ? 'rotate(180deg)' : 'none' }}>⌄</span>
+                  <span className="ml-auto transition-transform" style={{ color: '#A8A09A', transform: g.open ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={16} /></span>
                 )}
               </button>
               {g.open && (
@@ -394,14 +395,14 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
         {apt.clientPrice != null && (
           <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#5A8A6A' }}>{apt.clientPrice} €</span>
         )}
-        <span className="shrink-0 text-sm transition-transform" style={{ color: '#A8A09A', transform: open ? 'rotate(180deg)' : 'none' }}>⌄</span>
+        <span className="shrink-0 transition-transform" style={{ color: '#A8A09A', transform: open ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={16} /></span>
       </div>
 
       {/* Détail */}
       {open && (
         <div className="px-4 pb-4 pt-1 border-t space-y-3" style={{ borderColor: '#F2EFE9' }}>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={onMaps} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>◎ Itinéraire</button>
+            <button onClick={onMaps} className="text-xs px-3 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}><Icon name="pin" size={13} /> Itinéraire</button>
             <button onClick={onEdit} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
             <button onClick={onDelete} className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>Supprimer</button>
           </div>
