@@ -624,7 +624,7 @@ export default function CleanerDashboard() {
   }, [user, load]);
 
   if (!user) return null;
-  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
+  if (loading) return <Loading className="p-5 pt-8" variant="skeleton" />;
 
   const isToday = dateStart === today && dateEnd === today;
   const isSingleDay = dateStart === dateEnd;
@@ -660,7 +660,7 @@ export default function CleanerDashboard() {
   const outOfRangeCount = missions.filter(m => m.status !== 'cancelled' && (m.date < dateStart || m.date > dateEnd)).length;
 
   return (
-    <div className="p-5">
+    <div className="p-5 mcp-in">
       {/* Bandeau hors-ligne : données servies depuis le dernier cache local. */}
       {offlineSince && (
         <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium"

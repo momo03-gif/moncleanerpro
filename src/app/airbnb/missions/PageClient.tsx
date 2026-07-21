@@ -282,7 +282,7 @@ export default function AirbnbMissionsPage() {
     setSaving(false);
   }
 
-  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
+  if (loading) return <Loading className="p-5 pt-8" variant="skeleton" />;
 
   if (submitted) return (
     <div className="p-5 flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -299,7 +299,7 @@ export default function AirbnbMissionsPage() {
   );
 
   return (
-    <div className="p-5">
+    <div className="p-5 mcp-in">
       <div className="mb-5 pt-2">
         <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Planning</h1>
         <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>Arrivées, départs et ménages de vos logements</p>
@@ -344,8 +344,8 @@ export default function AirbnbMissionsPage() {
         return (
           <div className="space-y-6">
             <div className="flex items-center gap-4 text-[11px]" style={{ color: '#A8A09A' }}>
-              <span className="flex items-center gap-1"><span style={{ color: '#5A8A6A' }}>▲</span> Arrivée</span>
-              <span className="flex items-center gap-1"><span style={{ color: '#C48A2A' }}>▼</span> Départ</span>
+              <span className="flex items-center gap-1"><span className="inline-flex" style={{ color: '#5A8A6A' }}><Icon name="arrowUp" size={13} /></span> Arrivée</span>
+              <span className="flex items-center gap-1"><span className="inline-flex" style={{ color: '#C48A2A' }}><Icon name="arrowDown" size={13} /></span> Départ</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#B91C1C' }} /> Turnover</span>
             </div>
             {days.map(day => {
@@ -369,7 +369,7 @@ export default function AirbnbMissionsPage() {
                       const cfg = m ? (STATUS_CFG[m.status] ?? STATUS_CFG.pending) : null;
                       return (
                         <div key={'out' + r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: isTurn ? '#EAC4BE' : '#E8E4DC' }}>
-                          <span className="text-sm shrink-0" style={{ color: '#C48A2A' }}>▼</span>
+                          <span className="shrink-0 inline-flex" style={{ color: '#C48A2A' }}><Icon name="arrowDown" size={15} /></span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? 'Logement'}</p>
                             <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Départ{r.checkOutTime ? ` ${formatHour(r.checkOutTime)}` : ''}{isTurn && <span style={{ color: '#B85A50', fontWeight: 600 }}> · arrivée le jour même</span>}</p>
@@ -384,7 +384,7 @@ export default function AirbnbMissionsPage() {
                       const r = e.res;
                       return (
                         <div key={'in' + r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FCFBF8', borderColor: '#E8E4DC' }}>
-                          <span className="text-sm shrink-0" style={{ color: '#5A8A6A' }}>▲</span>
+                          <span className="shrink-0 inline-flex" style={{ color: '#5A8A6A' }}><Icon name="arrowUp" size={15} /></span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? 'Logement'}</p>
                             <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Arrivée{r.checkInTime ? ` ${formatHour(r.checkInTime)}` : ''}</p>

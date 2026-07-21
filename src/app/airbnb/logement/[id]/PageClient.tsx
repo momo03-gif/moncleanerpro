@@ -267,7 +267,7 @@ export default function LogementDetailClient() {
         <div className="space-y-2.5 mb-6">
           {upcomingArrivals.slice(0, 8).map(r => (
             <div key={r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FCFBF8', borderColor: '#E8E4DC' }}>
-              <span className="text-sm shrink-0" style={{ color: '#5A8A6A' }}>▲</span>
+              <span className="shrink-0 inline-flex" style={{ color: '#5A8A6A' }}><Icon name="arrowUp" size={15} /></span>
               <p className="text-sm font-semibold flex-1" style={{ color: '#1A1A1A' }}>
                 Arrivée {fmtDate(r.checkIn)}{r.checkInTime ? ` · ${formatHour(r.checkInTime)}` : ''}
               </p>

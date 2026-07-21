@@ -11,7 +11,7 @@ export type IconName =
   | 'today' | 'inbox' | 'user' | 'request' | 'history'
   | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play'
   | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking' | 'wrench'
-  | 'clock' | 'timer' | 'pin' | 'chevronDown' | 'camera' | 'phone';
+  | 'clock' | 'timer' | 'pin' | 'chevronDown' | 'camera' | 'phone' | 'arrowUp' | 'arrowDown';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -158,6 +158,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   </>),
   phone: (<>
     <path d="M6.5 3.5h-2A1.5 1.5 0 0 0 3 5c0 8 8 16 16 16a1.5 1.5 0 0 0 1.5-1.5v-2a1 1 0 0 0-.8-1l-3.6-.7a1 1 0 0 0-1 .4l-.9 1.2a13 13 0 0 1-5.3-5.3l1.2-.9a1 1 0 0 0 .4-1l-.7-3.6a1 1 0 0 0-1-.8Z" />
+  </>),
+  arrowDown: (<>
+    <path d="M12 5v14M6 13l6 6 6-6" />
+  </>),
+  arrowUp: (<>
+    <path d="M12 19V5M6 11l6-6 6 6" />
   </>),
 };
 

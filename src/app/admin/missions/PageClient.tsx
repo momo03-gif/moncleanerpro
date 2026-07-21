@@ -246,10 +246,10 @@ export default function MissionsPage() {
   const allDates = missions.map(m => m.date).filter(Boolean).sort();
   const outOfRangeCount = missions.length - dateScoped.length;
 
-  if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
+  if (loading) return <Loading className="p-4 md:p-6" variant="skeleton" />;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto mcp-in">
       <div className="mb-6"><h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Missions</h1></div>
 
       {/* Tabs */}

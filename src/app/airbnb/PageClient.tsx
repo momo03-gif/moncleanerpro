@@ -145,10 +145,10 @@ export default function AirbnbApartmentsPage() {
     return { occupied, nextDep };
   }
 
-  if (loading) return <Loading className="p-5 pt-8 text-sm" />;
+  if (loading) return <Loading className="p-5 pt-8" variant="skeleton" />;
 
   return (
-    <div className="p-5">
+    <div className="p-5 mcp-in">
       <div className="flex items-start justify-between gap-3 mb-5 pt-2">
         <div>
           <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Mes appartements</h1>

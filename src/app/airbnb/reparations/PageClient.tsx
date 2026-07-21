@@ -62,7 +62,7 @@ export default function PartnerRepairsClient() {
   }
 
   return (
-    <div className="p-5">
+    <div className="p-5 mcp-in">
       <div className="mb-5 pt-2">
         <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Réparations</h1>
         <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>

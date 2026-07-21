@@ -39,6 +39,24 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
+/* Transitions de survol douces et cohérentes sur les éléments cliquables. */
+button, a, [role="button"] {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .12s ease;
+}
+
+/* Fondu discret d'apparition du contenu (une fois, au chargement d'une page/liste,
+   après le squelette). Respecte la préférence « réduire les animations ». */
+@keyframes mcp-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.mcp-in { animation: mcp-in .28s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mcp-in { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
 /* Scroll fluide */
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
