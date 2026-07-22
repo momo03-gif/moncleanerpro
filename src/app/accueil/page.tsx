@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Motion from './Motion';
+import { SEO_PAGES } from '@/lib/seoPages';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Vitrine publique MonCleanerPro (remplace le site Hostinger Horizons).
@@ -82,6 +83,7 @@ const IconSpark = <><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18
 const IconPin = <><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></>;
 const IconPhone = <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z" /></>;
 const IconMail = <><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 7 10 6 10-6" /></>;
+const IconWhatsApp = <><path d="M12 3a8.5 8.5 0 0 0-7.3 12.9L3.5 21l5.3-1.3A8.5 8.5 0 1 0 12 3Z" /><path d="M9 8.9c-.2 1.6.4 3.2 1.6 4.4s2.8 1.8 4.4 1.6c.3 0 .5-.3.5-.6v-1c0-.3-.2-.5-.5-.6l-1.3-.3c-.2 0-.4 0-.6.2l-.4.5a6 6 0 0 1-2.3-2.3l.5-.4c.2-.2.2-.4.2-.6l-.3-1.3c0-.3-.3-.5-.6-.5h-1c-.3 0-.6.2-.6.5Z" /></>;
 const IconMonitor = <><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></>;
 const IconUsers = <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6" /></>;
 
@@ -472,6 +474,16 @@ export default function VitrinePage() {
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
+        {/* Nos prestations — maillage interne vers les pages SEO (crawlabilité + référencement). */}
+        <div className="max-w-7xl mx-auto px-5 pt-12 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos prestations à Lyon</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {SEO_PAGES.map(p => (
+              <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+            ))}
+          </div>
+        </div>
+
         <div className="max-w-7xl mx-auto px-5 py-12 flex flex-wrap items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 9 }} />
@@ -499,6 +511,22 @@ export default function VitrinePage() {
           </div>
         </div>
       </footer>
+
+      {/* Boutons flottants — appel & WhatsApp toujours accessibles (surtout mobile).
+          Lèvent la friction : un visiteur peut contacter à tout moment sans remonter. */}
+      <div className="fixed z-40 right-4 flex flex-col items-end gap-2.5" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 18px)' }}>
+        <a href="https://wa.me/33783431700?text=Bonjour%2C%20je%20souhaite%20un%20devis%20de%20nettoyage."
+          target="_blank" rel="noopener noreferrer" aria-label="Contacter par WhatsApp"
+          className="flex items-center justify-center rounded-full shadow-lg active:scale-95"
+          style={{ width: 52, height: 52, backgroundColor: '#25D366', color: '#FFFFFF' }}>
+          <Icon path={IconWhatsApp} size={26} />
+        </a>
+        <a href={PHONE_HREF} aria-label="Appeler MonCleanerPro"
+          className="inline-flex items-center gap-2 rounded-full shadow-lg pl-4 pr-5 font-semibold text-sm active:scale-95"
+          style={{ height: 52, backgroundColor: GOLD, color: INK }}>
+          <Icon path={IconPhone} size={20} /> Appeler
+        </a>
+      </div>
     </main>
   );
 }

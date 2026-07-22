@@ -149,6 +149,84 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Puis-je le programmer avant un état des lieux ?', a: "Oui, c’est un cas fréquent : nous intervenons avant un état des lieux, une remise de clés ou une vente." },
     ],
   },
+  {
+    slug: 'nettoyage-bureaux-lyon',
+    keyword: 'nettoyage bureaux Lyon',
+    eyebrow: 'Entreprises & bureaux',
+    h1: 'Nettoyage de bureaux à Lyon',
+    title: 'Nettoyage de bureaux à Lyon — MonCleanerPro | Entretien pro régulier',
+    description: "Nettoyage de bureaux et locaux professionnels à Lyon : entretien régulier, postes de travail, sanitaires, espaces communs. Interventions hors présence, discrètes et fiables. Devis gratuit sous 24h.",
+    intro:
+      "Un bureau propre, c’est une image soignée pour vos clients et un cadre sain pour vos équipes. MonCleanerPro assure l’entretien des bureaux et locaux professionnels de Lyon et de la métropole : passages réguliers, tôt le matin ou en soirée pour ne pas gêner votre activité, avec la fiabilité et la discrétion qu’attend une entreprise.",
+    highlights: [
+      { title: 'Hors de vos horaires', text: "Interventions tôt le matin ou en soirée, sans perturber vos équipes ni vos rendez-vous." },
+      { title: 'Contrat régulier', text: "Fréquence sur mesure (quotidienne, plusieurs fois par semaine) avec un interlocuteur dédié." },
+      { title: 'Postes & espaces communs', text: "Bureaux, salles de réunion, sanitaires, cuisine et accueil : un standard constant partout." },
+    ],
+    includes: [
+      'Entretien des postes de travail et surfaces',
+      'Désinfection des sanitaires et points de contact',
+      'Nettoyage des salles de réunion et de l’accueil',
+      'Sols, vitres intérieures et espaces communs',
+      'Gestion des corbeilles et réassort consommables',
+    ],
+    faq: [
+      { q: 'Intervenez-vous en dehors des heures de bureau ?', a: "Oui, la plupart de nos prestations en entreprise se font tôt le matin ou en soirée, hors présence des équipes." },
+      { q: 'Proposez-vous un contrat régulier ?', a: "Oui, nous mettons en place un planning régulier adapté à vos locaux, avec un interlocuteur dédié et un suivi qualité." },
+    ],
+  },
+  {
+    slug: 'nettoyage-copropriete-lyon',
+    keyword: 'nettoyage copropriété Lyon',
+    eyebrow: 'Copropriétés & syndics',
+    h1: 'Nettoyage de copropriété à Lyon',
+    title: 'Nettoyage de copropriété à Lyon — MonCleanerPro | Parties communes & syndics',
+    description: "Nettoyage des parties communes de copropriété à Lyon : halls, escaliers, ascenseurs, local poubelles. Passages réguliers pour syndics et gestionnaires. Fiabilité et suivi. Devis gratuit.",
+    intro:
+      "L’entretien des parties communes est le premier signe visible d’une copropriété bien gérée. MonCleanerPro accompagne les syndics, gestionnaires et conseils syndicaux de Lyon dans le nettoyage régulier des immeubles : halls, cages d’escalier, ascenseurs et locaux techniques, avec des passages fiables et un suivi transparent que vous pouvez présenter aux copropriétaires.",
+    highlights: [
+      { title: 'Parties communes complètes', text: "Halls, escaliers, paliers, ascenseurs, local vélos et local poubelles : rien n’est laissé de côté." },
+      { title: 'Passages réguliers fiables', text: "Une fréquence tenue dans la durée, sans oublis, avec un interlocuteur pour le syndic." },
+      { title: 'Sortie / rentrée des bacs', text: "Gestion des conteneurs et entretien du local poubelles, selon le calendrier de collecte." },
+    ],
+    includes: [
+      'Nettoyage des halls d’entrée et paliers',
+      'Cages d’escalier et rampes',
+      'Cabines d’ascenseur et miroirs',
+      'Local poubelles et sortie / rentrée des bacs',
+      'Vitres des parties communes et boîtes aux lettres',
+    ],
+    faq: [
+      { q: 'Travaillez-vous avec les syndics et gestionnaires ?', a: "Oui, nous intervenons pour des syndics professionnels comme pour des copropriétés en gestion bénévole, avec un contrat régulier." },
+      { q: 'Gérez-vous la sortie des poubelles ?', a: "Oui, la sortie et la rentrée des conteneurs ainsi que l’entretien du local poubelles peuvent être inclus dans la prestation." },
+    ],
+  },
+  {
+    slug: 'nettoyage-vitres-lyon',
+    keyword: 'nettoyage vitres Lyon',
+    eyebrow: 'Vitrerie',
+    h1: 'Nettoyage de vitres à Lyon',
+    title: 'Nettoyage de vitres à Lyon — MonCleanerPro | Vitres, baies & vitrines',
+    description: "Nettoyage de vitres à Lyon pour professionnels et particuliers : vitrines, baies vitrées, fenêtres, sans traces. Ponctuel ou régulier, en intérieur comme en extérieur accessible. Devis gratuit.",
+    intro:
+      "Des vitres nettes changent tout : une vitrine qui attire, des bureaux lumineux, un logement qui respire. MonCleanerPro réalise le nettoyage de vitres à Lyon pour les commerces, les bureaux et les particuliers — vitrines, baies vitrées et fenêtres, sans traces, en ponctuel ou en passage régulier.",
+    highlights: [
+      { title: 'Résultat sans traces', text: "Vitres, encadrements et rebords traités pour un rendu net et lumineux." },
+      { title: 'Commerces & particuliers', text: "Vitrines de magasins, façades vitrées de bureaux, fenêtres et baies de logements." },
+      { title: 'Ponctuel ou régulier', text: "Un passage unique ou un entretien programmé pour garder des vitres toujours impeccables." },
+    ],
+    includes: [
+      'Nettoyage des vitres intérieures et extérieures accessibles',
+      'Vitrines et façades vitrées de commerces',
+      'Baies vitrées et fenêtres de logements',
+      'Encadrements, rebords et traces nettoyés',
+      'Passage ponctuel ou récurrent programmé',
+    ],
+    faq: [
+      { q: 'Nettoyez-vous les vitres en hauteur ?', a: "Nous traitons les vitres accessibles en sécurité ; pour les grandes hauteurs nécessitant du matériel spécifique, nous vous orientons vers la solution adaptée." },
+      { q: 'Intervenez-vous pour les commerces ?', a: "Oui, nous nettoyons régulièrement les vitrines et façades vitrées de commerces et de bureaux, en ponctuel ou en contrat régulier." },
+    ],
+  },
 ];
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
