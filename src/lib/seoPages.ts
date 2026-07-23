@@ -465,3 +465,23 @@ export const SEO_PAGES: SeoPage[] = [
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
 export const getSeoPage = (slug: string) => SEO_PAGES.find(p => p.slug === slug);
+
+// Zone desservie (géo) par page VILLE : nom de la commune + coordonnées. Sert aux
+// données structurées (schema.org areaServed + geo) — signal local fort pour Google.
+// Les pages « service » (non listées ici) desservent Lyon par défaut.
+export interface CityGeo { city: string; lat: number; lng: number; postalCode?: string }
+export const CITY_GEO: Record<string, CityGeo> = {
+  'nettoyage-villefranche-sur-saone': { city: 'Villefranche-sur-Saône', lat: 45.9847, lng: 4.7267, postalCode: '69400' },
+  'nettoyage-caluire-et-cuire':       { city: 'Caluire-et-Cuire',       lat: 45.7955, lng: 4.8442, postalCode: '69300' },
+  'nettoyage-venissieux':             { city: 'Vénissieux',             lat: 45.6976, lng: 4.8859, postalCode: '69200' },
+  'nettoyage-neuville-sur-saone':     { city: 'Neuville-sur-Saône',     lat: 45.8779, lng: 4.8419, postalCode: '69250' },
+  'nettoyage-bron':                   { city: 'Bron',                   lat: 45.7333, lng: 4.9110, postalCode: '69500' },
+  'nettoyage-saint-priest':           { city: 'Saint-Priest',           lat: 45.6966, lng: 4.9439, postalCode: '69800' },
+  'nettoyage-ecully':                 { city: 'Écully',                 lat: 45.7743, lng: 4.7787, postalCode: '69130' },
+  'nettoyage-tassin-la-demi-lune':    { city: 'Tassin-la-Demi-Lune',    lat: 45.7644, lng: 4.7717, postalCode: '69160' },
+  'nettoyage-rillieux-la-pape':       { city: 'Rillieux-la-Pape',       lat: 45.8217, lng: 4.8983, postalCode: '69140' },
+};
+export const getCityGeo = (slug: string): CityGeo | undefined => CITY_GEO[slug];
+
+// Liste des communes desservies (villes ciblées) — pour l'accueil (areaServed global).
+export const SERVED_CITIES = ['Lyon', ...Object.values(CITY_GEO).map(c => c.city)];

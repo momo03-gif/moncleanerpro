@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Motion from '../accueil/Motion';
-import { SEO_PAGES, SEO_SLUGS, getSeoPage } from '@/lib/seoPages';
+import { SEO_PAGES, SEO_SLUGS, getSeoPage, getCityGeo } from '@/lib/seoPages';
 
 // Pages d'atterrissage SEO (service × Lyon) — rendu 100 % statique.
 // dynamicParams=false : seuls les slugs connus existent, tout le reste → 404
@@ -66,12 +66,27 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
   const url = `https://moncleanerpro.fr/${p.slug}`;
   const others = SEO_PAGES.filter(x => x.slug !== p.slug);
 
+  // Zone desservie : la commune réelle de la page (+ coordonnées) pour un signal
+  // géo précis ; « Lyon » par défaut pour les pages de service.
+  const geo = getCityGeo(p.slug);
+  const areaServed = geo
+    ? {
+        '@type': 'City', name: geo.city,
+        ...(geo.postalCode ? { address: { '@type': 'PostalAddress', addressLocality: geo.city, postalCode: geo.postalCode, addressRegion: 'Rhône', addressCountry: 'FR' } } : {}),
+        geo: { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng },
+      }
+    : { '@type': 'City', name: 'Lyon' };
+
   const jsonLd = [
     {
       '@context': 'https://schema.org', '@type': 'Service',
       name: p.h1, serviceType: p.keyword, description: p.description, url,
-      areaServed: { '@type': 'City', name: 'Lyon' },
-      provider: { '@type': 'CleaningService', name: 'MonCleanerPro', url: 'https://moncleanerpro.fr', telephone: '+33783431700', email: EMAIL },
+      areaServed,
+      provider: {
+        '@type': 'CleaningService', name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
+        telephone: '+33783431700', email: EMAIL,
+        ...(geo ? { areaServed: { '@type': 'City', name: geo.city } } : {}),
+      },
     },
     {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',

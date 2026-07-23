@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Motion from './Motion';
-import { SEO_PAGES } from '@/lib/seoPages';
+import { SEO_PAGES, SERVED_CITIES } from '@/lib/seoPages';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Vitrine publique MonCleanerPro (remplace le site Hostinger Horizons).
@@ -145,11 +145,12 @@ const jsonLdBusiness = {
   image: 'https://moncleanerpro.fr/og-image.png', logo: 'https://moncleanerpro.fr/icon-512.png',
   priceRange: '€€',
   areaServed: [
-    { '@type': 'City', name: 'Lyon' }, { '@type': 'City', name: 'Villeurbanne' },
+    ...SERVED_CITIES.map(name => ({ '@type': 'City', name })),
+    { '@type': 'City', name: 'Villeurbanne' },
     { '@type': 'AdministrativeArea', name: 'Métropole de Lyon' }, { '@type': 'AdministrativeArea', name: 'Rhône-Alpes' },
   ],
   address: { '@type': 'PostalAddress', addressLocality: 'Lyon', addressRegion: 'Auvergne-Rhône-Alpes', addressCountry: 'FR' },
-  serviceType: ['Nettoyage hôtelier', 'Nettoyage EHPAD', 'Ménage Airbnb et conciergerie', 'Grand ménage', 'Nettoyage de fin de chantier'],
+  serviceType: ['Nettoyage hôtelier', 'Nettoyage EHPAD', 'Ménage Airbnb et conciergerie', 'Grand ménage', 'Nettoyage de fin de chantier', 'Nettoyage de bureaux', 'Nettoyage de copropriété', 'Nettoyage de vitres'],
 };
 const jsonLdFaq = {
   '@context': 'https://schema.org', '@type': 'FAQPage',
