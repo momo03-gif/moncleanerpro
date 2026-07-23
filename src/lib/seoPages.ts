@@ -331,6 +331,136 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Travaillez-vous avec les commerces du centre ?', a: "Oui, nous entretenons régulièrement vitrines, boutiques et bureaux du centre-bourg, en ponctuel ou en contrat régulier." },
     ],
   },
+  {
+    slug: 'nettoyage-bron',
+    keyword: 'nettoyage Bron',
+    eyebrow: 'Bron',
+    h1: 'Entreprise de nettoyage à Bron',
+    title: 'Nettoyage à Bron — MonCleanerPro | Bureaux, santé, copropriétés',
+    description: "Entreprise de nettoyage à Bron : bureaux, cabinets et établissements de santé, copropriétés, commerces et logements. Protocoles rigoureux, interventions régulières. Devis gratuit sous 24h.",
+    intro:
+      "À l’est de Lyon, Bron accueille pôles de santé, tertiaire et zones résidentielles à proximité de l’aéroport et des grands axes. MonCleanerPro y assure l’entretien des bureaux, cabinets médicaux, copropriétés et logements avec une exigence particulière sur l’hygiène et la régularité. Nos équipes formées et notre suivi digital garantissent un standard constant, même sur des sites à forte fréquentation.",
+    highlights: [
+      { title: 'Exigence santé & tertiaire', text: "Cabinets, bureaux et sites à forte fréquentation : protocoles d’hygiène et points de contact désinfectés." },
+      { title: 'Accès faciles', text: "Proche de l’aéroport et des grands axes : interventions planifiées sans contrainte à Bron." },
+      { title: 'Copropriétés & logements', text: "Entretien régulier des parties communes et grands ménages ponctuels chez les particuliers." },
+    ],
+    includes: [
+      'Nettoyage de bureaux et cabinets',
+      'Désinfection des points de contact et sanitaires',
+      'Parties communes de copropriété',
+      'Ménage de locations courte durée (Airbnb)',
+      'Grand ménage et vitres',
+    ],
+    faq: [
+      { q: 'Intervenez-vous dans les cabinets et bureaux de Bron ?', a: "Oui, nous entretenons bureaux et cabinets avec des protocoles d’hygiène adaptés, en passages réguliers hors présence." },
+      { q: 'Gérez-vous les copropriétés ?', a: "Oui, nous assurons le nettoyage régulier des parties communes pour les syndics et copropriétés de Bron." },
+    ],
+  },
+  {
+    slug: 'nettoyage-saint-priest',
+    keyword: 'nettoyage Saint-Priest',
+    eyebrow: 'Saint-Priest',
+    h1: 'Entreprise de nettoyage à Saint-Priest',
+    title: 'Nettoyage à Saint-Priest — MonCleanerPro | Locaux d’activité & bureaux',
+    description: "Entreprise de nettoyage à Saint-Priest : bureaux, locaux d’activité et logistiques, commerces, copropriétés et logements. Interventions multi-sites hors horaires. Devis gratuit sous 24h.",
+    intro:
+      "Au sud-est de la métropole, Saint-Priest est un pôle d’activité majeur : parc technologique, zones logistiques, tertiaire et habitat. MonCleanerPro y accompagne les entreprises et les copropriétés avec un entretien fiable, organisé pour les grands volumes et les plannings serrés. Bureaux nettoyés hors horaires, locaux d’activité entretenus régulièrement, parties communes suivies : un seul interlocuteur pour tous vos sites.",
+    highlights: [
+      { title: 'Zones d’activité & tertiaire', text: "Locaux logistiques, bureaux et parc technologique entretenus tôt le matin ou en soirée." },
+      { title: 'Multi-sites', text: "Tournées organisées pour plusieurs sites, avec plannings synchronisés et suivi qualité." },
+      { title: 'Copropriétés & particuliers', text: "Parties communes d’immeubles et prestations ponctuelles chez les particuliers." },
+    ],
+    includes: [
+      'Nettoyage de bureaux et locaux d’activité',
+      'Entretien de surfaces logistiques et industrielles légères',
+      'Parties communes de copropriété',
+      'Commerces et vitrines',
+      'Grand ménage et remise en état de logements',
+    ],
+    faq: [
+      { q: 'Pouvez-vous entretenir de grands locaux d’activité ?', a: "Oui, nous intervenons sur des locaux d’activité et bureaux à Saint-Priest, avec une organisation adaptée aux volumes et aux horaires décalés." },
+      { q: 'Gérez-vous plusieurs sites d’entreprise ?', a: "Oui, nous mettons en place des tournées multi-sites avec un interlocuteur unique et un planning régulier." },
+    ],
+  },
+  {
+    slug: 'nettoyage-ecully',
+    keyword: 'nettoyage Écully',
+    eyebrow: 'Écully',
+    h1: 'Entreprise de nettoyage à Écully',
+    title: 'Nettoyage à Écully — MonCleanerPro | Bureaux, résidences & particuliers',
+    description: "Entreprise de nettoyage à Écully : bureaux et écoles, résidences et copropriétés de standing, locations et grand ménage chez les particuliers. Finitions soignées. Devis gratuit sous 24h.",
+    intro:
+      "À l’ouest de Lyon, Écully est réputée pour son cadre résidentiel de standing, ses grandes écoles et ses sièges d’entreprise. MonCleanerPro y apporte un nettoyage haut de gamme, attentif aux finitions : bureaux et espaces d’accueil soignés, parties communes de résidences entretenues avec régularité, et grands ménages exigeants chez les particuliers. Des équipes formées, discrètes et respectueuses des lieux.",
+    highlights: [
+      { title: 'Finitions haut de gamme', text: "Un souci du détail adapté aux résidences de standing et aux espaces d’accueil d’entreprise." },
+      { title: 'Bureaux & écoles', text: "Entretien régulier des bureaux, sièges et établissements, hors horaires de présence." },
+      { title: 'Discrétion & régularité', text: "Des intervenants soignés et discrets, pour une qualité constante dans la durée." },
+    ],
+    includes: [
+      'Nettoyage de bureaux et espaces d’accueil',
+      'Parties communes de résidences et copropriétés',
+      'Grand ménage et remise en état de logements',
+      'Ménage de locations courte durée (Airbnb)',
+      'Vitres et surfaces vitrées',
+    ],
+    faq: [
+      { q: 'Proposez-vous un service soigné pour les résidences de standing ?', a: "Oui, à Écully nous portons une attention particulière aux finitions et à la discrétion, pour les résidences comme pour les entreprises." },
+      { q: 'Intervenez-vous chez les particuliers ?', a: "Oui, nous réalisons grands ménages et prestations ponctuelles à domicile, en plus de nos contrats professionnels." },
+    ],
+  },
+  {
+    slug: 'nettoyage-tassin-la-demi-lune',
+    keyword: 'nettoyage Tassin-la-Demi-Lune',
+    eyebrow: 'Tassin-la-Demi-Lune',
+    h1: 'Entreprise de nettoyage à Tassin-la-Demi-Lune',
+    title: 'Nettoyage à Tassin-la-Demi-Lune — MonCleanerPro | Commerces, copropriétés & particuliers',
+    description: "Entreprise de nettoyage à Tassin-la-Demi-Lune : commerces et bureaux, copropriétés, locations et grand ménage chez les particuliers. Service de proximité à l’ouest lyonnais. Devis gratuit sous 24h.",
+    intro:
+      "Aux portes ouest de Lyon, Tassin-la-Demi-Lune associe centre commerçant dynamique et quartiers résidentiels. MonCleanerPro y propose un nettoyage de proximité : vitrines et bureaux du centre entretenus régulièrement, parties communes de copropriété suivies, et grands ménages ponctuels chez les particuliers. Une intervention fiable et soignée, avec le même contrôle qualité que sur toute la métropole.",
+    highlights: [
+      { title: 'Commerces & centre-ville', text: "Vitrines, boutiques et bureaux du centre de Tassin entretenus pour une image toujours nette." },
+      { title: 'Copropriétés résidentielles', text: "Nettoyage régulier des parties communes pour les immeubles et résidences du secteur." },
+      { title: 'Proximité ouest lyonnais', text: "Interventions faciles à planifier, avec la réactivité d’un prestataire local." },
+    ],
+    includes: [
+      'Nettoyage de commerces et vitrines',
+      'Entretien de bureaux et locaux professionnels',
+      'Parties communes de copropriété',
+      'Grand ménage et remise en état de logements',
+      'Ménage de locations courte durée (Airbnb)',
+    ],
+    faq: [
+      { q: 'Entretenez-vous les commerces du centre de Tassin ?', a: "Oui, nous nettoyons régulièrement vitrines, boutiques et bureaux, en ponctuel ou en contrat régulier." },
+      { q: 'Gérez-vous les copropriétés du secteur ?', a: "Oui, nous assurons l’entretien des parties communes pour les copropriétés et syndics de Tassin-la-Demi-Lune." },
+    ],
+  },
+  {
+    slug: 'nettoyage-rillieux-la-pape',
+    keyword: 'nettoyage Rillieux-la-Pape',
+    eyebrow: 'Rillieux-la-Pape',
+    h1: 'Entreprise de nettoyage à Rillieux-la-Pape',
+    title: 'Nettoyage à Rillieux-la-Pape — MonCleanerPro | Entreprises, copropriétés & particuliers',
+    description: "Entreprise de nettoyage à Rillieux-la-Pape : bureaux et locaux d’activité, copropriétés et bailleurs, commerces et logements. Interventions régulières fiables. Devis gratuit sous 24h.",
+    intro:
+      "Au nord-est de Lyon, Rillieux-la-Pape mêle zones d’activité, habitat collectif et commerces. MonCleanerPro y accompagne les entreprises, les bailleurs et les copropriétés avec un entretien régulier et fiable : bureaux et locaux nettoyés hors horaires, parties communes d’immeubles suivies sans oublis, et prestations ponctuelles chez les particuliers. La régularité et la traçabilité qui rassurent gestionnaires et habitants.",
+    highlights: [
+      { title: 'Entreprises & locaux', text: "Bureaux et locaux d’activité entretenus tôt le matin ou en soirée, sans gêner l’activité." },
+      { title: 'Bailleurs & copropriétés', text: "Parties communes suivies avec régularité et traçabilité, pour syndics et bailleurs sociaux." },
+      { title: 'Fiabilité dans la durée', text: "Des passages tenus, un interlocuteur dédié et un suivi digital de chaque intervention." },
+    ],
+    includes: [
+      'Nettoyage de bureaux et locaux d’activité',
+      'Entretien des parties communes d’immeubles',
+      'Commerces et surfaces de vente',
+      'Grand ménage et remise en état de logements',
+      'Vitres et points de contact',
+    ],
+    faq: [
+      { q: 'Travaillez-vous avec les bailleurs et copropriétés ?', a: "Oui, nous entretenons les parties communes pour bailleurs et syndics à Rillieux-la-Pape, avec un suivi transparent." },
+      { q: 'Intervenez-vous hors des heures d’activité ?', a: "Oui, pour les entreprises nous intervenons tôt le matin ou en soirée afin de ne pas perturber votre activité." },
+    ],
+  },
 ];
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
