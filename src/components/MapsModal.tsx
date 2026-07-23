@@ -1,12 +1,19 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import Icon from '@/components/Icon';
 
+// Fenêtre de choix d'ouverture d'une adresse (Google Maps / Plans).
+// IMPORTANT : rendue via un PORTAL dans <body>. Sans ça, la fenêtre est un enfant
+// de la carte mission (qui a overflow:hidden / peut créer un « containing block »)
+// → le contenu blanc était coupé et on ne voyait qu'un voile transparent vide.
 export default function MapsModal({ address, onClose }: { address: string; onClose: () => void }) {
+  if (typeof document === 'undefined') return null;
   const encoded = encodeURIComponent(address);
-  return (
+
+  const content = (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(26,26,26,0.55)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
@@ -16,7 +23,7 @@ export default function MapsModal({ address, onClose }: { address: string; onClo
         onClick={e => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b" style={{ borderColor: '#E8E4DC' }}>
-          <p className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Ouvrir l'adresse</p>
+          <p className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Ouvrir l&apos;adresse</p>
           <p className="text-xs mt-1 truncate" style={{ color: '#A8A09A' }}>{address}</p>
         </div>
         <div className="p-3 space-y-2">
@@ -25,7 +32,7 @@ export default function MapsModal({ address, onClose }: { address: string; onClo
             { href: `https://maps.apple.com/?q=${encoded}`, label: 'Ouvrir dans Plans (Apple Maps)' },
           ].map(({ href, label }) => (
             // On DIFFÈRE la fermeture (setTimeout 0) : sinon onClose retire le lien
-            // du DOM au moment du clic et annule l'ouverture de la carte (bug).
+            // du DOM au moment du clic et annule l'ouverture de la carte.
             <a key={href} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setTimeout(onClose, 0)}
               className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
               style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
@@ -43,4 +50,6 @@ export default function MapsModal({ address, onClose }: { address: string; onClo
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
