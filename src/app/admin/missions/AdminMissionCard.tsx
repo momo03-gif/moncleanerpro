@@ -18,7 +18,7 @@ import { computeMissionGain } from '@/lib/pay';
 import { formatDuration, formatHour, DEPARTURE_TIMES } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
 import Icon from '@/components/Icon';
-import { mapsUrl } from '@/lib/maps';
+import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
@@ -195,6 +195,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   const [assignOpen, setAssignOpen] = useState(false);
   const [newCleaner, setNewCleaner] = useState('');
   const [busy, setBusy] = useState(false);
+  const [mapsOpen, setMapsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -331,6 +332,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
 
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: expanded ? '#D8D0C4' : '#E8E4DC' }}>
+      {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
 
       {/* ── Ordre manuel (classement par cleaner) ── */}
       {position != null && (onMoveUp || onMoveDown) && (
@@ -430,14 +432,14 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         <div className="min-w-0">
           <h3 className="font-semibold text-base truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
           {mission.address && (
-            <a href={mapsUrl(mission.address)} target="_blank" rel="noopener noreferrer"
+            <button onClick={() => setMapsOpen(true)}
               className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full min-w-0"
               style={{ color: '#A8A09A' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
               onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
               <Icon name="pin" size={13} className="shrink-0" />
               <span className="text-xs truncate">{mission.address}</span>
-            </a>
+            </button>
           )}
         </div>
 
