@@ -21,10 +21,12 @@ export default function MapsModal({ address, onClose }: { address: string; onClo
         </div>
         <div className="p-3 space-y-2">
           {[
-            { href: `https://maps.google.com/?q=${encoded}`, label: 'Ouvrir dans Google Maps' },
+            { href: `https://www.google.com/maps/search/?api=1&query=${encoded}`, label: 'Ouvrir dans Google Maps' },
             { href: `https://maps.apple.com/?q=${encoded}`, label: 'Ouvrir dans Plans (Apple Maps)' },
           ].map(({ href, label }) => (
-            <a key={href} href={href} target="_blank" rel="noopener noreferrer" onClick={onClose}
+            // On DIFFÈRE la fermeture (setTimeout 0) : sinon onClose retire le lien
+            // du DOM au moment du clic et annule l'ouverture de la carte (bug).
+            <a key={href} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setTimeout(onClose, 0)}
               className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all"
               style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
               <Icon name="pin" size={17} />
