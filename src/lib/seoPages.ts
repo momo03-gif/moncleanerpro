@@ -253,6 +253,84 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Proposez-vous du régulier comme du ponctuel ?', a: "Oui : contrats d’entretien réguliers pour les pros et copropriétés, comme prestations ponctuelles (grand ménage, fin de chantier) pour les particuliers." },
     ],
   },
+  {
+    slug: 'nettoyage-caluire-et-cuire',
+    keyword: 'nettoyage Caluire-et-Cuire',
+    eyebrow: 'Caluire-et-Cuire',
+    h1: 'Entreprise de nettoyage à Caluire-et-Cuire',
+    title: 'Nettoyage à Caluire-et-Cuire — MonCleanerPro | Pros & particuliers',
+    description: "Entreprise de nettoyage à Caluire-et-Cuire : bureaux, copropriétés, résidences, locations Airbnb et grand ménage chez les particuliers. Équipe formée, proximité lyonnaise, devis gratuit sous 24h.",
+    intro:
+      "Aux portes nord de Lyon, Caluire-et-Cuire mêle résidences soignées, copropriétés et petites entreprises. MonCleanerPro y assure l’entretien des bureaux, des parties communes d’immeubles et des logements — en récurrent ou en ponctuel. Grâce à notre proximité immédiate avec Lyon, nous intervenons vite et gardons partout le même standard : équipes formées, contrôle qualité et suivi digital de chaque passage.",
+    highlights: [
+      { title: 'Proximité immédiate de Lyon', text: "À deux pas de nos zones lyonnaises : réactivité et interventions faciles à planifier à Caluire-et-Cuire." },
+      { title: 'Résidences & copropriétés', text: "Entretien régulier des parties communes et des logements, avec un interlocuteur dédié." },
+      { title: 'Pros & particuliers', text: "Bureaux, commerces de quartier et particuliers : une réponse adaptée à chaque besoin." },
+    ],
+    includes: [
+      'Entretien de bureaux et locaux professionnels',
+      'Parties communes de copropriété (halls, escaliers)',
+      'Ménage de locations courte durée (Airbnb)',
+      'Grand ménage et remise en état de logements',
+      'Nettoyage de vitres et surfaces vitrées',
+    ],
+    faq: [
+      { q: 'Intervenez-vous rapidement à Caluire-et-Cuire ?', a: "Oui, la commune est limitrophe de nos zones lyonnaises : nous y planifions facilement des interventions régulières comme ponctuelles." },
+      { q: 'Gérez-vous les copropriétés du secteur ?', a: "Oui, nous entretenons les parties communes pour les syndics et copropriétés de Caluire-et-Cuire, avec un suivi transparent." },
+    ],
+  },
+  {
+    slug: 'nettoyage-venissieux',
+    keyword: 'nettoyage Vénissieux',
+    eyebrow: 'Vénissieux',
+    h1: 'Entreprise de nettoyage à Vénissieux',
+    title: 'Nettoyage à Vénissieux — MonCleanerPro | Entreprises, copropriétés & particuliers',
+    description: "Entreprise de nettoyage à Vénissieux : bureaux, locaux d’activité, copropriétés, commerces et logements. Interventions régulières hors horaires, équipe formée. Devis gratuit sous 24h.",
+    intro:
+      "Au sud-est de Lyon, Vénissieux conjugue zones d’activité, tertiaire, commerces et habitat collectif. MonCleanerPro y accompagne les entreprises, les syndics et les particuliers : entretien de bureaux et de locaux d’activité hors horaires, nettoyage des parties communes de copropriété et prestations ponctuelles à domicile. Une organisation pensée pour le volume et les plannings serrés, avec la régularité qui fait la différence.",
+    highlights: [
+      { title: 'Tertiaire & locaux d’activité', text: "Bureaux, plateformes et locaux professionnels entretenus tôt le matin ou en soirée, hors présence." },
+      { title: 'Habitat collectif', text: "Nettoyage régulier des parties communes pour les copropriétés et bailleurs du secteur." },
+      { title: 'Volume maîtrisé', text: "Multi-sites et plannings serrés : notre organisation suit la cadence sans perdre en qualité." },
+    ],
+    includes: [
+      'Nettoyage de bureaux et locaux d’activité',
+      'Entretien des parties communes d’immeubles',
+      'Nettoyage de commerces et surfaces de vente',
+      'Grand ménage et remise en état de logements',
+      'Vitres, vitrines et points de contact',
+    ],
+    faq: [
+      { q: 'Intervenez-vous en dehors des heures d’activité ?', a: "Oui, pour les entreprises de Vénissieux nous intervenons tôt le matin ou en soirée afin de ne pas perturber votre activité." },
+      { q: 'Pouvez-vous gérer plusieurs sites ?', a: "Oui, nous organisons des tournées multi-sites avec plannings synchronisés et un interlocuteur unique." },
+    ],
+  },
+  {
+    slug: 'nettoyage-neuville-sur-saone',
+    keyword: 'nettoyage Neuville-sur-Saône',
+    eyebrow: 'Neuville-sur-Saône',
+    h1: 'Entreprise de nettoyage à Neuville-sur-Saône',
+    title: 'Nettoyage à Neuville-sur-Saône — MonCleanerPro | Commerces, copropriétés & particuliers',
+    description: "Entreprise de nettoyage à Neuville-sur-Saône et au Val de Saône : commerces, bureaux, copropriétés, locations et grand ménage. Service de proximité, équipe formée. Devis gratuit sous 24h.",
+    intro:
+      "Au nord de la métropole, le long de la Saône, Neuville-sur-Saône et les communes du Val de Saône allient centre-bourg commerçant et habitat résidentiel. MonCleanerPro y propose un nettoyage de proximité : commerces et bureaux, parties communes de copropriété, locations courte durée et grand ménage chez les particuliers. Un service à taille humaine, régulier et soigné, avec le même contrôle qualité que sur Lyon.",
+    highlights: [
+      { title: 'Service de proximité', text: "Interventions à Neuville-sur-Saône et dans les communes du Val de Saône, avec réactivité locale." },
+      { title: 'Commerces & centre-bourg', text: "Vitrines, boutiques et bureaux entretenus régulièrement pour une image toujours nette." },
+      { title: 'Copropriétés & particuliers', text: "Parties communes d’immeubles et grands ménages ponctuels chez les particuliers." },
+    ],
+    includes: [
+      'Nettoyage de commerces et vitrines',
+      'Entretien de bureaux et locaux professionnels',
+      'Parties communes de copropriété',
+      'Ménage de locations courte durée (Airbnb)',
+      'Grand ménage et remise en état de logements',
+    ],
+    faq: [
+      { q: 'Couvrez-vous le Val de Saône autour de Neuville ?', a: "Oui, nous intervenons à Neuville-sur-Saône et dans les communes voisines du Val de Saône, en plus de Lyon et de la métropole." },
+      { q: 'Travaillez-vous avec les commerces du centre ?', a: "Oui, nous entretenons régulièrement vitrines, boutiques et bureaux du centre-bourg, en ponctuel ou en contrat régulier." },
+    ],
+  },
 ];
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
