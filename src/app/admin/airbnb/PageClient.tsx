@@ -8,7 +8,7 @@ import { inputStyle } from '@/lib/ui';
 import { formatDuration } from '@/lib/format';
 import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
-import MapsModal from '@/components/MapsModal';
+import { mapsUrl } from '@/lib/maps';
 import RepairsPanel from '@/components/RepairsPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
 import Loading from "@/components/Loading";
@@ -72,7 +72,6 @@ export default function AirbnbPage() {
   const [partnerFilter, setPartnerFilter] = useState<string>('all');
   const [openPartners, setOpenPartners] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(60);
-  const [mapsModal, setMapsModal] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [a, names] = await Promise.all([getAirbnbs(), getPartnerNamesDB()]);
@@ -176,7 +175,6 @@ export default function AirbnbPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      {mapsModal && <MapsModal address={mapsModal} onClose={() => setMapsModal(null)} />}
 
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
@@ -349,7 +347,7 @@ export default function AirbnbPage() {
                 <div className="px-3 pb-3 pt-1 space-y-2 border-t" style={{ borderColor: '#F2EFE9' }}>
                   {g.shown.map(apt => (
                     <SiteRow key={apt.id} apt={apt}
-                      onEdit={() => openEdit(apt)} onDelete={() => handleDelete(apt.id)} onMaps={() => setMapsModal(apt.address)} />
+                      onEdit={() => openEdit(apt)} onDelete={() => handleDelete(apt.id)} />
                   ))}
                 </div>
               )}
@@ -370,11 +368,10 @@ export default function AirbnbPage() {
 }
 
 // ── Ligne compacte d'un site : résumé + détail au clic. ──────────────────────────
-function SiteRow({ apt, onEdit, onDelete, onMaps }: {
+function SiteRow({ apt, onEdit, onDelete }: {
   apt: Apartment;
   onEdit: () => void;
   onDelete: () => void;
-  onMaps: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const hasBeds = apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null;
@@ -403,7 +400,7 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
       {open && (
         <div className="px-4 pb-4 pt-1 border-t space-y-3" style={{ borderColor: '#F2EFE9' }}>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={onMaps} className="text-xs px-3 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}><Icon name="pin" size={13} /> Itinéraire</button>
+            <a href={mapsUrl(apt.address)} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium inline-flex items-center gap-1.5" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}><Icon name="pin" size={13} /> Itinéraire</a>
             <button onClick={onEdit} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
             <button onClick={onDelete} className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>Supprimer</button>
           </div>
