@@ -17,7 +17,7 @@ import { cacheMissions, readCachedMissions } from '@/lib/offline/store';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
-import MapsModal from '@/components/MapsModal';
+import { mapsUrl } from '@/lib/maps';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
@@ -68,7 +68,6 @@ function getWeekBounds() {
 
 function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean }) {
   const { confirm, toast } = useFeedback();
-  const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [extraOpen, setExtraOpen] = useState(false);
@@ -212,8 +211,6 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
         borderColor: highlight ? '#C9A84C' : '#E8E4DC',
         boxShadow: highlight ? '0 0 0 3px #C9A84C22' : 'none',
       }}>
-      {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
-
       {/* Bandeau « en cours » pour repérer instantanément la mission active. */}
       {highlight && inProgress && (
         <div className="px-5 py-1.5 text-xs font-semibold flex items-center gap-1.5" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -230,14 +227,14 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
             </p>
             <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
             {mission.address && (
-              <button onClick={() => setMapsOpen(true)}
+              <a href={mapsUrl(mission.address)} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 mt-0.5 text-left transition-colors"
                 style={{ color: '#A8A09A' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
                 <Icon name="pin" size={13} className="shrink-0" />
                 <span className="text-xs truncate max-w-[220px]">{mission.address}</span>
-              </button>
+              </a>
             )}
           </div>
           <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
