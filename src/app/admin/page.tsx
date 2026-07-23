@@ -8,6 +8,7 @@ import { formatHour } from '@/lib/format';
 import { missionStatusCfg } from '@/lib/labels';
 import { serviceLabel, SERVICE_BADGE } from '@/lib/service';
 import { collapseGroups } from '@/lib/missionOrder';
+import { todayStr, addDaysStr } from '@/lib/dateRange';
 import Loading from '@/components/Loading';
 import { getSessionCache, setSessionCache } from '@/lib/sessionCache';
 
@@ -53,9 +54,10 @@ export default function AdminDashboard() {
   const [failingFeeds, setFailingFeeds] = useState<number>(cached?.failingFeeds ?? 0);
   const [loading, setLoading] = useState(cached === undefined);
 
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
-  const tomorrow = tomorrowD.toISOString().split('T')[0];
+  // Dates LOCALES (pas UTC) : sinon le tableau de bord affiche la veille entre
+  // minuit et 2h du matin en heure française.
+  const today = todayStr();
+  const tomorrow = addDaysStr(1);
 
   async function loadPending() {
     const { getPendingHotelsDB, getPendingAirbnbPartnersDB } = await loadDb();
@@ -74,7 +76,7 @@ export default function AdminDashboard() {
       // Perf : le tableau de bord n'affiche que le jour même, le lendemain, les
       // retards récents et les rendez-vous à venir → on borne à ~90 jours
       // d'historique (le futur reste inclus). Évite de charger tout l'historique.
-      const since = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+      const since = addDaysStr(-90);
       const [m, c, inc, feeds] = await Promise.all([
         db.getMissionsDB(since), db.getCleaners(), reports.getOpenIncidentsDB(), db.getAllReservationFeeds(),
       ]);
@@ -143,10 +145,10 @@ export default function AdminDashboard() {
 
       {/* ── Cockpit : 6 tuiles opérationnelles ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-8">
-        <Tile label="Aujourd'hui" value={todayMissions.length} sub={`${todayDone} terminées`} href="/admin/missions" tone="gold" />
-        <Tile label="Demain" value={tomorrowCount} sub="à venir" href="/admin/missions" />
-        <Tile label="En retard" value={overdue.length} sub={overdue.length ? 'à régler' : 'rien à signaler'} href="/admin/missions" tone={overdue.length ? 'alert' : 'plain'} />
-        <Tile label="À assigner" value={unassigned.length} sub={unassigned.length ? 'sans cleaner' : 'tout est assigné'} href="/admin/missions" tone={unassigned.length ? 'warn' : 'plain'} />
+        <Tile label="Aujourd'hui" value={todayMissions.length} sub={`${todayDone} terminées`} href="/admin/missions?view=today" tone="gold" />
+        <Tile label="Demain" value={tomorrowCount} sub="à venir" href="/admin/missions?view=tomorrow" />
+        <Tile label="En retard" value={overdue.length} sub={overdue.length ? 'à régler' : 'rien à signaler'} href="/admin/missions?view=overdue" tone={overdue.length ? 'alert' : 'plain'} />
+        <Tile label="À assigner" value={unassigned.length} sub={unassigned.length ? 'sans cleaner' : 'tout est assigné'} href="/admin/missions?view=unassigned" tone={unassigned.length ? 'warn' : 'plain'} />
         <Tile label="Incidents" value={incidents.length} sub={incidents.length ? 'à traiter' : 'aucun'} tone={incidents.length ? 'alert' : 'plain'} />
         <Tile label="Cleaners dispos" value={available.length} sub={`sur ${cleaners.length}`} href="/admin/cleaners" />
       </div>

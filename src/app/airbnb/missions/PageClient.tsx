@@ -16,7 +16,7 @@ import MissionReport from '@/components/MissionReport';
 import Loading from "@/components/Loading";
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
-const today = new Date().toISOString().split('T')[0];
+const today = new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
 
 const STATUS_CFG = MISSION_STATUS_CFG;
 
@@ -317,7 +317,7 @@ export default function AirbnbMissionsPage() {
       {/* ── PLANNING RÉSERVATIONS (arrivées + départs, 14 jours) ────────── */}
       {tab === 'reservations' && (() => {
         const t = today;
-        const horizon = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+        const horizon = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('en-CA'); })();
         const confirmed = reservations.filter(r => r.status === 'confirmed');
         const arrivalsByDay = new Set(confirmed.map(r => r.checkIn));
         const missionById = new Map(missions.map(m => [m.id, m]));

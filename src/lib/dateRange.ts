@@ -18,6 +18,13 @@ export function todayStr(): string {
   return toDateStr(new Date());
 }
 
+// Aujourd'hui + n jours, en date LOCALE (n négatif = passé). DST-safe (setDate).
+export function addDaysStr(n: number, from: Date = new Date()): string {
+  const d = new Date(from);
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
+}
+
 export const PRESETS: { key: PresetKey; label: string }[] = [
   { key: 'today', label: "Aujourd'hui" },
   { key: 'tomorrow', label: 'Demain' },

@@ -135,7 +135,7 @@ export default function AirbnbApartmentsPage() {
   });
 
   // Statut du jour par logement (occupé/libre + prochain départ) depuis les réservations.
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
   const confirmedRes = reservations.filter(r => r.status === 'confirmed');
   function statusFor(aptId: string) {
     const occupied = confirmedRes.some(r => r.airbnbId === aptId && r.checkIn <= todayStr && r.checkOut >= todayStr);

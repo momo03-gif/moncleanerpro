@@ -19,7 +19,8 @@ import Icon from '@/components/Icon';
 import { groupMissionsByCleaner } from '@/lib/missionOrder';
 import { inputStyle } from '@/lib/ui';
 import DateRangeFilter from '@/components/DateRangeFilter';
-import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
+import { presetRange, inRange, addDaysStr, todayStr, type DateRange } from '@/lib/dateRange';
+import { useSearchParams } from 'next/navigation';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import Loading from "@/components/Loading";
 import AdminMissionCard from './AdminMissionCard';
@@ -45,6 +46,7 @@ const TABS = ['Demandes hôtel', 'Missions', 'Créer'] as const;
 export default function MissionsPage() {
   const { user } = useAuth();
   const { toast } = useFeedback();
+  const searchParams = useSearchParams();
   // Onglet par défaut « malin » : on ouvre sur les Missions (vue opérationnelle du
   // quotidien) et on ne bascule sur les Demandes hôtel au 1er chargement QUE s'il y
   // en a en attente. Le badge de comptage sur l'onglet évite d'en manquer.
@@ -70,6 +72,20 @@ export default function MissionsPage() {
   // Données passées au panneau de création (chargées par load()).
   const [staff, setStaff] = useState<{ id: string; name: string; role: string }[]>([]);
   const [recurrings, setRecurrings] = useState<RecurringMission[]>([]);
+
+  // Deep-link depuis le tableau de bord : ?view=today|tomorrow|overdue|unassigned
+  // ouvre directement la bonne vue filtrée (onglet Missions + période + statut).
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (!view) return;
+    didAutoTab.current = true;   // empêche l'auto-onglet de reprendre la main
+    setTab('Missions');
+    if (view === 'today') { setRange(presetRange('today')); setFilter('all'); }
+    else if (view === 'tomorrow') { setRange(presetRange('tomorrow')); setFilter('all'); }
+    else if (view === 'overdue') { setRange({ start: addDaysStr(-120), end: todayStr() }); setFilter('overdue'); }
+    else if (view === 'unassigned') { setRange({ start: addDaysStr(-14), end: addDaysStr(90) }); setFilter('pending'); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     const [m, r, c, h, a, s, rec] = await Promise.all([
@@ -117,6 +133,7 @@ export default function MissionsPage() {
 
   const FILTERS = [
     { value: 'all',         label: 'Toutes' },
+    { value: 'overdue',     label: 'En retard' },
     { value: 'pending',     label: 'À assigner' },
     { value: 'accepted',    label: 'En attente' },
     { value: 'in_progress', label: 'En cours' },
@@ -124,9 +141,14 @@ export default function MissionsPage() {
     { value: 'cancelled',   label: 'Annulées' },
   ];
 
-  // 1) on restreint à la période, 2) au statut, 3) à la zone sélectionnée
+  // 1) on restreint à la période, 2) au statut, 3) à la zone sélectionnée.
+  // « En retard » = date passée ET non clôturée (le filtre par statut seul ne
+  // peut pas l'exprimer) — indépendant du statut précis.
   const dateScoped = missions.filter(m => inRange(m.date, range));
-  const statusScoped = filter === 'all' ? dateScoped : dateScoped.filter(m => m.status === filter);
+  const statusScoped =
+    filter === 'all' ? dateScoped
+    : filter === 'overdue' ? dateScoped.filter(m => m.date < todayStr() && m.status !== 'completed' && m.status !== 'cancelled')
+    : dateScoped.filter(m => m.status === filter);
   const filtered = zoneFilter === 'all' ? statusScoped : statusScoped.filter(m => (m.zoneName ?? '') === zoneFilter);
 
   // Groupes par cleaner, tronqués à visibleCount (pagination « Afficher plus »).
@@ -341,7 +363,9 @@ export default function MissionsPage() {
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {FILTERS.map(({ value, label }) => {
               const on = filter === value;
-              const count = value === 'all' ? dateScoped.length : dateScoped.filter(m => m.status === value).length;
+              const count = value === 'all' ? dateScoped.length
+                : value === 'overdue' ? dateScoped.filter(m => m.date < todayStr() && m.status !== 'completed' && m.status !== 'cancelled').length
+                : dateScoped.filter(m => m.status === value).length;
               return (
                 <button key={value} onClick={() => setFilter(value)}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"

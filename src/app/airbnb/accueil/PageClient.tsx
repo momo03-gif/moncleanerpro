@@ -19,8 +19,10 @@ import { formatHour } from '@/lib/format';
 import Icon, { type IconName } from '@/components/Icon';
 import Loading from '@/components/Loading';
 
-const todayStr = () => new Date().toISOString().split('T')[0];
-const addDaysStr = (n: number) => new Date(Date.now() + n * 86400000).toISOString().split('T')[0];
+// Date LOCALE (en-CA → YYYY-MM-DD) : sinon « aujourd'hui » bascule d'un jour
+// entre minuit et 2h en heure française (toISOString renvoie l'UTC).
+const todayStr = () => new Date().toLocaleDateString('en-CA');
+const addDaysStr = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA'); };
 const DONE = (s: string) => s === 'completed' || s === 'cancelled';
 
 function fmtDay(d: string) {

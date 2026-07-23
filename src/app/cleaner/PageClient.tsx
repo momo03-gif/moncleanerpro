@@ -46,7 +46,12 @@ function parseMissionNotes(notes: string | undefined | null) {
 const STATUS_CFG = MISSION_STATUS_CFG;
 
 function toDateStr(d: Date) {
-  return d.toISOString().split('T')[0];
+  // Date LOCALE (pas UTC) : sinon « aujourd'hui » bascule d'un jour entre minuit
+  // et 2h du matin en heure française (toISOString() renvoie l'UTC).
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function formatDateFR(d: string) {

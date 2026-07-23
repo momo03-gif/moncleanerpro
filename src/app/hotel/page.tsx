@@ -20,7 +20,7 @@ const TYPES: { value: AnnounceType; label: string; desc: string }[] = [
 ];
 
 const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' };
-const today = new Date().toISOString().split('T')[0];
+const today = new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
 
 export default function HotelDemandePage() {
   const { user } = useAuth();

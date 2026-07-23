@@ -17,7 +17,7 @@ import Icon from '@/components/Icon';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
 import Loading from '@/components/Loading';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
 
 function fmtDate(d?: string) {
   if (!d) return '—';
