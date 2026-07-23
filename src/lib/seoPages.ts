@@ -227,6 +227,32 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Intervenez-vous pour les commerces ?', a: "Oui, nous nettoyons régulièrement les vitrines et façades vitrées de commerces et de bureaux, en ponctuel ou en contrat régulier." },
     ],
   },
+  {
+    slug: 'nettoyage-villefranche-sur-saone',
+    keyword: 'nettoyage Villefranche-sur-Saône',
+    eyebrow: 'Villefranche-sur-Saône',
+    h1: 'Entreprise de nettoyage à Villefranche-sur-Saône',
+    title: 'Nettoyage à Villefranche-sur-Saône — MonCleanerPro | Pros & particuliers',
+    description: "Entreprise de nettoyage à Villefranche-sur-Saône et dans le Beaujolais : bureaux, commerces, copropriétés, locations Airbnb, fin de chantier et grand ménage. Équipe formée, devis gratuit sous 24h.",
+    intro:
+      "MonCleanerPro étend son savoir-faire au-delà de Lyon jusqu’à Villefranche-sur-Saône et au Beaujolais. Bureaux, commerces, copropriétés, hôtels, locations courte durée ou logements de particuliers : nous assurons un nettoyage régulier ou ponctuel, avec des équipes formées, un contrôle qualité systématique et un suivi digital de chaque intervention. Un seul interlocuteur, la même exigence que sur la métropole lyonnaise.",
+    highlights: [
+      { title: 'Caladois de proximité', text: "Interventions à Villefranche-sur-Saône et communes voisines du Beaujolais, avec réactivité locale." },
+      { title: 'Pros & particuliers', text: "Entreprises, commerces, syndics, conciergeries et particuliers : une solution pour chaque besoin." },
+      { title: 'Régulier ou ponctuel', text: "Contrat d’entretien récurrent ou prestation unique (grand ménage, fin de chantier), selon vos attentes." },
+    ],
+    includes: [
+      'Nettoyage de bureaux et locaux professionnels',
+      'Entretien des parties communes de copropriété',
+      'Ménage de locations courte durée (Airbnb)',
+      'Nettoyage de fin de chantier et grand ménage',
+      'Nettoyage de vitres et vitrines de commerces',
+    ],
+    faq: [
+      { q: 'Intervenez-vous à Villefranche-sur-Saône et dans le Beaujolais ?', a: "Oui, nous couvrons Villefranche-sur-Saône et les communes voisines du Beaujolais, en plus de Lyon et de la métropole." },
+      { q: 'Proposez-vous du régulier comme du ponctuel ?', a: "Oui : contrats d’entretien réguliers pour les pros et copropriétés, comme prestations ponctuelles (grand ménage, fin de chantier) pour les particuliers." },
+    ],
+  },
 ];
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
