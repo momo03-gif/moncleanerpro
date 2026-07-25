@@ -55,7 +55,7 @@ function money(n: number) {
 // ── Document facture premium (imprimable), partagé live / historique ────────────
 // Réutilisé tel quel pour les DEVIS (LOT 8) via docLabel / validUntil — même
 // identité visuelle, aucune duplication du gabarit.
-export function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil }: {
+export function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC' }: {
   company: CompanyInfo;
   number: string; partnerLabel: string; partnerType?: string; status?: string;
   from: string; to: string;
@@ -65,6 +65,7 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
   onAmount?: (id: string, v: string) => void;
   docLabel?: string;
   validUntil?: string;
+  totalLabel?: string;
 }) {
   const [qrSvg, setQrSvg] = useState('');
 
@@ -213,7 +214,7 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
             </div>
           </div>
           <div style={{ marginTop: 10, background: '#C9A84C', borderRadius: 14, padding: '15px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 6px 16px rgba(201,168,76,0.28)' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#1A1A1A' }}>Total TTC</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#1A1A1A' }}>{totalLabel}</span>
             <span style={{ fontSize: 22, fontWeight: 800, color: '#1A1A1A' }}>{money(totalTTC)}</span>
           </div>
           {!vatApplicable && <p style={{ fontSize: 9, color: '#B0A795', margin: '8px 2px 0', textAlign: 'right' }}>TVA non applicable — art. 293 B du CGI</p>}

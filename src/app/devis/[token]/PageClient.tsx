@@ -44,7 +44,7 @@ export default function PublicDevisPage() {
             </div>
           ))}
           <div className="flex items-center justify-between pt-3 border-t mt-2" style={{ borderColor: '#F2EFE9' }}>
-            <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Total</span>
+            <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Net à payer</span>
             <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(devis.total)}</span>
           </div>
         </div>

@@ -5,7 +5,7 @@ import type { CompanyInfo } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import {
   getTarifsDB, createTarifDB, updateTarifDB, deleteTarifDB, UNITE_LABEL, type Tarif, type TarifUnite,
-  getDevisListDB, saveDevisDB, nextDevisNumberDB, setDevisStatusDB, convertDevisToInvoiceDB,
+  getDevisListDB, saveDevisDB, updateDevisDB, nextDevisNumberDB, setDevisStatusDB, convertDevisToInvoiceDB,
   type Devis, type DevisLine,
 } from '@/lib/devis';
 import { InvoiceDoc } from './page';
@@ -23,6 +23,8 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
   const [sub, setSub] = useState<'new' | 'history' | 'tarifs'>('new');
   const [tarifs, setTarifs] = useState<Tarif[]>([]);
   const [devisList, setDevisList] = useState<Devis[]>([]);
+  // Brouillon en cours de modification (null = création d'un nouveau devis).
+  const [editing, setEditing] = useState<Devis | null>(null);
 
   const load = useCallback(async () => {
     const [t, d] = await Promise.all([getTarifsDB(), getDevisListDB()]);
@@ -30,26 +32,28 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  function startEdit(d: Devis) { setEditing(d); setSub('new'); }
+
   return (
     <div className="mt-2">
       <div className="flex gap-1 mb-5 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['new', 'Nouveau devis'], ['history', `Historique devis (${devisList.length})`], ['tarifs', 'Tarifs']] as const).map(([v, label]) => (
-          <button key={v} onClick={() => setSub(v)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        {([['new', editing ? `Modifier ${editing.number}` : 'Nouveau devis'], ['history', `Historique devis (${devisList.length})`], ['tarifs', 'Tarifs']] as const).map(([v, label]) => (
+          <button key={v} onClick={() => { if (v !== 'new') setEditing(null); setSub(v); }} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
             style={{ backgroundColor: sub === v ? '#FFFFFF' : 'transparent', color: sub === v ? '#1A1A1A' : '#A8A09A', boxShadow: sub === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
             {label}
           </button>
         ))}
       </div>
 
-      {sub === 'new' && <NewDevis company={company} tarifs={tarifs.filter(t => t.actif)} onSaved={load} />}
-      {sub === 'history' && <DevisHistory company={company} list={devisList} onChanged={load} />}
+      {sub === 'new' && <NewDevis company={company} tarifs={tarifs.filter(t => t.actif)} editing={editing} onSaved={() => { setEditing(null); load(); }} onCancelEdit={() => setEditing(null)} />}
+      {sub === 'history' && <DevisHistory company={company} list={devisList} onChanged={load} onEdit={startEdit} />}
       {sub === 'tarifs' && <TarifsManager tarifs={tarifs} onChanged={load} />}
     </div>
   );
 }
 
-// ── NOUVEAU DEVIS (manuel + IA) ─────────────────────────────────────────────────
-function NewDevis({ company, tarifs, onSaved }: { company: CompanyInfo; tarifs: Tarif[]; onSaved: () => void }) {
+// ── NOUVEAU DEVIS / MODIFICATION (manuel + IA) ──────────────────────────────────
+function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company: CompanyInfo; tarifs: Tarif[]; editing: Devis | null; onSaved: () => void; onCancelEdit: () => void }) {
   const [client, setClient] = useState({ name: '', email: '', address: '' });
   const [description, setDescription] = useState('');
   const [lines, setLines] = useState<DevisLine[]>([]);
@@ -57,6 +61,16 @@ function NewDevis({ company, tarifs, onSaved }: { company: CompanyInfo; tarifs: 
   const [aiMsg, setAiMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedNumber, setSavedNumber] = useState('');
+
+  // Pré-remplit le formulaire quand on ouvre un brouillon en modification.
+  useEffect(() => {
+    if (editing) {
+      setClient({ name: editing.clientName ?? editing.partnerLabel ?? '', email: editing.clientEmail ?? '', address: editing.clientAddress ?? '' });
+      setDescription(editing.description ?? '');
+      setLines(editing.lines ?? []);
+      setSavedNumber('');
+    }
+  }, [editing]);
 
   const total = lines.reduce((s, l) => s + l.total, 0);
 
@@ -93,8 +107,23 @@ function NewDevis({ company, tarifs, onSaved }: { company: CompanyInfo; tarifs: 
   async function save(status: 'brouillon' | 'envoye') {
     if (lines.length === 0) return;
     setSaving(true);
+    // MODIFICATION d'un devis existant : on met à jour le MÊME devis (même numéro).
+    if (editing) {
+      const res = await updateDevisDB(editing.id, {
+        clientName: client.name, clientEmail: client.email, clientAddress: client.address,
+        description, lines, total, validUntil: editing.validUntil, status,
+      });
+      setSaving(false);
+      if (!res.error) {
+        setSavedNumber(editing.number);
+        setClient({ name: '', email: '', address: '' }); setDescription(''); setLines([]);
+        onSaved();
+      }
+      return;
+    }
+    // CRÉATION d'un nouveau devis.
     const number = await nextDevisNumberDB();
-    const validUntil = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const validUntil = new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-CA');
     const res = await saveDevisDB({
       number, partnerLabel: client.name || 'Client', partnerType: 'devis',
       clientName: client.name, clientEmail: client.email, clientAddress: client.address,
@@ -110,9 +139,15 @@ function NewDevis({ company, tarifs, onSaved }: { company: CompanyInfo; tarifs: 
 
   return (
     <div className="space-y-5">
+      {editing && !savedNumber && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3" style={{ backgroundColor: '#FBF4E2', color: '#C48A2A' }}>
+          <span>Modification du devis {editing.number}. Enregistre pour mettre à jour ce devis.</span>
+          <button onClick={onCancelEdit} className="text-xs font-semibold underline shrink-0">Annuler</button>
+        </div>
+      )}
       {savedNumber && (
         <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ backgroundColor: '#EAF3EC', color: '#4E7D5E' }}>
-          Devis {savedNumber} enregistré. Retrouve-le dans « Historique devis ».
+          Devis {savedNumber} {editing ? 'mis à jour' : 'enregistré'}. Retrouve-le dans « Historique devis ».
         </div>
       )}
 
@@ -173,22 +208,27 @@ function NewDevis({ company, tarifs, onSaved }: { company: CompanyInfo; tarifs: 
               </div>
             ))}
             <div className="flex justify-end pt-2 border-t mt-2" style={{ borderColor: '#F2EFE9' }}>
-              <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Total : {money(total)}</span>
+              <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Net à payer : {money(total)}</span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex gap-2">
-        <button onClick={() => save('brouillon')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Enregistrer (brouillon)</button>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => save('brouillon')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+          {editing ? 'Enregistrer les modifications' : 'Enregistrer (brouillon)'}
+        </button>
         <button onClick={() => save('envoye')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{saving ? '...' : 'Enregistrer & marquer envoyé'}</button>
+        {editing && (
+          <button onClick={onCancelEdit} disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50" style={{ color: '#B85A50' }}>Annuler</button>
+        )}
       </div>
     </div>
   );
 }
 
 // ── HISTORIQUE DEVIS ────────────────────────────────────────────────────────────
-function DevisHistory({ company, list, onChanged }: { company: CompanyInfo; list: Devis[]; onChanged: () => void }) {
+function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyInfo; list: Devis[]; onChanged: () => void; onEdit: (d: Devis) => void }) {
   const [viewing, setViewing] = useState<Devis | null>(null);
   const [convertMsg, setConvertMsg] = useState('');
 
@@ -206,7 +246,7 @@ function DevisHistory({ company, list, onChanged }: { company: CompanyInfo; list
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel || viewing.clientName || 'Client'}
           partnerType={viewing.partnerType} status={viewing.status === 'accepte' ? 'paid' : 'pending'}
           from={viewing.createdAt?.slice(0, 10) ?? ''} to={viewing.validUntil ?? ''} lines={invLines} total={viewing.total}
-          docLabel="DEVIS" validUntil={viewing.validUntil} />
+          docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer" />
         <div className="flex gap-2 mt-4">
           <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Imprimer / PDF</button>
           {typeof window !== 'undefined' && (
@@ -236,6 +276,10 @@ function DevisHistory({ company, list, onChanged }: { company: CompanyInfo; list
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: badge.bg, color: badge.color }}>{badge.label}</span>
+              {/* Seuls les brouillons sont modifiables (un devis envoyé/accepté est figé). */}
+              {d.status === 'brouillon' && (
+                <button onClick={() => onEdit(d)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border" style={{ borderColor: '#C9A84C', color: '#9A7B22' }}>Modifier</button>
+              )}
               <button onClick={() => setViewing(d)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Ouvrir</button>
             </div>
           </div>

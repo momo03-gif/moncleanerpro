@@ -91,6 +91,23 @@ export async function saveDevisDB(f: {
   return { error: null, id: data?.id ?? null };
 }
 
+// Met à jour le CONTENU d'un devis existant (rouvrir un brouillon → modifier →
+// ré-enregistrer le MÊME devis, sans en créer un nouveau). Le numéro ne change pas.
+export async function updateDevisDB(id: string, f: {
+  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  lines: DevisLine[]; total: number; validUntil?: string; status?: DevisStatus;
+}): Promise<{ error: string | null }> {
+  const patch: Record<string, unknown> = {
+    partner_label: f.clientName || 'Client',
+    client_name: f.clientName || null, client_email: f.clientEmail || null, client_address: f.clientAddress || null,
+    description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
+  };
+  if (f.status) patch.status = f.status;
+  const { error } = await supabase.from('devis').update(patch).eq('id', id);
+  if (error) console.error('updateDevisDB:', error.code, error.message);
+  return { error: error?.message ?? null };
+}
+
 export async function setDevisStatusDB(id: string, status: DevisStatus): Promise<{ error: string | null }> {
   const { error } = await supabase.from('devis').update({ status }).eq('id', id);
   return { error: error?.message ?? null };
