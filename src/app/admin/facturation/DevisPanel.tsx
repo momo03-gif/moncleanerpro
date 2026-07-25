@@ -288,11 +288,61 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
 function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyInfo; list: Devis[]; onChanged: () => void; onEdit: (d: Devis) => void }) {
   const [viewing, setViewing] = useState<Devis | null>(null);
   const [convertMsg, setConvertMsg] = useState('');
+  // Envoi email (message pré-rempli, éditable).
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailMsg, setEmailMsg] = useState('');
 
   async function convert(d: Devis) {
     const res = await convertDevisToInvoiceDB(d);
     if (res.error) setConvertMsg(res.error);
     else { setConvertMsg(`Facture ${res.number} créée depuis ${d.number}.`); onChanged(); }
+  }
+
+  function openEmail(d: Devis) {
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/devis/${d.publicToken}` : `/devis/${d.publicToken}`;
+    const ttc = (d.total * 1.2).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const nom = d.clientName || 'Madame, Monsieur';
+    const valid = d.validUntil ? `\nCe devis est valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n` : '';
+    setEmailTo(d.clientEmail ?? '');
+    setEmailSubject(`Votre devis ${d.number} — ${company.name || 'MonCleanerPro'}`);
+    setEmailBody(
+`Bonjour ${nom},
+
+Suite à votre demande, veuillez trouver votre devis ${d.number} d'un montant de ${ttc} € net à payer (TVA 20 % incluse).
+
+Vous pouvez le consulter en ligne : ${url}
+${valid}
+Nous restons à votre disposition pour toute question.
+
+Cordialement,
+${company.name || 'MonCleanerPro'}
+${[company.phone, company.email].filter(Boolean).join(' · ')}`);
+    setEmailMsg('');
+    setEmailOpen(true);
+  }
+
+  async function sendEmail() {
+    if (!emailTo.trim()) { setEmailMsg("Renseigne l'email du client."); return; }
+    setEmailBusy(true); setEmailMsg('');
+    try {
+      const res = await fetch('/api/send-invoice', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ to: emailTo.trim(), subject: emailSubject, text: emailBody }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setEmailBusy(false);
+      if (!res.ok || data.error) { setEmailMsg(data.error || "Échec de l'envoi."); return; }
+      setEmailMsg('Devis envoyé au client ✓');
+      if (viewing) { await setDevisStatusDB(viewing.id, 'envoye'); onChanged(); }
+      setTimeout(() => setEmailOpen(false), 1200);
+    } catch {
+      setEmailBusy(false);
+      setEmailMsg("Échec de l'envoi (connexion).");
+    }
   }
 
   if (viewing) {
@@ -304,8 +354,9 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
           partnerType={viewing.partnerType} status={viewing.status === 'accepte' ? 'paid' : 'pending'}
           from={viewing.createdAt?.slice(0, 10) ?? ''} to={viewing.validUntil ?? ''} lines={invLines} total={viewing.total}
           docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer (TTC)" totalIsHT />
-        <div className="flex gap-2 mt-4">
-          <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Imprimer / PDF</button>
+        <div className="flex flex-wrap gap-2 mt-4 print-hidden">
+          <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Télécharger / Imprimer le PDF</button>
+          <button onClick={() => openEmail(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>Envoyer par email</button>
           {typeof window !== 'undefined' && (
             <button onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/devis/${viewing.publicToken}`)}
               className="px-4 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Copier le lien client</button>
@@ -314,6 +365,33 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
             <button onClick={() => convert(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>Convertir en facture</button>
           )}
         </div>
+        <p className="text-[11px] mt-2 print-hidden" style={{ color: '#A8A09A' }}>« Télécharger le PDF » : dans la fenêtre d'impression, choisis « Enregistrer au format PDF ».</p>
+
+        {/* Composition de l'email (message pré-rempli, modifiable). Envoi via le compte
+            mail de l'entreprise (SMTP). Le devis passe en « Envoyé » après l'envoi. */}
+        {emailOpen && (
+          <div className="rounded-2xl border p-5 mt-4 space-y-3 print-hidden" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Envoyer le devis par email</p>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>À (email du client)</label>
+              <input value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="client@email.fr" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Objet</label>
+              <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Message</label>
+              <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={9} className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={sendEmail} disabled={emailBusy || !emailTo.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>{emailBusy ? 'Envoi…' : 'Envoyer'}</button>
+              <button onClick={() => setEmailOpen(false)} disabled={emailBusy} className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50" style={{ color: '#7A7068' }}>Annuler</button>
+              {emailMsg && <span className="text-xs" style={{ color: emailMsg.includes('✓') ? '#5A8A6A' : '#B85A50' }}>{emailMsg}</span>}
+            </div>
+          </div>
+        )}
+
         {convertMsg && <p className="text-sm mt-3" style={{ color: '#5A8A6A' }}>{convertMsg}</p>}
       </div>
     );
