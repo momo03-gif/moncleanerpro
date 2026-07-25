@@ -203,7 +203,9 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
               {company.iban && <div><span style={payKey}>IBAN</span> <span style={{ fontFamily: 'ui-monospace, monospace', letterSpacing: '0.02em' }}>{company.iban}</span></div>}
               {company.bic && <div><span style={payKey}>BIC</span> {company.bic}</div>}
               <div style={{ marginTop: 8, fontSize: 10.5, color: '#8A8178' }}>
-                Règlement par virement sous 30 jours.<br />Merci d'indiquer <strong style={{ color: '#6B6259' }}>{number}</strong> en référence.
+                {docLabel === 'DEVIS'
+                  ? <>Règlement accepté : espèces, chèque ou virement.</>
+                  : <>Règlement par virement sous 30 jours.<br />Merci d'indiquer <strong style={{ color: '#6B6259' }}>{number}</strong> en référence.</>}
               </div>
             </div>
           </div>
