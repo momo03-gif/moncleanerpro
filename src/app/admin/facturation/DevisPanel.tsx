@@ -19,6 +19,23 @@ const STATUT_BADGE: Record<string, { label: string; color: string; bg: string }>
   refuse:    { label: 'Refusé',    color: '#B85A50', bg: '#FBECEA' },
 };
 
+// ── Modèles rapides : un clic pré-remplit les lignes de base (adaptables ensuite). ──
+// Objectif : rendre le devis TRÈS rapide à faire. Les prix sont repris de la grille
+// tarifs quand un tarif correspond au nom, sinon 0 (à ajuster).
+const DEVIS_MODELES: { label: string; lignes: string[] }[] = [
+  { label: 'Studio / T1', lignes: ['Ménage complet studio', 'Salle de bain', 'Cuisine', 'Sols & surfaces', 'Poubelles & évacuation'] },
+  { label: 'T2', lignes: ['Ménage complet T2', 'Chambre', 'Salle de bain', 'Cuisine', 'Sols & surfaces', 'Poubelles & évacuation'] },
+  { label: 'T3', lignes: ['Ménage complet T3', 'Chambre 1', 'Chambre 2', 'Salle de bain', 'Cuisine', 'Sols & surfaces', 'Poubelles & évacuation'] },
+  { label: 'T4 / +', lignes: ['Ménage complet T4', 'Chambre 1', 'Chambre 2', 'Chambre 3', 'Salle de bain', 'Cuisine', 'Sols & surfaces', 'Poubelles & évacuation'] },
+  { label: 'Espace commune', lignes: ["Hall d'entrée", "Cage d'escalier", 'Ascenseur', 'Local poubelles', 'Vitres parties communes'] },
+  { label: 'Bureaux', lignes: ['Postes de travail', 'Sanitaires', 'Salle de réunion', 'Espace accueil', 'Sols & surfaces', 'Poubelles & réassort'] },
+];
+// Options à ajouter à la volée (une ligne chacune).
+const DEVIS_OPTIONS: string[] = [
+  'Réfection des lits', 'Gestion du linge (change + réassort)', 'Nettoyage des vitres',
+  'Nettoyage du four', 'Nettoyage réfrigérateur', 'Repassage',
+];
+
 export default function DevisPanel({ company }: { company: CompanyInfo }) {
   const [sub, setSub] = useState<'new' | 'history' | 'tarifs'>('new');
   const [tarifs, setTarifs] = useState<Tarif[]>([]);
@@ -78,6 +95,18 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
     setLines(ls => [...ls, { nom: t.nom, quantite: 1, prix_unitaire: t.prix, total: t.prix }]);
   }
   function addBlank() { setLines(ls => [...ls, { nom: '', quantite: 1, prix_unitaire: 0, total: 0 }]); }
+
+  // Prix suggéré pour un nom de ligne : cherche un tarif dont le nom correspond
+  // (l'un contient l'autre, insensible à la casse), sinon 0 (à ajuster à la main).
+  function priceFor(nom: string): number {
+    const n = nom.toLowerCase().trim();
+    const t = tarifs.find(t => { const tn = t.nom.toLowerCase().trim(); return tn && (n.includes(tn) || tn.includes(n)); });
+    return t?.prix ?? 0;
+  }
+  function addLignes(noms: string[]) {
+    setLines(ls => [...ls, ...noms.map(nom => { const p = priceFor(nom); return { nom, quantite: 1, prix_unitaire: p, total: p }; })]);
+  }
+  function applyModele(noms: string[]) { setLines([]); addLignes(noms); }
   function updateLine(i: number, patch: Partial<DevisLine>) {
     setLines(ls => ls.map((l, idx) => {
       if (idx !== i) return l;
@@ -158,6 +187,30 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
           <input value={client.name} onChange={e => setClient(c => ({ ...c, name: e.target.value }))} placeholder="Nom" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={client.email} onChange={e => setClient(c => ({ ...c, email: e.target.value }))} placeholder="Email" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={client.address} onChange={e => setClient(c => ({ ...c, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+        </div>
+      </div>
+
+      {/* Modèles rapides : un clic pour pré-remplir un devis type (adaptable ensuite). */}
+      <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#7A7068' }}>Modèles rapides</p>
+        <p className="text-[11px] mb-3" style={{ color: '#A8A09A' }}>Un clic charge les lignes de base. Tout reste modifiable (noms, quantités, prix).</p>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {DEVIS_MODELES.map(m => (
+            <button key={m.label} onClick={() => applyModele(m.lignes)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+              style={{ borderColor: '#C9A84C', color: '#9A7B22', backgroundColor: '#C9A84C10' }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] mb-2" style={{ color: '#A8A09A' }}>Options à ajouter :</p>
+        <div className="flex flex-wrap gap-1.5">
+          {DEVIS_OPTIONS.map(opt => (
+            <button key={opt} onClick={() => addLignes([opt])}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              + {opt}
+            </button>
+          ))}
         </div>
       </div>
 
