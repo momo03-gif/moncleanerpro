@@ -32,8 +32,7 @@ const DEVIS_MODELES: { label: string; lignes: string[] }[] = [
 ];
 // Options à ajouter à la volée (une ligne chacune).
 const DEVIS_OPTIONS: string[] = [
-  'Réfection des lits', 'Gestion du linge (change + réassort)', 'Nettoyage des vitres',
-  'Nettoyage du four', 'Nettoyage réfrigérateur', 'Repassage',
+  'Gestion du linge', 'Fourniture des consommables', 'Ménage approfondi',
 ];
 
 export default function DevisPanel({ company }: { company: CompanyInfo }) {
