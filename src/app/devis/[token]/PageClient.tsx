@@ -43,9 +43,13 @@ export default function PublicDevisPage() {
               <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{money(l.total)}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between pt-3 border-t mt-2" style={{ borderColor: '#F2EFE9' }}>
-            <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Net à payer</span>
-            <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(devis.total)}</span>
+          <div className="pt-3 border-t mt-2 space-y-1.5" style={{ borderColor: '#F2EFE9' }}>
+            <div className="flex items-center justify-between text-sm"><span style={{ color: '#7A7068' }}>Total HT</span><span style={{ color: '#1A1A1A' }}>{money(devis.total)}</span></div>
+            <div className="flex items-center justify-between text-sm"><span style={{ color: '#7A7068' }}>TVA 20 %</span><span style={{ color: '#1A1A1A' }}>{money(devis.total * 0.2)}</span></div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Net à payer (TTC)</span>
+              <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(devis.total * 1.2)}</span>
+            </div>
           </div>
         </div>
         <div className="px-6 pb-6">

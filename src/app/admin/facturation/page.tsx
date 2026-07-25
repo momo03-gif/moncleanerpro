@@ -55,7 +55,7 @@ function money(n: number) {
 // ── Document facture premium (imprimable), partagé live / historique ────────────
 // Réutilisé tel quel pour les DEVIS (LOT 8) via docLabel / validUntil — même
 // identité visuelle, aucune duplication du gabarit.
-export function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC' }: {
+export function InvoiceDoc({ company, number, partnerLabel, partnerType, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC', totalIsHT = false }: {
   company: CompanyInfo;
   number: string; partnerLabel: string; partnerType?: string; status?: string;
   from: string; to: string;
@@ -66,13 +66,17 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
   docLabel?: string;
   validUntil?: string;
   totalLabel?: string;
+  totalIsHT?: boolean;   // true = le `total` fourni est HT (devis) → on ajoute la TVA
 }) {
   const [qrSvg, setQrSvg] = useState('');
 
-  const vatApplicable = !!company.vat;
-  const totalTTC = total;                                    // montant facturé inchangé (logique conservée)
-  const subtotalHT = vatApplicable ? totalTTC / 1.2 : totalTTC;
-  const vatAmount = totalTTC - subtotalHT;
+  // `total` reçu = TTC pour une FACTURE (logique conservée) ; = HT pour un DEVIS
+  // (les prix saisis sont hors taxe → on AJOUTE la TVA 20 %). totalIsHT distingue.
+  // Un devis HT applique toujours la TVA ; une facture selon le n° de TVA société.
+  const vatApplicable = !!company.vat || totalIsHT;
+  const subtotalHT = totalIsHT ? total : (vatApplicable ? total / 1.2 : total);
+  const vatAmount = vatApplicable ? subtotalHT * 0.2 : 0;
+  const totalTTC = subtotalHT + vatAmount;
 
   const badge = STATUS_BADGE[status ?? 'pending'] ?? STATUS_BADGE.pending;
   const clientType = CLIENT_TYPE_LABEL[partnerType ?? ''] ?? 'Client';

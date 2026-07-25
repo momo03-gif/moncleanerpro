@@ -262,8 +262,10 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
                 <button onClick={() => removeLine(i)} style={{ color: '#B85A50' }}>✕</button>
               </div>
             ))}
-            <div className="flex justify-end pt-2 border-t mt-2" style={{ borderColor: '#F2EFE9' }}>
-              <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Net à payer : {money(total)}</span>
+            <div className="pt-2 border-t mt-2 space-y-1" style={{ borderColor: '#F2EFE9' }}>
+              <div className="flex justify-between text-sm"><span style={{ color: '#7A7068' }}>Total HT</span><span style={{ color: '#1A1A1A' }}>{money(total)}</span></div>
+              <div className="flex justify-between text-sm"><span style={{ color: '#7A7068' }}>TVA 20 %</span><span style={{ color: '#1A1A1A' }}>{money(total * 0.2)}</span></div>
+              <div className="flex justify-between text-sm font-bold"><span style={{ color: '#1A1A1A' }}>Net à payer (TTC)</span><span style={{ color: '#C9A84C' }}>{money(total * 1.2)}</span></div>
             </div>
           </div>
         )}
@@ -301,7 +303,7 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel || viewing.clientName || 'Client'}
           partnerType={viewing.partnerType} status={viewing.status === 'accepte' ? 'paid' : 'pending'}
           from={viewing.createdAt?.slice(0, 10) ?? ''} to={viewing.validUntil ?? ''} lines={invLines} total={viewing.total}
-          docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer" />
+          docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer (TTC)" totalIsHT />
         <div className="flex gap-2 mt-4">
           <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Imprimer / PDF</button>
           {typeof window !== 'undefined' && (
