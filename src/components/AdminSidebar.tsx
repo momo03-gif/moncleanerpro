@@ -65,7 +65,7 @@ export default function AdminSidebar() {
   return (
     <>
       {/* ── DESKTOP SIDEBAR ── */}
-      <aside className="hidden md:flex flex-col w-64 min-h-screen border-r shrink-0" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
+      <aside className="print-hidden hidden md:flex flex-col w-64 min-h-screen border-r shrink-0" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <div className="px-5 py-5 border-b" style={{ borderColor: '#E8E4DC' }}>
           <div className="flex items-center justify-between gap-2">
             <Logo subtitle="Administration" />
@@ -91,7 +91,7 @@ export default function AdminSidebar() {
       </aside>
 
       {/* ── MOBILE TOP BAR ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 border-b" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC', height: '60px' }}>
+      <div className="print-hidden md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 border-b" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC', height: '60px' }}>
         <Logo size={28} />
         <div className="flex items-center gap-1">
           <NotificationBell />
