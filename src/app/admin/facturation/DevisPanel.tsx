@@ -29,6 +29,9 @@ const DEVIS_MODELES: { label: string; lignes: string[] }[] = [
   { label: 'T4 / +', lignes: ['Ménage complet T4', 'Chambre 1', 'Chambre 2', 'Chambre 3', 'Salle de bain', 'Cuisine', 'Sols & surfaces', 'Poubelles & évacuation'] },
   { label: 'Espace commune', lignes: ["Hall d'entrée", "Cage d'escalier", 'Ascenseur', 'Local poubelles', 'Vitres parties communes'] },
   { label: 'Bureaux', lignes: ['Postes de travail', 'Sanitaires', 'Salle de réunion', 'Espace accueil', 'Sols & surfaces', 'Poubelles & réassort'] },
+  // Recouche : ménage EN COURS DE SÉJOUR (client qui reste longtemps).
+  { label: 'Recouche + linge', lignes: ['Ménage des espaces de vie', 'Salle de bain', 'Cuisine', 'Change complet du linge (lits + toilette)', 'Poubelles & évacuation'] },
+  { label: 'Recouche (espace de vie)', lignes: ['Ménage des espaces de vie', 'Salle de bain', 'Cuisine', 'Poubelles & évacuation'] },
 ];
 // Options à ajouter à la volée (une ligne chacune).
 const DEVIS_OPTIONS: string[] = [
