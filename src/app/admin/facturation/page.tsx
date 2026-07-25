@@ -195,9 +195,10 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
         <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <p style={sectionLabel}>Coordonnées de paiement</p>
           <div style={{ marginTop: 10, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            {qrSvg
+            {/* QR de paiement : uniquement sur les FACTURES (un devis ne se paie pas). */}
+            {docLabel !== 'DEVIS' && (qrSvg
               ? <div style={{ width: 92, height: 92, padding: 6, background: '#FFFFFF', border: '1px solid #EFE9DC', borderRadius: 12, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: qrSvg }} />
-              : <div style={{ width: 92, height: 92, background: '#FAF8F3', border: '1px dashed #DAD2C2', borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, textAlign: 'center', color: '#B0A795', lineHeight: 1.4, padding: 8 }}>QR de paiement</div>}
+              : <div style={{ width: 92, height: 92, background: '#FAF8F3', border: '1px dashed #DAD2C2', borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, textAlign: 'center', color: '#B0A795', lineHeight: 1.4, padding: 8 }}>QR de paiement</div>)}
             <div style={{ fontSize: 11.5, lineHeight: 1.95, color: '#4A443D', minWidth: 0, overflowWrap: 'anywhere' }}>
               {company.iban && <div><span style={payKey}>IBAN</span> <span style={{ fontFamily: 'ui-monospace, monospace', letterSpacing: '0.02em' }}>{company.iban}</span></div>}
               {company.bic && <div><span style={payKey}>BIC</span> {company.bic}</div>}
