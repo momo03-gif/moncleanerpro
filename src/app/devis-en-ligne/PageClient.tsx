@@ -127,7 +127,7 @@ export default function DevisEnLignePage() {
                   <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Estimation totale</span>
                   <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(total)}</span>
                 </div>
-                <p className="text-[11px]" style={{ color: '#A8A09A' }}>Estimation indicative, à confirmer par nos équipes.</p>
+                <p className="text-[11px]" style={{ color: '#A8A09A' }}>Estimation indicative : le tarif final est ajustable selon la taille du logement, son état et son accessibilité. À confirmer par nos équipes.</p>
               </div>
             )}
           </div>
@@ -146,6 +146,9 @@ export default function DevisEnLignePage() {
           )}
         </div>
 
+        <p className="text-[11px] text-center mb-3" style={{ color: '#A8A09A' }}>
+          L'estimation est indicative : le tarif final est ajustable selon la taille du logement, son état et son accessibilité.
+        </p>
         {msg && <p className="text-xs text-center mb-3" style={{ color: '#B85A50' }}>{msg}</p>}
         <button onClick={submit} disabled={busy} className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
           {busy ? 'Envoi…' : 'Envoyer ma demande'}
