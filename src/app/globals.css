@@ -109,13 +109,6 @@ input:-webkit-autofill:focus {
   body * { visibility: hidden !important; }
   .invoice-print, .invoice-print * { visibility: visible !important; }
 
-  /* Neutralise la mise en page de l'app (min-h-screen, paddings, hauteurs) : sinon
-     elle réserve de la hauteur et crée une 2e page presque vide même pour une
-     petite facture. La facture (position absolute) définit seule la hauteur imprimée. */
-  html, body { height: auto !important; min-height: 0 !important; }
-  .min-h-screen { min-height: 0 !important; height: auto !important; }
-  main { padding: 0 !important; min-height: 0 !important; }
-
   /* Conserver les fonds noir / doré / beige à l'impression */
   .invoice-print, .invoice-print * {
     -webkit-print-color-adjust: exact !important;

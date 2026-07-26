@@ -295,6 +295,21 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
   const [emailBody, setEmailBody] = useState('');
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailMsg, setEmailMsg] = useState('');
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  async function downloadPdf(d: Devis) {
+    const el = document.querySelector('.invoice-print') as HTMLElement | null;
+    if (!el) return;
+    setPdfBusy(true);
+    try {
+      const { downloadElementPdf } = await import('@/lib/pdf');
+      await downloadElementPdf(el, `Devis-${d.number}.pdf`);
+    } catch (e) {
+      console.error('PDF devis:', e);
+      window.print();   // repli : impression → « Enregistrer au format PDF »
+    }
+    setPdfBusy(false);
+  }
 
   async function convert(d: Devis) {
     const res = await convertDevisToInvoiceDB(d);
@@ -355,7 +370,7 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
           from={viewing.createdAt?.slice(0, 10) ?? ''} to={viewing.validUntil ?? ''} lines={invLines} total={viewing.total}
           docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer (TTC)" totalIsHT />
         <div className="flex flex-wrap gap-2 mt-4 print-hidden">
-          <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Télécharger / Imprimer le PDF</button>
+          <button onClick={() => downloadPdf(viewing)} disabled={pdfBusy} className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{pdfBusy ? 'Génération…' : 'Télécharger le PDF'}</button>
           <button onClick={() => openEmail(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>Envoyer par email</button>
           {typeof window !== 'undefined' && (
             <button onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/devis/${viewing.publicToken}`)}
@@ -365,7 +380,6 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
             <button onClick={() => convert(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>Convertir en facture</button>
           )}
         </div>
-        <p className="text-[11px] mt-2 print-hidden" style={{ color: '#A8A09A' }}>« Télécharger le PDF » : dans la fenêtre d'impression, choisis « Enregistrer au format PDF ».</p>
 
         {/* Composition de l'email (message pré-rempli, modifiable). Envoi via le compte
             mail de l'entreprise (SMTP). Le devis passe en « Envoyé » après l'envoi. */}
