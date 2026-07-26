@@ -67,7 +67,10 @@ function alertUser() {
   } catch { /* ignore */ }
 }
 
-export default function NotificationBell({ light = false }: { light?: boolean }) {
+// `align` = côté d'ouverture du panneau. Par défaut 'right' (cloche en haut à
+// droite d'une barre). Passer 'left' quand la cloche est à GAUCHE de l'écran
+// (sidebar admin) : sinon le panneau s'étend vers la gauche et sort de l'écran.
+export default function NotificationBell({ light = false, align = 'right' }: { light?: boolean; align?: 'left' | 'right' }) {
   const { user } = useAuth();
   const { toast } = useFeedback();
   const [open, setOpen] = useState(false);
@@ -189,7 +192,7 @@ export default function NotificationBell({ light = false }: { light?: boolean })
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed sm:absolute right-2 sm:right-0 top-16 sm:top-12 z-50 w-[360px] max-w-[92vw] rounded-2xl border shadow-2xl overflow-hidden"
+          <div className={`fixed sm:absolute top-16 sm:top-12 z-50 w-[360px] max-w-[92vw] rounded-2xl border shadow-2xl overflow-hidden ${align === 'left' ? 'left-2 sm:left-0' : 'right-2 sm:right-0'}`}
             style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
             {/* En-tête du panneau */}
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#F2EFE9' }}>

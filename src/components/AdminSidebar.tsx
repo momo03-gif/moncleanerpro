@@ -69,7 +69,7 @@ export default function AdminSidebar() {
         <div className="px-5 py-5 border-b" style={{ borderColor: '#E8E4DC' }}>
           <div className="flex items-center justify-between gap-2">
             <Logo subtitle="Administration" />
-            <NotificationBell />
+            <NotificationBell align="left" />
           </div>
         </div>
 
