@@ -33,7 +33,12 @@ export default function DevisEnLignePage() {
   }
 
   async function submit() {
-    if (lines.length === 0) { setMsg('Générez d’abord une estimation.'); return; }
+    // La demande peut être envoyée AVEC ou SANS estimation IA : si l'IA est
+    // indisponible, on transmet quand même la demande (l'admin chiffre ensuite).
+    if (!form.name.trim() || !form.email.trim() || !form.description.trim()) {
+      setMsg('Renseignez au moins votre nom, votre email et la prestation souhaitée.');
+      return;
+    }
     setBusy(true);
     const number = await nextDevisNumberDB();
     await saveDevisDB({
@@ -60,41 +65,43 @@ export default function DevisEnLignePage() {
     <div className="min-h-screen py-10 px-5" style={{ backgroundColor: '#FAFAF8' }}>
       <div className="max-w-lg mx-auto">
         <h1 className="text-2xl font-bold mb-1" style={{ color: '#1A1A1A' }}>Demander un devis</h1>
-        <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Recevez une estimation indicative en quelques secondes.</p>
+        <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Décrivez votre besoin — nous revenons vers vous avec un devis. Une estimation indicative est proposée automatiquement (facultative).</p>
 
         <div className="rounded-2xl border p-5 space-y-3 mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
-          <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom *" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+          <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email *" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Adresse" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={form.bien} onChange={e => setForm(f => ({ ...f, bien: e.target.value }))} placeholder="Type de bien (T2, maison, bureau…)" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
-          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Décrivez la prestation souhaitée" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
-          <button onClick={estimate} disabled={busy || !form.description.trim()} className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-            {busy ? '...' : 'Obtenir mon estimation'}
+          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Décrivez la prestation souhaitée *" className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+
+          <button onClick={estimate} disabled={busy || !form.description.trim()} className="w-full py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+            {busy ? '...' : 'Obtenir une estimation (facultatif)'}
           </button>
           {msg && <p className="text-xs text-center" style={{ color: '#B85A50' }}>{msg}</p>}
-        </div>
 
-        {lines.length > 0 && (
-          <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Estimation indicative</p>
-            <div className="space-y-2">
-              {lines.map((l, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: '#7A7068' }}>{l.nom}{l.quantite > 1 ? ` × ${l.quantite}` : ''}</span>
-                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{money(l.total)}</span>
+          {lines.length > 0 && (
+            <div className="rounded-xl p-4 mt-1" style={{ backgroundColor: '#FAFAF8', border: '1px solid #EFE9DC' }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Estimation indicative</p>
+              <div className="space-y-1.5">
+                {lines.map((l, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: '#7A7068' }}>{l.nom}{l.quantite > 1 ? ` × ${l.quantite}` : ''}</span>
+                    <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{money(l.total)}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-2 border-t mt-1" style={{ borderColor: '#F2EFE9' }}>
+                  <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Total estimé</span>
+                  <span className="text-base font-bold" style={{ color: '#C9A84C' }}>{money(total)}</span>
                 </div>
-              ))}
-              <div className="flex items-center justify-between pt-3 border-t mt-2" style={{ borderColor: '#F2EFE9' }}>
-                <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Total estimé</span>
-                <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(total)}</span>
               </div>
+              <p className="text-[11px] mt-2" style={{ color: '#A8A09A' }}>Estimation indicative, à confirmer par nos équipes.</p>
             </div>
-            <p className="text-[11px] mt-3" style={{ color: '#A8A09A' }}>Estimation indicative, à confirmer par nos équipes.</p>
-            <button onClick={submit} disabled={busy} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
-              Envoyer ma demande
-            </button>
-          </div>
-        )}
+          )}
+
+          <button onClick={submit} disabled={busy} className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
+            {busy ? 'Envoi…' : 'Envoyer ma demande'}
+          </button>
+        </div>
       </div>
     </div>
   );
