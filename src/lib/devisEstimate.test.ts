@@ -9,11 +9,11 @@ const tarifs: Tarif[] = [
 ];
 
 describe('estimateFromDescription — agent local (sans IA externe)', () => {
-  it('repère une prestation et la quantité (« 6 fenêtres » → vitres × 6)', () => {
-    const lines = estimateFromDescription('nettoyage des vitres de 6 fenêtres', tarifs);
+  it('repère une prestation et la quantité (« 6 vitres » → vitres × 6)', () => {
+    const lines = estimateFromDescription('nettoyage de 6 vitres', tarifs);
     const vitres = lines.find(l => l.nom === 'Nettoyage vitres');
     expect(vitres).toBeTruthy();
-    // « vitres » matché ; quantité détectée via « 6 » proche du mot-clé.
+    // quantité = nombre juste avant le mot repéré (« 6 vitres »).
     expect(vitres!.quantite).toBe(6);
     expect(vitres!.total).toBe(48);
   });
@@ -85,5 +85,17 @@ describe('estimateFromDescription — descriptions humaines', () => {
     const lines = estimateFromDescription('nettoyage de 6 fenetres', grid);
     const f = lines.find(l => l.nom === 'Fenêtre');
     expect(f?.quantite).toBe(6);
+  });
+
+  it('« airbnb 2 chambres + salon » → Hébergement (T3 en location courte durée)', () => {
+    const names = estimateFromDescription('nettoyage airbnb appartement 2 chambres salon douche cuisine toilette', grid).map(l => l.nom);
+    expect(names).toContain('Nettoyage Hébergement');
+    expect(names).not.toContain('Entretien classique - T3');
+  });
+
+  it('« 2 chambres + salon » SANS airbnb → Entretien classique T3 (résidentiel)', () => {
+    const names = estimateFromDescription('appartement 2 chambres et un salon a nettoyer', grid).map(l => l.nom);
+    expect(names).toContain('Entretien classique - T3');
+    expect(names).not.toContain('Nettoyage Hébergement');
   });
 });

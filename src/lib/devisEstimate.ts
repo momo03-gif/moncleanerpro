@@ -26,7 +26,17 @@ const STOP = new Set([
   // Mots trop génériques dans le métier : ne discriminent pas seuls (les
   // EXPRESSIONS « apres travaux », « laver les vitres » restent gérées à part).
   'apres', 'avant', 'laver', 'nettoyer', 'nettoyage', 'faut', 'voudrais', 'besoin',
+  'complet', 'complete', 'general', 'generale', 'simple', 'grand', 'petit', 'appartement', 'logement',
+  'lave', 'place', 'info', 'pour', 'chaque', 'sur', 'aussi', 'egalement', 'communs',
+  'tous', 'toutes', 'jour', 'jours', 'semaine', 'semaines', 'mois', 'fois', 'fin', 'quitte', 'rendre',
 ]);
+// Mots signalant un logement de particulier (≠ local professionnel).
+function isResidentialContext(text: string, inferredType: string): boolean {
+  return !!inferredType || /\b(maison|villa|pavillon|appartement|studio|duplex|logement|chambre|airbnb|locataire|bail)\b/.test(text);
+}
+function isProfessional(t: Tarif): boolean {
+  return /professionnel/.test(normalizeText(t.categorie ?? ''));
+}
 
 function normalizeText(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -43,6 +53,16 @@ function stem(w: string): string {
 function tokensOf(s: string): string[] {
   return spaced(s).trim().split(' ').filter(w => w.length >= 2 && !STOP.has(w)).map(stem);
 }
+// Nombres en toutes lettres → chiffres (« six fenêtres » → « 6 fenetres »), pour
+// que la détection de quantité et de pièces marche à l'écrit comme à l'oral.
+// « un/une » exclus (articles) → jamais pris pour une quantité.
+const NUM_WORDS: Record<string, string> = {
+  deux: '2', trois: '3', quatre: '4', cinq: '5', six: '6', sept: '7',
+  huit: '8', neuf: '9', dix: '10', onze: '11', douze: '12',
+};
+function numberWords(s: string): string {
+  return s.replace(/\b(deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze)\b/g, m => NUM_WORDS[m]);
+}
 // Deux racines « correspondent » si égales, ou si l'une est préfixe de l'autre
 // avec AU MOINS 6 lettres de part et d'autre → « menage » ↔ « menager »,
 // « vitrage » ↔ « vitrages ». Seuil à 6 pour éviter les collisions courtes
@@ -58,8 +78,11 @@ function tokenMatch(a: string, b: string): boolean {
 // Airbnb + État des lieux + Fin de chantier pour un seul bien → grosse palette.
 // Les autres catégories (Vitrerie, Sols, Textile, Extérieurs, Spécifiques…) sont
 // des OPTIONS qui peuvent s'additionner.
-function isMainCategory(cat?: string): boolean {
-  const c = normalizeText(cat ?? '');
+function isMainPrestation(t: Tarif): boolean {
+  const nom = normalizeText(t.nom);
+  // Extras facturés en plus, jamais « la » prestation principale du logement.
+  if (/(linge|consommable|\bkit\b|option)/.test(nom)) return false;
+  const c = normalizeText(t.categorie ?? '');
   return /(residentiel|airbnb|conciergerie|fin de chantier|remise en etat|etat des lieux|professionnel)/.test(c);
 }
 
@@ -68,27 +91,27 @@ function isMainCategory(cat?: string): boolean {
 // séjour. Cuisine, salle de bain, WC/toilettes, entrée, couloir NE COMPTENT PAS.
 //   « 3 chambres, un salon, cuisine et toilettes » → 3 + 1 = T4.
 // Renvoie un token synthétique (« t4 ») injecté ensuite dans la recherche, ou ''.
+// NB : `text` est déjà normalisé ET les nombres en lettres convertis en chiffres.
 function inferBienType(text: string): string {
-  // Type explicite : t4, f4, « type 4 »… ou studio.
-  const explicit = text.match(/\b[tf] ?([1-5])\b/) || text.match(/\btype ([1-5])\b/);
-  if (explicit) return 't' + explicit[1];
-  if (/\bstudio\b/.test(text)) return 't1';
+  // 1) Type explicite : t4, f4, « type 4 ».
+  const explicit = text.match(/\b[tf] ?([1-6])\b/) || text.match(/\btype ([1-6])\b/);
+  if (explicit) return 't' + Math.min(5, parseInt(explicit[1], 10));
+  // 2) Studio / loft (une pièce de vie).
+  if (/\b(studio|loft)\b/.test(text)) return 't1';
+  // 3) « X pièces » = TX directement (le T compte les pièces principales).
+  const mPieces = text.match(/(\d+)\s*(?:piece|pieces|p)\b/);
+  if (mPieces) { const p = parseInt(mPieces[1], 10); if (p >= 1 && p <= 6) return 't' + Math.min(5, p); }
+  // 4) Duplex sans autre précision ≈ T3.
+  if (/\bduplex\b/.test(text) && !/chambre/.test(text)) return 't3';
 
-  // Comptage des chambres (« 3 chambres », « trois chambres »).
-  const WORD_NUM: Record<string, number> = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6 };
+  // 5) Comptage des chambres → pièces principales = chambres + salon/séjour.
   let chambres = 0;
   const mNum = text.match(/(\d+)\s+chambre/);
   if (mNum) chambres = parseInt(mNum[1], 10);
-  else {
-    const mWord = text.match(/\b(un|une|deux|trois|quatre|cinq|six)\s+chambre/);
-    if (mWord) chambres = WORD_NUM[mWord[1]] ?? 0;
-    else if (/\bchambre/.test(text)) chambres = 1;
-  }
+  else if (/\bune?\s+chambre/.test(text) || /\bchambre/.test(text)) chambres = 1;
   if (chambres <= 0) return '';
-  // Salon / séjour / salle à manger = 1 pièce principale de vie (par défaut 1).
   const salon = /(salon|sejour|salle a manger|piece a vivre|living)/.test(text) ? 1 : 1;
-  const pieces = Math.min(5, chambres + salon);
-  return 't' + pieces;
+  return 't' + Math.min(5, chambres + salon);
 }
 
 // Mots de PIÈCES : servent à déduire le type de bien, PAS à matcher une option.
@@ -97,15 +120,19 @@ function inferBienType(text: string): string {
 const ROOM = new Set([
   'chambre', 'salon', 'sejour', 'cuisine', 'toilette', 'wc', 'sdb', 'entree',
   'couloir', 'buanderie', 'dressing', 'piece', 'living', 'manger', 'vestibule', 'degagement',
+  'douche', 'baignoire', 'lavabo', 'evier', 'salle', 'bain', 'escalier', 'palier',
 ]);
 
 // Surface (m²) : explicite (« 200 m2 ») sinon estimée d'après le type déduit.
 // Sert à donner un TOTAL crédible aux prestations au m² (au lieu du prix/m²).
 const SURFACE_PAR_TYPE: Record<string, number> = { t1: 30, t2: 45, t3: 65, t4: 85, t5: 110 };
 function inferSurface(text: string, inferredType: string): number | null {
-  const m = text.match(/(\d{2,4})\s*m\s*(?:2|carre)?\b/);
+  // « 488.40 m2 » → 488 (on ignore la décimale), « 80m² », « 120 m carre ».
+  const m = text.match(/(\d{2,4})(?:[.,]\d+)?\s*m(?:2|\b|\s*carre)/);
   if (m) { const s = parseInt(m[1], 10); if (s >= 8 && s <= 5000) return s; }
   if (inferredType && SURFACE_PAR_TYPE[inferredType]) return SURFACE_PAR_TYPE[inferredType];
+  if (/\b(maison|villa|pavillon)\b/.test(text)) return 90; // surface par défaut d'une maison
+  if (/\b(appartement|logement|local)\b/.test(text)) return 55; // logement sans type précisé
   return null;
 }
 
@@ -135,18 +162,31 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
   for (const it of index) for (const tk of it.tokens) df.set(tk, (df.get(tk) ?? 0) + 1);
   const idf = (tk: string) => Math.max(0, Math.log((N + 1) / ((df.get(tk) ?? 0) + 0.5)));
 
-  const text = spaced(description);
+  // Texte normalisé + nombres en lettres → chiffres (« six »→« 6 »).
+  const text = numberWords(spaced(description));
   // Déduction du type de bien AVANT de retirer les mots de pièces (elle s'appuie
   // sur « chambre »/« salon »). « 3 chambres + salon » → t4.
   const inferred = inferBienType(text);
   const surface = inferSurface(text, inferred);
 
   // Tokens du texte, SANS les mots de pièces (structurels, pas des prestations).
-  const textTokens = tokensOf(description).filter(w => !ROOM.has(w));
+  const textTokens = text.trim().split(' ')
+    .filter(w => (w.length >= 2 || /^\d$/.test(w)) && !STOP.has(w))   // garde les chiffres isolés (« 8 »)
+    .map(stem)
+    .filter(w => !ROOM.has(w));
   if (inferred && !textTokens.includes(inferred)) textTokens.push(inferred);
   const isMaison = /\b(maison|villa|pavillon)\b/.test(text);
   if (isMaison && !textTokens.includes('maison')) textTokens.push('maison');
   if (textTokens.length === 0) return [];
+
+  // Négations : le mot qui suit « pas / sans / aucun … » est interdit. Détecté sur
+  // le TEXTE BRUT (car « sans » est un mot vide, retiré des tokens plus haut).
+  const negated = new Set<string>();
+  const negRe = /\b(?:pas|sans|aucun|aucune|ni|sauf|non|sauf)\b(?:\s+(?:d|de|du|des|le|la|les|l))*\s+([a-z0-9]+)/g;
+  let nm: RegExpExecArray | null;
+  while ((nm = negRe.exec(text)) !== null) negated.add(stem(nm[1]));
+  // Contexte : un logement de particulier n'est pas un local professionnel.
+  const residential = isResidentialContext(text, inferred);
 
   type Scored = { t: Tarif; score: number; anchor: string; main: boolean };
   const scored: Scored[] = [];
@@ -163,7 +203,7 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
     for (const ph of it.phrases) {
       if (text.includes(' ' + ph + ' ')) { const words = ph.split(' ').length; score += 1 + 0.8 * (words - 1); if (anchorW < 2) anchor = ph.split(' ')[0]; }
     }
-    if (score > 0) scored.push({ t: it.t, score, anchor, main: isMainCategory(it.t.categorie) });
+    if (score > 0) scored.push({ t: it.t, score, anchor, main: isMainPrestation(it.t) });
   }
   if (scored.length === 0) return [];
 
@@ -176,37 +216,53 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
   // nombre de prestations) : ~40 % du poids d'un mot-clé unique.
   const unitIdf = Math.log((N + 1) / 1.5);
   const addonFloor = 0.4 * unitIdf;
-  const mains = scored.filter(s => s.main && s.score >= best * 0.4).sort((a, b) => b.score - a.score);
-  // Options : au-dessus du seuil, et UNE SEULE par catégorie (évite « Fenêtre +
-  // Porte-fenêtre + Baie vitrée + Velux » pour un simple « vitres »).
-  const addonsSorted = scored.filter(s => !s.main && s.score >= addonFloor).sort((a, b) => b.score - a.score);
-  const seenCat = new Set<string>();
+  // Prestation principale : la mieux notée ; en contexte résidentiel on écarte les
+  // prestations « pro » (bureaux, copropriété, hôtel…) et tout ce qui est nié.
+  const mains = scored
+    .filter(s => s.main && s.score >= best * 0.4 && !negated.has(s.anchor) && !(residential && isProfessional(s.t)))
+    .sort((a, b) => b.score - a.score);
+  // Options : au-dessus du seuil, non niées, dédupliquées par MOT REPÉRÉ (anchor).
+  // Ainsi un simple « vitres » → 1 ligne vitrerie, mais « canapé et matelas » ou
+  // « fenêtre et baie vitrée » (mots repérés différents) → 2 lignes distinctes.
+  const addonsSorted = scored
+    .filter(s => !s.main && s.score >= addonFloor && !negated.has(s.anchor) && !(residential && isProfessional(s.t)))
+    .sort((a, b) => b.score - a.score);
+  const seenAnchor = new Set<string>();
   const addons: typeof addonsSorted = [];
   for (const s of addonsSorted) {
-    const cat = normalizeText(s.t.categorie ?? s.t.nom);
-    if (seenCat.has(cat)) continue;
-    seenCat.add(cat);
+    if (seenAnchor.has(s.anchor)) continue;
+    seenAnchor.add(s.anchor);
     addons.push(s);
   }
   const selection = [...(mains.length ? [mains[0]] : []), ...addons.slice(0, 4)];
   if (selection.length === 0) return [];
 
-  return selection.map(({ t, anchor, main }) => {
-    // Quantité : nombre ISOLÉ (entouré d'espaces) près du mot repéré → « 6
-    // fenêtres » = 6, mais le « 2 » de « T2 » n'est PAS une quantité.
-    let numQty: number | null = null;
-    const idx = anchor ? text.indexOf(anchor.slice(0, 4)) : -1;
-    if (idx >= 0) {
-      const win = text.slice(Math.max(0, idx - 18), Math.min(text.length, idx + anchor.length + 18));
-      const m = win.match(/(?:^|\s)(\d{1,3})(?:\s|$)/);
-      if (m) { const n = parseInt(m[1], 10); if (n > 0 && n < 500) numQty = n; }
+  // Quantité par option : un nombre ADJACENT au mot repéré (« 6 fenêtres » = 6).
+  // On n'attrape PAS un nombre lointain (« 300 m² avec sanitaires » ne fait pas
+  // 300 sanitaires). La prestation principale n'est jamais multipliée.
+  // En français le nombre PRÉCÈDE le nom qu'il compte (« 4 fauteuils »). On ne
+  // prend donc que le nombre juste AVANT le mot repéré → « canapé et 4 fauteuils »
+  // ne fait pas 4 canapés.
+  function adjacentQty(anchor: string): number | null {
+    for (let i = 0; i < textTokens.length; i++) {
+      if (!tokenMatch(textTokens[i], anchor)) continue;
+      const prev = textTokens[i - 1];
+      if (prev && /^\d{1,3}$/.test(prev)) return parseInt(prev, 10);
+      break;
     }
-    // Prestation au m² : la quantité est la SURFACE. Pour la prestation principale
-    // on prend la surface (explicite ou estimée d'après le type) → total crédible.
+    return null;
+  }
+
+  return selection.map(({ t, anchor, main }) => {
     let qty = 1;
-    if (t.unite === 'm2') qty = (main && surface ? surface : numQty) ?? 1;
-    else qty = numQty ?? 1;
-    return { nom: t.nom, quantite: qty, prix_unitaire: t.prix, total: Math.round(qty * t.prix * 100) / 100 };
+    if (t.unite === 'm2') {
+      // Au m² : quantité = SURFACE. Principale → surface du bien ; sinon 1.
+      qty = (main && surface ? surface : (adjacentQty(anchor) ?? 1));
+    } else if (!main) {
+      qty = adjacentQty(anchor) ?? 1;   // options : « 6 fenêtres » = 6
+    } // prestation principale au forfait → toujours ×1
+    const n = Math.max(1, Math.min(999, qty));
+    return { nom: t.nom, quantite: n, prix_unitaire: t.prix, total: Math.round(n * t.prix * 100) / 100 };
   });
 }
 
