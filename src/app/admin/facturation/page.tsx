@@ -78,8 +78,11 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
   const vatAmount = vatApplicable ? subtotalHT * 0.2 : 0;
   const totalTTC = subtotalHT + vatAmount;
 
-  const badge = STATUS_BADGE[status ?? 'pending'] ?? STATUS_BADGE.pending;
-  const clientType = CLIENT_TYPE_LABEL[partnerType ?? ''] ?? 'Client';
+  // Un DEVIS n'a pas de statut de paiement (ce n'est pas une facture) → badge « Devis ».
+  const badge = docLabel === 'DEVIS'
+    ? { label: 'Devis', color: '#9A7B22', bg: '#FBF4E2', border: '#EBD9A8' }
+    : (STATUS_BADGE[status ?? 'pending'] ?? STATUS_BADGE.pending);
+  const clientTypeLabel = CLIENT_TYPE_LABEL[partnerType ?? ''];   // undefined si type inconnu (ex. devis)
   const companyName = company.name || 'MonCleanerPro';
   const genDate = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -144,7 +147,7 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
         <div style={{ marginTop: 8, background: '#FAF8F3', border: '1px solid #EFE9DC', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div>
             <p style={{ fontSize: 15.5, fontWeight: 700, color: '#0D0D0D', margin: 0 }}>{partnerLabel}</p>
-            <p style={{ fontSize: 11, color: '#8A8178', margin: '3px 0 0' }}>Client {clientType.toLowerCase()}</p>
+            <p style={{ fontSize: 11, color: '#8A8178', margin: '3px 0 0' }}>{clientTypeLabel ? `Client ${clientTypeLabel.toLowerCase()}` : 'Client'}</p>
           </div>
           <span style={{ padding: '5px 13px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9A7B22', background: '#F4E9CB', border: '1px solid #E7D6A6' }}>
             {clientType}

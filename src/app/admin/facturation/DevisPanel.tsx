@@ -319,19 +319,18 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
 
   function openEmail(d: Devis) {
     const url = typeof window !== 'undefined' ? `${window.location.origin}/devis/${d.publicToken}` : `/devis/${d.publicToken}`;
-    const ttc = (d.total * 1.2).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const nom = d.clientName || 'Madame, Monsieur';
-    const valid = d.validUntil ? `\nCe devis est valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n` : '';
+    const valid = d.validUntil ? `\nCette proposition est valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n` : '';
     setEmailTo(d.clientEmail ?? '');
     setEmailSubject(`Votre devis ${d.number} — ${company.name || 'MonCleanerPro'}`);
     setEmailBody(
 `Bonjour ${nom},
 
-Suite à votre demande, veuillez trouver votre devis ${d.number} d'un montant de ${ttc} € net à payer (TVA 20 % incluse).
+Suite à votre demande, veuillez trouver notre proposition (devis ${d.number}) détaillant chaque prestation.
 
-Vous pouvez le consulter en ligne : ${url}
+Vous pouvez la consulter en ligne : ${url}
 ${valid}
-Nous restons à votre disposition pour toute question.
+Nous restons à votre disposition pour toute question ou ajustement.
 
 Cordialement,
 ${company.name || 'MonCleanerPro'}
