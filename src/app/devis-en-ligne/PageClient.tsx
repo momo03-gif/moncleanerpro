@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { inputStyle } from '@/lib/ui';
-import { saveDevisDB, nextDevisNumberDB, getTarifsDB, estimateFromDescription, rangeForLines, type DevisLine, type Tarif } from '@/lib/devis';
+import { getTarifsDB, estimateFromDescription, rangeForLines, type DevisLine, type Tarif } from '@/lib/devis';
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'; }
 
@@ -81,16 +81,25 @@ export default function DevisEnLignePage() {
   async function submit() {
     if (!form.name.trim() || !form.email.trim()) { setMsg('Renseignez au moins votre nom et votre email.'); return; }
     if (lines.length === 0 && !form.description.trim()) { setMsg('Décrivez votre besoin ou choisissez au moins une prestation.'); return; }
-    setBusy(true);
-    const number = await nextDevisNumberDB();
-    await saveDevisDB({
-      number, partnerLabel: form.name || 'Demande en ligne', partnerType: 'devis',
-      clientName: form.name, clientEmail: form.email,
-      clientAddress: [form.address, form.phone && `Tél : ${form.phone}`].filter(Boolean).join(' — '),
-      description: [form.bien && `Bien : ${form.bien}`, form.description].filter(Boolean).join(' — '), lines, total,
-      status: 'brouillon', source: 'public',
-    });
-    setBusy(false); setSent(true);
+    setBusy(true); setMsg('');
+    try {
+      // Route serveur : enregistre le devis en brouillon ET notifie les admins.
+      const res = await fetch('/api/devis-request', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          clientName: form.name, clientEmail: form.email,
+          clientAddress: [form.address, form.phone && `Tél : ${form.phone}`].filter(Boolean).join(' — '),
+          description: [form.bien && `Bien : ${form.bien}`, form.description].filter(Boolean).join(' — '),
+          lines, total,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setBusy(false);
+      if (!res.ok || data.error) { setMsg(data.error || 'Envoi impossible, réessayez.'); return; }
+      setSent(true);
+    } catch {
+      setBusy(false); setMsg('Envoi impossible (connexion). Réessayez.');
+    }
   }
 
   if (sent) {

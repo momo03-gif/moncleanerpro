@@ -21,6 +21,7 @@ const TYPE_ICON: Record<string, IconName> = {
   mission_cancelled: 'close', mission_completed: 'check', mission_withdrawn: 'cleaners',
   reminder_today: 'today', reminder_tomorrow: 'today',
   extra_time_requested: 'history', extra_time_resolved: 'check',
+  devis_request: 'invoice',
 };
 
 function timeAgo(iso: string): string {

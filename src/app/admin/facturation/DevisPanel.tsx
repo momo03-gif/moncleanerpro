@@ -424,7 +424,10 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
       {convertMsg && <div className="px-5 py-3 text-sm" style={{ color: '#5A8A6A' }}>{convertMsg}</div>}
       {list.length === 0 && <div className="py-10 text-center text-sm" style={{ color: '#A8A09A' }}>Aucun devis</div>}
       {list.map((d, i) => {
-        const badge = STATUT_BADGE[d.status] ?? STATUT_BADGE.brouillon;
+        // Une demande en ligne encore en brouillon = « À traiter » (badge distinct).
+        const badge = (d.source === 'public' && d.status === 'brouillon')
+          ? { label: 'À traiter', color: '#C48A2A', bg: '#FBF4E2' }
+          : (STATUT_BADGE[d.status] ?? STATUT_BADGE.brouillon);
         return (
           <div key={d.id} className={`px-5 py-4 flex items-center justify-between gap-3 ${i < list.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
             <div className="min-w-0">
