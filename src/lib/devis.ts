@@ -15,6 +15,8 @@ export interface Tarif {
   motsCles?: string;
   // Fourchette d'estimation. null = pas de fourchette (on utilise `prix` des deux côtés).
   prixMin?: number | null; prixMax?: number | null;
+  // Catégorie de regroupement pour la page publique (ex. « Vitrerie »).
+  categorie?: string;
 }
 export interface DevisLine { nom: string; quantite: number; prix_unitaire: number; total: number; }
 export type DevisStatus = 'brouillon' | 'envoye' | 'accepte' | 'refuse';
@@ -30,6 +32,7 @@ const toTarif = (r: any): Tarif => ({
   motsCles: r.mots_cles ?? undefined,
   prixMin: r.prix_min != null ? Number(r.prix_min) : null,
   prixMax: r.prix_max != null ? Number(r.prix_max) : null,
+  categorie: r.categorie ?? undefined,
 });
 const toDevis = (r: any): Devis => ({
   id: r.id, number: r.number ?? '', partnerLabel: r.partner_label ?? '', partnerType: r.partner_type ?? undefined,
@@ -47,14 +50,14 @@ export async function getTarifsDB(activeOnly = false): Promise<Tarif[]> {
   if (error) { console.error('getTarifsDB:', error.code, error.message); return []; }
   return (data ?? []).map(toTarif);
 }
-export async function createTarifDB(f: { nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null }) {
+export async function createTarifDB(f: { nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null; categorie?: string }) {
   const { error } = await supabase.from('tarifs').insert({
     nom_prestation: f.nom, unite: f.unite, prix_unitaire: f.prix,
-    mots_cles: f.motsCles ?? null, prix_min: f.prixMin ?? null, prix_max: f.prixMax ?? null,
+    mots_cles: f.motsCles ?? null, prix_min: f.prixMin ?? null, prix_max: f.prixMax ?? null, categorie: f.categorie ?? null,
   });
   return { error: error?.message ?? null };
 }
-export async function updateTarifDB(id: string, f: { nom?: string; unite?: TarifUnite; prix?: number; actif?: boolean; motsCles?: string | null; prixMin?: number | null; prixMax?: number | null }) {
+export async function updateTarifDB(id: string, f: { nom?: string; unite?: TarifUnite; prix?: number; actif?: boolean; motsCles?: string | null; prixMin?: number | null; prixMax?: number | null; categorie?: string | null }) {
   const patch: Record<string, unknown> = {};
   if (f.nom !== undefined) patch.nom_prestation = f.nom;
   if (f.unite !== undefined) patch.unite = f.unite;
@@ -63,6 +66,7 @@ export async function updateTarifDB(id: string, f: { nom?: string; unite?: Tarif
   if (f.motsCles !== undefined) patch.mots_cles = f.motsCles;
   if (f.prixMin !== undefined) patch.prix_min = f.prixMin;
   if (f.prixMax !== undefined) patch.prix_max = f.prixMax;
+  if (f.categorie !== undefined) patch.categorie = f.categorie;
   const { error } = await supabase.from('tarifs').update(patch).eq('id', id);
   return { error: error?.message ?? null };
 }
@@ -70,7 +74,7 @@ export async function updateTarifDB(id: string, f: { nom?: string; unite?: Tarif
 // Import CSV → grille tarifs. Upsert par NOM (met à jour si le nom existe déjà,
 // sinon insère) : ré-importer un fichier corrigé ne crée pas de doublons.
 export async function importTarifsDB(rows: {
-  nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null;
+  nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null; categorie?: string;
 }[]): Promise<{ error: string | null; inserted: number; updated: number }> {
   const clean = rows.filter(r => r.nom.trim());
   if (clean.length === 0) return { error: 'Aucune ligne valide dans le fichier.', inserted: 0, updated: 0 };
@@ -81,7 +85,7 @@ export async function importTarifsDB(rows: {
   for (const r of clean) {
     const id = byName.get(r.nom.toLowerCase().trim());
     if (id) {
-      const res = await updateTarifDB(id, { unite: r.unite, prix: r.prix, motsCles: r.motsCles ?? null, prixMin: r.prixMin ?? null, prixMax: r.prixMax ?? null, actif: true });
+      const res = await updateTarifDB(id, { unite: r.unite, prix: r.prix, motsCles: r.motsCles ?? null, prixMin: r.prixMin ?? null, prixMax: r.prixMax ?? null, categorie: r.categorie ?? null, actif: true });
       if (res.error) return { error: res.error, inserted, updated };
       updated++;
     } else {

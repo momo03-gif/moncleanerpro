@@ -49,6 +49,13 @@ Hôtels;forfait;;chambres, communs;oui`;
     expect(rows[0]).toMatchObject({ nom: 'Ménage', prixMin: 40, prixMax: 60 });
   });
 
+  it('lit la colonne Catégorie quand elle est présente', () => {
+    const withCat = `Catégorie;Prestation;Unité;Prix;Mots-clés;Actif
+Vitrerie;Fenêtre;piece;6-12;vitres, fenêtres;oui`;
+    const { rows } = parseTarifsCsv(withCat);
+    expect(rows[0]).toMatchObject({ nom: 'Fenêtre', categorie: 'Vitrerie', prixMin: 6, prixMax: 12 });
+  });
+
   it('rejette un fichier sans colonnes reconnues', () => {
     const { rows, errors } = parseTarifsCsv('a;b;c\n1;2;3');
     expect(rows).toHaveLength(0);

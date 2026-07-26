@@ -17,3 +17,7 @@ ALTER TABLE tarifs ADD COLUMN IF NOT EXISTS mots_cles TEXT;
 -- prix_unitaire des deux côtés (estimation à prix fixe pour cette ligne).
 ALTER TABLE tarifs ADD COLUMN IF NOT EXISTS prix_min NUMERIC;
 ALTER TABLE tarifs ADD COLUMN IF NOT EXISTS prix_max NUMERIC;
+
+-- Catégorie (ex. « Nettoyage Résidentiel », « Vitrerie ») → regroupement des
+-- prestations sur la page publique « Demander un devis ». Facultative.
+ALTER TABLE tarifs ADD COLUMN IF NOT EXISTS categorie TEXT;

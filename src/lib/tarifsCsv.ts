@@ -12,7 +12,7 @@ import type { TarifUnite } from './devis';
 
 export interface TarifImportRow {
   nom: string; unite: TarifUnite; prix: number;
-  motsCles?: string; prixMin?: number | null; prixMax?: number | null;
+  motsCles?: string; prixMin?: number | null; prixMax?: number | null; categorie?: string;
 }
 export interface TarifCsvResult { rows: TarifImportRow[]; errors: string[] }
 
@@ -77,7 +77,8 @@ function mapHeaders(cells: string[]): Record<string, number> {
   const idx: Record<string, number> = {};
   cells.forEach((c, i) => {
     const h = stripAccentsLower(c);
-    if (idx.nom === undefined && /(prestation|nom|service|libelle|designation)/.test(h)) idx.nom = i;
+    if (idx.categorie === undefined && /(categorie|categ|rubrique|famille|groupe)/.test(h)) idx.categorie = i;
+    else if (idx.nom === undefined && /(prestation|nom|service|libelle|designation)/.test(h)) idx.nom = i;
     else if (idx.unite === undefined && /unite/.test(h)) idx.unite = i;
     else if (idx.prix === undefined && /(prix|tarif|fourchette|montant)/.test(h)) idx.prix = i;
     else if (idx.mots === undefined && /(mot|cle|keyword|synonyme)/.test(h)) idx.mots = i;
@@ -106,7 +107,8 @@ export function parseTarifsCsv(text: string): TarifCsvResult {
     const unite = parseUnite(idx.unite !== undefined ? cells[idx.unite] ?? '' : '');
     const { prix, prixMin, prixMax } = parsePrix(idx.prix !== undefined ? cells[idx.prix] ?? '' : '');
     const motsCles = idx.mots !== undefined ? (cells[idx.mots] ?? '').trim() : '';
-    rows.push({ nom, unite, prix, prixMin, prixMax, motsCles: motsCles || undefined });
+    const categorie = idx.categorie !== undefined ? (cells[idx.categorie] ?? '').trim() : '';
+    rows.push({ nom, unite, prix, prixMin, prixMax, motsCles: motsCles || undefined, categorie: categorie || undefined });
   }
   if (rows.length === 0) errors.push('Aucune ligne de prestation trouvée.');
   return { rows, errors };
