@@ -217,6 +217,11 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
     }
     // Coup de pouce décisif au ménage « hébergement » en contexte courte durée.
     if (conciergerie && /hebergement/.test(normalizeText(it.t.nom))) { score += 3; if (!anchor) anchor = 'hebergement'; }
+    // Type déduit (« maison 3 chambres » = T4) → on privilégie le forfait ENTRETIEN
+    // de ce type (qui a un prix) plutôt qu'une ligne générique « Maison » sur devis.
+    // Les services explicites (état des lieux, fin de chantier, airbnb) gardent la
+    // main via leurs propres mots-clés/expressions.
+    if (inferred && /entretien classique/.test(normalizeText(it.t.nom)) && it.tokens.includes(inferred)) { score += 2; if (!anchor) anchor = inferred; }
     if (score > 0) scored.push({ t: it.t, score, anchor, main: isMainPrestation(it.t) });
   }
   if (scored.length === 0) return [];
