@@ -149,9 +149,11 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, status,
             <p style={{ fontSize: 15.5, fontWeight: 700, color: '#0D0D0D', margin: 0 }}>{partnerLabel}</p>
             <p style={{ fontSize: 11, color: '#8A8178', margin: '3px 0 0' }}>{clientTypeLabel ? `Client ${clientTypeLabel.toLowerCase()}` : 'Client'}</p>
           </div>
-          <span style={{ padding: '5px 13px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9A7B22', background: '#F4E9CB', border: '1px solid #E7D6A6' }}>
-            {clientType}
-          </span>
+          {clientTypeLabel && (
+            <span style={{ padding: '5px 13px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9A7B22', background: '#F4E9CB', border: '1px solid #E7D6A6' }}>
+              {clientTypeLabel}
+            </span>
+          )}
         </div>
       </div>
 
