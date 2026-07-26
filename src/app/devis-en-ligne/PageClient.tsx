@@ -101,7 +101,7 @@ export default function DevisEnLignePage() {
               {tarifs.map(t => (
                 <button key={t.id} onClick={() => addTarif(t)}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  + {t.nom} <span style={{ color: '#C9A84C' }}>{t.prix}€</span> <span style={{ color: '#A8A09A' }}>{UNITE_LABEL[t.unite]}</span>
+                  + {t.nom}{t.unite !== 'forfait' ? <span style={{ color: '#A8A09A' }}> {UNITE_LABEL[t.unite]}</span> : null}
                 </button>
               ))}
             </div>
@@ -110,6 +110,8 @@ export default function DevisEnLignePage() {
               <p className="text-sm py-2 text-center" style={{ color: '#A8A09A' }}>Ajoutez des prestations pour voir votre estimation.</p>
             ) : (
               <div className="space-y-2">
+                {/* On N'AFFICHE PAS le prix de chaque prestation (grille interne) :
+                    seulement le nom + la quantité, et une estimation GLOBALE en bas. */}
                 {lines.map((l, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="flex-1 text-sm min-w-0" style={{ color: '#1A1A1A' }}>{l.nom}</span>
@@ -118,15 +120,14 @@ export default function DevisEnLignePage() {
                       <span className="w-7 text-center text-sm">{l.quantite}</span>
                       <button onClick={() => setQty(i, l.quantite + 1)} className="w-7 h-7 rounded-lg text-sm font-bold" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>+</button>
                     </div>
-                    <span className="w-20 text-right text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>{money(l.total)}</span>
                     <button onClick={() => removeLine(i)} className="shrink-0" style={{ color: '#B85A50' }}>✕</button>
                   </div>
                 ))}
                 <div className="flex items-center justify-between pt-3 border-t mt-1" style={{ borderColor: '#F2EFE9' }}>
-                  <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Estimation</span>
+                  <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Estimation totale</span>
                   <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(total)}</span>
                 </div>
-                <p className="text-[11px]" style={{ color: '#A8A09A' }}>Estimation indicative (HT), à confirmer par nos équipes.</p>
+                <p className="text-[11px]" style={{ color: '#A8A09A' }}>Estimation indicative, à confirmer par nos équipes.</p>
               </div>
             )}
           </div>
