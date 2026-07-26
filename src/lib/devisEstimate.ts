@@ -170,10 +170,19 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
   const surface = inferSurface(text, inferred);
 
   // Tokens du texte, SANS les mots de pièces (structurels, pas des prestations).
-  const textTokens = text.trim().split(' ')
+  // Quand on retire un mot de pièce, on retire AUSSI le nombre qui le précède
+  // (« 4 chambres » : le 4 compte les chambres, pas une prestation qui suivrait).
+  const rawTokens = text.trim().split(' ')
     .filter(w => (w.length >= 2 || /^\d$/.test(w)) && !STOP.has(w))   // garde les chiffres isolés (« 8 »)
-    .map(stem)
-    .filter(w => !ROOM.has(w));
+    .map(stem);
+  const textTokens: string[] = [];
+  for (const w of rawTokens) {
+    if (ROOM.has(w)) {
+      if (textTokens.length && /^\d{1,3}$/.test(textTokens[textTokens.length - 1])) textTokens.pop();
+      continue;
+    }
+    textTokens.push(w);
+  }
   if (inferred && !textTokens.includes(inferred)) textTokens.push(inferred);
   const isMaison = /\b(maison|villa|pavillon)\b/.test(text);
   if (isMaison && !textTokens.includes('maison')) textTokens.push('maison');
@@ -187,6 +196,9 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
   while ((nm = negRe.exec(text)) !== null) negated.add(stem(nm[1]));
   // Contexte : un logement de particulier n'est pas un local professionnel.
   const residential = isResidentialContext(text, inferred);
+  // Contexte COURTE DURÉE / conciergerie → le ménage « entre voyageurs »
+  // (Nettoyage Hébergement) prime sur état des lieux / remise en état.
+  const conciergerie = /(airbnb|booking|abritel|voyageur|saisonnier|saisonniere|turnover|locative|conciergerie|\bgite\b|meuble touristique|courte duree|entre deux|entre chaque|check ?in|check ?out|checkout|checkin)/.test(text);
 
   type Scored = { t: Tarif; score: number; anchor: string; main: boolean };
   const scored: Scored[] = [];
@@ -203,6 +215,8 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
     for (const ph of it.phrases) {
       if (text.includes(' ' + ph + ' ')) { const words = ph.split(' ').length; score += 1 + 0.8 * (words - 1); if (anchorW < 2) anchor = ph.split(' ')[0]; }
     }
+    // Coup de pouce décisif au ménage « hébergement » en contexte courte durée.
+    if (conciergerie && /hebergement/.test(normalizeText(it.t.nom))) { score += 3; if (!anchor) anchor = 'hebergement'; }
     if (score > 0) scored.push({ t: it.t, score, anchor, main: isMainPrestation(it.t) });
   }
   if (scored.length === 0) return [];
