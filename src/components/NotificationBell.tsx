@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useId } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import type { AppNotification } from '@/lib/types';
@@ -23,6 +24,21 @@ const TYPE_ICON: Record<string, IconName> = {
   extra_time_requested: 'history', extra_time_resolved: 'check',
   devis_request: 'invoice',
 };
+
+// Destination d'une notification quand on clique dessus. Le TYPE prime (une
+// demande de devis ouvre la facturation), sinon on route selon le RÔLE du
+// destinataire. Aligné sur urlForRole() côté serveur (push).
+function hrefForNotif(type: string, role: string): string {
+  if (type === 'devis_request') return '/admin/facturation';
+  switch (role) {
+    case 'admin': return '/admin/missions';
+    case 'cleaner': return '/cleaner';
+    case 'airbnb':
+    case 'partner': return '/airbnb/missions';
+    case 'hotel': return '/hotel/historique';
+    default: return '/';
+  }
+}
 
 function timeAgo(iso: string): string {
   if (!iso) return '';
@@ -74,6 +90,7 @@ function alertUser() {
 export default function NotificationBell({ light = false, align = 'right' }: { light?: boolean; align?: 'left' | 'right' }) {
   const { user } = useAuth();
   const { toast } = useFeedback();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -134,6 +151,13 @@ export default function NotificationBell({ light = false, align = 'right' }: { l
     setUnread(u => Math.max(0, u - 1));
     const { markNotificationReadDB } = await loadNotifApi();
     await markNotificationReadDB(n.id);
+  }
+
+  // Clic sur une notification : marque lue, ferme le panneau et ouvre la page liée.
+  function openNotif(n: AppNotification) {
+    markRead(n);
+    setOpen(false);
+    router.push(hrefForNotif(n.type, n.role || user?.role || ''));
   }
 
   async function markAll() {
@@ -226,8 +250,8 @@ export default function NotificationBell({ light = false, align = 'right' }: { l
                 </div>
               ) : (
                 items.map(n => (
-                  <button key={n.id} onClick={() => markRead(n)}
-                    className="w-full text-left flex gap-3 px-4 py-3 border-b transition-colors"
+                  <button key={n.id} onClick={() => openNotif(n)}
+                    className="w-full text-left flex gap-3 px-4 py-3 border-b transition-colors hover:brightness-95"
                     style={{ borderColor: '#F4F1EB', backgroundColor: n.read ? '#FFFFFF' : '#FBF7EC' }}>
                     <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                       style={{ backgroundColor: '#C9A84C18', color: '#C9A84C' }}>
