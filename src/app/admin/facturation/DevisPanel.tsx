@@ -6,7 +6,7 @@ import { inputStyle } from '@/lib/ui';
 import {
   getTarifsDB, createTarifDB, updateTarifDB, deleteTarifDB, importTarifsDB, UNITE_LABEL, type Tarif, type TarifUnite,
   getDevisListDB, saveDevisDB, updateDevisDB, nextDevisNumberDB, setDevisStatusDB, convertDevisToInvoiceDB,
-  type Devis, type DevisLine,
+  estimateFromDescription, type Devis, type DevisLine,
 } from '@/lib/devis';
 import { parseTarifsCsv } from '@/lib/tarifsCsv';
 import { InvoiceDoc } from './page';
@@ -85,7 +85,6 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
   const [client, setClient] = useState({ name: '', email: '', address: '' });
   const [description, setDescription] = useState('');
   const [lines, setLines] = useState<DevisLine[]>([]);
-  const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedNumber, setSavedNumber] = useState('');
@@ -128,20 +127,14 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
   }
   function removeLine(i: number) { setLines(ls => ls.filter((_, idx) => idx !== i)); }
 
-  async function generateAI() {
-    setAiBusy(true); setAiMsg('');
-    try {
-      const res = await fetch('/api/devis-ai', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ description }),
-      });
-      const data = await res.json();
-      if (data.error) { setAiMsg(data.error); }
-      else if (Array.isArray(data.lignes)) { setLines(data.lignes); setAiMsg(`Devis pré-rempli (${data.lignes.length} ligne(s)). Vérifie puis valide.`); }
-    } catch {
-      setAiMsg('Erreur de connexion à l’IA — saisis le devis à la main.');
-    }
-    setAiBusy(false);
+  // Agent d'estimation LOCAL (grille tarifs + mots-clés) — aucune IA externe.
+  // Reconnaît les prestations dans la description et pré-remplit les lignes.
+  function generateFromText() {
+    setAiMsg('');
+    const found = estimateFromDescription(description, tarifs);
+    if (found.length === 0) { setAiMsg('Aucune prestation reconnue — ajoute-les depuis la grille, ou complète les mots-clés dans l’onglet Tarifs.'); return; }
+    setLines(found);
+    setAiMsg(`Devis pré-rempli (${found.length} ligne(s)). Vérifie puis valide.`);
   }
 
   async function save(status: 'brouillon' | 'envoye') {
@@ -225,20 +218,20 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
         </div>
       </div>
 
-      {/* Assistant IA */}
+      {/* Décrire la prestation → agent d'estimation LOCAL (grille + mots-clés) */}
       <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Décrire la prestation (assistant IA)</p>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Décrire la prestation</p>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
           placeholder="Ex : grand ménage de fin de bail pour un T3 au 4e étage sans ascenseur, avec nettoyage des vitres et du four."
           className="w-full px-3 py-2.5 rounded-xl text-sm mb-3" style={{ ...inputStyle }} />
         <div className="flex items-center gap-3">
-          <button onClick={generateAI} disabled={aiBusy || !description.trim()}
+          <button onClick={generateFromText} disabled={!description.trim()}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-            {aiBusy ? 'Génération...' : 'Générer le devis avec l’IA'}
+            Proposer les prestations
           </button>
           {aiMsg && <span className="text-xs" style={{ color: aiMsg.startsWith('Devis') ? '#5A8A6A' : '#B85A50' }}>{aiMsg}</span>}
         </div>
-        <p className="text-[11px] mt-2" style={{ color: '#A8A09A' }}>Les prix viennent toujours de la grille tarifs. L’IA ne fait que proposer les lignes.</p>
+        <p className="text-[11px] mt-2" style={{ color: '#A8A09A' }}>Reconnaissance par notre agent local : les prestations sont repérées d’après ta grille tarifs et ses mots-clés. Les prix viennent toujours de la grille.</p>
       </div>
 
       {/* Lignes */}
