@@ -226,7 +226,7 @@ export default function DevisEnLignePage() {
             {lines.length > 0 ? (
               <>
                 <p className="text-[11px]" style={{ color: '#A8A09A' }}>Estimation indicative</p>
-                <p className="text-lg font-bold leading-tight" style={{ color: '#C9A84C' }}>{low === high ? money(low) : `${money(low)} – ${money(high)}`}</p>
+                <p className="text-lg font-bold leading-tight" style={{ color: '#C9A84C' }}>{high === 0 ? 'Sur devis' : low === high ? money(low) : `${money(low)} – ${money(high)}`}</p>
               </>
             ) : (
               <p className="text-xs" style={{ color: '#A8A09A' }}>Choisissez vos prestations pour voir l&apos;estimation.</p>
