@@ -54,6 +54,10 @@ export async function deleteTarifDB(id: string) {
   return { error: error?.message ?? null };
 }
 
+// Agent d'estimation LOCAL (sans IA externe) — module pur, réexporté ici pour que
+// les appelants continuent d'importer depuis '@/lib/devis'.
+export { estimateFromDescription } from './devisEstimate';
+
 // ── DEVIS ─────────────────────────────────────────────────────────────────────
 export async function getDevisListDB(): Promise<Devis[]> {
   const { data, error } = await supabase.from('devis').select('*').order('created_at', { ascending: false });
