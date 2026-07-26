@@ -9,7 +9,13 @@ import { saveInvoiceDB } from './db';
 export type TarifUnite = 'forfait' | 'm2' | 'heure' | 'piece';
 export const UNITE_LABEL: Record<TarifUnite, string> = { forfait: 'Forfait', m2: 'au m²', heure: 'par heure', piece: 'par pièce' };
 
-export interface Tarif { id: string; nom: string; unite: TarifUnite; prix: number; actif: boolean; }
+export interface Tarif {
+  id: string; nom: string; unite: TarifUnite; prix: number; actif: boolean;
+  // Synonymes/variantes séparés par des virgules (« vitres, fenêtres, baies ») → précision de l'agent local.
+  motsCles?: string;
+  // Fourchette d'estimation. null = pas de fourchette (on utilise `prix` des deux côtés).
+  prixMin?: number | null; prixMax?: number | null;
+}
 export interface DevisLine { nom: string; quantite: number; prix_unitaire: number; total: number; }
 export type DevisStatus = 'brouillon' | 'envoye' | 'accepte' | 'refuse';
 export interface Devis {
@@ -19,7 +25,12 @@ export interface Devis {
   publicToken: string; source: 'admin' | 'public'; invoiceId?: string; createdAt?: string;
 }
 
-const toTarif = (r: any): Tarif => ({ id: r.id, nom: r.nom_prestation, unite: r.unite, prix: Number(r.prix_unitaire) || 0, actif: !!r.actif });
+const toTarif = (r: any): Tarif => ({
+  id: r.id, nom: r.nom_prestation, unite: r.unite, prix: Number(r.prix_unitaire) || 0, actif: !!r.actif,
+  motsCles: r.mots_cles ?? undefined,
+  prixMin: r.prix_min != null ? Number(r.prix_min) : null,
+  prixMax: r.prix_max != null ? Number(r.prix_max) : null,
+});
 const toDevis = (r: any): Devis => ({
   id: r.id, number: r.number ?? '', partnerLabel: r.partner_label ?? '', partnerType: r.partner_type ?? undefined,
   clientName: r.client_name ?? undefined, clientEmail: r.client_email ?? undefined, clientAddress: r.client_address ?? undefined,
@@ -36,18 +47,50 @@ export async function getTarifsDB(activeOnly = false): Promise<Tarif[]> {
   if (error) { console.error('getTarifsDB:', error.code, error.message); return []; }
   return (data ?? []).map(toTarif);
 }
-export async function createTarifDB(f: { nom: string; unite: TarifUnite; prix: number }) {
-  const { error } = await supabase.from('tarifs').insert({ nom_prestation: f.nom, unite: f.unite, prix_unitaire: f.prix });
+export async function createTarifDB(f: { nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null }) {
+  const { error } = await supabase.from('tarifs').insert({
+    nom_prestation: f.nom, unite: f.unite, prix_unitaire: f.prix,
+    mots_cles: f.motsCles ?? null, prix_min: f.prixMin ?? null, prix_max: f.prixMax ?? null,
+  });
   return { error: error?.message ?? null };
 }
-export async function updateTarifDB(id: string, f: { nom?: string; unite?: TarifUnite; prix?: number; actif?: boolean }) {
+export async function updateTarifDB(id: string, f: { nom?: string; unite?: TarifUnite; prix?: number; actif?: boolean; motsCles?: string | null; prixMin?: number | null; prixMax?: number | null }) {
   const patch: Record<string, unknown> = {};
   if (f.nom !== undefined) patch.nom_prestation = f.nom;
   if (f.unite !== undefined) patch.unite = f.unite;
   if (f.prix !== undefined) patch.prix_unitaire = f.prix;
   if (f.actif !== undefined) patch.actif = f.actif;
+  if (f.motsCles !== undefined) patch.mots_cles = f.motsCles;
+  if (f.prixMin !== undefined) patch.prix_min = f.prixMin;
+  if (f.prixMax !== undefined) patch.prix_max = f.prixMax;
   const { error } = await supabase.from('tarifs').update(patch).eq('id', id);
   return { error: error?.message ?? null };
+}
+
+// Import CSV → grille tarifs. Upsert par NOM (met à jour si le nom existe déjà,
+// sinon insère) : ré-importer un fichier corrigé ne crée pas de doublons.
+export async function importTarifsDB(rows: {
+  nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null;
+}[]): Promise<{ error: string | null; inserted: number; updated: number }> {
+  const clean = rows.filter(r => r.nom.trim());
+  if (clean.length === 0) return { error: 'Aucune ligne valide dans le fichier.', inserted: 0, updated: 0 };
+  const { data: existing, error: exErr } = await supabase.from('tarifs').select('id, nom_prestation');
+  if (exErr) return { error: exErr.message, inserted: 0, updated: 0 };
+  const byName = new Map((existing ?? []).map((r: any) => [String(r.nom_prestation).toLowerCase().trim(), r.id]));
+  let inserted = 0, updated = 0;
+  for (const r of clean) {
+    const id = byName.get(r.nom.toLowerCase().trim());
+    if (id) {
+      const res = await updateTarifDB(id, { unite: r.unite, prix: r.prix, motsCles: r.motsCles ?? null, prixMin: r.prixMin ?? null, prixMax: r.prixMax ?? null, actif: true });
+      if (res.error) return { error: res.error, inserted, updated };
+      updated++;
+    } else {
+      const res = await createTarifDB(r);
+      if (res.error) return { error: res.error, inserted, updated };
+      inserted++;
+    }
+  }
+  return { error: null, inserted, updated };
 }
 export async function deleteTarifDB(id: string) {
   const { error } = await supabase.from('tarifs').delete().eq('id', id);
@@ -56,7 +99,7 @@ export async function deleteTarifDB(id: string) {
 
 // Agent d'estimation LOCAL (sans IA externe) — module pur, réexporté ici pour que
 // les appelants continuent d'importer depuis '@/lib/devis'.
-export { estimateFromDescription } from './devisEstimate';
+export { estimateFromDescription, rangeForLines, tarifRange } from './devisEstimate';
 
 // ── DEVIS ─────────────────────────────────────────────────────────────────────
 export async function getDevisListDB(): Promise<Devis[]> {

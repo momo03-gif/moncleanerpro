@@ -1,14 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react';
 import type { CompanyInfo } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import {
-  getTarifsDB, createTarifDB, updateTarifDB, deleteTarifDB, UNITE_LABEL, type Tarif, type TarifUnite,
+  getTarifsDB, createTarifDB, updateTarifDB, deleteTarifDB, importTarifsDB, UNITE_LABEL, type Tarif, type TarifUnite,
   getDevisListDB, saveDevisDB, updateDevisDB, nextDevisNumberDB, setDevisStatusDB, convertDevisToInvoiceDB,
   type Devis, type DevisLine,
 } from '@/lib/devis';
+import { parseTarifsCsv } from '@/lib/tarifsCsv';
 import { InvoiceDoc } from './page';
+
+// Modèle CSV téléchargeable (mêmes colonnes que l'export de la grille MonCleanerPro).
+const CSV_TEMPLATE = `Prestation;Unité;Prix;Mots-clés;Actif
+Entretien classique - T2;forfait;70-120;t2, deux pièces, appartement;oui
+Nettoyage vitres;piece;6-12;vitres, fenêtres, baies, carreaux;oui
+Fin de chantier;m2;5-12;travaux, rénovation, chantier;oui
+Ménage régulier;heure;25-35;récurrent, entretien, heure;oui
+`;
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 
@@ -437,10 +446,13 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
   );
 }
 
-// ── GRILLE TARIFAIRE (LOT 8A) ───────────────────────────────────────────────────
+// ── GRILLE TARIFAIRE (LOT 8A) + IMPORT CSV + FOURCHETTES (LOT 8C) ────────────────
 const UNITES: TarifUnite[] = ['forfait', 'm2', 'heure', 'piece'];
 function TarifsManager({ tarifs, onChanged }: { tarifs: Tarif[]; onChanged: () => void }) {
   const [form, setForm] = useState({ nom: '', unite: 'forfait' as TarifUnite, prix: 0 });
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function add() {
     if (!form.nom.trim()) return;
@@ -448,19 +460,74 @@ function TarifsManager({ tarifs, onChanged }: { tarifs: Tarif[]; onChanged: () =
     setForm({ nom: '', unite: 'forfait', prix: 0 }); onChanged();
   }
 
+  async function onFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) { e.target.value = ''; await runImport(file); }
+  }
+  async function runImport(file: File) {
+    setImportBusy(true); setImportMsg(null);
+    try {
+      const text = await file.text();
+      const { rows, errors } = parseTarifsCsv(text);
+      if (errors.length && rows.length === 0) { setImportMsg({ text: errors[0], ok: false }); setImportBusy(false); return; }
+      const res = await importTarifsDB(rows);
+      if (res.error) setImportMsg({ text: res.error, ok: false });
+      else setImportMsg({ text: `Import réussi : ${res.inserted} ajoutée(s), ${res.updated} mise(s) à jour.`, ok: true });
+      onChanged();
+    } catch {
+      setImportMsg({ text: 'Fichier illisible. Vérifie qu\'il s\'agit bien d\'un CSV.', ok: false });
+    }
+    setImportBusy(false);
+  }
+  function downloadTemplate() {
+    const blob = new Blob(['﻿' + CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'modele-grille-tarifs.csv';
+    a.click(); URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-4">
+      {/* Import CSV — la grille pilote l'agent d'estimation local ET l'assistant IA. */}
+      <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#7A7068' }}>Importer une grille (CSV)</p>
+        <p className="text-[11px] mb-3" style={{ color: '#A8A09A' }}>
+          Colonnes : <span style={{ color: '#7A7068' }}>Prestation ; Unité ; Prix ; Mots-clés ; Actif</span>. Le prix accepte une fourchette (« 40-70 »).
+          Ré-importer met à jour les prestations existantes (par nom), sans doublon.
+        </p>
+        <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => fileRef.current?.click()} disabled={importBusy} className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            {importBusy ? 'Import…' : 'Importer un fichier CSV'}
+          </button>
+          <button onClick={downloadTemplate} className="px-4 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Télécharger le modèle</button>
+          {importMsg && <span className="text-xs" style={{ color: importMsg.ok ? '#5A8A6A' : '#B85A50' }}>{importMsg.text}</span>}
+        </div>
+      </div>
+
       <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-        {tarifs.length === 0 && <div className="py-8 text-center text-sm" style={{ color: '#A8A09A' }}>Aucun tarif</div>}
+        {tarifs.length === 0 && <div className="py-8 text-center text-sm" style={{ color: '#A8A09A' }}>Aucun tarif — importe ta grille CSV ci-dessus ou ajoute une prestation.</div>}
         {tarifs.map((t, i) => (
-          <div key={t.id} className={`px-5 py-3 flex items-center gap-3 ${i < tarifs.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9', opacity: t.actif ? 1 : 0.55 }}>
-            <input defaultValue={t.nom} onBlur={e => e.target.value !== t.nom && updateTarifDB(t.id, { nom: e.target.value }).then(onChanged)} className="flex-1 px-2 py-1.5 rounded-lg text-sm" style={{ ...inputStyle }} />
-            <select defaultValue={t.unite} onChange={e => updateTarifDB(t.id, { unite: e.target.value as TarifUnite }).then(onChanged)} className="px-2 py-1.5 rounded-lg text-sm" style={{ ...inputStyle }}>
-              {UNITES.map(u => <option key={u} value={u}>{UNITE_LABEL[u]}</option>)}
-            </select>
-            <input type="number" defaultValue={t.prix} onBlur={e => Number(e.target.value) !== t.prix && updateTarifDB(t.id, { prix: Number(e.target.value) }).then(onChanged)} className="w-24 px-2 py-1.5 rounded-lg text-sm text-right" style={{ ...inputStyle }} />
-            <button onClick={() => updateTarifDB(t.id, { actif: !t.actif }).then(onChanged)} className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: t.actif ? '#5A8A6A15' : '#F5F3EF', color: t.actif ? '#5A8A6A' : '#A8A09A' }}>{t.actif ? 'Actif' : 'Inactif'}</button>
-            <button onClick={() => deleteTarifDB(t.id).then(onChanged)} style={{ color: '#B85A50' }}>✕</button>
+          <div key={t.id} className={`px-5 py-3 ${i < tarifs.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9', opacity: t.actif ? 1 : 0.55 }}>
+            <div className="flex items-center gap-2">
+              <input defaultValue={t.nom} onBlur={e => e.target.value !== t.nom && updateTarifDB(t.id, { nom: e.target.value }).then(onChanged)} className="flex-1 px-2 py-1.5 rounded-lg text-sm" style={{ ...inputStyle }} />
+              <select defaultValue={t.unite} onChange={e => updateTarifDB(t.id, { unite: e.target.value as TarifUnite }).then(onChanged)} className="px-2 py-1.5 rounded-lg text-sm" style={{ ...inputStyle }}>
+                {UNITES.map(u => <option key={u} value={u}>{UNITE_LABEL[u]}</option>)}
+              </select>
+              {/* Fourchette : prix_min – prix_max. Laisser max vide = prix fixe. */}
+              <input type="number" step="0.01" defaultValue={t.prixMin ?? t.prix} title="Prix mini"
+                onBlur={e => { const v = e.target.value === '' ? null : Number(e.target.value); updateTarifDB(t.id, { prixMin: v, prix: v ?? t.prix }).then(onChanged); }}
+                className="w-20 px-2 py-1.5 rounded-lg text-sm text-right" style={{ ...inputStyle }} />
+              <span className="text-xs" style={{ color: '#A8A09A' }}>–</span>
+              <input type="number" step="0.01" defaultValue={t.prixMax ?? ''} title="Prix maxi (vide = prix fixe)" placeholder="max"
+                onBlur={e => { const v = e.target.value === '' ? null : Number(e.target.value); updateTarifDB(t.id, { prixMax: v }).then(onChanged); }}
+                className="w-20 px-2 py-1.5 rounded-lg text-sm text-right" style={{ ...inputStyle }} />
+              <button onClick={() => updateTarifDB(t.id, { actif: !t.actif }).then(onChanged)} className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: t.actif ? '#5A8A6A15' : '#F5F3EF', color: t.actif ? '#5A8A6A' : '#A8A09A' }}>{t.actif ? 'Actif' : 'Inactif'}</button>
+              <button onClick={() => deleteTarifDB(t.id).then(onChanged)} style={{ color: '#B85A50' }}>✕</button>
+            </div>
+            {/* Mots-clés : synonymes que tape le client → précision de l'agent local. */}
+            <input defaultValue={t.motsCles ?? ''} onBlur={e => (e.target.value !== (t.motsCles ?? '')) && updateTarifDB(t.id, { motsCles: e.target.value }).then(onChanged)}
+              placeholder="Mots-clés (ex : vitres, fenêtres, baies)" className="w-full mt-1.5 px-2 py-1 rounded-lg text-xs" style={{ ...inputStyle, color: '#7A7068' }} />
           </div>
         ))}
       </div>

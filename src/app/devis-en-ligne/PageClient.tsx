@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { inputStyle } from '@/lib/ui';
-import { saveDevisDB, nextDevisNumberDB, getTarifsDB, estimateFromDescription, UNITE_LABEL, type DevisLine, type Tarif } from '@/lib/devis';
+import { saveDevisDB, nextDevisNumberDB, getTarifsDB, estimateFromDescription, rangeForLines, UNITE_LABEL, type DevisLine, type Tarif } from '@/lib/devis';
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 
@@ -21,6 +21,9 @@ export default function DevisEnLignePage() {
   useEffect(() => { getTarifsDB(true).then(setTarifs).catch(() => setTarifs([])); }, []);
 
   const total = lines.reduce((s, l) => s + l.total, 0);
+  // Estimation en FOURCHETTE (prix_min / prix_max de la grille). Affichée au client ;
+  // `total` (milieu) reste ce qu'on enregistre pour l'admin.
+  const { low, high } = rangeForLines(lines, tarifs);
 
   function addTarif(t: Tarif) {
     setLines(ls => {
@@ -124,10 +127,10 @@ export default function DevisEnLignePage() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between pt-3 border-t mt-1" style={{ borderColor: '#F2EFE9' }}>
-                  <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Estimation totale</span>
-                  <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{money(total)}</span>
+                  <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Estimation</span>
+                  <span className="text-lg font-bold" style={{ color: '#C9A84C' }}>{low === high ? money(low) : `${money(low)} – ${money(high)}`}</span>
                 </div>
-                <p className="text-[11px]" style={{ color: '#A8A09A' }}>Estimation indicative : le tarif final est ajustable selon la taille du logement, son état et son accessibilité. À confirmer par nos équipes.</p>
+                <p className="text-[11px]" style={{ color: '#A8A09A' }}>Fourchette indicative : le tarif final est ajusté selon la taille du logement, son état et son accessibilité. À confirmer par nos équipes après visite ou photos.</p>
               </div>
             )}
           </div>
