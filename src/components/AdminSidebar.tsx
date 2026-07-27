@@ -17,6 +17,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/carte', label: 'Carte', icon: 'map' },
   { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
   { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
+  { href: '/admin/rendez-vous', label: 'Rendez-vous', icon: 'today' },
   { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
   { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
   { href: '/admin/parking', label: 'Parking', icon: 'parking' },

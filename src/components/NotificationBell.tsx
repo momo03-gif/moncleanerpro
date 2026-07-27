@@ -22,7 +22,7 @@ const TYPE_ICON: Record<string, IconName> = {
   mission_cancelled: 'close', mission_completed: 'check', mission_withdrawn: 'cleaners',
   reminder_today: 'today', reminder_tomorrow: 'today',
   extra_time_requested: 'history', extra_time_resolved: 'check',
-  devis_request: 'invoice',
+  devis_request: 'invoice', appointment_booked: 'today',
 };
 
 // Destination d'une notification quand on clique dessus. Le TYPE prime (une
@@ -30,6 +30,7 @@ const TYPE_ICON: Record<string, IconName> = {
 // destinataire. Aligné sur urlForRole() côté serveur (push).
 function hrefForNotif(type: string, role: string): string {
   if (type === 'devis_request') return '/admin/facturation';
+  if (type === 'appointment_booked') return '/admin/rendez-vous';
   switch (role) {
     case 'admin': return '/admin/missions';
     case 'cleaner': return '/cleaner';
