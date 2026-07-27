@@ -29,6 +29,8 @@ const STOP = new Set([
   'complet', 'complete', 'general', 'generale', 'simple', 'grand', 'petit', 'appartement', 'logement',
   'lave', 'place', 'info', 'pour', 'chaque', 'sur', 'aussi', 'egalement', 'communs',
   'tous', 'toutes', 'jour', 'jours', 'semaine', 'semaines', 'mois', 'fois', 'fin', 'quitte', 'rendre',
+  'local', 'commercial', 'commerciale', 'poste', 'postes', 'travail', 'hygiene', 'hauteur',
+  'etage', 'etages', 'vide', 'fond', 'comble', 'inspection', 'ouverture',
 ]);
 // Mots signalant un logement de particulier (≠ local professionnel).
 function isResidentialContext(text: string, inferredType: string): boolean {
@@ -216,12 +218,16 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
   const scored: Scored[] = [];
   for (const it of index) {
     let score = 0, anchor = '', anchorW = -1;
-    // Score par racines discriminantes communes (pondérées par leur rareté).
-    for (const tk of it.tokens) {
-      if (!textTokens.some(x => tokenMatch(x, tk))) continue;
-      const w = idf(tk);
-      score += w;
-      if (w > anchorW) { anchorW = w; anchor = tk; }
+    // Score : chaque MOT DU TEXTE compte UNE fois (son meilleur mot-clé de tarif).
+    // Évite qu'un même mot (« ménage » ↔ « ménage » + « ménagère ») soit compté
+    // deux fois et gonfle artificiellement le score.
+    const seenX = new Set<string>();
+    for (const xt of textTokens) {
+      if (seenX.has(xt)) continue;
+      seenX.add(xt);
+      let bestW = 0, bestTk = '';
+      for (const tk of it.tokens) { if (tokenMatch(xt, tk)) { const w = idf(tk); if (w > bestW) { bestW = w; bestTk = tk; } } }
+      if (bestW > 0) { score += bestW; if (bestW > anchorW) { anchorW = bestW; anchor = bestTk; } }
     }
     // Bonus « expression » : mot-clé multi-mots retrouvé tel quel dans le texte.
     for (const ph of it.phrases) {
