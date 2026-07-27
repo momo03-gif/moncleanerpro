@@ -18,23 +18,55 @@ interface Item { tarif: Tarif; name: string; detail: string | null; unitLabel: s
 interface Section { title: string; single: boolean; items: Item[]; }
 interface Macro { id: string; title: string; tagline: string; sections: Section[] }
 
-// ── Regroupement des catégories de la grille en 5 macro-catégories ──────────────
-const MACROS: { id: string; title: string; tagline: string; cats: string[] }[] = [
-  { id: 'residentiel', title: 'Résidentiel & Airbnb', tagline: 'Ménage régulier, grand nettoyage, locations courte durée, colocation', cats: ['Nettoyage Résidentiel', 'Nettoyage Airbnb / Conciergerie', 'Coliving / Colocation'] },
-  { id: 'pro', title: 'Locaux professionnels', tagline: 'Bureaux, commerces, santé, éducation et copropriétés', cats: ['Nettoyage Professionnel'] },
-  { id: 'remise', title: 'Remise en état & Chantier', tagline: 'Fin de chantier, sinistres, états des lieux', cats: ['Fin de chantier', 'Remise en état', 'Avant / Après État des Lieux'] },
-  { id: 'vst', title: 'Vitres · Sols · Textiles', tagline: 'Vitrerie, traitement des sols et textiles d’ameublement', cats: ['Vitrerie', 'Sols & Traitements', 'Nettoyage Textile'] },
-  { id: 'ext', title: 'Extérieurs & Spécifiques', tagline: 'Extérieurs, situations particulières et prestations à la carte', cats: ['Extérieurs', 'Prestations Spécifiques'] },
+// ── 5 macro-catégories (ordre + libellés, comme la maquette) ────────────────────
+const MACRO_DEF: { id: string; title: string; tagline: string }[] = [
+  { id: 'residentiel', title: 'Résidentiel & Airbnb', tagline: 'Ménage régulier, grand nettoyage, locations courte durée, colocation' },
+  { id: 'pro', title: 'Locaux professionnels', tagline: 'Bureaux, commerces, santé, éducation et copropriétés' },
+  { id: 'remise', title: 'Remise en état & Chantier', tagline: 'Fin de chantier, sinistres, états des lieux' },
+  { id: 'vst', title: 'Vitres · Sols · Textiles', tagline: 'Vitrerie, traitement des sols et textiles d’ameublement' },
+  { id: 'ext', title: 'Extérieurs & Spécifiques', tagline: 'Extérieurs, situations particulières et prestations à la carte' },
 ];
-
-// Titre de section « joli » par catégorie de grille.
-const SECTION_TITLE: Record<string, string> = {
-  'Nettoyage Airbnb / Conciergerie': 'Airbnb & Conciergerie', 'Coliving / Colocation': 'Coliving / Colocation',
-  'Nettoyage Professionnel': 'Bureaux, commerces & établissements', 'Fin de chantier': 'Fin de chantier',
-  'Remise en état': 'Remise en état & sinistres', 'Avant / Après État des Lieux': 'États des lieux',
-  'Vitrerie': 'Vitrerie', 'Sols & Traitements': 'Sols', 'Nettoyage Textile': 'Textile',
-  'Extérieurs': 'Extérieurs & façades', 'Prestations Spécifiques': 'Prestations à la carte',
+// Ordre des sections dans chaque macro-catégorie.
+const SECTION_ORDER: Record<string, string[]> = {
+  residentiel: ['Entretien classique du logement', 'Nettoyage ponctuel', 'Airbnb & Conciergerie', 'Coliving / Colocation'],
+  pro: ['Bureaux, commerces & industrie', 'Santé, petite enfance & éducation', 'Autres établissements'],
+  remise: ['Fin de chantier', 'États des lieux', 'Remise en état & sinistres'],
+  vst: ['Vitrerie', 'Sols', 'Textile'],
+  ext: ['Extérieurs & façades', 'Cuisine, sanitaires & désinfection', 'Situations spécifiques', 'Espaces communs & techniques', 'Traitement de l’air & odeurs', 'Finitions & détails'],
 };
+const SINGLE_SECTIONS = new Set(['Entretien classique du logement', 'Coliving / Colocation']);
+
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+// Classe une prestation dans une macro-catégorie + section d'après son NOM
+// (indépendant de la colonne `categorie` en base → marche sans ré-import).
+function classify(t: Tarif): { macro: string; section: string } {
+  const n = norm(t.nom);
+  // Résidentiel & Airbnb
+  if (/entretien classique/.test(n)) return { macro: 'residentiel', section: 'Entretien classique du logement' };
+  if (/ponctuel|grand menage|grand nettoyage/.test(n)) return { macro: 'residentiel', section: 'Nettoyage ponctuel' };
+  if (/coliving|colocation/.test(n)) return { macro: 'residentiel', section: 'Coliving / Colocation' };
+  if (/hebergement|airbnb|linge|consommable|\bkit\b/.test(n)) return { macro: 'residentiel', section: 'Airbnb & Conciergerie' };
+  // Vitres · Sols · Textiles (avant "pro" pour capter vitrine/vitrerie)
+  if (/canape|fauteuil|matelas|moquette|chaise|tapis|tete de lit/.test(n)) return { macro: 'vst', section: 'Textile' };
+  if (/tous.*sols|traitement.*sol|\bsols?\b|parquet|prestations techniques|decapage|lustrage|cristallisation|monobrosse/.test(n)) return { macro: 'vst', section: 'Sols' };
+  if (/fenetre|baie|velux|vitrine|veranda|vitre|vitrage|carreau/.test(n)) return { macro: 'vst', section: 'Vitrerie' };
+  // Remise en état & chantier
+  if (/fin de chantier/.test(n)) return { macro: 'remise', section: 'Fin de chantier' };
+  if (/etat des lieux/.test(n)) return { macro: 'remise', section: 'États des lieux' };
+  if (/remise en etat|apres squat|apres sinistre|apres travaux|insalubre|succession/.test(n)) return { macro: 'remise', section: 'Remise en état & sinistres' };
+  // Locaux professionnels
+  if (/bureau|boutique|commerce|entrepot|hangar|usine|industrie|atelier/.test(n)) return { macro: 'pro', section: 'Bureaux, commerces & industrie' };
+  if (/cabinet|medical|dentaire|creche|ecole|college/.test(n)) return { macro: 'pro', section: 'Santé, petite enfance & éducation' };
+  if (/sport|restaurant|hotel|copropriete|immeuble/.test(n)) return { macro: 'pro', section: 'Autres établissements' };
+  // Extérieurs & Spécifiques (sous-sections)
+  if (/exterieur|terrasse|balcon|facade|haute pression|karcher|panneaux solaires|enseigne|toiture|gouttiere/.test(n)) return { macro: 'ext', section: 'Extérieurs & façades' };
+  if (/cuisine|salle de bain|sanitaire|desinfection|degraissage|four|hotte/.test(n)) return { macro: 'ext', section: 'Cuisine, sanitaires & désinfection' };
+  if (/debarras|encombrant|tag|graffiti|moisissure|deces|diogene/.test(n)) return { macro: 'ext', section: 'Situations spécifiques' };
+  if (/parking|ascenseur|local poubelle|\bvmc\b|climatiseur|ventilation/.test(n)) return { macro: 'ext', section: 'Espaces communs & techniques' };
+  if (/desodorisation|odeur|air/.test(n)) return { macro: 'ext', section: 'Traitement de l’air & odeurs' };
+  return { macro: 'ext', section: 'Finitions & détails' };
+}
 
 // Détails / descriptions par prestation (améliore la lisibilité côté client).
 const DETAILS: Record<string, string> = {
@@ -96,47 +128,27 @@ function isHiddenPublic(t: Tarif): boolean {
   return /(deces|diogene|sinistre|squat)/.test(n);
 }
 
-// Construit les macro-catégories → sections → items depuis la grille.
+// Construit les 5 macro-catégories → sections → items en classant CHAQUE
+// prestation par son nom (pas la colonne `categorie`) → identique à la maquette
+// et fonctionne même sans ré-import de la grille.
 function buildCatalog(tarifs: Tarif[]): Macro[] {
-  const byCat = new Map<string, Tarif[]>();
+  const buckets = new Map<string, Map<string, Item[]>>();
   for (const t of tarifs) {
     if (isHiddenPublic(t)) continue;
-    const c = t.categorie ?? 'Autres'; (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(t);
+    const { macro, section } = classify(t);
+    const secMap = buckets.get(macro) ?? buckets.set(macro, new Map()).get(macro)!;
+    (secMap.get(section) ?? secMap.set(section, []).get(section)!).push(toItem(t));
   }
-
-  const macros = MACROS.map(m => {
-    const sections: Section[] = [];
-    for (const cat of m.cats) {
-      const list = byCat.get(cat) ?? [];
-      if (list.length === 0) continue;
-      if (cat === 'Nettoyage Résidentiel') {
-        const entretien = list.filter(t => /^entretien classique/i.test(t.nom));
-        const autres = list.filter(t => !/^entretien classique/i.test(t.nom));
-        if (entretien.length) sections.push({ title: 'Entretien classique du logement', single: true, items: entretien.map(toItem) });
-        if (autres.length) sections.push({ title: 'Nettoyage ponctuel', single: false, items: autres.map(toItem) });
-      } else if (cat === 'Coliving / Colocation') {
-        sections.push({ title: 'Coliving / Colocation', single: true, items: list.map(toItem) });
-      } else {
-        sections.push({ title: SECTION_TITLE[cat] ?? cat, single: false, items: list.map(toItem) });
-      }
-    }
-    return { id: m.id, title: m.title, tagline: m.tagline, sections };
-  }).filter(m => m.sections.length > 0);
-
-  // Repli robuste : prestations SANS catégorie (ou catégorie inconnue) — si la
-  // grille n'a pas encore été ré-importée avec la colonne Catégorie, on les
-  // regroupe ici pour que la page ne soit jamais vide.
-  const usedCats = new Set(MACROS.flatMap(m => m.cats));
-  const leftovers = tarifs.filter(t => !isHiddenPublic(t) && !usedCats.has(t.categorie ?? ''));
-  if (leftovers.length) {
-    const secMap = new Map<string, Tarif[]>();
-    for (const t of leftovers) { const c = t.categorie?.trim() || 'Prestations'; (secMap.get(c) ?? secMap.set(c, []).get(c)!).push(t); }
-    macros.push({
-      id: 'autres', title: 'Toutes les prestations', tagline: 'Ménage, vitres, sols, remise en état et plus',
-      sections: [...secMap.entries()].map(([title, list]) => ({ title, single: false, items: list.map(toItem) })),
-    });
+  const out: Macro[] = [];
+  for (const m of MACRO_DEF) {
+    const secMap = buckets.get(m.id);
+    if (!secMap) continue;
+    const order = SECTION_ORDER[m.id] ?? [...secMap.keys()];
+    const titles = [...order.filter(tt => secMap.has(tt)), ...[...secMap.keys()].filter(tt => !order.includes(tt))];
+    const sections: Section[] = titles.map(title => ({ title, single: SINGLE_SECTIONS.has(title), items: secMap.get(title)! }));
+    if (sections.length) out.push({ id: m.id, title: m.title, tagline: m.tagline, sections });
   }
-  return macros;
+  return out;
 }
 
 const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
