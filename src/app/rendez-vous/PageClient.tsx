@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getBookedSlotsDB } from '@/lib/appointments';
+import { getBookedSlotsDB, getBookingConfigDB, DEFAULT_BOOKING } from '@/lib/appointments';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Prise de rendez-vous en ligne (après validation d'un devis).
@@ -10,12 +10,6 @@ import { getBookedSlotsDB } from '@/lib/appointments';
 //  Créneaux occupés lus depuis Supabase ; réservation via /api/appointment
 //  (enregistrement + notification admin). Charte de l'app.
 // ════════════════════════════════════════════════════════════════════════════
-
-// ── Configuration des disponibilités (modifiable) ──
-const WORKING_DAYS = [1, 2, 3, 4, 5];                 // 1=lundi … 5=vendredi
-const MORNING = ['09:00', '10:00', '11:00'];
-const AFTERNOON = ['14:00', '15:00', '16:00', '17:00'];
-const SLOT_MIN = 60;
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const WD_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -38,6 +32,9 @@ export default function PageClient() {
   const [err, setErr] = useState('');
   const [fieldErr, setFieldErr] = useState<Record<string, boolean>>({});
   const [refCode, setRefCode] = useState('');
+  const [cfg, setCfg] = useState(DEFAULT_BOOKING);
+
+  useEffect(() => { getBookingConfigDB().then(setCfg).catch(() => {}); }, []);
 
   // Pré-remplissage depuis l'URL (devis validé → /rendez-vous?devis=...&nom=...).
   useEffect(() => {
@@ -116,7 +113,7 @@ export default function PageClient() {
     if (!selDate || !selTime) return;
     const start = new Date(selDate); const [h, mi] = selTime.split(':').map(Number);
     start.setHours(h, mi, 0, 0);
-    const end = new Date(start.getTime() + SLOT_MIN * 60000);
+    const end = new Date(start.getTime() + cfg.slotMin * 60000);
     const fmt = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
     const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MonCleanerPro//RDV//FR', 'BEGIN:VEVENT',
       'UID:' + Date.now() + '@moncleanerpro', 'DTSTAMP:' + fmt(new Date()), 'DTSTART:' + fmt(start), 'DTEND:' + fmt(end),
@@ -169,7 +166,7 @@ export default function PageClient() {
                 <div className="rv-days">
                   {cells.map((c, i) => {
                     if (!c) return <span key={i} className="rv-day out" />;
-                    const past = c.date < today; const working = WORKING_DAYS.includes(c.date.getDay());
+                    const past = c.date < today; const working = cfg.workingDays.includes(c.date.getDay());
                     const isToday = sameDay(c.date, new Date());
                     const disabled = past || !working;
                     const selected = sameDay(c.date, selDate);
@@ -187,7 +184,7 @@ export default function PageClient() {
                   <p className="rv-empty">Choisissez une date dans le calendrier pour afficher les créneaux.</p>
                 ) : (
                   <>
-                    {[['Matin', MORNING], ['Après-midi', AFTERNOON]].map(([title, list]) => (
+                    {[['Matin', cfg.morning], ['Après-midi', cfg.afternoon]].map(([title, list]) => (
                       <div key={title as string} className="rv-slotgroup">
                         <h4>{title as string}</h4>
                         <div className="rv-slotgrid">

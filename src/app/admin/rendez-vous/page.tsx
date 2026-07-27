@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getAppointmentsDB, setAppointmentStatusDB, type Appointment, type AppointmentStatus } from '@/lib/appointments';
+import {
+  getAppointmentsDB, setAppointmentStatusDB, getBookingConfigDB, saveBookingConfigDB, DEFAULT_BOOKING,
+  type Appointment, type AppointmentStatus, type BookingConfig,
+} from '@/lib/appointments';
 
 const STATUS_CFG: Record<AppointmentStatus, { label: string; color: string; bg: string }> = {
   confirmed: { label: 'Confirmé', color: '#4E7D5E', bg: '#EAF3EC' },
@@ -41,6 +44,9 @@ export default function AdminRendezVousPage() {
         <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Créneaux réservés par les clients après validation de leur devis.</p>
       </div>
 
+      <ConfigPanel />
+
+
       {loading ? (
         <p className="text-sm py-10 text-center" style={{ color: '#A8A09A' }}>Chargement…</p>
       ) : list.length === 0 ? (
@@ -50,6 +56,83 @@ export default function AdminRendezVousPage() {
           <Section title={`À venir (${upcoming.length})`} items={upcoming} onStatus={setStatus} />
           {past.length > 0 && <Section title={`Historique (${past.length})`} items={past} onStatus={setStatus} muted />}
         </>
+      )}
+    </div>
+  );
+}
+
+// Jours affichés dans l'ordre Lun→Dim (valeurs JS getDay : 0=dim).
+const DAYS: { v: number; label: string }[] = [
+  { v: 1, label: 'Lun' }, { v: 2, label: 'Mar' }, { v: 3, label: 'Mer' }, { v: 4, label: 'Jeu' },
+  { v: 5, label: 'Ven' }, { v: 6, label: 'Sam' }, { v: 0, label: 'Dim' },
+];
+function parseSlots(s: string): string[] {
+  return s.split(/[,\s]+/).map(x => x.trim()).filter(x => /^\d{1,2}:\d{2}$/.test(x)).map(x => x.padStart(5, '0'));
+}
+
+function ConfigPanel() {
+  const [cfg, setCfg] = useState<BookingConfig>(DEFAULT_BOOKING);
+  const [morning, setMorning] = useState('');
+  const [afternoon, setAfternoon] = useState('');
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => { getBookingConfigDB().then(c => { setCfg(c); setMorning(c.morning.join(', ')); setAfternoon(c.afternoon.join(', ')); }); }, []);
+
+  function toggleDay(v: number) {
+    setCfg(c => ({ ...c, workingDays: c.workingDays.includes(v) ? c.workingDays.filter(d => d !== v) : [...c.workingDays, v] }));
+  }
+  async function save() {
+    setSaving(true); setMsg('');
+    const next: BookingConfig = { workingDays: cfg.workingDays, morning: parseSlots(morning), afternoon: parseSlots(afternoon), slotMin: cfg.slotMin || 60 };
+    const res = await saveBookingConfigDB(next);
+    setSaving(false);
+    setMsg(res.error ? 'Erreur : ' + res.error : 'Disponibilités enregistrées ✓');
+    if (!res.error) setCfg(next);
+  }
+
+  return (
+    <div className="rounded-2xl border mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-5 py-3.5 text-left">
+        <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>Réglages des disponibilités</span>
+        <span className="text-xs" style={{ color: '#A8A09A' }}>{open ? 'Fermer' : 'Modifier les jours et horaires'}</span>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 space-y-4 border-t" style={{ borderColor: '#F2EFE9' }}>
+          <div className="pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Jours ouverts</p>
+            <div className="flex flex-wrap gap-2">
+              {DAYS.map(d => {
+                const on = cfg.workingDays.includes(d.v);
+                return (
+                  <button key={d.v} onClick={() => toggleDay(d.v)} className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                    style={{ borderColor: on ? '#C9A84C' : '#E8E4DC', backgroundColor: on ? '#C9A84C' : '#FFFFFF', color: on ? '#1A1A1A' : '#A8A09A' }}>{d.label}</button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#7A7068' }}>Créneaux du matin</label>
+              <input value={morning} onChange={e => setMorning(e.target.value)} placeholder="09:00, 10:00, 11:00" className="w-full px-3 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#7A7068' }}>Créneaux de l&apos;après-midi</label>
+              <input value={afternoon} onChange={e => setAfternoon(e.target.value)} placeholder="14:00, 15:00, 16:00, 17:00" className="w-full px-3 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }} />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-semibold" style={{ color: '#7A7068' }}>Durée d&apos;un créneau</label>
+            <input type="number" min={15} step={15} value={cfg.slotMin} onChange={e => setCfg(c => ({ ...c, slotMin: Number(e.target.value) || 60 }))} className="w-20 px-2 py-2 rounded-lg text-sm text-center border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }} />
+            <span className="text-xs" style={{ color: '#A8A09A' }}>minutes</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={save} disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{saving ? '…' : 'Enregistrer'}</button>
+            {msg && <span className="text-xs" style={{ color: msg.includes('✓') ? '#5A8A6A' : '#B85A50' }}>{msg}</span>}
+          </div>
+          <p className="text-[11px]" style={{ color: '#A8A09A' }}>Format des horaires : HH:MM séparés par des virgules. Ces réglages s’appliquent immédiatement à la page publique de prise de rendez-vous.</p>
+        </div>
       )}
     </div>
   );

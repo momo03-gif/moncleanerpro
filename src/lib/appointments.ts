@@ -48,3 +48,27 @@ export async function setAppointmentStatusDB(id: string, status: AppointmentStat
   const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
   return { error: error?.message ?? null };
 }
+
+// ── Configuration des disponibilités (jours + créneaux), éditable en admin ──────
+export interface BookingConfig { workingDays: number[]; morning: string[]; afternoon: string[]; slotMin: number; }
+export const DEFAULT_BOOKING: BookingConfig = {
+  workingDays: [1, 2, 3, 4, 5, 6], morning: ['09:00', '10:00', '11:00'], afternoon: ['14:00', '15:00', '16:00', '17:00'], slotMin: 60,
+};
+
+export async function getBookingConfigDB(): Promise<BookingConfig> {
+  const { data, error } = await supabase.from('booking_config').select('*').eq('id', 1).maybeSingle();
+  if (error || !data) return DEFAULT_BOOKING;
+  return {
+    workingDays: Array.isArray(data.working_days) && data.working_days.length ? data.working_days.map(Number) : DEFAULT_BOOKING.workingDays,
+    morning: Array.isArray(data.morning) ? data.morning : DEFAULT_BOOKING.morning,
+    afternoon: Array.isArray(data.afternoon) ? data.afternoon : DEFAULT_BOOKING.afternoon,
+    slotMin: Number(data.slot_min) || 60,
+  };
+}
+
+export async function saveBookingConfigDB(c: BookingConfig): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('booking_config').upsert({
+    id: 1, working_days: c.workingDays, morning: c.morning, afternoon: c.afternoon, slot_min: c.slotMin, updated_at: new Date().toISOString(),
+  });
+  return { error: error?.message ?? null };
+}
