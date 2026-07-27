@@ -90,10 +90,19 @@ function toItem(t: Tarif): Item {
   return { tarif: t, name: displayName(t), detail: DETAILS[t.nom] ?? null, unitLabel: unitLabelFor(t), mode: modeFor(t), min: t.prixMin ?? (t.prix > 0 ? t.prix : null), max: t.prixMax ?? (t.prix > 0 ? t.prix : null) };
 }
 
+// Prestations trop sensibles pour la page grand public (restent dispo côté admin).
+function isHiddenPublic(t: Tarif): boolean {
+  const n = t.nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return /(deces|diogene|sinistre|squat)/.test(n);
+}
+
 // Construit les macro-catégories → sections → items depuis la grille.
 function buildCatalog(tarifs: Tarif[]): Macro[] {
   const byCat = new Map<string, Tarif[]>();
-  for (const t of tarifs) { const c = t.categorie ?? 'Autres'; (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(t); }
+  for (const t of tarifs) {
+    if (isHiddenPublic(t)) continue;
+    const c = t.categorie ?? 'Autres'; (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(t);
+  }
 
   return MACROS.map(m => {
     const sections: Section[] = [];

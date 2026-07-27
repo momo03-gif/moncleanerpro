@@ -1,5 +1,37 @@
 import { NextResponse } from 'next/server';
+import nodemailer from 'nodemailer';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const WD = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+function frDate(dateISO: string): string {
+  const d = new Date(dateISO + 'T00:00:00');
+  return `${WD[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Envoi de l'email de confirmation au client (best-effort — n'échoue jamais la
+// réservation). Réutilise la config SMTP Hostinger de l'app.
+async function sendClientConfirmation(to: string, name: string, dateISO: string, time: string, refCode: string, devisNumber: string) {
+  const user = process.env.SMTP_USER, pass = process.env.SMTP_PASS;
+  if (!user || !pass || !to) return;
+  const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
+  const port = Number(process.env.SMTP_PORT || 465);
+  const from = process.env.SMTP_FROM || user;
+  const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  const when = `${frDate(dateISO)} à ${time}`;
+  const text = `Bonjour ${name || ''},
+
+Votre rendez-vous est bien enregistré :
+
+  • Date : ${when}
+  • Référence : ${refCode}${devisNumber ? `\n  • Devis : ${devisNumber}` : ''}
+
+Nous vous recontactons pour confirmer les détails de l'intervention. Pour toute modification, répondez simplement à cet email.
+
+À bientôt,
+MonCleanerPro`;
+  await transporter.sendMail({ from, to, subject: `Confirmation de votre rendez-vous — ${when}`, text });
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Réservation de rendez-vous — route SERVEUR (service_role).
@@ -62,6 +94,10 @@ export async function POST(req: Request) {
       } catch { /* ignore */ }
     }
   } catch (e) { console.error('appointment notify:', e); }
+
+  // Email de confirmation au client (best-effort).
+  try { await sendClientConfirmation(clientEmail, clientName, date, time, refCode, devisNumber); }
+  catch (e) { console.error('appointment client email:', e); }
 
   return NextResponse.json({ ok: true, refCode }, { status: 200 });
 }
