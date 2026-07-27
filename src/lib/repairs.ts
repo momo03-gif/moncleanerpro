@@ -1,5 +1,24 @@
 import { supabase } from './supabase';
+import { compressImage } from './imageCompress';
 import type { Repair, RepairStatus } from './types';
+
+// Photos d'un incident : 2 maximum. Réutilise le bucket Storage des photos de
+// mission (sous-dossier repairs/) pour éviter de créer un bucket dédié.
+export const MAX_REPAIR_PHOTOS = 2;
+const REPAIR_PHOTOS_BUCKET = 'mission_photos';
+
+// Compresse puis téléverse une image d'incident → URL publique.
+export async function uploadRepairPhotoDB(airbnbId: string, file: File): Promise<{ url: string | null; error: string | null }> {
+  if (!file.type.startsWith('image/')) return { url: null, error: 'Fichier image attendu (jpg, png…).' };
+  const compressed = await compressImage(file);
+  const rand = Math.random().toString(36).slice(2, 8);
+  const path = `repairs/${airbnbId}/${Date.now()}-${rand}.jpg`;
+  const { error: upErr } = await supabase.storage.from(REPAIR_PHOTOS_BUCKET)
+    .upload(path, compressed, { contentType: compressed.type || 'image/jpeg', upsert: false });
+  if (upErr) { console.error('uploadRepairPhotoDB:', upErr.message); return { url: null, error: upErr.message }; }
+  const { data } = supabase.storage.from(REPAIR_PHOTOS_BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, error: null };
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Réparations — rattachées à un SITE (appartement), pas à une mission.
@@ -23,6 +42,7 @@ function rowToRepair(r: Record<string, unknown>): Repair {
     resolvedNote: (r.resolved_note as string) ?? undefined,
     resolvedAt: (r.resolved_at as string) ?? undefined,
     createdAt: (r.created_at as string) ?? undefined,
+    photos: Array.isArray(r.photos) ? (r.photos as string[]) : [],
     propertyName: apt?.name ?? undefined,
     propertyAddress: apt?.address ?? undefined,
   };
@@ -79,6 +99,7 @@ export interface NewRepair {
   description: string;
   createdBy?: string;
   createdRole?: Repair['createdRole'];
+  photos?: string[];          // URLs déjà téléversées (max 2)
 }
 
 /**
@@ -100,6 +121,7 @@ export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | n
     status: 'open',
     created_by: r.createdBy ?? null,
     created_role: r.createdRole ?? null,
+    photos: (r.photos ?? []).slice(0, MAX_REPAIR_PHOTOS),
   }).select(SELECT).single();
 
   if (error) { console.error('createRepairDB:', error.message); return { repair: null, error: error.message }; }

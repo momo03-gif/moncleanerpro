@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react';
 import {
   getRepairsForApartmentDB, createRepairDB, resolveRepairDB, reopenRepairDB,
+  uploadRepairPhotoDB, MAX_REPAIR_PHOTOS,
 } from '@/lib/repairs';
 import Icon from '@/components/Icon';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -36,8 +37,10 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [adding, setAdding] = useState(false);
   const [description, setDescription] = useState('');
+  const [photos, setPhotos] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const canCreate = role === 'cleaner' || role === 'admin';
   const canResolve = role === 'admin' || role === 'airbnb';
@@ -50,15 +53,30 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
 
   useEffect(() => { if (open && !loaded) load(); }, [open, loaded, load]);
 
+  function onPickFiles(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    setPhotos(p => [...p, ...files].slice(0, MAX_REPAIR_PHOTOS));
+  }
+  function removePhoto(i: number) { setPhotos(p => p.filter((_, idx) => idx !== i)); }
+  function cancelAdd() { setAdding(false); setError(''); setDescription(''); setPhotos([]); }
+
   async function create() {
     setBusy(true); setError('');
+    // Téléverse d'abord les photos (2 max), puis crée la réparation avec leurs URLs.
+    const urls: string[] = [];
+    for (const f of photos.slice(0, MAX_REPAIR_PHOTOS)) {
+      const up = await uploadRepairPhotoDB(airbnbId, f);
+      if (up.error) { setBusy(false); setError('Échec de l’envoi d’une photo : ' + up.error); return; }
+      if (up.url) urls.push(up.url);
+    }
     const res = await createRepairDB({
       airbnbId, missionId, description,
-      createdBy: authorName, createdRole: role,
+      createdBy: authorName, createdRole: role, photos: urls,
     });
     setBusy(false);
     if (res.error) { setError(res.error); return; }
-    setDescription(''); setAdding(false);
+    setDescription(''); setPhotos([]); setAdding(false);
     toast('Réparation signalée.', 'success');
     load();
   }
@@ -118,6 +136,30 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
                 placeholder="Ex. store du salon cassé, mitigeur salle de bain qui fuit…"
                 className="w-full px-3 py-2 rounded-lg text-sm border resize-none"
                 style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }} />
+              {/* Photos de l'incident — 2 maximum */}
+              <div>
+                <div className="flex flex-wrap gap-2">
+                  {photos.map((f, i) => (
+                    <div key={i} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={URL.createObjectURL(f)} alt={`Photo ${i + 1}`} className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: '#E8E4DC' }} />
+                      <button onClick={() => removePhoto(i)} type="button" aria-label="Retirer la photo"
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center"
+                        style={{ backgroundColor: '#B85A50', color: '#FFFFFF' }}>✕</button>
+                    </div>
+                  ))}
+                  {photos.length < MAX_REPAIR_PHOTOS && (
+                    <button type="button" onClick={() => fileRef.current?.click()}
+                      className="w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-0.5"
+                      style={{ borderColor: '#DDD6CA', color: '#A8A09A' }}>
+                      <Icon name="camera" size={16} />
+                      <span className="text-[9px]">Photo</span>
+                    </button>
+                  )}
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple onChange={onPickFiles} className="hidden" />
+                <p className="text-[11px] mt-1.5" style={{ color: '#A8A09A' }}>Jusqu&apos;à {MAX_REPAIR_PHOTOS} photos de l&apos;incident (facultatif).</p>
+              </div>
               <p className="text-[11px]" style={{ color: '#A8A09A' }}>
                 Elle restera dans les réparations du logement tant que le propriétaire ne l&apos;aura pas marquée réparée.
               </p>
@@ -128,7 +170,7 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
                   style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                   {busy ? '…' : 'Signaler la réparation'}
                 </button>
-                <button onClick={() => { setAdding(false); setError(''); }} disabled={busy}
+                <button onClick={cancelAdd} disabled={busy}
                   className="px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
                   Annuler
                 </button>
@@ -183,6 +225,17 @@ export function RepairRow({ repair, busy, onResolve, onReopen, showProperty }: {
           {isOpen ? 'à réparer' : 'réparé'}
         </span>
       </div>
+
+      {repair.photos && repair.photos.length > 0 && (
+        <div className="flex gap-2 mt-2">
+          {repair.photos.map((url, i) => (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`Photo ${i + 1}`} className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: '#E8E4DC' }} />
+            </a>
+          ))}
+        </div>
+      )}
 
       {isOpen && onResolve && (
         <button onClick={onResolve} disabled={busy}

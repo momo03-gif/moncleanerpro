@@ -146,6 +146,8 @@ export interface Repair {
   resolvedNote?: string;
   resolvedAt?: string;
   createdAt?: string;
+  // Jusqu'à 2 photos de l'incident (URLs Storage).
+  photos?: string[];
   // Dénormalisé depuis le site joint (affichage).
   propertyName?: string;
   propertyAddress?: string;
