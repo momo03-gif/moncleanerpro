@@ -104,7 +104,7 @@ function buildCatalog(tarifs: Tarif[]): Macro[] {
     const c = t.categorie ?? 'Autres'; (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(t);
   }
 
-  return MACROS.map(m => {
+  const macros = MACROS.map(m => {
     const sections: Section[] = [];
     for (const cat of m.cats) {
       const list = byCat.get(cat) ?? [];
@@ -122,6 +122,21 @@ function buildCatalog(tarifs: Tarif[]): Macro[] {
     }
     return { id: m.id, title: m.title, tagline: m.tagline, sections };
   }).filter(m => m.sections.length > 0);
+
+  // Repli robuste : prestations SANS catégorie (ou catégorie inconnue) — si la
+  // grille n'a pas encore été ré-importée avec la colonne Catégorie, on les
+  // regroupe ici pour que la page ne soit jamais vide.
+  const usedCats = new Set(MACROS.flatMap(m => m.cats));
+  const leftovers = tarifs.filter(t => !isHiddenPublic(t) && !usedCats.has(t.categorie ?? ''));
+  if (leftovers.length) {
+    const secMap = new Map<string, Tarif[]>();
+    for (const t of leftovers) { const c = t.categorie?.trim() || 'Prestations'; (secMap.get(c) ?? secMap.set(c, []).get(c)!).push(t); }
+    macros.push({
+      id: 'autres', title: 'Toutes les prestations', tagline: 'Ménage, vitres, sols, remise en état et plus',
+      sections: [...secMap.entries()].map(([title, list]) => ({ title, single: false, items: list.map(toItem) })),
+    });
+  }
+  return macros;
 }
 
 const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
