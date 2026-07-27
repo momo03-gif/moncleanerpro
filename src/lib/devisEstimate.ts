@@ -83,7 +83,7 @@ function isMainPrestation(t: Tarif): boolean {
   // Extras facturés en plus, jamais « la » prestation principale du logement.
   if (/(linge|consommable|\bkit\b|option)/.test(nom)) return false;
   const c = normalizeText(t.categorie ?? '');
-  return /(residentiel|airbnb|conciergerie|fin de chantier|remise en etat|etat des lieux|professionnel)/.test(c);
+  return /(residentiel|airbnb|conciergerie|coliving|colocation|fin de chantier|remise en etat|etat des lieux|professionnel)/.test(c);
 }
 
 // Déduit le TYPE DE BIEN (studio / t1…t5 / maison) tel qu'un humain le décrit.
@@ -199,6 +199,18 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
   // Contexte COURTE DURÉE / conciergerie → le ménage « entre voyageurs »
   // (Nettoyage Hébergement) prime sur état des lieux / remise en état.
   const conciergerie = /(airbnb|booking|abritel|voyageur|saisonnier|saisonniere|turnover|locative|conciergerie|\bgite\b|meuble touristique|courte duree|entre deux|entre chaque|check ?in|check ?out|checkout|checkin)/.test(text);
+  // Contexte COLIVING / COLOCATION → forfait dédié « X chambres + communs ».
+  const coliving = /(coliving|colocation|\bcoloc\b|chambre.{0,8}loue|chambres.{0,12}loue|chambres.{0,12}sont.{0,6}loue|maison partagee|chambre meublee|plusieurs chambres.{0,12}loue)/.test(text);
+  // Cible coliving selon le nombre de chambres décrit (studio, 1, 2, 3 et +).
+  let colivingTarget = '';
+  if (coliving) {
+    if (/\bstudio\b/.test(text)) colivingTarget = 'studio';
+    else {
+      const mc = text.match(/(\d+)\s+chambre/);
+      const cc = mc ? parseInt(mc[1], 10) : (/\bchambre/.test(text) ? 1 : 0);
+      colivingTarget = cc >= 3 ? '3 chambre' : cc === 2 ? '2 chambre' : '1 chambre';
+    }
+  }
 
   type Scored = { t: Tarif; score: number; anchor: string; main: boolean };
   const scored: Scored[] = [];
@@ -222,6 +234,12 @@ export function estimateFromDescription(description: string, tarifs: Tarif[]): D
     // Les services explicites (état des lieux, fin de chantier, airbnb) gardent la
     // main via leurs propres mots-clés/expressions.
     if (inferred && /entretien classique/.test(normalizeText(it.t.nom)) && it.tokens.includes(inferred)) { score += 2; if (!anchor) anchor = inferred; }
+    // Contexte coliving → on force le forfait coliving correspondant au nb de chambres.
+    if (coliving && /coliving/.test(normalizeText(it.t.nom))) {
+      const nom = normalizeText(it.t.nom);
+      const isTarget = colivingTarget === 'studio' ? /studio/.test(nom) : nom.includes(colivingTarget);
+      if (isTarget) { score += 6; anchor = 'coliving'; }
+    }
     if (score > 0) scored.push({ t: it.t, score, anchor, main: isMainPrestation(it.t) });
   }
   if (scored.length === 0) return [];

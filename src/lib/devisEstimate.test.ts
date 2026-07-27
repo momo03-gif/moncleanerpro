@@ -48,6 +48,9 @@ const grid: Tarif[] = [
   { id: 'h', nom: 'Cuisine (Détail)', unite: 'forfait', prix: 45, actif: true, categorie: 'Prestations Spécifiques', motsCles: 'cuisine, four, hotte, frigo', prixMin: 10, prixMax: 80 },
   { id: 'i', nom: 'Hôtels', unite: 'forfait', prix: 0, actif: true, categorie: 'Nettoyage Professionnel', motsCles: 'hotel, hotellerie' },
   { id: 'j', nom: 'Canapé', unite: 'forfait', prix: 130, actif: true, categorie: 'Nettoyage Textile', motsCles: 'canape, detachage' },
+  { id: 'k', nom: 'Coliving - 1 chambre + communs', unite: 'forfait', prix: 57, actif: true, categorie: 'Coliving / Colocation', motsCles: 'coliving, colocation, coloc, chambre louee, maison partagee', prixMin: 45, prixMax: 70 },
+  { id: 'l', nom: 'Coliving - 2 chambres + communs', unite: 'forfait', prix: 80, actif: true, categorie: 'Coliving / Colocation', motsCles: 'coliving, colocation, coloc, chambres louees, maison partagee', prixMin: 65, prixMax: 95 },
+  { id: 'm', nom: 'Coliving - 3 chambres (maison complete)', unite: 'forfait', prix: 115, actif: true, categorie: 'Coliving / Colocation', motsCles: 'coliving, colocation, coloc, maison partagee, chambres louees', prixMin: 90, prixMax: 140 },
 ];
 
 describe('estimateFromDescription — descriptions humaines', () => {
@@ -97,5 +100,16 @@ describe('estimateFromDescription — descriptions humaines', () => {
     const names = estimateFromDescription('appartement 2 chambres et un salon a nettoyer', grid).map(l => l.nom);
     expect(names).toContain('Entretien classique - T3');
     expect(names).not.toContain('Nettoyage Hébergement');
+  });
+
+  it('coliving : « maison où 3 chambres sont louées » → forfait Coliving 3 chambres', () => {
+    const names = estimateFromDescription('maison ou plusieurs chambres sont louees, 3 chambres, parties communes', grid).map(l => l.nom);
+    expect(names).toContain('Coliving - 3 chambres (maison complete)');
+    expect(names).not.toContain('Entretien classique - T4');
+  });
+
+  it('colocation 2 chambres → forfait Coliving 2 chambres', () => {
+    const names = estimateFromDescription('colocation 2 chambres a nettoyer', grid).map(l => l.nom);
+    expect(names).toContain('Coliving - 2 chambres + communs');
   });
 });
