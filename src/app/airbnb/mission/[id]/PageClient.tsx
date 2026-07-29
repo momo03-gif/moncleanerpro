@@ -19,6 +19,7 @@ import { serviceParts } from '@/lib/service';
 import { formatHour } from '@/lib/format';
 import MissionPhotos from '@/components/MissionPhotos';
 import Loading from '@/components/Loading';
+import { Badge, Card, SectionTitle } from '@/components/ui';
 
 // Construit un compte-rendu TEXTE que la conciergerie peut transférer à son
 // propriétaire (les photos restent consultables dans l'app).
@@ -89,10 +90,10 @@ export default function PartnerMissionDetailClient() {
   if (!mission) {
     return (
       <div className="p-5">
-        <button onClick={() => router.back()} className="text-sm mb-4" style={{ color: '#C9A84C' }}>← Retour</button>
-        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-sm" style={{ color: '#A8A09A' }}>Ménage introuvable.</p>
-        </div>
+        <BackButton onClick={() => router.back()} />
+        <Card className="p-10 text-center">
+          <p className="text-sm text-muted">Ménage introuvable.</p>
+        </Card>
       </div>
     );
   }
@@ -103,66 +104,68 @@ export default function PartnerMissionDetailClient() {
   const isDone = mission.status === 'completed';
 
   return (
-    <div className="p-5">
-      <button onClick={() => router.back()} className="text-sm mb-4 inline-flex items-center gap-1" style={{ color: '#C9A84C' }}>← Retour</button>
+    <div className="p-5 mcp-in">
+      <BackButton onClick={() => router.back()} />
 
       {/* Récapitulatif */}
-      <div className="rounded-2xl border p-5 mb-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      <Card className="p-5 mb-5">
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h1 className="text-lg font-bold" style={{ color: '#1A1A1A' }}>{mission.property || 'Logement'}</h1>
-          <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+          <h1 className="text-lg font-bold text-ink">{mission.property || 'Logement'}</h1>
+          <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>
             {missionStatusLabel(mission.status, mission.service)}
-          </span>
+          </Badge>
         </div>
-        {mission.address && <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={12} className="shrink-0" /> {mission.address}</p>}
+        {mission.address && (
+          <p className="text-xs mb-3 flex items-center gap-1.5 text-muted">
+            <Icon name="pin" size={12} className="shrink-0" /> {mission.address}
+          </p>
+        )}
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <div>
-            <p className="text-[11px]" style={{ color: '#A8A09A' }}>Date</p>
-            <p className="font-semibold" style={{ color: '#1A1A1A' }}>{fmtDate(mission.date)}{mission.time ? ` · ${formatHour(mission.time)}` : ''}</p>
+            <p className="text-[11px] text-muted">Date</p>
+            <p className="font-semibold text-ink">{fmtDate(mission.date)}{mission.time ? ` · ${formatHour(mission.time)}` : ''}</p>
           </div>
           <div>
-            <p className="text-[11px]" style={{ color: '#A8A09A' }}>Prestation</p>
-            <p className="font-semibold" style={{ color: '#1A1A1A' }}>{isDelivery ? 'Livraison' : missionTypeLabel(mission.type)}</p>
+            <p className="text-[11px] text-muted">Prestation</p>
+            <p className="font-semibold text-ink">{isDelivery ? 'Livraison' : missionTypeLabel(mission.type)}</p>
           </div>
           <div>
-            <p className="text-[11px]" style={{ color: '#A8A09A' }}>Intervenant</p>
-            <p className="font-semibold" style={{ color: '#1A1A1A' }}>{mission.cleanerName || 'Non assigné'}</p>
+            <p className="text-[11px] text-muted">Intervenant</p>
+            <p className="font-semibold text-ink">{mission.cleanerName || 'Non assigné'}</p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Confirmation « terminé » — le compte-rendu fait office de preuve de prestation. */}
       {isDone && (
-        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: '#5A8A6A12', border: '1px solid #5A8A6A30' }}>
-          <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
+        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3 border bg-success-soft border-success-line">
+          <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-success text-white">
             <Icon name="check" size={18} />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold" style={{ color: '#3E6B4F' }}>Ménage terminé</p>
-            <p className="text-xs" style={{ color: '#5A8A6A' }}>Photos et compte-rendu ci-dessous.</p>
+            <p className="text-sm font-semibold text-success">Ménage terminé</p>
+            <p className="text-xs text-success">Photos et compte-rendu ci-dessous.</p>
           </div>
         </div>
       )}
 
       {/* Compte-rendu de fin de ménage */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Compte-rendu</h2>
-        {isDone && (
-          <button onClick={shareRecap}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5"
-            style={{ borderColor: '#C9A84C', color: '#9A7B22' }}>
-            <Icon name="link" size={13} /> Partager
-          </button>
-        )}
-      </div>
+      <SectionTitle aside={isDone ? (
+        <button onClick={shareRecap}
+          className="text-xs font-semibold px-3 py-2 rounded-lg border inline-flex items-center gap-1.5 border-gold text-gold-ink active:scale-95 transition-transform">
+          <Icon name="link" size={13} /> Partager
+        </button>
+      ) : undefined}>
+        Compte-rendu
+      </SectionTitle>
       {!isDone && !hasReport ? (
-        <div className="rounded-2xl p-6 text-center border mb-5" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>Le compte-rendu sera disponible une fois le ménage terminé.</p>
-        </div>
+        <Card className="p-6 text-center mb-5">
+          <p className="text-xs text-muted">Le compte-rendu sera disponible une fois le ménage terminé.</p>
+        </Card>
       ) : !hasReport ? (
-        <div className="rounded-2xl p-6 text-center border mb-5" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>Aucun compte-rendu particulier pour ce ménage.</p>
-        </div>
+        <Card className="p-6 text-center mb-5">
+          <p className="text-xs text-muted">Aucun compte-rendu particulier pour ce ménage.</p>
+        </Card>
       ) : (
         <div className="space-y-3 mb-5">
           {report!.issues && (
@@ -173,7 +176,7 @@ export default function PartnerMissionDetailClient() {
               {report!.consumables && report!.consumables.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-1.5">
                   {report!.consumables.map(c => (
-                    <span key={c} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: '#C9A84C15', color: '#A87B1E' }}>{c}</span>
+                    <span key={c} className="text-[11px] px-2 py-0.5 rounded-full bg-warn-soft text-warn">{c}</span>
                   ))}
                 </div>
               )}
@@ -186,20 +189,25 @@ export default function PartnerMissionDetailClient() {
       )}
 
       {/* Photos avant / après (lecture seule) */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Photos</h2>
+      <SectionTitle>Photos</SectionTitle>
       <MissionPhotos missionId={mission.id} mode="viewer" defaultOpen />
     </div>
   );
 }
 
-function ReportBlock({ title, tone = 'plain', children }: { title: string; tone?: 'plain' | 'alert'; children: React.ReactNode }) {
-  const border = tone === 'alert' ? '#EAC4BE' : '#E8E4DC';
-  const bg = tone === 'alert' ? '#FBECEA' : '#FFFFFF';
-  const titleColor = tone === 'alert' ? '#B85A50' : '#7A7068';
+function BackButton({ onClick }: { onClick: () => void }) {
   return (
-    <div className="rounded-2xl border p-4" style={{ borderColor: border, backgroundColor: bg }}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: titleColor }}>{title}</p>
-      <div className="text-sm leading-snug" style={{ color: '#1A1A1A' }}>{children}</div>
+    <button onClick={onClick} className="text-sm mb-4 inline-flex items-center gap-1 min-h-[44px] text-gold-ink font-medium">
+      ← Retour
+    </button>
+  );
+}
+
+function ReportBlock({ title, tone = 'plain', children }: { title: string; tone?: 'plain' | 'alert'; children: React.ReactNode }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${tone === 'alert' ? 'bg-danger-soft border-danger-line' : 'bg-card border-line'}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${tone === 'alert' ? 'text-danger' : 'text-muted'}`}>{title}</p>
+      <div className="text-sm leading-snug text-ink">{children}</div>
     </div>
   );
 }

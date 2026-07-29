@@ -16,6 +16,7 @@ import { formatHour } from '@/lib/format';
 import Icon from '@/components/Icon';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
 import Loading from '@/components/Loading';
+import { Badge, Card, SectionTitle } from '@/components/ui';
 
 const today = () => new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
 
@@ -56,10 +57,10 @@ export default function LogementDetailClient() {
   if (!apt) {
     return (
       <div className="p-5">
-        <button onClick={() => router.push('/airbnb')} className="text-sm mb-4" style={{ color: '#C9A84C' }}>← Mes logements</button>
-        <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-sm" style={{ color: '#A8A09A' }}>Logement introuvable.</p>
-        </div>
+        <BackButton onClick={() => router.push('/airbnb')} />
+        <Card className="p-10 text-center">
+          <p className="text-sm text-muted">Logement introuvable.</p>
+        </Card>
       </div>
     );
   }
@@ -130,51 +131,44 @@ export default function LogementDetailClient() {
   ].filter(Boolean).join(' · ');
 
   return (
-    <div className="p-5">
-      <button onClick={() => router.push('/airbnb')} className="text-sm mb-4 inline-flex items-center gap-1" style={{ color: '#C9A84C' }}>
-        ← Mes logements
-      </button>
+    <div className="p-5 mcp-in">
+      <BackButton onClick={() => router.push('/airbnb')} label="Mes logements" />
 
       {/* En-tête */}
       <div className="mb-5">
-        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>{apt.name}</h1>
-        <p className="text-sm mt-0.5 flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={14} /> {apt.address}</p>
+        <h1 className="text-xl font-bold text-ink">{apt.name}</h1>
+        <p className="text-sm mt-0.5 flex items-center gap-1.5 text-muted"><Icon name="pin" size={14} /> {apt.address}</p>
       </div>
 
       {/* Carte infos clés */}
-      <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      <Card className="p-5 mb-6">
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           {apt.clientPrice != null && (
-            <Info label="Prix / ménage" value={`${apt.clientPrice}€`} valueColor="#5A8A6A" />
+            <Info label="Prix / ménage" value={`${apt.clientPrice}€`} className="text-success" />
           )}
           <Info label="Ce mois" value={`${monthMissions.length} ménage${monthMissions.length > 1 ? 's' : ''} · ${monthCost}€`} />
           {capacity && <Info label="Capacité" value={capacity} />}
           {apt.cleanerName && <Info label="Cleaner attitré" value={apt.cleanerName} />}
-          {apt.zoneName && <Info label="Zone" value={apt.zoneName} valueColor={apt.zoneColor} />}
+          {apt.zoneName && <Info label="Zone" value={apt.zoneName} style={apt.zoneColor ? { color: apt.zoneColor } : undefined} />}
         </div>
 
+        {/* Les deux codes d'accès se distinguaient par un bleu (#5B6EF5) étranger
+            à la palette. Même traitement pour les deux : ce sont deux secrets de
+            même nature, c'est l'intitulé qui les différencie. */}
         {(apt.portalCode || apt.keyboxCode) && (
           <div className="flex flex-wrap gap-2 mt-4">
-            {apt.portalCode && (
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold" style={{ backgroundColor: '#C9A84C20', color: '#C48A2A' }}>
-                <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Portail</span>{apt.portalCode}
-              </span>
-            )}
-            {apt.keyboxCode && (
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold" style={{ backgroundColor: '#5B6EF518', color: '#5B6EF5' }}>
-                <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Clé</span>{apt.keyboxCode}
-              </span>
-            )}
+            {apt.portalCode && <AccessCode label="Portail" code={apt.portalCode} />}
+            {apt.keyboxCode && <AccessCode label="Clé" code={apt.keyboxCode} />}
           </div>
         )}
 
         {apt.entryDirectives && (
-          <p className="text-xs mt-4 leading-snug" style={{ color: '#7A7068' }}>
-            <span className="font-semibold" style={{ color: '#A8A09A' }}>Entrée : </span>{apt.entryDirectives}
+          <p className="text-xs mt-4 leading-snug text-muted">
+            <span className="font-semibold">Entrée : </span>{apt.entryDirectives}
           </p>
         )}
         {apt.notes && (
-          <p className="text-xs px-3 py-2 rounded-xl mt-3" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{apt.notes}</p>
+          <p className="text-xs px-3 py-2 rounded-xl mt-3 bg-surface-2 text-muted">{apt.notes}</p>
         )}
 
         {/* Vidéo d'accès (facultative) : le propriétaire peut expliquer comment
@@ -184,124 +178,123 @@ export default function LogementDetailClient() {
             onChange={url => setApt(a => (a ? { ...a, accessVideoUrl: url ?? undefined } : a))} />
         </div>
 
-        <div className="mt-4 flex items-center gap-4">
-          <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="text-xs font-medium" style={{ color: '#C9A84C' }}>
+        <div className="mt-4 flex items-center gap-4 flex-wrap">
+          <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="text-xs font-medium min-h-[44px] text-gold-ink">
             Modifier les informations →
           </button>
-          <button onClick={shareMonthlyReport} className="text-xs font-medium" style={{ color: '#7A7068' }}>
-            {shared ? 'Copié ✓' : 'Partager le relevé du mois'}
+          <button onClick={shareMonthlyReport} className="text-xs font-medium min-h-[44px] inline-flex items-center gap-1 text-muted">
+            {shared ? <><Icon name="check" size={13} /> Copié</> : 'Partager le relevé du mois'}
           </button>
         </div>
-      </div>
+      </Card>
 
       {/* Occupation du mois (calendrier visuel) */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Occupation ce mois</h2>
-      <div className="rounded-2xl border p-4 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+      <SectionTitle>Occupation ce mois</SectionTitle>
+      <Card className="p-4 mb-6">
         <div className="grid grid-cols-7 gap-1 mb-1">
           {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
-            <span key={i} className="text-[10px] text-center" style={{ color: '#A8A09A' }}>{d}</span>
+            <span key={i} className="text-[10px] text-center text-muted">{d}</span>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: firstWeekday }).map((_, i) => <span key={'b' + i} />)}
           {calDays.map(d => (
-            <div key={d.dnum} className="aspect-square rounded-lg flex items-center justify-center text-[11px] font-semibold"
-              style={{
-                backgroundColor: d.turnover ? '#FEE2E2' : d.occupied ? '#C9A84C22' : '#F8F6F2',
-                color: d.turnover ? '#B91C1C' : d.occupied ? '#A87B1E' : '#C2BBB2',
-                outline: d.isToday ? '1.5px solid #C9A84C' : 'none',
-                outlineOffset: '-1.5px',
-              }}>
+            <div key={d.dnum}
+              className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-semibold ${
+                d.turnover ? 'bg-danger-soft text-danger'
+                  : d.occupied ? 'bg-warn-soft text-warn'
+                  : 'bg-surface-2 text-muted'
+              } ${d.isToday ? 'outline outline-[1.5px] -outline-offset-[1.5px] outline-gold' : ''}`}>
               {d.dnum}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-4 mt-3 text-[10px]" style={{ color: '#A8A09A' }}>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#C9A84C22' }} /> Occupé</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ backgroundColor: '#FEE2E2' }} /> Turnover</span>
+        <div className="flex items-center gap-4 mt-3 text-[10px] text-muted">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-warn-soft border border-warn-line" /> Occupé</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-danger-soft border border-danger-line" /> Turnover</span>
         </div>
-      </div>
+      </Card>
 
       {/* Prochains départs → ménages */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Prochains départs</h2>
+      <SectionTitle>Prochains départs</SectionTitle>
       {upcoming.length === 0 ? (
-        <div className="rounded-2xl p-6 text-center border mb-6" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>Aucun départ à venir. Connectez un calendrier depuis la synchronisation.</p>
-        </div>
+        <Card className="p-6 text-center mb-6">
+          <p className="text-xs text-muted">Aucun départ à venir. Connectez un calendrier depuis la synchronisation.</p>
+        </Card>
       ) : (
         <div className="space-y-2.5 mb-6">
           {upcoming.map(r => {
             const turnover = isTurnover(r.checkOut);
             return (
-              <div key={r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: turnover ? '#EAC4BE' : '#E8E4DC' }}>
+              <Card key={r.id} tone={turnover ? 'alert' : 'plain'} className="px-4 py-3 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
+                  <p className="text-sm font-semibold text-ink">
                     Départ {fmtDate(r.checkOut)}{r.checkOutTime ? ` · ${formatHour(r.checkOutTime)}` : ''}
                   </p>
                   {turnover && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold mt-0.5" style={{ color: '#B85A50' }}>
-                      ⚠ Arrivée le jour même — ménage prioritaire
+                    <span className="text-[11px] font-semibold mt-0.5 block text-danger">
+                      Arrivée le jour même — ménage prioritaire
                     </span>
                   )}
                 </div>
                 {r.missionId ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold shrink-0" style={{ color: '#5A8A6A' }}>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold shrink-0 text-success">
                     <Icon name="check" size={13} /> Ménage créé
                   </span>
                 ) : (
-                  <span className="text-[11px] shrink-0" style={{ color: '#C48A2A' }}>Ménage à créer</span>
+                  <span className="text-[11px] font-semibold shrink-0 text-warn">Ménage à créer</span>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
       )}
 
       {/* Prochaines arrivées */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Prochaines arrivées</h2>
+      <SectionTitle>Prochaines arrivées</SectionTitle>
       {upcomingArrivals.length === 0 ? (
-        <div className="rounded-2xl p-6 text-center border mb-6" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>Aucune arrivée à venir.</p>
-        </div>
+        <Card className="p-6 text-center mb-6">
+          <p className="text-xs text-muted">Aucune arrivée à venir.</p>
+        </Card>
       ) : (
         <div className="space-y-2.5 mb-6">
           {upcomingArrivals.slice(0, 8).map(r => (
-            <div key={r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FCFBF8', borderColor: '#E8E4DC' }}>
-              <span className="shrink-0 inline-flex" style={{ color: '#5A8A6A' }}><Icon name="arrowUp" size={15} /></span>
-              <p className="text-sm font-semibold flex-1" style={{ color: '#1A1A1A' }}>
+            <Card key={r.id} className="px-4 py-3 flex items-center gap-3">
+              <span className="shrink-0 inline-flex text-success" aria-hidden="true"><Icon name="arrowUp" size={15} /></span>
+              <p className="text-sm font-semibold flex-1 text-ink">
                 Arrivée {fmtDate(r.checkIn)}{r.checkInTime ? ` · ${formatHour(r.checkInTime)}` : ''}
               </p>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Ménages récents */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: '#1A1A1A' }}>Ménages récents</h2>
+      <SectionTitle>Ménages récents</SectionTitle>
       {recentMissions.length === 0 ? (
-        <div className="rounded-2xl p-6 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <p className="text-xs" style={{ color: '#A8A09A' }}>Aucun ménage pour ce logement.</p>
-        </div>
+        <Card className="p-6 text-center">
+          <p className="text-xs text-muted">Aucun ménage pour ce logement.</p>
+        </Card>
       ) : (
         <div className="space-y-2.5">
           {recentMissions.slice(0, 20).map(m => {
             const cfg = missionStatusCfg(m.status);
             return (
               <button key={m.id} onClick={() => router.push(`/airbnb/mission/${m.id}`)}
-                className="w-full text-left rounded-2xl border px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-transform" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+                className="w-full text-left rounded-2xl border bg-card border-line px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-transform">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold flex items-center gap-1" style={{ color: '#1A1A1A' }}>
+                  <p className="text-sm font-semibold flex items-center gap-1 text-ink">
                     {fmtDate(m.date)}{m.time ? ` · ${formatHour(m.time)}` : ''}
-                    <span className="text-xs" style={{ color: '#C9A84C' }}>›</span>
+                    <span className="text-gold-ink" aria-hidden="true"><Icon name="chevronRight" size={13} /></span>
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>
+                  <p className="text-xs mt-0.5 text-muted">
                     {serviceParts(m.service).delivery ? 'Livraison' : 'Ménage'}
                     {m.cleanerName ? ` · ${m.cleanerName}` : ' · non assigné'}
                   </p>
                 </div>
-                <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+                <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>
                   {missionStatusLabel(m.status, m.service)}
-                </span>
+                </Badge>
               </button>
             );
           })}
@@ -311,11 +304,29 @@ export default function LogementDetailClient() {
   );
 }
 
-function Info({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function BackButton({ onClick, label = 'Retour' }: { onClick: () => void; label?: string }) {
+  return (
+    <button onClick={onClick} className="text-sm mb-4 inline-flex items-center gap-1 min-h-[44px] text-gold-ink font-medium">
+      ← {label}
+    </button>
+  );
+}
+
+function AccessCode({ label, code }: { label: string; code: string }) {
+  return (
+    <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gold-soft border border-gold-line text-gold-ink">
+      <span className="font-sans font-normal text-muted">{label}</span>{code}
+    </span>
+  );
+}
+
+function Info({ label, value, className = '', style }: {
+  label: string; value: string; className?: string; style?: React.CSSProperties;
+}) {
   return (
     <div>
-      <p className="text-[11px] mb-0.5" style={{ color: '#A8A09A' }}>{label}</p>
-      <p className="text-sm font-semibold" style={{ color: valueColor ?? '#1A1A1A' }}>{value}</p>
+      <p className="text-[11px] mb-0.5 text-muted">{label}</p>
+      <p className={`text-sm font-semibold ${className || 'text-ink'}`} style={style}>{value}</p>
     </div>
   );
 }

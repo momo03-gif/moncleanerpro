@@ -358,7 +358,10 @@ function ItemRow({ it, single, siblings, sel, toggle, setQty }: { it: Item; sing
   const nom = it.tarif.nom;
   const on = !!sel[nom];
   const q = sel[nom]?.qty ?? 0;
-  const priceStr = it.mode === 'quote' ? 'Sur devis' : it.min == null ? '' : `${num(it.min!)} – ${num(it.max!)} €${it.mode === 'm2' ? '/m²' : ''}`;
+  // Aucun tarif unitaire affiché dans le catalogue : la grille de prix ne doit pas
+  // être lisible par un simple visiteur (concurrence). Seul le mode « sur devis »
+  // reste indiqué, car il cadre l'attente sans révéler de montant.
+  const priceStr = it.mode === 'quote' ? 'Sur devis' : '';
   return (
     <div className={'dv-item' + (on ? ' on' : '') + (single ? ' single' : '')}>
       <button className="dv-item-btn" onClick={() => toggle(nom, single, siblings)} aria-pressed={on}>
@@ -397,7 +400,7 @@ function Ticket({ totals, sel, byName, expanded, setExpanded, onRecap, onRemove 
     <div className="dv-ticket-col">
       <div className={'dv-ticket' + (expanded ? ' exp' : '')}>
         <button className="dv-ticket-head" onClick={() => setExpanded(!expanded)}>
-          <h3>Votre estimation</h3>
+          <h3>Votre sélection</h3>
           <span className="dv-ticket-count">{has ? `${totals.count} prestation${totals.count > 1 ? 's' : ''}` : 'vide'}<span className="dv-chev" dangerouslySetInnerHTML={{ __html: ICON.down }} /></span>
         </button>
         <div className="dv-ticket-body">
@@ -405,19 +408,23 @@ function Ticket({ totals, sel, byName, expanded, setExpanded, onRecap, onRemove 
         </div>
         {has && (
           <>
+            {/* Aucun montant ici : on ne garde que ce qui aide à compléter la
+                sélection. Le chiffrage arrive à l'écran d'estimation. */}
             <div className="dv-ticket-total">
-              <div className="dv-tt-row"><span>Estimation indicative</span><strong>{money(totals.min)} – {money(totals.max)}</strong></div>
-              {totals.quote.length > 0 && <div className="dv-tt-note">+ {totals.quote.length} prestation(s) sur devis personnalisé</div>}
               {totals.incomplete.length > 0 && <div className="dv-tt-note dv-warn">Précisez la surface pour {totals.incomplete.length} prestation(s)</div>}
+              <div className="dv-tt-note">Votre estimation s’affiche à l’étape suivante.</div>
             </div>
-            <div className="dv-ticket-cta"><button className="dv-btn dv-btn-primary dv-block" onClick={onRecap}>Voir mon estimation complète</button></div>
+            <div className="dv-ticket-cta"><button className="dv-btn dv-btn-primary dv-block" onClick={onRecap}>Voir mon estimation</button></div>
           </>
         )}
       </div>
     </div>
   );
 }
-function TicketLines({ sel, byName, onRemove }: { sel: Sel; byName: Map<string, Tarif>; onRemove: (n: string) => void }) {
+// `showPrice` n'est activé QUE sur l'écran d'estimation final. Pendant la
+// sélection, le ticket liste les prestations retenues sans aucun montant : les
+// prix ne se dévoilent qu'une fois le choix terminé.
+function TicketLines({ sel, byName, onRemove, showPrice = false }: { sel: Sel; byName: Map<string, Tarif>; onRemove: (n: string) => void; showPrice?: boolean }) {
   return (
     <>
       {Object.keys(sel).map(nom => {
@@ -430,7 +437,7 @@ function TicketLines({ sel, byName, onRemove }: { sel: Sel; byName: Map<string, 
         return (
           <div key={nom} className="dv-tl">
             <div className="dv-tl-main"><div className="dv-tl-name">{displayName(t)}</div>{meta && <div className="dv-tl-meta">{meta}</div>}</div>
-            <div className="dv-tl-right"><span className="dv-tl-price">{price}</span><button onClick={() => onRemove(nom)}>Retirer</button></div>
+            <div className="dv-tl-right">{showPrice && <span className="dv-tl-price">{price}</span>}<button onClick={() => onRemove(nom)}>Retirer</button></div>
           </div>
         );
       })}
@@ -450,7 +457,7 @@ function Recap({ totals, sel, byName, form, setForm, onBack, onHome, submit, bus
         <div className="dv-ticket dv-recap-ticket">
           <div className="dv-ticket-head" style={{ cursor: 'default' }}><h3>Récapitulatif</h3><span className="dv-ticket-count">{totals.count} prestation{totals.count > 1 ? 's' : ''}</span></div>
           <div className="dv-ticket-body" style={{ display: 'block' }}>
-            {totals.count ? <TicketLines sel={sel} byName={byName} onRemove={() => {}} /> : <div className="dv-ticket-empty">Aucune prestation. <button className="dv-link" onClick={onHome}>Choisir des prestations</button></div>}
+            {totals.count ? <TicketLines sel={sel} byName={byName} onRemove={() => {}} showPrice /> : <div className="dv-ticket-empty">Aucune prestation. <button className="dv-link" onClick={onHome}>Choisir des prestations</button></div>}
           </div>
           {totals.count > 0 && (
             <div className="dv-ticket-total"><div className="dv-tt-row"><span>Estimation indicative</span><strong>{money(totals.min)} – {money(totals.max)}</strong></div>

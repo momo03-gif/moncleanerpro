@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Motion from './Motion';
-import { SEO_PAGES, SERVED_CITIES } from '@/lib/seoPages';
+import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Vitrine publique MonCleanerPro (remplace le site Hostinger Horizons).
@@ -144,9 +144,9 @@ const jsonLdBusiness = {
   telephone: '+33783431700', email: EMAIL,
   image: 'https://moncleanerpro.fr/og-image.png', logo: 'https://moncleanerpro.fr/icon-512.png',
   priceRange: '€€',
+  // SERVED_CITIES est déjà dédupliqué et inclut Villeurbanne (page fin de chantier).
   areaServed: [
     ...SERVED_CITIES.map(name => ({ '@type': 'City', name })),
-    { '@type': 'City', name: 'Villeurbanne' },
     { '@type': 'AdministrativeArea', name: 'Métropole de Lyon' }, { '@type': 'AdministrativeArea', name: 'Rhône-Alpes' },
   ],
   address: { '@type': 'PostalAddress', addressLocality: 'Lyon', addressRegion: 'Auvergne-Rhône-Alpes', addressCountry: 'FR' },
@@ -465,23 +465,46 @@ export default function VitrinePage() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Zones desservies</p>
           <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon et dans la métropole</h2>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
-            {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e',
-              'Villeurbanne', 'Caluire-et-Cuire', 'Bron', 'Vénissieux', 'Écully', 'Tassin-la-Demi-Lune',
-              'Oullins', 'Saint-Priest', 'Vaulx-en-Velin', 'Meyzieu', 'Décines-Charpieu', 'Rillieux-la-Pape',
-              'Sainte-Foy-lès-Lyon', 'Saint-Genis-Laval'].join(' · ')} — et l’ensemble du Rhône-Alpes.
+            {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e'].join(' · ')}
+          </p>
+          {/* Les communes qui ont leur page deviennent des liens : c'est le maillage
+              interne le plus utile de la page, il pousse chaque page locale. */}
+          <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
+            {SEO_PAGES.filter(p => getCityGeo(p.slug) && !p.cluster).map((p, i, arr) => (
+              <span key={p.slug}>
+                <a href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
+                  {getCityGeo(p.slug)!.city}
+                </a>
+                {i < arr.length - 1 ? ' · ' : ''}
+              </span>
+            ))}
+            {' '}— et l’ensemble du Rhône-Alpes.
           </p>
         </div>
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
-        {/* Nos prestations — maillage interne vers les pages SEO (crawlabilité + référencement). */}
-        <div className="max-w-7xl mx-auto px-5 pt-12 pb-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos prestations à Lyon</p>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            {SEO_PAGES.map(p => (
-              <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
-            ))}
+        {/* Maillage interne vers les pages SEO (crawlabilité + référencement).
+            Séparé prestations / communes : un bloc unique mélangeant les deux
+            envoie un signal thématique flou et vieillit mal quand les pages
+            se multiplient. */}
+        <div className="max-w-7xl mx-auto px-5 pt-12 pb-2 grid gap-8 md:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos prestations à Lyon</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {SEO_PAGES.filter(p => !getCityGeo(p.slug)).map(p => (
+                <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos interventions par commune</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {SEO_PAGES.filter(p => getCityGeo(p.slug)).map(p => (
+                <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+              ))}
+            </div>
           </div>
         </div>
 

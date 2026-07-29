@@ -39,6 +39,7 @@ export default function ComptesPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<Record<string, 'approved' | 'refused'>>({});
+  const [actionErr, setActionErr] = useState<string | null>(null);
   // Recherche + tri (partagés par les deux listes).
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<'name' | 'revenue' | 'sites'>('name');
@@ -99,14 +100,27 @@ export default function ComptesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // On ne marque « traité » qu'après confirmation du serveur : afficher un succès
+  // sur un appel qui a échoué laissait la fiche en attente et bloquait la
+  // connexion du partenaire, sans que personne ne s'en aperçoive.
   async function handleApprove(p: PendingPartner) {
-    if (p.kind === 'hotel') await approveHotelDB(p.id); else await approveAirbnbPartnerDB(p.id);
-    setDone(d => ({ ...d, [p.id]: 'approved' }));
+    setActionErr(null);
+    try {
+      if (p.kind === 'hotel') await approveHotelDB(p.id); else await approveAirbnbPartnerDB(p.id);
+      setDone(d => ({ ...d, [p.id]: 'approved' }));
+    } catch (e) {
+      setActionErr(`Validation impossible pour ${p.name} : ${e instanceof Error ? e.message : 'erreur inconnue'}`);
+    }
   }
 
   async function handleRefuse(p: PendingPartner) {
-    if (p.kind === 'hotel') await refuseHotelDB(p.id); else await refuseAirbnbPartnerDB(p.id);
-    setDone(d => ({ ...d, [p.id]: 'refused' }));
+    setActionErr(null);
+    try {
+      if (p.kind === 'hotel') await refuseHotelDB(p.id); else await refuseAirbnbPartnerDB(p.id);
+      setDone(d => ({ ...d, [p.id]: 'refused' }));
+    } catch (e) {
+      setActionErr(`Refus impossible pour ${p.name} : ${e instanceof Error ? e.message : 'erreur inconnue'}`);
+    }
   }
 
   const active = pending.filter(h => !done[h.id]);
@@ -154,6 +168,13 @@ export default function ComptesPage() {
 
       {creating && (
         <CreatePartnerForm kind={creating} onClose={() => setCreating(null)} onCreated={() => { setCreating(null); load(); }} />
+      )}
+
+      {actionErr && (
+        <div role="alert" className="mb-4 rounded-xl border px-4 py-3 text-sm"
+          style={{ borderColor: '#E4B7B1', backgroundColor: '#FDF3F2', color: '#8A3A31' }}>
+          {actionErr}
+        </div>
       )}
 
       {active.length === 0 && processed.length === 0 && (

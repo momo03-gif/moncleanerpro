@@ -53,6 +53,7 @@ export default function AdminDashboard() {
   const [incidents, setIncidents] = useState<OpenIncident[]>(cached?.incidents ?? []);
   const [failingFeeds, setFailingFeeds] = useState<number>(cached?.failingFeeds ?? 0);
   const [loading, setLoading] = useState(cached === undefined);
+  const [actionErr, setActionErr] = useState<string | null>(null);
 
   // Dates LOCALES (pas UTC) : sinon le tableau de bord affiche la veille entre
   // minuit et 2h du matin en heure française.
@@ -90,15 +91,27 @@ export default function AdminDashboard() {
     load();
   }, []);
 
+  // L'échec doit être visible : sinon la fiche reste en attente et le partenaire
+  // se voit refuser la connexion alors que l'admin a cru le valider.
   async function handleApprove(h: any) {
-    const { approveAirbnbPartnerDB, approveHotelDB } = await loadDb();
-    if (h.kind === 'airbnb') await approveAirbnbPartnerDB(h.id); else await approveHotelDB(h.id);
-    await loadPending();
+    setActionErr(null);
+    try {
+      const { approveAirbnbPartnerDB, approveHotelDB } = await loadDb();
+      if (h.kind === 'airbnb') await approveAirbnbPartnerDB(h.id); else await approveHotelDB(h.id);
+      await loadPending();
+    } catch (e) {
+      setActionErr(`Validation impossible pour ${h.name} : ${e instanceof Error ? e.message : 'erreur inconnue'}`);
+    }
   }
   async function handleRefuse(h: any) {
-    const { refuseAirbnbPartnerDB, refuseHotelDB } = await loadDb();
-    if (h.kind === 'airbnb') await refuseAirbnbPartnerDB(h.id); else await refuseHotelDB(h.id);
-    await loadPending();
+    setActionErr(null);
+    try {
+      const { refuseAirbnbPartnerDB, refuseHotelDB } = await loadDb();
+      if (h.kind === 'airbnb') await refuseAirbnbPartnerDB(h.id); else await refuseHotelDB(h.id);
+      await loadPending();
+    } catch (e) {
+      setActionErr(`Refus impossible pour ${h.name} : ${e instanceof Error ? e.message : 'erreur inconnue'}`);
+    }
   }
 
   // ── Calculs opérationnels ──────────────────────────────────────────────────
@@ -161,6 +174,12 @@ export default function AdminDashboard() {
             <h2 className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Comptes en attente</h2>
             <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#C48A2A18', color: '#C48A2A' }}>{pending.length}</span>
           </div>
+          {actionErr && (
+            <div role="alert" className="mx-5 mt-4 rounded-xl border px-4 py-3 text-sm"
+              style={{ borderColor: '#E4B7B1', backgroundColor: '#FDF3F2', color: '#8A3A31' }}>
+              {actionErr}
+            </div>
+          )}
           {pending.map((h, i) => (
             <div key={h.id} className={`px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ${i < pending.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
               <div className="flex-1 min-w-0">

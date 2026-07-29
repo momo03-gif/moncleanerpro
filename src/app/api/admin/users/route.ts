@@ -62,17 +62,34 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
 
+      // Validation d'un compte partenaire. Les erreurs DOIVENT remonter : un
+      // échec silencieux ici laisse la fiche en 'pending', et le partenaire se
+      // voit refuser la connexion alors que l'admin a vu « approuvé ».
+      // `select()` après l'update permet de détecter le cas « aucune ligne
+      // touchée » (id inexistant), qu'un update seul ne signale pas.
       case 'approveHotel': {
-        await db.from('hotels').update({ status_account: 'approved' }).eq('id', b.id);
-        const { data } = await db.from('hotels').select('user_id').eq('id', b.id).single();
-        if (data?.user_id) await db.from('users').update({ status: 'active' }).eq('id', data.user_id);
+        const { data: rows, error } = await db.from('hotels')
+          .update({ status_account: 'approved' }).eq('id', b.id).select('user_id');
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        if (!rows || rows.length === 0) return NextResponse.json({ error: 'Hôtel introuvable.' }, { status: 404 });
+        const userId = rows[0]?.user_id;
+        if (userId) {
+          const { error: uErr } = await db.from('users').update({ status: 'active' }).eq('id', userId);
+          if (uErr) return NextResponse.json({ error: uErr.message }, { status: 400 });
+        }
         return NextResponse.json({ ok: true });
       }
 
       case 'approveAirbnb': {
-        await db.from('airbnb_partners').update({ status_account: 'approved' }).eq('id', b.id);
-        const { data } = await db.from('airbnb_partners').select('user_id').eq('id', b.id).single();
-        if (data?.user_id) await db.from('users').update({ status: 'active' }).eq('id', data.user_id);
+        const { data: rows, error } = await db.from('airbnb_partners')
+          .update({ status_account: 'approved' }).eq('id', b.id).select('user_id');
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        if (!rows || rows.length === 0) return NextResponse.json({ error: 'Partenaire introuvable.' }, { status: 404 });
+        const userId = rows[0]?.user_id;
+        if (userId) {
+          const { error: uErr } = await db.from('users').update({ status: 'active' }).eq('id', userId);
+          if (uErr) return NextResponse.json({ error: uErr.message }, { status: 400 });
+        }
         return NextResponse.json({ ok: true });
       }
 

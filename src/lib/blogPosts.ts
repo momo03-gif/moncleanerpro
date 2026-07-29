@@ -8,7 +8,10 @@
 export type Block =
   | { type: 'p'; text: string }
   | { type: 'h2'; text: string }
-  | { type: 'ul'; items: string[] };
+  | { type: 'ul'; items: string[] }
+  // Encart de liens internes : l'ancre porte le mot-clé de la page cible, ce qui
+  // vaut bien mieux qu'un « cliquez ici » pour le référencement de la page visée.
+  | { type: 'links'; intro?: string; items: { label: string; href: string }[] };
 
 export interface BlogPost {
   slug: string;
@@ -98,6 +101,99 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: 'h2', text: '6. Sols et finitions' },
       { type: 'p', text: "Aspiration puis lavage adapté au revêtement, et contrôle final pièce par pièce. Le bien doit être prêt à être remis, loué ou vendu dès la remise des clés." },
       { type: 'p', text: "Besoin d’un nettoyage de fin de chantier à Lyon avant une livraison ? MonCleanerPro intervient pour les particuliers comme pour les professionnels de l’immobilier. Devis gratuit sous 24h." },
+      { type: 'links', intro: 'Pour aller plus loin :', items: [
+        { label: 'Nettoyage de fin de chantier à Lyon', href: '/nettoyage-fin-de-chantier-lyon' },
+        { label: 'Prix d’un nettoyage de fin de chantier', href: '/prix-nettoyage-fin-de-chantier-lyon' },
+        { label: 'Nettoyage après travaux à Lyon', href: '/nettoyage-apres-travaux-lyon' },
+      ] },
+    ],
+  },
+  {
+    slug: 'poussiere-de-chantier-eliminer',
+    title: 'Poussière de chantier : pourquoi elle revient et comment l’éliminer vraiment',
+    metaTitle: 'Poussière de chantier : pourquoi elle revient — MonCleanerPro Lyon',
+    description: "La poussière de travaux réapparaît quelques jours après le ménage : voici d’où elle vient, les points qu’on oublie systématiquement et la méthode pour s’en débarrasser pour de bon.",
+    keyword: 'poussière de chantier',
+    date: '2026-07-29',
+    readingMinutes: 6,
+    body: [
+      { type: 'p', text: "Vous avez passé un week-end à nettoyer après vos travaux. Trois jours plus tard, une pellicule grise recouvre à nouveau les meubles. Ce n’est ni une illusion ni un manque de rigueur : c’est le comportement normal de la poussière de chantier quand on la traite comme de la poussière ordinaire." },
+      { type: 'h2', text: 'Pourquoi elle n’est pas une poussière comme les autres' },
+      { type: 'p', text: "La poussière domestique est composée de fibres, de cheveux et de particules relativement lourdes qui retombent vite. La poussière de chantier, elle, mélange plâtre, ciment, enduit et bois poncé. Ses particules sont beaucoup plus fines et plus légères : elles restent en suspension dans l’air pendant des heures, parfois plus d’une journée." },
+      { type: 'p', text: "Conséquence directe : chaque geste un peu brusque la remet en vol. Un coup de balai, un aspirateur sans filtration adaptée qui la rejette par la sortie d’air, un chiffon sec passé sur une étagère — et elle repart pour se redéposer ailleurs, souvent sur ce que vous venez de nettoyer." },
+      { type: 'h2', text: 'Les six endroits que tout le monde oublie' },
+      { type: 'p', text: "Si la poussière revient, c’est presque toujours qu’un réservoir en hauteur n’a pas été traité. Elle en redescend au moindre courant d’air, à chaque ouverture de porte ou de fenêtre." },
+      { type: 'ul', items: [
+        "Le dessus des portes et des encadrements — invisible depuis le sol, systématiquement chargé",
+        "Les rails et les gorges de placards coulissants, où elle s’accumule en épaisseur",
+        "Les grilles de ventilation et les bouches d’aération, qui la rediffusent activement",
+        "Le dessus des luminaires, des étagères hautes et des tringles à rideaux",
+        "Les gorges de moulures, les corniches et les plinthes à profil creux",
+        "L’intérieur des placards et des meubles neufs, ouverts pendant le chantier",
+      ] },
+      { type: 'h2', text: 'La méthode qui fonctionne' },
+      { type: 'p', text: "Le principe est simple : ne jamais faire voler la poussière, et toujours travailler de haut en bas. Voici l’ordre à respecter." },
+      { type: 'ul', items: [
+        "Aérer largement avant de commencer, pour évacuer ce qui est encore en suspension",
+        "Ne jamais balayer à sec : on aspire, avec un aspirateur à filtration fine",
+        "Commencer par les points hauts, puis descendre — plafonds, luminaires, dessus de portes, placards, menuiseries, plinthes",
+        "Essuyer à l’humide, jamais au chiffon sec : le sec déplace la poussière au lieu de la capturer",
+        "Rincer ou changer souvent le support, sinon on étale un voile gris sur les surfaces",
+        "Traiter les sols en dernier, une fois toute la poussière retombée",
+        "Attendre un jour, puis repasser rapidement sur les surfaces : ce second passage capte ce qui est redescendu",
+      ] },
+      { type: 'h2', text: 'Le second passage n’est pas facultatif' },
+      { type: 'p', text: "C’est le point que les particuliers sautent presque toujours, et c’est précisément celui qui règle le problème. Même en travaillant proprement, une partie des particules les plus fines reste en l’air pendant votre intervention et se dépose ensuite. Un passage léger vingt-quatre à quarante-huit heures plus tard suffit à casser le cycle — sans lui, vous recommencerez chaque semaine pendant un mois." },
+      { type: 'h2', text: 'Les erreurs qui aggravent la situation' },
+      { type: 'ul', items: [
+        "Passer l’aspirateur domestique sur du plâtre en quantité : il sature, puis rejette les fines par la sortie d’air",
+        "Utiliser un produit trop mouillé sur un parquet ou une tomette, qui garde une auréole",
+        "Frotter une projection de peinture sèche à sec, ce qui raye le support neuf",
+        "Installer les meubles et le linge avant le nettoyage — ils captent tout et deviennent une source secondaire",
+        "Nettoyer avant que le dernier artisan soit passé : la retouche de peinture relance tout",
+      ] },
+      { type: 'h2', text: 'Quand passer la main' },
+      { type: 'p', text: "Une pièce ou deux se traitent en un week-end si vous suivez l’ordre ci-dessus. Un logement entier après une rénovation lourde, en revanche, représente facilement plusieurs jours de travail — avec du matériel que l’on n’a généralement pas chez soi, et un vrai risque d’abîmer des matériaux qui viennent d’être posés." },
+      { type: 'p', text: "C’est là que faire appel à une entreprise devient rentable, surtout si une date vous contraint : état des lieux, livraison, emménagement ou mise en vente." },
+      { type: 'links', intro: 'Nos prestations sur ce sujet :', items: [
+        { label: 'Nettoyage après travaux à Lyon', href: '/nettoyage-apres-travaux-lyon' },
+        { label: 'Nettoyage de fin de chantier à Lyon', href: '/nettoyage-fin-de-chantier-lyon' },
+        { label: 'Prix d’un nettoyage de fin de chantier', href: '/prix-nettoyage-fin-de-chantier-lyon' },
+      ] },
+    ],
+  },
+  {
+    slug: 'difference-fin-de-chantier-apres-travaux',
+    title: 'Fin de chantier ou après travaux : quelle prestation demander ?',
+    metaTitle: 'Fin de chantier ou après travaux : la différence — MonCleanerPro',
+    description: "Nettoyage de fin de chantier et nettoyage après travaux désignent souvent la même chose — mais pas toujours le même contexte. Comment savoir quoi demander, et ce que ça change au devis.",
+    keyword: 'différence fin de chantier après travaux',
+    date: '2026-07-29',
+    readingMinutes: 4,
+    body: [
+      { type: 'p', text: "C’est une question qui revient à chaque premier appel : « je ne sais pas si c’est du nettoyage de fin de chantier ou du nettoyage après travaux ». Bonne nouvelle — dans la grande majorité des cas, c’est le même travail. Mais les deux expressions renvoient à des contextes différents, et ça change des choses concrètes sur le devis." },
+      { type: 'h2', text: 'La méthode est identique' },
+      { type: 'p', text: "Dans les deux cas, on retire les protections et les résidus, on dépoussière de haut en bas, on élimine les projections de peinture et de colle, on fait les vitres, on détaille la cuisine et les sanitaires, puis on traite les sols. Aucune entreprise sérieuse ne vous proposera deux méthodes différentes." },
+      { type: 'h2', text: 'Ce qui change, c’est le contexte' },
+      { type: 'p', text: "On parle plutôt de nettoyage de fin de chantier quand il y a une entreprise du bâtiment, un maître d’ouvrage et une date de livraison contractuelle. Le nettoyage fait partie du processus de réception : il est là pour éviter des réserves." },
+      { type: 'p', text: "On parle plutôt de nettoyage après travaux quand un particulier a fait rénover sa cuisine, sa salle de bains ou son logement. L’objectif n’est pas une réception, c’est de pouvoir réoccuper les lieux." },
+      { type: 'h2', text: 'Les conséquences pratiques' },
+      { type: 'ul', items: [
+        "Le volume : un chantier professionnel porte souvent sur plusieurs lots, un chantier de particulier sur une ou deux pièces",
+        "Le délai : sur du professionnel, la date est contrainte par la réception ; chez un particulier, elle est souvent plus souple",
+        "L’interlocuteur : conducteur de travaux ou promoteur d’un côté, occupant du logement de l’autre",
+        "Le niveau d’exigence : sur du neuf, on cible ce qui déclenche des réserves (étiquettes, voile de ciment, silicone)",
+        "La facturation : professionnelle et parfois multi-lots d’un côté, prestation unique de l’autre",
+      ] },
+      { type: 'h2', text: 'Et les autres appellations ?' },
+      { type: 'p', text: "Vous croiserez aussi « remise en état après travaux », « nettoyage après rénovation » ou « nettoyage de réception ». Ce sont des variantes des deux mêmes prestations. Un dernier cas se distingue vraiment : le nettoyage intermédiaire, réalisé en cours de chantier pour que les corps de métier suivants travaillent dans un environnement praticable. Celui-là ne remplace pas la remise en état finale." },
+      { type: 'h2', text: 'Que demander, concrètement' },
+      { type: 'p', text: "Ne vous arrêtez pas au vocabulaire : décrivez votre situation. Le type de bien, la surface, la nature des travaux, l’état dans lequel les artisans ont laissé les lieux et la date qui vous contraint. Ces cinq éléments suffisent à cadrer un devis juste, quelle que soit l’étiquette qu’on met dessus." },
+      { type: 'links', intro: 'Selon votre situation :', items: [
+        { label: 'Nettoyage de fin de chantier à Lyon (professionnels)', href: '/nettoyage-fin-de-chantier-lyon' },
+        { label: 'Nettoyage après travaux à Lyon (particuliers)', href: '/nettoyage-apres-travaux-lyon' },
+        { label: 'Comment est calculé le prix', href: '/prix-nettoyage-fin-de-chantier-lyon' },
+      ] },
     ],
   },
   {
