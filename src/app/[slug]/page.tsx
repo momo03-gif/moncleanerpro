@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Motion from '../accueil/Motion';
 import { SEO_PAGES, SEO_SLUGS, getSeoPage, getCityGeo } from '@/lib/seoPages';
+import { getBlogPost } from '@/lib/blogPosts';
 
 // Pages d'atterrissage SEO (service × Lyon) — rendu 100 % statique.
 // dynamicParams=false : seuls les slugs connus existent, tout le reste → 404
@@ -56,6 +57,11 @@ const STYLES = `
 .mcp-js .mcp-rise{opacity:0;transform:translateY(22px);animation:mcpRise .9s cubic-bezier(.16,.84,.24,1) forwards}
 @keyframes mcpRise{to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.mcp-glow{animation:none}.mcp-js .mcp-rise{opacity:1;transform:none;animation:none}}
+.seo-prose h2{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;color:${INK};margin:0 0 .8rem}
+.seo-prose p{font-size:1.02rem;line-height:1.8;color:#3F3A34;margin:.8rem 0}
+.seo-prose ul{margin:.9rem 0 0 1.15rem;list-style:disc}
+.seo-prose li{font-size:1.02rem;line-height:1.75;color:#3F3A34;margin:.45rem 0}
+@media (min-width:768px){.seo-prose h2{font-size:1.7rem}}
 `;
 
 export default async function SeoLandingPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -64,7 +70,17 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
   if (!p) notFound();
 
   const url = `https://moncleanerpro.fr/${p.slug}`;
-  const others = SEO_PAGES.filter(x => x.slug !== p.slug);
+  // Maillage interne : on privilégie les liens curatés (`related`), puis les pages
+  // du même cluster, et on complète avec d'autres prestations. Déverser les 20+
+  // pages dilue le jus et brouille le signal thématique.
+  const pick = (slug: string) => SEO_PAGES.find(x => x.slug === slug && x.slug !== p.slug);
+  const curated = (p.related ?? []).map(pick).filter((x): x is typeof SEO_PAGES[number] => !!x);
+  const sameCluster = p.cluster
+    ? SEO_PAGES.filter(x => x.cluster === p.cluster && x.slug !== p.slug && !curated.includes(x))
+    : [];
+  const fill = SEO_PAGES.filter(x => x.slug !== p.slug && !curated.includes(x) && !sameCluster.includes(x));
+  const others = [...curated, ...sameCluster, ...fill].slice(0, 6);
+  const posts = (p.relatedPosts ?? []).map(getBlogPost).filter((x): x is NonNullable<ReturnType<typeof getBlogPost>> => !!x);
 
   // Zone desservie : la commune réelle de la page (+ coordonnées) pour un signal
   // géo précis ; « Lyon » par défaut pour les pages de service.
@@ -165,6 +181,23 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
         </div>
       </section>
 
+      {/* Contenu long (pages pilier) — facultatif : les pages courtes n'en ont pas.
+          C'est ce qui permet de traiter un mot-clé concurrentiel en profondeur
+          plutôt qu'en 250 mots. */}
+      {p.sections && p.sections.length > 0 && (
+        <section className="max-w-5xl mx-auto px-5 pb-4">
+          <div className="seo-prose">
+            {p.sections.map(s => (
+              <div key={s.h2} data-reveal className="mb-10">
+                <h2>{s.h2}</h2>
+                {s.paragraphs?.map((t, i) => <p key={i}>{t}</p>)}
+                {s.list && <ul>{s.list.map((it, i) => <li key={i}>{it}</li>)}</ul>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* FAQ */}
       <section className="max-w-5xl mx-auto px-5 pb-16 md:pb-20">
         <h2 data-reveal className="text-2xl font-bold" style={{ letterSpacing: '-0.02em' }}>Questions fréquentes — {p.eyebrow.toLowerCase()}</h2>
@@ -181,17 +214,35 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
         </div>
       </section>
 
-      {/* Maillage interne : autres services */}
+      {/* Maillage interne : pages liées (curatées) */}
       <section className="max-w-5xl mx-auto px-5 pb-16 md:pb-20">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos autres prestations à Lyon</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
+          {p.cluster ? 'À voir aussi sur ce sujet' : 'Nos autres prestations à Lyon'}
+        </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {others.map(o => (
-            <a key={o.slug} href={`/${o.slug}`} data-reveal className="mcp-card flex items-center justify-between rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+            <a key={o.slug} href={`/${o.slug}`} data-reveal className="mcp-card flex items-center justify-between gap-3 rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
               <span className="text-sm font-semibold">{o.h1}</span>
-              <span style={{ color: GOLD }}>→</span>
+              <span style={{ color: GOLD }} aria-hidden>→</span>
             </a>
           ))}
         </div>
+
+        {/* Vers le blog : les articles captent les requêtes informationnelles et
+            renvoient le visiteur vers cette page commerciale. */}
+        {posts.length > 0 && (
+          <div className="mt-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos conseils</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {posts.map(b => (
+                <a key={b.slug} href={`/blog/${b.slug}`} data-reveal className="mcp-card block rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+                  <span className="text-sm font-semibold leading-snug">{b.title}</span>
+                  <span className="mt-2 block text-xs font-semibold" style={{ color: GOLD }}>Lire l’article →</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* CTA */}

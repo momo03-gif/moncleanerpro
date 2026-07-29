@@ -42,6 +42,12 @@ const STYLES = `
 .article-body p{font-size:1.02rem;line-height:1.8;color:#3F3A34;margin:.7rem 0}
 .article-body ul{margin:.7rem 0 .7rem 1.2rem;list-style:disc}
 .article-body li{font-size:1.02rem;line-height:1.7;color:#3F3A34;margin:.35rem 0}
+.article-links{margin:1.8rem 0;padding:1.1rem 1.3rem;border:1px solid ${BORDER};border-left:3px solid ${GOLD};border-radius:12px;background:#FFFFFF}
+.article-links-intro{font-size:.86rem!important;font-weight:600;color:${INK}!important;margin:0 0 .5rem!important}
+.article-links ul{margin:0 0 0 1.1rem;list-style:disc}
+.article-links li{margin:.3rem 0;font-size:.96rem}
+.article-links a{color:${INK};text-decoration:underline;text-decoration-color:${GOLD};text-underline-offset:3px;font-weight:600}
+.article-links a:hover{color:#8A6F26}
 .mcp-card{transition:transform .35s cubic-bezier(.16,.84,.24,1),box-shadow .35s ease,border-color .35s ease}
 .mcp-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px -20px rgba(26,26,26,.25);border-color:rgba(201,168,76,.5)}
 `;
@@ -100,6 +106,12 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
           {p.body.map((b, i) => {
             if (b.type === 'h2') return <h2 key={i}>{b.text}</h2>;
             if (b.type === 'ul') return <ul key={i}>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>;
+            if (b.type === 'links') return (
+              <aside key={i} className="article-links">
+                {b.intro && <p className="article-links-intro">{b.intro}</p>}
+                <ul>{b.items.map((l, j) => <li key={j}><a href={l.href}>{l.label}</a></li>)}</ul>
+              </aside>
+            );
             return <p key={i}>{b.text}</p>;
           })}
         </div>
