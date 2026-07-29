@@ -12,14 +12,15 @@ export async function getPendingHotelsDB() {
   catch { return []; }
 }
 
+// Validation / refus d'un compte partenaire : on laisse l'erreur remonter à
+// l'appelant. L'avaler affichait « approuvé » à l'admin alors que la fiche
+// restait en attente — et le partenaire se voyait refuser la connexion.
 export async function approveHotelDB(id: string) {
-  try { await postServer('/api/admin/users', { action: 'approveHotel', id }); }
-  catch (e) { console.error('approveHotelDB:', e); }
+  await postServer('/api/admin/users', { action: 'approveHotel', id });
 }
 
 export async function refuseHotelDB(id: string) {
-  try { await postServer('/api/partners', { op: 'refuseHotel', id }); }
-  catch (e) { console.error('refuseHotelDB:', e); }
+  await postServer('/api/partners', { op: 'refuseHotel', id });
 }
 
 export async function registerHotelDB(fields: {
@@ -75,13 +76,11 @@ export async function getPendingAirbnbPartnersDB() {
 }
 
 export async function approveAirbnbPartnerDB(id: string) {
-  try { await postServer('/api/admin/users', { action: 'approveAirbnb', id }); }
-  catch (e) { console.error('approveAirbnbPartnerDB:', e); }
+  await postServer('/api/admin/users', { action: 'approveAirbnb', id });
 }
 
 export async function refuseAirbnbPartnerDB(id: string) {
-  try { await postServer('/api/partners', { op: 'refuseAirbnbPartner', id }); }
-  catch (e) { console.error('refuseAirbnbPartnerDB:', e); }
+  await postServer('/api/partners', { op: 'refuseAirbnbPartner', id });
 }
 
 // ── FICHES D'ADMINISTRATION DES COMPTES PARTENAIRES ─────────────────────────────
