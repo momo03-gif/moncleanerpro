@@ -7,9 +7,8 @@ import { useFeedback } from '@/contexts/FeedbackContext';
 import { getAirbnbsForPartner, getReservationsForPartner, createAirbnb, updateAirbnb, deleteAirbnb } from '@/lib/db';
 import type { Apartment, Reservation } from '@/lib/types';
 import Icon from '@/components/Icon';
-import Loading from "@/components/Loading";
-
-const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
+import Loading from '@/components/Loading';
+import { Badge, Button, Card, EmptyState, FIELD, IconButton, Label, PageTitle } from '@/components/ui';
 
 const emptyForm = {
   name: '', address: '', portalCode: '', keyboxCode: '',
@@ -37,6 +36,12 @@ const TEXT_FIELDS: { label: string; key: keyof FormState; placeholder: string; r
   { label: 'Adresse complète', key: 'address', placeholder: '12 Rue de la Paix, Lyon', required: true },
   { label: 'Code portail — si besoin', key: 'portalCode', placeholder: '1234A' },
   { label: 'Boîte à clé — si besoin', key: 'keyboxCode', placeholder: 'B#4512' },
+];
+
+const COUNT_FIELDS: { label: string; key: keyof FormState; placeholder: string }[] = [
+  { label: 'Chambres', key: 'bedrooms', placeholder: '2' },
+  { label: 'Lits', key: 'beds', placeholder: '3' },
+  { label: 'Canapé-lit', key: 'sofaBeds', placeholder: '1' },
 ];
 
 export default function AirbnbApartmentsPage() {
@@ -149,157 +154,147 @@ export default function AirbnbApartmentsPage() {
 
   return (
     <div className="p-5 mcp-in">
-      <div className="flex items-start justify-between gap-3 mb-5 pt-2">
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Mes appartements</h1>
-          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>{apartments.length} appartement{apartments.length > 1 ? 's' : ''}</p>
-        </div>
-        <button onClick={() => (showForm ? closeForm() : openCreate())}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0"
-          style={{ backgroundColor: showForm ? '#F5F3EF' : '#C9A84C', color: showForm ? '#7A7068' : '#1A1A1A' }}>
-          {showForm ? 'Annuler' : '+ Ajouter'}
-        </button>
-      </div>
+      <PageTitle
+        title="Mes appartements"
+        subtitle={`${apartments.length} appartement${apartments.length > 1 ? 's' : ''}`}
+        action={
+          <Button variant={showForm ? 'secondary' : 'primary'} onClick={() => (showForm ? closeForm() : openCreate())}>
+            {showForm ? 'Annuler' : <><Icon name="plus" size={16} /> Ajouter</>}
+          </Button>
+        }
+      />
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <h2 className="font-semibold mb-4" style={{ color: '#1A1A1A' }}>{editingId ? "Modifier l'appartement" : 'Nouvel appartement'}</h2>
-          <div className="grid md:grid-cols-2 gap-3">
-            {TEXT_FIELDS.map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>{f.label}</label>
-                <input required={f.required} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder} className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-              </div>
-            ))}
+        <Card as="section" className="p-5 mb-6">
+          <form onSubmit={handleSubmit}>
+            <h2 className="font-semibold mb-4 text-ink">{editingId ? "Modifier l'appartement" : 'Nouvel appartement'}</h2>
+            <div className="grid md:grid-cols-2 gap-3">
+              {TEXT_FIELDS.map(f => (
+                <div key={f.key}>
+                  <Label htmlFor={`apt-${f.key}`}>{f.label}</Label>
+                  <input id={`apt-${f.key}`} required={f.required} value={form[f.key]}
+                    onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder} className={FIELD} />
+                </div>
+              ))}
 
-            <div className="md:col-span-2 grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Chambres</label>
-                <input type="number" min="0" value={form.bedrooms} onChange={e => setForm(p => ({ ...p, bedrooms: e.target.value }))}
-                  placeholder="2" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              <div className="md:col-span-2 grid grid-cols-3 gap-3">
+                {COUNT_FIELDS.map(f => (
+                  <div key={f.key}>
+                    <Label htmlFor={`apt-${f.key}`}>{f.label}</Label>
+                    <input id={`apt-${f.key}`} type="number" min="0" value={form[f.key]}
+                      onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                      placeholder={f.placeholder} className={FIELD} />
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Lits</label>
-                <input type="number" min="0" value={form.beds} onChange={e => setForm(p => ({ ...p, beds: e.target.value }))}
-                  placeholder="3" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+
+              {/* Prix facturé : fixé par MonCleanerPro. Visible en transparence, mais
+                  NON modifiable par le partenaire (lecture seule). */}
+              <div className="md:col-span-2">
+                <Label>Prix par ménage (€) — facturé</Label>
+                <div className="w-full px-4 py-3 rounded-xl text-sm border bg-surface border-line text-ink flex items-center justify-between gap-2">
+                  <span className="font-semibold">{form.clientPrice ? `${form.clientPrice} €` : 'À définir par MonCleanerPro'}</span>
+                  <span className="text-xs shrink-0 text-muted">Fixé par MonCleanerPro</span>
+                </div>
+                <p className="text-xs mt-1.5 text-muted">
+                  Tarif convenu, appliqué à chaque ménage de cet appartement. Pour le modifier, contactez MonCleanerPro.
+                </p>
               </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Canapé-lit</label>
-                <input type="number" min="0" value={form.sofaBeds} onChange={e => setForm(p => ({ ...p, sofaBeds: e.target.value }))}
-                  placeholder="1" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+
+              <div className="md:col-span-2">
+                <Label htmlFor="apt-entry">Instructions d&apos;entrée</Label>
+                <textarea id="apt-entry" required value={form.entryDirectives}
+                  onChange={e => setForm(p => ({ ...p, entryDirectives: e.target.value }))} rows={2}
+                  placeholder="Comment accéder au logement..." className={`${FIELD} resize-none`} />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label htmlFor="apt-notes">Notes particulières — optionnel</Label>
+                <textarea id="apt-notes" value={form.notes}
+                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
+                  placeholder="Animaux, parking, fragilités..." className={`${FIELD} resize-none`} />
               </div>
             </div>
 
-            {/* Prix facturé : fixé par MonCleanerPro. Visible en transparence, mais
-                NON modifiable par le partenaire (lecture seule). */}
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Prix par ménage (€) — facturé</label>
-              <div className="w-full px-4 py-3 rounded-xl text-sm border flex items-center justify-between"
-                style={{ backgroundColor: '#F5F3EF', borderColor: '#E8E4DC', color: '#1A1A1A' }}>
-                <span className="font-semibold">{form.clientPrice ? `${form.clientPrice} €` : 'À définir par MonCleanerPro'}</span>
-                <span className="text-xs" style={{ color: '#A8A09A' }}>Fixé par MonCleanerPro</span>
-              </div>
-              <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>
-                Tarif convenu, appliqué à chaque ménage de cet appartement. Pour le modifier, contactez MonCleanerPro.
-              </p>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Instructions d'entrée</label>
-              <textarea required value={form.entryDirectives} onChange={e => setForm(p => ({ ...p, entryDirectives: e.target.value }))} rows={2}
-                placeholder="Comment accéder au logement..." className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
-                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Notes particulières — optionnel</label>
-              <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
-                placeholder="Animaux, parking, fragilités..." className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
-                onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-            </div>
-          </div>
-
-          <button type="submit" disabled={saving} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-            {saving ? 'Enregistrement...' : editingId ? 'Enregistrer les modifications' : "Ajouter l'appartement"}
-          </button>
-        </form>
+            <Button type="submit" size="lg" disabled={saving} className="mt-4">
+              {saving ? 'Enregistrement...' : editingId ? 'Enregistrer les modifications' : "Ajouter l'appartement"}
+            </Button>
+          </form>
+        </Card>
       )}
 
       {apartments.length > 0 && (
         <div className="relative mb-5">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A8A09A' }}>⌕</span>
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border" style={inputStyle}
-            onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+          {/* Le glyphe « ⌕ » servait d'icône de recherche : absent de nombreuses
+              polices et non aligné avec le jeu d'icônes maison. */}
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true">
+            <Icon name="search" size={16} />
+          </span>
+          <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+            aria-label="Rechercher un appartement" placeholder="Rechercher..."
+            className={`${FIELD} pl-10 pr-4 py-2.5`} />
         </div>
       )}
 
       {visible.length === 0 ? (
-        <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-          <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="building" size={30} /></span>
-          <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucun appartement</p>
-          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Ajoutez votre premier logement</p>
-        </div>
+        apartments.length === 0
+          ? <EmptyState icon="building" title="Aucun appartement" hint="Ajoutez votre premier logement" />
+          : <EmptyState icon="search" title="Aucun résultat" hint={`Rien ne correspond à « ${search} »`} />
       ) : (
         <div className="space-y-3">
-          {visible.map(apt => (
-            <div key={apt.id} className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-              <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
-                <div className="flex items-start justify-between gap-2">
-                  <button onClick={() => router.push(`/airbnb/logement/${apt.id}`)} className="min-w-0 text-left flex-1">
-                    <h3 className="font-semibold truncate flex items-center gap-1" style={{ color: '#1A1A1A' }}>
-                      {apt.name}
-                      <span className="text-xs shrink-0" style={{ color: '#C9A84C' }}>›</span>
-                    </h3>
-                    <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={12} className="shrink-0" /> {apt.address}</p>
-                  </button>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => openEdit(apt)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>Modifier</button>
-                    <button onClick={() => handleDelete(apt.id)} className="text-xs px-2.5 py-1.5 rounded-lg" style={{ backgroundColor: '#B85A5010', color: '#B85A50' }}>✕</button>
+          {visible.map(apt => {
+            const { occupied, nextDep } = statusFor(apt.id);
+            return (
+              <Card key={apt.id} className="overflow-hidden">
+                <div className="px-5 py-4 border-b border-hairline">
+                  <div className="flex items-start justify-between gap-2">
+                    <button onClick={() => router.push(`/airbnb/logement/${apt.id}`)} className="min-w-0 text-left flex-1">
+                      <h3 className="font-semibold truncate flex items-center gap-1 text-ink">
+                        {apt.name}
+                        <span className="shrink-0 text-gold-ink" aria-hidden="true"><Icon name="chevronRight" size={14} /></span>
+                      </h3>
+                      <p className="text-xs mt-0.5 flex items-center gap-1.5 text-muted">
+                        <Icon name="pin" size={12} className="shrink-0" /> {apt.address}
+                      </p>
+                    </button>
+                    <div className="flex gap-1.5 shrink-0">
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(apt)}>Modifier</Button>
+                      {/* Le « ✕ » n'avait aucun nom accessible : un lecteur d'écran
+                          annonçait « bouton » sans dire ce qu'il supprimait. */}
+                      <IconButton icon="close" tone="danger" label={`Supprimer ${apt.name}`} onClick={() => handleDelete(apt.id)} />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="px-5 py-3 space-y-1.5 text-sm" style={{ color: '#7A7068' }}>
-                {(() => {
-                  const { occupied, nextDep } = statusFor(apt.id);
-                  return (
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
-                        style={{ backgroundColor: occupied ? '#5A8A6A15' : '#F1F1EE', color: occupied ? '#5A8A6A' : '#A8A09A' }}>
-                        {occupied ? 'Occupé' : 'Libre'}
+                <div className="px-5 py-3 space-y-1.5 text-sm text-muted">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <Badge tone={occupied ? 'success' : 'neutral'}>{occupied ? 'Occupé' : 'Libre'}</Badge>
+                    {nextDep && (
+                      <span className="text-[11px] text-muted">
+                        Prochain départ : {new Date(nextDep.checkOut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                       </span>
-                      {nextDep && (
-                        <span className="text-[11px]" style={{ color: '#A8A09A' }}>
-                          Prochain départ : {new Date(nextDep.checkOut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
-                {apt.clientPrice != null && (
-                  <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{apt.clientPrice}€ / ménage</p>
-                )}
-                {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
-                  <p className="text-xs">
-                    {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
-                    {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
-                    {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
-                    {apt.beds != null && apt.sofaBeds != null && ' · '}
-                    {apt.sofaBeds != null && <>{apt.sofaBeds} canapé-lit{apt.sofaBeds > 1 ? 's' : ''}</>}
-                  </p>
-                )}
-                {apt.portalCode && <p className="text-xs"><span style={{ color: '#A8A09A' }}>Portail : </span><span className="font-mono font-semibold" style={{ color: '#1A1A1A' }}>{apt.portalCode}</span></p>}
-                {apt.keyboxCode && <p className="text-xs"><span style={{ color: '#A8A09A' }}>Clé : </span><span className="font-mono font-semibold" style={{ color: '#1A1A1A' }}>{apt.keyboxCode}</span></p>}
-                {apt.entryDirectives && <p className="text-xs">{apt.entryDirectives}</p>}
-                {apt.notes && <p className="text-xs px-3 py-2 rounded-xl mt-1" style={{ backgroundColor: '#F8F6F2' }}>{apt.notes}</p>}
-              </div>
-            </div>
-          ))}
+                    )}
+                  </div>
+                  {apt.clientPrice != null && (
+                    <p className="text-xs font-semibold text-success">{apt.clientPrice}€ / ménage</p>
+                  )}
+                  {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
+                    <p className="text-xs">
+                      {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
+                      {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
+                      {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
+                      {apt.beds != null && apt.sofaBeds != null && ' · '}
+                      {apt.sofaBeds != null && <>{apt.sofaBeds} canapé-lit{apt.sofaBeds > 1 ? 's' : ''}</>}
+                    </p>
+                  )}
+                  {apt.portalCode && <p className="text-xs"><span className="text-muted">Portail : </span><span className="font-mono font-semibold text-ink">{apt.portalCode}</span></p>}
+                  {apt.keyboxCode && <p className="text-xs"><span className="text-muted">Clé : </span><span className="font-mono font-semibold text-ink">{apt.keyboxCode}</span></p>}
+                  {apt.entryDirectives && <p className="text-xs">{apt.entryDirectives}</p>}
+                  {apt.notes && <p className="text-xs px-3 py-2 rounded-xl mt-1 bg-surface-2">{apt.notes}</p>}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

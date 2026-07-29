@@ -13,6 +13,7 @@ import { getRepairsForPartnerDB, resolveRepairDB, reopenRepairDB } from '@/lib/r
 import type { Repair } from '@/lib/types';
 import { RepairRow } from '@/components/RepairsPanel';
 import Loading from '@/components/Loading';
+import { Card, PageTitle, Segmented } from '@/components/ui';
 
 export default function PartnerRepairsClient() {
   const { user } = useAuth();
@@ -63,33 +64,32 @@ export default function PartnerRepairsClient() {
 
   return (
     <div className="p-5 mcp-in">
-      <div className="mb-5 pt-2">
-        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Réparations</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>
-          Ce qui est à réparer dans vos logements, signalé lors des ménages
-        </p>
-      </div>
+      <PageTitle
+        title="Réparations"
+        subtitle="Ce qui est à réparer dans vos logements, signalé lors des ménages"
+      />
 
-      <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['open', `À réparer${openList.length ? ` (${openList.length})` : ''}`], ['done', 'Réparé']] as const).map(([v, label]) => (
-          <button key={v} onClick={() => setTab(v)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: tab === v ? '#FFFFFF' : 'transparent', color: tab === v ? '#1A1A1A' : '#A8A09A', boxShadow: tab === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        className="mb-6"
+        options={[
+          ['open', `À réparer${openList.length ? ` (${openList.length})` : ''}`],
+          ['done', `Réparé${doneList.length ? ` (${doneList.length})` : ''}`],
+        ] as const}
+      />
 
       {list.length === 0 ? (
-        <div className="rounded-2xl border px-5 py-8 text-center" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <p className="text-sm" style={{ color: '#A8A09A' }}>
+        <Card className="px-5 py-8 text-center">
+          <p className="text-sm text-muted">
             {tab === 'open' ? 'Aucune réparation en attente. Tout est en ordre.' : 'Aucune réparation terminée pour le moment.'}
           </p>
-        </div>
+        </Card>
       ) : (
         <div className="space-y-6">
           {Array.from(byProperty.entries()).map(([property, items]) => (
             <div key={property}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#A8A09A' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-muted">
                 {property}
               </p>
               <div className="space-y-2">

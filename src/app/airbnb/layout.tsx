@@ -18,9 +18,12 @@ export default function AirbnbLayout({ children }: { children: React.ReactNode }
   if (isLoading || !user || user.role !== 'airbnb') return null;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FAFAF8' }}>
+    <div className="min-h-screen bg-cream">
       <AirbnbNav />
-      <main className="pb-24 max-w-lg mx-auto">
+      {/* Réserve la hauteur de la barre du bas *plus* la zone sûre (barre
+          d'accueil iPhone) : le `pb-24` fixe laissait le dernier élément de
+          liste sous la barre sur les écrans à encoche. */}
+      <main className="max-w-lg mx-auto pb-[calc(6rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
     </div>

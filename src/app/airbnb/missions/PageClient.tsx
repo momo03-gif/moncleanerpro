@@ -13,16 +13,32 @@ import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { MISSION_STATUS_CFG } from '@/lib/labels';
 import Icon from '@/components/Icon';
 import MissionReport from '@/components/MissionReport';
-import Loading from "@/components/Loading";
+import Loading from '@/components/Loading';
+import { Badge, Button, Card, EmptyState, FIELD, FIELD_SM, Label, PageTitle, Segmented } from '@/components/ui';
 
-const inputStyle = { backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#1A1A1A', outline: 'none' } as const;
 const today = new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
 
 const STATUS_CFG = MISSION_STATUS_CFG;
 
+// Les titres de jour collants s'arrêtent juste sous l'en-tête. La valeur vient
+// du jeton `--header-h` : un `top-16` codé en dur était plus court que
+// l'en-tête réel, et le titre disparaissait derrière au défilement.
+const STICKY_DAY = 'sticky top-[var(--header-h)] z-10 bg-cream py-1';
+
 function formatDate(d: string) {
   if (!d) return '—';
   return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
+}
+
+/** En-tête de journée dans un planning (date + pastilles de contexte). */
+function DayHeading({ day, isToday, children }: { day: string; isToday: boolean; children?: React.ReactNode }) {
+  return (
+    <div className={`flex items-center gap-2 flex-wrap mb-2.5 ${STICKY_DAY}`}>
+      <span className={`text-sm font-bold capitalize ${isToday ? 'text-gold-ink' : 'text-ink'}`}>{formatDate(day)}</span>
+      {isToday && <Badge tone="gold" size="sm">Aujourd&apos;hui</Badge>}
+      {children}
+    </div>
+  );
 }
 
 // ── Carte mission partenaire (consultation + modification/suppression) ──────────
@@ -93,38 +109,47 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
   }
 
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-      <div className="px-5 py-3.5 flex items-center justify-between border-b" style={{ borderColor: '#F2EFE9' }}>
-        <span className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</span>
-        <span className="text-xs px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
+    <Card className="overflow-hidden">
+      <div className="px-5 py-3.5 flex items-center justify-between gap-2 border-b border-hairline">
+        <span className="text-sm font-semibold truncate text-ink">{mission.property || 'Mission'}</span>
+        <Badge style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</Badge>
       </div>
 
       <div className="px-5 py-4">
-        {mission.address && <p className="text-xs mb-2 truncate flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="pin" size={12} className="shrink-0" /> {mission.address}</p>}
-        <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
+        {mission.address && (
+          <p className="text-xs mb-2 truncate flex items-center gap-1.5 text-muted">
+            <Icon name="pin" size={12} className="shrink-0" /> {mission.address}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <span>{formatDate(mission.date)}</span>
           {mission.time && <span>Départ {formatHour(mission.time)}</span>}
         </div>
         {mission.nextArrival && (
           mission.nextArrival === mission.date ? (
-            <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+            <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold bg-danger-soft text-danger">
               Arrivée client le jour même{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </p>
           ) : (
-            <p className="mt-2 text-xs" style={{ color: '#7A7068' }}>
+            <p className="mt-2 text-xs text-muted">
               Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
             </p>
           )
         )}
-        {mission.cleanerName && <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Cleaner : <span style={{ color: '#C9A84C', fontWeight: 600 }}>{mission.cleanerName}</span></p>}
+        {mission.cleanerName && (
+          <p className="text-xs mt-2 text-muted">Cleaner : <span className="font-semibold text-gold-ink">{mission.cleanerName}</span></p>
+        )}
 
-        {error && <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{error}</p>}
+        {error && <p role="alert" className="text-xs mt-3 px-3 py-2 rounded-lg bg-danger-soft text-danger">{error}</p>}
 
         {/* Mission verrouillée : consultation uniquement */}
         {locked ? (
           <>
-            <p className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
-              🔒 Mission {mission.status === 'completed' ? 'terminée' : 'annulée'} — elle ne peut plus être modifiée ni supprimée.
+            <p className="mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 bg-surface-2 text-muted">
+              {/* Le cadenas était un emoji 🔒, contraire à la règle « pas d'emoji »
+                  du jeu d'icônes, et rendu différemment selon la plateforme. */}
+              <span className="shrink-0" aria-hidden="true"><Icon name="lock" size={13} /></span>
+              Mission {mission.status === 'completed' ? 'terminée' : 'annulée'} — elle ne peut plus être modifiée ni supprimée.
             </p>
             {mission.status === 'completed' && (
               <div className="mt-3"><MissionReport missionId={mission.id} mode="viewer" /></div>
@@ -132,71 +157,66 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
           </>
         ) : editOpen ? (
           /* Formulaire de modification (créateur) */
-          <div className="mt-3 space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
+          <div className="mt-3 space-y-3 rounded-xl p-3 bg-surface-2">
             <div>
-              <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Appartement</label>
-              <select value={form.airbnbId} onChange={e => setForm(f => ({ ...f, airbnbId: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+              <Label htmlFor={`m-apt-${mission.id}`}>Appartement</Label>
+              <select id={`m-apt-${mission.id}`} value={form.airbnbId}
+                onChange={e => setForm(f => ({ ...f, airbnbId: e.target.value }))}
+                className={`${FIELD_SM} appearance-none`}>
                 <option value="">Sélectionner un appartement</option>
                 {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
-                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <Label htmlFor={`m-date-${mission.id}`}>Date</Label>
+                <input id={`m-date-${mission.id}`} type="date" value={form.date}
+                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className={FIELD_SM} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Heure départ clients</label>
-                <select value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                <Label htmlFor={`m-time-${mission.id}`}>Heure départ clients</Label>
+                <select id={`m-time-${mission.id}`} value={form.time}
+                  onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                  className={`${FIELD_SM} appearance-none`}>
                   <option value="">Choisir</option>
                   {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prochaine arrivée — optionnel</label>
-              <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-                <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(f => ({ ...f, nextArrival: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                <select value={form.nextArrivalTime} onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+              <Label>Prochaine arrivée — optionnel</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" aria-label="Date de la prochaine arrivée" value={form.nextArrival}
+                  min={form.date || undefined}
+                  onChange={e => setForm(f => ({ ...f, nextArrival: e.target.value }))} className={FIELD_SM} />
+                <select aria-label="Heure de la prochaine arrivée" value={form.nextArrivalTime}
+                  onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}
+                  className={`${FIELD_SM} appearance-none`}>
                   <option value="">Heure d&apos;arrivée</option>
                   {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Consignes — optionnel</label>
-              <textarea value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} rows={2}
-                className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
+              <Label htmlFor={`m-notes-${mission.id}`}>Consignes — optionnel</Label>
+              <textarea id={`m-notes-${mission.id}`} value={form.instructions}
+                onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} rows={2}
+                className={`${FIELD_SM} resize-none`} />
             </div>
             <div className="flex gap-2">
-              <button onClick={save} disabled={busy}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                {busy ? '...' : 'Enregistrer'}
-              </button>
-              <button onClick={() => { setEditOpen(false); setError(''); }} disabled={busy}
-                className="px-4 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+              <Button onClick={save} disabled={busy} className="flex-1">{busy ? '...' : 'Enregistrer'}</Button>
+              <Button variant="ghost" onClick={() => { setEditOpen(false); setError(''); }} disabled={busy}>Annuler</Button>
             </div>
           </div>
         ) : (
           /* Actions : Modifier / Supprimer */
           <div className="flex gap-2 mt-3">
-            <button onClick={openEdit} disabled={busy}
-              className="flex-1 py-2 rounded-xl text-xs font-medium border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-              Modifier
-            </button>
-            <button onClick={remove} disabled={busy}
-              className="px-4 py-2 rounded-xl text-xs font-medium border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
-              Supprimer
-            </button>
+            <Button variant="ghost" size="sm" onClick={openEdit} disabled={busy} className="flex-1">Modifier</Button>
+            <Button variant="danger" size="sm" onClick={remove} disabled={busy}>Supprimer</Button>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -285,34 +305,33 @@ export default function AirbnbMissionsPage() {
   if (loading) return <Loading className="p-5 pt-8" variant="skeleton" />;
 
   if (submitted) return (
-    <div className="p-5 flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+    <div className="p-5 flex flex-col items-center justify-center min-h-[60vh] text-center mcp-in">
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 bg-success-soft text-success">
         <Icon name="check" size={24} />
       </div>
-      <h2 className="text-lg font-bold mb-1" style={{ color: '#1A1A1A' }}>Mission créée</h2>
-      <p className="text-sm mb-6" style={{ color: '#A8A09A' }}>Elle sera assignée à un cleaner par l'équipe.</p>
+      <h2 className="text-lg font-bold mb-1 text-ink">Mission créée</h2>
+      <p className="text-sm mb-6 text-muted">Elle sera assignée à un cleaner par l&apos;équipe.</p>
       <div className="flex gap-2">
-        <button onClick={() => { setSubmitted(false); setTab('track'); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Voir mes missions</button>
-        <button onClick={() => { setSubmitted(false); setTab('create'); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Nouvelle</button>
+        <Button onClick={() => { setSubmitted(false); setTab('track'); }}>Voir mes missions</Button>
+        <Button variant="ghost" onClick={() => { setSubmitted(false); setTab('create'); }}>Nouvelle</Button>
       </div>
     </div>
   );
 
   return (
     <div className="p-5 mcp-in">
-      <div className="mb-5 pt-2">
-        <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>Planning</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#A8A09A' }}>Arrivées, départs et ménages de vos logements</p>
-      </div>
+      <PageTitle title="Planning" subtitle="Arrivées, départs et ménages de vos logements" />
 
-      <div className="flex gap-1 mb-6 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['reservations', 'Réservations'], ['track', 'Ménages'], ['create', 'Créer']] as const).map(([v, label]) => (
-          <button key={v} onClick={() => setTab(v)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: tab === v ? '#FFFFFF' : 'transparent', color: tab === v ? '#1A1A1A' : '#A8A09A', boxShadow: tab === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        className="mb-6"
+        options={[
+          ['reservations', 'Réservations'],
+          ['track', 'Ménages'],
+          ['create', 'Créer'],
+        ] as const}
+      />
 
       {/* ── PLANNING RÉSERVATIONS (arrivées + départs, 14 jours) ────────── */}
       {tab === 'reservations' && (() => {
@@ -333,20 +352,18 @@ export default function AirbnbMissionsPage() {
 
         if (days.length === 0) {
           return (
-            <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-              <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="calendar" size={30} /></span>
-              <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune arrivée ni départ à venir</p>
-              <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Connectez vos calendriers dans « Synchro ».</p>
-            </div>
+            <EmptyState icon="calendar"
+              title="Aucune arrivée ni départ à venir"
+              hint="Connectez vos calendriers dans « Synchro »." />
           );
         }
 
         return (
           <div className="space-y-6">
-            <div className="flex items-center gap-4 text-[11px]" style={{ color: '#A8A09A' }}>
-              <span className="flex items-center gap-1"><span className="inline-flex" style={{ color: '#5A8A6A' }}><Icon name="arrowUp" size={13} /></span> Arrivée</span>
-              <span className="flex items-center gap-1"><span className="inline-flex" style={{ color: '#C48A2A' }}><Icon name="arrowDown" size={13} /></span> Départ</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#B91C1C' }} /> Turnover</span>
+            <div className="flex items-center gap-4 text-[11px] flex-wrap text-muted">
+              <span className="flex items-center gap-1"><span className="inline-flex text-success"><Icon name="arrowUp" size={13} /></span> Arrivée</span>
+              <span className="flex items-center gap-1"><span className="inline-flex text-warn"><Icon name="arrowDown" size={13} /></span> Départ</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block bg-danger" /> Turnover</span>
             </div>
             {days.map(day => {
               const evs = byDay[day];
@@ -356,11 +373,9 @@ export default function AirbnbMissionsPage() {
               const turnover = departures.some(e => arrivalsByDay.has(e.res.checkOut));
               return (
                 <div key={day}>
-                  <div className="flex items-center gap-2 mb-2.5 sticky top-16 py-1 z-10" style={{ backgroundColor: '#FAFAF8' }}>
-                    <span className="text-sm font-bold capitalize" style={{ color: isToday ? '#C9A84C' : '#1A1A1A' }}>{formatDate(day)}</span>
-                    {isToday && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Aujourd&apos;hui</span>}
-                    {turnover && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>turnover</span>}
-                  </div>
+                  <DayHeading day={day} isToday={isToday}>
+                    {turnover && <Badge tone="danger" size="sm">turnover</Badge>}
+                  </DayHeading>
                   <div className="space-y-2">
                     {departures.map(e => {
                       const r = e.res;
@@ -368,28 +383,35 @@ export default function AirbnbMissionsPage() {
                       const m = r.missionId ? missionById.get(r.missionId) : undefined;
                       const cfg = m ? (STATUS_CFG[m.status] ?? STATUS_CFG.pending) : null;
                       return (
-                        <div key={'out' + r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: isTurn ? '#EAC4BE' : '#E8E4DC' }}>
-                          <span className="shrink-0 inline-flex" style={{ color: '#C48A2A' }}><Icon name="arrowDown" size={15} /></span>
+                        <Card key={'out' + r.id} tone={isTurn ? 'alert' : 'plain'} className="px-4 py-3 flex items-center gap-3">
+                          <span className="shrink-0 inline-flex text-warn" aria-hidden="true"><Icon name="arrowDown" size={15} /></span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? 'Logement'}</p>
-                            <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Départ{r.checkOutTime ? ` ${formatHour(r.checkOutTime)}` : ''}{isTurn && <span style={{ color: '#B85A50', fontWeight: 600 }}> · arrivée le jour même</span>}</p>
+                            <p className="text-sm font-semibold truncate text-ink">{r.apartmentName ?? 'Logement'}</p>
+                            <p className="text-xs mt-0.5 text-muted">
+                              Départ{r.checkOutTime ? ` ${formatHour(r.checkOutTime)}` : ''}
+                              {isTurn && <span className="font-semibold text-danger"> · arrivée le jour même</span>}
+                            </p>
                           </div>
                           {m && cfg
-                            ? <button onClick={() => router.push(`/airbnb/mission/${m.id}`)} className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</button>
-                            : <span className="text-[11px] shrink-0" style={{ color: '#C48A2A' }}>ménage à créer</span>}
-                        </div>
+                            ? <button onClick={() => router.push(`/airbnb/mission/${m.id}`)} className="shrink-0">
+                                <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</Badge>
+                              </button>
+                            /* « ménage à créer » était en #C48A2A : 3:1 sur blanc,
+                               sous le seuil AA pour du texte de cette taille. */
+                            : <span className="text-[11px] shrink-0 font-semibold text-warn">ménage à créer</span>}
+                        </Card>
                       );
                     })}
                     {arrivals.map(e => {
                       const r = e.res;
                       return (
-                        <div key={'in' + r.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3" style={{ backgroundColor: '#FCFBF8', borderColor: '#E8E4DC' }}>
-                          <span className="shrink-0 inline-flex" style={{ color: '#5A8A6A' }}><Icon name="arrowUp" size={15} /></span>
+                        <Card key={'in' + r.id} className="px-4 py-3 flex items-center gap-3">
+                          <span className="shrink-0 inline-flex text-success" aria-hidden="true"><Icon name="arrowUp" size={15} /></span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? 'Logement'}</p>
-                            <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Arrivée{r.checkInTime ? ` ${formatHour(r.checkInTime)}` : ''}</p>
+                            <p className="text-sm font-semibold truncate text-ink">{r.apartmentName ?? 'Logement'}</p>
+                            <p className="text-xs mt-0.5 text-muted">Arrivée{r.checkInTime ? ` ${formatHour(r.checkInTime)}` : ''}</p>
                           </div>
-                        </div>
+                        </Card>
                       );
                     })}
                   </div>
@@ -402,16 +424,16 @@ export default function AirbnbMissionsPage() {
 
       {tab === 'create' && (
         apartments.length === 0 ? (
-          <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-            <p className="text-sm" style={{ color: '#A8A09A' }}>Ajoutez d'abord un appartement dans l'onglet « Appartements ».</p>
-          </div>
+          <EmptyState icon="building"
+            title="Aucun appartement"
+            hint="Ajoutez d'abord un appartement dans l'onglet « Logements »."
+            action={<Button onClick={() => router.push('/airbnb')}>Ajouter un appartement</Button>} />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Appartement</label>
-              <select value={airbnbId} onChange={e => setAirbnbId(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
-                style={{ ...inputStyle, color: airbnbId ? '#1A1A1A' : '#A8A09A' }}>
+              <Label htmlFor="new-apt">Appartement</Label>
+              <select id="new-apt" value={airbnbId} onChange={e => setAirbnbId(e.target.value)}
+                className={`${FIELD} appearance-none`}>
                 <option value="">Sélectionner un appartement</option>
                 {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -421,11 +443,11 @@ export default function AirbnbMissionsPage() {
               const a = apartments.find(x => x.id === airbnbId);
               if (!a) return null;
               return (
-                <div className="rounded-xl p-4 text-sm space-y-1.5" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#A8A09A' }}>Coordonnées reprises automatiquement</p>
-                  <p style={{ color: '#1A1A1A', fontWeight: 600 }}>{a.name}</p>
+                <div className="rounded-xl p-4 text-sm space-y-1.5 bg-surface-2 text-muted">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">Coordonnées reprises automatiquement</p>
+                  <p className="font-semibold text-ink">{a.name}</p>
                   <p className="text-xs flex items-center gap-1.5"><Icon name="pin" size={12} className="shrink-0" /> {a.address}</p>
-                  {a.clientPrice != null && <p className="text-xs font-semibold" style={{ color: '#5A8A6A' }}>{a.clientPrice}€ / ménage</p>}
+                  {a.clientPrice != null && <p className="text-xs font-semibold text-success">{a.clientPrice}€ / ménage</p>}
                   {(a.bedrooms != null || a.beds != null || a.sofaBeds != null) && (
                     <p className="text-xs">
                       {a.bedrooms != null && <>{a.bedrooms} ch.</>}
@@ -445,16 +467,14 @@ export default function AirbnbMissionsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date</label>
-                <input type="date" value={date} min={today} required onChange={e => setDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                <Label htmlFor="new-date">Date</Label>
+                <input id="new-date" type="date" value={date} min={today} required
+                  onChange={e => setDate(e.target.value)} className={FIELD} />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure départ clients</label>
-                <select value={time} required onChange={e => setTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
-                  style={{ ...inputStyle, color: time ? '#1A1A1A' : '#A8A09A' }}>
+                <Label htmlFor="new-time">Heure départ clients</Label>
+                <select id="new-time" value={time} required onChange={e => setTime(e.target.value)}
+                  className={`${FIELD} appearance-none`}>
                   <option value="">Choisir</option>
                   {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
                 </select>
@@ -462,47 +482,53 @@ export default function AirbnbMissionsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée client — optionnel</label>
+              <Label>Prochaine arrivée client — optionnel</Label>
               <div className="grid grid-cols-2 gap-3">
-                <input type="date" value={nextArrival} min={date || today} onChange={e => setNextArrival(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                <select value={nextArrivalTime} onChange={e => setNextArrivalTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
-                  style={{ ...inputStyle, color: nextArrivalTime ? '#1A1A1A' : '#A8A09A' }}>
+                <input type="date" aria-label="Date de la prochaine arrivée" value={nextArrival}
+                  min={date || today} onChange={e => setNextArrival(e.target.value)} className={FIELD} />
+                <select aria-label="Heure de la prochaine arrivée" value={nextArrivalTime}
+                  onChange={e => setNextArrivalTime(e.target.value)} className={`${FIELD} appearance-none`}>
                   <option value="">Heure d&apos;arrivée</option>
                   {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
                 </select>
               </div>
               {nextArrival && date && nextArrival === date && (
-                <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold bg-danger-soft text-danger">
                   Arrivée le jour même du ménage — turnover urgent
                 </p>
               )}
             </div>
 
             <div>
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div onClick={() => setHasInstructions(v => !v)}
-                  className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
-                  style={{ borderColor: hasInstructions ? '#C9A84C' : '#C8C2BA', backgroundColor: hasInstructions ? '#C9A84C' : '#FFFFFF' }}>
-                  {hasInstructions && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
-                </div>
-                <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>Ajouter des consignes</span>
+              {/* La case à cocher était un <div onClick> : invisible au clavier et
+                  jamais annoncée comme case à cocher. C'est maintenant un vrai
+                  input, masqué visuellement mais focusable, avec un pavé stylé. */}
+              <label className="flex items-center gap-3 cursor-pointer select-none w-fit">
+                <input type="checkbox" checked={hasInstructions}
+                  onChange={e => setHasInstructions(e.target.checked)} className="sr-only peer" />
+                <span
+                  aria-hidden="true"
+                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold ${
+                    hasInstructions ? 'border-gold bg-gold text-ink' : 'border-line bg-card'
+                  }`}
+                >
+                  {hasInstructions && <Icon name="check" size={13} strokeWidth={3} />}
+                </span>
+                <span className="text-sm font-medium text-ink">Ajouter des consignes</span>
               </label>
               {hasInstructions && (
                 <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={3} autoFocus
+                  aria-label="Consignes pour le cleaner"
                   placeholder="Ex : check-out 11h, linge dans le placard du couloir..."
-                  className="w-full mt-3 px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                  className={`${FIELD} mt-3 resize-none`} />
               )}
             </div>
 
-            {error && <p className="text-xs text-center py-2 px-3 rounded-lg" style={{ backgroundColor: '#FEF2F2', color: '#B85A50' }}>{error}</p>}
+            {error && <p role="alert" className="text-xs text-center py-2 px-3 rounded-lg bg-danger-soft text-danger">{error}</p>}
 
-            <button type="submit" disabled={saving} className="w-full py-4 rounded-xl font-semibold text-sm disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            <Button type="submit" size="lg" disabled={saving}>
               {saving ? 'Création...' : 'Créer la mission'}
-            </button>
+            </Button>
           </form>
         )
       )}
@@ -517,23 +543,19 @@ export default function AirbnbMissionsPage() {
         return (
         <>
           <DateRangeFilter start={range.start} end={range.end} onChange={setRange} className="mb-4" />
-          <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>
+          <p className="text-xs mb-4 text-muted">
             {visibleMissions.length} mission{visibleMissions.length > 1 ? 's' : ''} sur cette période
           </p>
 
           {visibleMissions.length === 0 ? (
-            <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
-              <span className="mb-3" style={{ color: '#D4CEC4' }}><Icon name="missions" size={30} /></span>
-              <p className="font-medium text-sm" style={{ color: '#1A1A1A' }}>Aucune mission sur cette période</p>
-              {outOfRangeCount > 0 && allDates.length > 0 ? (
-                <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}
-                  className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                  Voir mes {outOfRangeCount} mission{outOfRangeCount > 1 ? 's' : ''} sur d'autres dates →
-                </button>
-              ) : (
-                <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Créez votre première mission</p>
-              )}
-            </div>
+            <EmptyState icon="missions"
+              title="Aucune mission sur cette période"
+              hint={outOfRangeCount > 0 && allDates.length > 0 ? undefined : 'Créez votre première mission'}
+              action={outOfRangeCount > 0 && allDates.length > 0 ? (
+                <Button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}>
+                  Voir mes {outOfRangeCount} mission{outOfRangeCount > 1 ? 's' : ''} sur d&apos;autres dates
+                </Button>
+              ) : undefined} />
           ) : (
             <div className="space-y-6">
               {/* Planning : missions regroupées par jour (agenda). */}
@@ -547,14 +569,10 @@ export default function AirbnbMissionsPage() {
                 const isToday = day === today;
                 return (
                   <div key={day}>
-                    <div className="flex items-center gap-2 mb-2.5 sticky top-16 py-1 z-10" style={{ backgroundColor: '#FAFAF8' }}>
-                      <span className="text-sm font-bold capitalize" style={{ color: isToday ? '#C9A84C' : '#1A1A1A' }}>
-                        {formatDate(day)}
-                      </span>
-                      {isToday && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Aujourd&apos;hui</span>}
-                      <span className="text-xs" style={{ color: '#A8A09A' }}>· {dayMissions.length} ménage{dayMissions.length > 1 ? 's' : ''}</span>
-                      {turnover && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>turnover</span>}
-                    </div>
+                    <DayHeading day={day} isToday={isToday}>
+                      <span className="text-xs text-muted">· {dayMissions.length} ménage{dayMissions.length > 1 ? 's' : ''}</span>
+                      {turnover && <Badge tone="danger" size="sm">turnover</Badge>}
+                    </DayHeading>
                     <div className="space-y-3">
                       {dayMissions.map(m => (
                         <PartnerMissionCard key={m.id} mission={m} apartments={apartments} userId={user?.id ?? ''} onRefresh={load} />
