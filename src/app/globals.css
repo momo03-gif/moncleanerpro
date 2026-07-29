@@ -1,14 +1,56 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════════════════
+   Jetons de design — source unique de vérité des couleurs.
+
+   Toute couleur de l'interface vient d'ici : on écrit `text-ink`, `bg-card`,
+   `border-line`… jamais un hexadécimal en dur dans un composant. Changer la
+   marque = changer ce bloc.
+
+   Contraste : chaque jeton servant à du TEXTE sur fond clair (`card`/`cream`)
+   atteint au moins 4.5:1 (WCAG AA, texte normal). Les jetons purement
+   décoratifs (`faint`, `hairline`) sont réservés aux icônes, points et filets
+   — jamais à du texte lisible.
+   ════════════════════════════════════════════════════════════════════════════ */
 @theme {
-  --color-gold: #C9A84C;
+  /* ── Marque ─────────────────────────────────────────────────────────── */
+  --color-gold: #C9A84C;        /* aplats, accents, état actif */
   --color-gold-light: #D4B86A;
   --color-gold-dark: #A8873B;
-  --color-cream: #FAFAF8;
-  --color-ink: #1A1A1A;
+  --color-gold-ink: #8A6A1E;    /* texte doré sur fond clair — 5.1:1 */
+  --color-gold-soft: #FCF6E8;   /* fond d'encart doré */
+  --color-gold-line: #EBD9A8;   /* bordure d'encart doré */
+
+  /* ── Neutres ────────────────────────────────────────────────────────── */
+  --color-cream: #FAFAF8;       /* fond de page */
+  --color-card: #FFFFFF;        /* surface d'une carte */
+  --color-surface: #F5F3EF;     /* surface enfoncée (onglets, puces) */
+  --color-surface-2: #F8F6F2;   /* encart dans une carte */
+  --color-ink: #1A1A1A;         /* texte principal — 16.9:1 */
   --color-void: #0D0D0D;
-  --color-muted: #7A7068;
-  --color-border: #E8E4DC;
+  --color-muted: #7A7068;       /* texte secondaire — 4.8:1 */
+  --color-faint: #A8A09A;       /* DÉCORATIF uniquement (2.6:1) */
+  --color-line: #E8E4DC;        /* bordure standard */
+  --color-hairline: #F2EFE9;    /* séparateur interne */
+
+  /* ── États ──────────────────────────────────────────────────────────── */
+  --color-success: #4A7A5A;     /* 5.0:1 */
+  --color-success-soft: #F1F7F3;
+  --color-success-line: #D6E5DB;
+
+  --color-danger: #A84A40;      /* 5.7:1 */
+  --color-danger-soft: #FBECEA;
+  --color-danger-line: #EAC4BE;
+
+  --color-warn: #8A6A1E;        /* 5.1:1 */
+  --color-warn-soft: #FCF6E8;
+  --color-warn-line: #EBD9A8;
+}
+
+/* Hauteur de l'en-tête partenaire, partagée entre le composant de navigation
+   et les titres de jour `sticky` qui doivent s'arrêter juste dessous. */
+:root {
+  --header-h: 68px;
 }
 
 * {
@@ -22,8 +64,8 @@ body {
 }
 
 body {
-  background: #FAFAF8;
-  color: #1A1A1A;
+  background: var(--color-cream);
+  color: var(--color-ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -62,13 +104,33 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
 /* Remplacer les focus rings bleus du navigateur par de l'or */
 *:focus-visible {
-  outline: 2px solid #C9A84C;
+  outline: 2px solid var(--color-gold);
   outline-offset: 2px;
 }
 
 input, select, textarea {
-  accent-color: #C9A84C;
+  accent-color: var(--color-gold);
 }
+
+/* ── Champs de formulaire ────────────────────────────────────────────────
+   Le focus était posé champ par champ, en JS (onFocus/onBlur écrivant
+   directement style.borderColor) : ~20 duplications, et la bordure restait
+   dorée au survol clavier même sans focus visible. Une seule règle CSS le
+   fait pour toute l'app, et `:focus-visible` garde le contour doré. */
+.mcp-field {
+  width: 100%;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  color: var(--color-ink);
+  border-radius: 12px;
+  transition: border-color .15s ease;
+}
+.mcp-field::placeholder { color: var(--color-faint); }
+.mcp-field:hover { border-color: #DAD4C8; }
+.mcp-field:focus { border-color: var(--color-gold); outline: none; }
+.mcp-field:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+/* Un select vide affiche son placeholder en gris, comme un input. */
+.mcp-field:has(option[value=""]:checked) { color: var(--color-muted); }
 
 /* Supprimer le fond bleu autofill */
 input:-webkit-autofill,
