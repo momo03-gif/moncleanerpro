@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { getSessionUser } from '@/lib/session';
 
 // nodemailer nécessite le runtime Node (pas Edge)
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    // Garde optionnelle : si MAIL_API_KEY est défini, on l'exige
+    // Autorisation : la session ADMIN fait foi. Avant, la seule garde était l'entête
+    // `x-mail-key` — les factures l'envoyaient, pas les devis, donc tout envoi de
+    // devis repartait en 401 dès que MAIL_API_KEY était défini (cas de la prod).
+    // La clé reste acceptée pour les appelants NON navigateur (scripts, cron).
+    const session = await getSessionUser();
     const requiredKey = process.env.MAIL_API_KEY;
-    if (requiredKey && req.headers.get('x-mail-key') !== requiredKey) {
+    const keyOk = !!requiredKey && req.headers.get('x-mail-key') === requiredKey;
+    if (session?.role !== 'admin' && !keyOk) {
       return NextResponse.json({ error: 'Non autorisé.' }, { status: 401 });
     }
 

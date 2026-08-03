@@ -319,20 +319,39 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
     else { setConvertMsg(`Facture ${res.number} créée depuis ${d.number}.`); onChanged(); }
   }
 
+  // Lien public du devis : accepter ET réserver son créneau se font au même endroit.
+  function devisUrl(d: Devis): string {
+    return typeof window !== 'undefined' ? `${window.location.origin}/devis/${d.publicToken}` : `/devis/${d.publicToken}`;
+  }
+
   function openEmail(d: Devis) {
-    const url = typeof window !== 'undefined' ? `${window.location.origin}/devis/${d.publicToken}` : `/devis/${d.publicToken}`;
-    const nom = d.clientName || 'Madame, Monsieur';
-    const valid = d.validUntil ? `\nCette proposition est valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n` : '';
+    const url = devisUrl(d);
+    // « Bonjour Jean » plutôt que le nom complet : plus naturel à l'oral comme à
+    // l'écrit. On retombe sur la formule d'usage si le nom est vide.
+    const prenom = (d.clientName ?? '').trim().split(/\s+/)[0];
+    const nom = prenom || 'Madame, Monsieur';
+    const nbPresta = d.lines.length;
+    const ttc = money(d.total * 1.2);
+    const valid = d.validUntil
+      ? `\nCette proposition reste valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n`
+      : '';
     setEmailTo(d.clientEmail ?? '');
-    setEmailSubject(`Votre devis ${d.number} — ${company.name || 'MonCleanerPro'}`);
+    setEmailSubject(`Votre devis ${d.number} — acceptez et réservez votre date`);
     setEmailBody(
 `Bonjour ${nom},
 
-Suite à votre demande, veuillez trouver notre proposition (devis ${d.number}) détaillant chaque prestation.
+Merci pour votre confiance. Voici votre devis ${d.number} : ${nbPresta} prestation${nbPresta > 1 ? 's' : ''} pour un total de ${ttc} TTC.
 
-Vous pouvez la consulter en ligne : ${url}
+Tout se passe sur un seul lien :
+${url}
+
+Vous pourrez y faire deux choses :
+  1. accepter le devis en un clic ;
+  2. choisir dans la foulée la date et l'heure de votre intervention.
+
+Nous vous conseillons de réserver votre créneau dès l'acceptation : les disponibilités partent vite, et votre date n'est réservée qu'une fois le rendez-vous confirmé.
 ${valid}
-Nous restons à votre disposition pour toute question ou ajustement.
+Une question, un ajustement ? Répondez simplement à cet email.
 
 Cordialement,
 ${company.name || 'MonCleanerPro'}
@@ -341,13 +360,68 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
     setEmailOpen(true);
   }
 
+  // Version HTML de l'email : reprend le message (éventuellement retouché par
+  // l'admin) et y ajoute le récapitulatif du devis + le bouton d'action. L'URL
+  // brute est retirée du texte — le bouton la porte déjà.
+  function buildDevisHtml(d: Devis, message: string): string {
+    const url = devisUrl(d);
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const intro = message.split('\n')
+      .filter(l => l.trim() !== url)
+      .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    const companyName = company.name || 'MonCleanerPro';
+    const rows = d.lines.map((l, i) =>
+      `<tr style="background:${i % 2 ? '#FAF8F3' : '#FFFFFF'}">
+        <td style="padding:10px 12px;font-size:13px;color:#1A1A1A;font-weight:600;border-bottom:1px solid #F0EBE0">${esc(l.nom)}${l.quantite > 1 ? ` <span style="color:#8A8178;font-weight:400">× ${l.quantite}</span>` : ''}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#1A1A1A;font-weight:700;text-align:right;border-bottom:1px solid #F0EBE0">${money(l.total)}</td></tr>`).join('');
+    const info = [company.address, [company.email, company.phone].filter(Boolean).join('  ·  ')]
+      .filter(Boolean).map(x => `<div style="color:#B8AE9E;font-size:11px;line-height:1.7">${esc(String(x))}</div>`).join('');
+    return `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid #ECE7DC;border-radius:16px;overflow:hidden">
+      <div style="background:#0D0D0D;padding:26px 30px">
+        <div style="font-size:18px;font-weight:800;letter-spacing:0.12em;color:#FFFFFF"><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:#C9A84C;color:#0D0D0D;font-weight:800;text-align:center;line-height:24px;font-size:13px;margin-right:6px;vertical-align:middle">M</span>MONCLEANERPRO</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:#C9A84C;margin-top:5px;margin-left:24px">Nettoyage Professionnel</div>
+      </div>
+      <div style="padding:28px 30px">
+        <p style="margin:0 0 2px;font-size:20px;font-weight:300;letter-spacing:0.16em;color:#0D0D0D">DEVIS <span style="font-weight:700;font-size:14px;color:#C9A84C">${esc(d.number)}</span></p>
+        ${d.validUntil ? `<p style="margin:0 0 16px;color:#8A8178;font-size:12px">Valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}</p>` : '<div style="height:12px"></div>'}
+        <div style="font-size:14px;color:#4A443D;line-height:1.65;white-space:pre-line">${esc(intro)}</div>
+        <table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;margin-top:22px">
+          <tr style="background:#0D0D0D">
+            <th style="text-align:left;padding:10px 12px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#E9E2D2">Prestation</th>
+            <th style="text-align:right;padding:10px 12px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#E9E2D2">Montant</th>
+          </tr>
+          ${rows}
+        </table>
+        <table style="width:100%;margin-top:18px"><tr>
+          <td></td>
+          <td style="width:220px">
+            <div style="background:#C9A84C;border-radius:12px;padding:14px 18px;text-align:right">
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#1A1A1A">Net à payer (TTC)</span>
+              <div style="font-size:21px;font-weight:800;color:#1A1A1A;margin-top:2px">${money(d.total * 1.2)}</div>
+            </div>
+          </td>
+        </tr></table>
+        <div style="background:#FAF8F3;border:1px solid #F0EBE0;border-radius:12px;padding:20px;margin-top:24px;text-align:center">
+          <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#0D0D0D">Accepter votre devis et réserver votre date</p>
+          <p style="margin:0 0 16px;font-size:13px;color:#4A443D;line-height:1.6">Le même lien vous permet d'accepter le devis, puis de choisir le créneau de votre intervention. Réservez dès l'acceptation : votre date n'est bloquée qu'une fois le rendez-vous confirmé.</p>
+          <a href="${url}" style="display:inline-block;background:#5A8A6A;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;padding:14px 30px;border-radius:10px">Accepter et choisir ma date</a>
+          <p style="margin:14px 0 0;font-size:11px;color:#8A8178;word-break:break-all">${url}</p>
+        </div>
+        <p style="margin:24px 0 0;font-size:14px;font-weight:700;color:#0D0D0D">Merci pour votre confiance.</p>
+        <p style="margin:4px 0 14px;font-size:12px;color:#8A8178">L'équipe ${esc(companyName)}</p>
+        ${info}
+      </div>
+    </div>`;
+  }
+
   async function sendEmail() {
     if (!emailTo.trim()) { setEmailMsg("Renseigne l'email du client."); return; }
+    if (!viewing) { setEmailMsg('Devis introuvable.'); return; }
     setEmailBusy(true); setEmailMsg('');
     try {
       const res = await fetch('/api/send-invoice', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ to: emailTo.trim(), subject: emailSubject, text: emailBody }),
+        body: JSON.stringify({ to: emailTo.trim(), subject: emailSubject, text: emailBody, html: buildDevisHtml(viewing, emailBody) }),
       });
       const data = await res.json().catch(() => ({}));
       setEmailBusy(false);
