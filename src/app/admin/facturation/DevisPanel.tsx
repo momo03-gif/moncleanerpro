@@ -436,7 +436,8 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
   }
 
   if (viewing) {
-    const invLines = viewing.lines.map(l => ({ date: viewing.createdAt?.slice(0, 10) ?? '', label: l.nom, type: 'devis', amount: l.total, unitPrice: l.prix_unitaire }));
+    // `qty` : le gabarit affiche la quantité à la place de la durée sur un devis.
+    const invLines = viewing.lines.map(l => ({ date: viewing.createdAt?.slice(0, 10) ?? '', label: l.nom, type: 'devis', amount: l.total, unitPrice: l.prix_unitaire, qty: l.quantite }));
     return (
       <div>
         <button onClick={() => setViewing(null)} className="text-sm mb-4" style={{ color: '#C9A84C' }}>← Retour</button>

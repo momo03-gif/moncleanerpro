@@ -17,9 +17,21 @@ export async function downloadElementPdf(el: HTMLElement, filename: string): Pro
   const usableH = pageH - margin * 2;
   const imgH = (canvas.height * usableW) / canvas.width;  // hauteur de l'image mise à l'échelle
 
+  // Tolérance « une seule page » : un document qui dépasse de peu (marge de 20 %)
+  // est réduit pour tenir sur la page plutôt que de générer une 2ᵉ page presque
+  // vide, avec une ligne coupée en deux au passage. En dessous de ce seuil la
+  // réduction reste invisible à l'œil ; au-delà, on pagine vraiment.
+  const FIT_TOLERANCE = 1.2;
+
   if (imgH <= usableH) {
     // Tient sur une seule page.
     pdf.addImage(imgData, 'JPEG', margin, margin, usableW, imgH);
+  } else if (imgH <= usableH * FIT_TOLERANCE) {
+    // Léger dépassement → on réduit à la hauteur utile (largeur ajustée pour
+    // conserver les proportions, document centré horizontalement).
+    const fitH = usableH;
+    const fitW = (canvas.width * fitH) / canvas.height;
+    pdf.addImage(imgData, 'JPEG', (pageW - fitW) / 2, margin, fitW, fitH);
   } else {
     // Contenu plus haut qu'une page → on répète l'image en la décalant vers le haut.
     let heightLeft = imgH;
