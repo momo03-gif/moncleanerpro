@@ -182,6 +182,11 @@ export default function LogementDetailClient() {
           <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="text-xs font-medium min-h-[44px] text-gold-ink">
             Modifier les informations →
           </button>
+          {/* Prestation hors ménage récurrent (fin de bail, vitres, colocation…) :
+              le devis part pré-rempli avec ce logement. */}
+          <button onClick={() => router.push(`/airbnb/devis?logement=${apt.id}`)} className="text-xs font-medium min-h-[44px] text-gold-ink">
+            Demander un devis →
+          </button>
           <button onClick={shareMonthlyReport} className="text-xs font-medium min-h-[44px] inline-flex items-center gap-1 text-muted">
             {shared ? <><Icon name="check" size={13} /> Copié</> : 'Partager le relevé du mois'}
           </button>

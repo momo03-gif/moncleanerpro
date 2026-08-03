@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Demande de devis PUBLIQUE (page /devis-en-ligne) — route SERVEUR (service_role).
+//  Demande de devis — route SERVEUR (service_role). Sert DEUX entrées :
+//   • la page publique /devis-en-ligne (visiteur anonyme) ;
+//   • l'espace partenaire /airbnb/devis (conciergerie connectée) qui passe en plus
+//     `partnerType` / `partnerLabel` pour que l'admin voie d'où vient la demande.
 //  Enregistre le devis en BROUILLON (source 'public' → « à traiter » côté admin)
 //  ET notifie tous les admins. Passe par le serveur pour ne PAS dépendre des droits
 //  anonymes (lecture de `users`, écriture `notifications`) et bypasser la RLS.
@@ -24,6 +27,11 @@ export async function POST(req: Request) {
   const description = String(body?.description ?? '').trim();
   const lines: Line[] = Array.isArray(body?.lines) ? (body.lines as Line[]) : [];
   const total = Number(body?.total) || 0;
+  // Origine de la demande. 'devis' = visiteur du site ; 'airbnb' = partenaire
+  // connecté. `source` reste 'public' : la colonne n'accepte que admin|public
+  // (contrainte CHECK) et le sens attendu côté admin est bien « à traiter ».
+  const partnerType = String(body?.partnerType ?? '').trim() || 'devis';
+  const partnerLabel = String(body?.partnerLabel ?? '').trim();
   if (!clientName || !clientEmail) return NextResponse.json({ error: 'Nom et email requis.' }, { status: 200 });
 
   let admin;
@@ -40,7 +48,7 @@ export async function POST(req: Request) {
   const number = `DEV-${year}-${String(max + 1).padStart(4, '0')}`;
 
   const { error } = await admin.from('devis').insert({
-    number, partner_label: clientName || 'Demande en ligne', partner_type: 'devis',
+    number, partner_label: partnerLabel || clientName || 'Demande en ligne', partner_type: partnerType,
     client_name: clientName, client_email: clientEmail, client_address: clientAddress || null,
     description: description || null, lines, total, status: 'brouillon', source: 'public',
   });
@@ -49,7 +57,8 @@ export async function POST(req: Request) {
   // Notifier les admins (best-effort).
   try {
     const { data: admins } = await admin.from('users').select('id').eq('role', 'admin');
-    const message = `${clientName} a demandé un devis en ligne${total ? ` (~${Math.round(total)} €)` : ''}. À traiter.`;
+    const origine = partnerType === 'airbnb' ? 'depuis son espace partenaire' : 'en ligne';
+    const message = `${clientName} a demandé un devis ${origine}${total ? ` (~${Math.round(total)} €)` : ''}. À traiter.`;
     const rows = (admins ?? []).map((u: { id: string }) => ({
       user_id: u.id, role: 'admin', title: 'Nouvelle demande de devis',
       message, type: 'devis_request', mission_id: null,
