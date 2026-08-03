@@ -388,7 +388,10 @@ export default function FacturationPage() {
     try {
       const res = await fetch('/api/send-invoice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-mail-key': process.env.NEXT_PUBLIC_MAIL_KEY ?? '' },
+        // Pas de clé côté navigateur : NEXT_PUBLIC_* part dans le bundle client,
+        // donc lisible par tous. C'est la session admin (cookie httpOnly) qui
+        // autorise l'envoi — même garde que pour les devis.
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: recipient,
           subject: `Facture ${invoiceNo} — ${company.name || 'MonCleanerPro'}`,
