@@ -33,6 +33,23 @@ export async function getBookedSlotsDB(fromISO: string, toISO: string): Promise<
   return (data ?? []).map((r: any) => ({ date: r.date, time: r.time }));
 }
 
+// Rendez-vous déjà pris pour un devis donné (page publique du devis : on ne
+// repropose pas de choisir une date si c'est déjà fait). Ne lit QUE date/heure —
+// même niveau d'exposition que getBookedSlotsDB, aucune donnée personnelle.
+export async function getAppointmentForDevisDB(devisNumber: string): Promise<{ date: string; time: string } | null> {
+  if (!devisNumber) return null;
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('date, time')
+    .eq('devis_number', devisNumber)
+    .eq('status', 'confirmed')
+    .order('date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return { date: data.date, time: data.time };
+}
+
 // Liste admin (rendez-vous à venir + récents).
 export async function getAppointmentsDB(): Promise<Appointment[]> {
   const { data, error } = await supabase

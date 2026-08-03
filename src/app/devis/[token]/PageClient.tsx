@@ -3,25 +3,56 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { getDevisByTokenDB, setDevisStatusByTokenDB, type Devis } from '@/lib/devis';
+import { getAppointmentForDevisDB } from '@/lib/appointments';
 import Loading from "@/components/Loading";
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+function frDate(dateISO: string) {
+  return new Date(dateISO + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
 
 // Page PUBLIQUE (lien unique) — le client consulte son devis et l'accepte/refuse.
+// Accepter n'est PAS la dernière étape : dès que le devis est accepté, on enchaîne
+// sur le choix de la date d'intervention (/rendez-vous, pré-rempli avec le numéro
+// de devis et les coordonnées). Sans ça, le client acceptait puis attendait un
+// rappel — la prise de date se perdait.
 export default function PublicDevisPage() {
   const params = useParams();
   const token = String(params?.token ?? '');
   const [devis, setDevis] = useState<Devis | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState<'accepte' | 'refuse' | null>(null);
+  // Rendez-vous déjà réservé pour ce devis → on affiche la date au lieu de
+  // reproposer d'en choisir une (le client revient souvent sur son lien).
+  const [appt, setAppt] = useState<{ date: string; time: string } | null>(null);
 
   useEffect(() => {
-    getDevisByTokenDB(token).then(d => { setDevis(d); setDone(d?.status === 'accepte' ? 'accepte' : d?.status === 'refuse' ? 'refuse' : null); setLoading(false); });
+    getDevisByTokenDB(token).then(async d => {
+      setDevis(d);
+      setDone(d?.status === 'accepte' ? 'accepte' : d?.status === 'refuse' ? 'refuse' : null);
+      if (d?.status === 'accepte' && d.number) {
+        setAppt(await getAppointmentForDevisDB(d.number).catch(() => null));
+      }
+      setLoading(false);
+    });
   }, [token]);
 
   async function decide(accept: boolean) {
     await setDevisStatusByTokenDB(token, accept ? 'accepte' : 'refuse');
     setDone(accept ? 'accepte' : 'refuse');
+  }
+
+  // Lien vers la prise de rendez-vous, pré-rempli. Le formulaire attend prénom et
+  // nom séparés : on découpe le nom complet du devis (1er mot = prénom).
+  function bookingUrl(d: Devis): string {
+    const full = (d.clientName ?? '').trim();
+    const [prenom, ...reste] = full.split(/\s+/);
+    return '/rendez-vous?' + new URLSearchParams({
+      ...(d.number ? { devis: d.number } : {}),
+      ...(prenom ? { prenom } : {}),
+      ...(reste.length ? { nom: reste.join(' ') } : {}),
+      ...(d.clientEmail ? { email: d.clientEmail } : {}),
+    }).toString();
   }
 
   if (loading) return <Loading className="min-h-screen flex items-center justify-center text-sm" />;
@@ -54,7 +85,27 @@ export default function PublicDevisPage() {
         </div>
         <div className="px-6 pb-6">
           {done === 'accepte' ? (
-            <div className="rounded-xl px-4 py-3 text-sm font-medium text-center" style={{ backgroundColor: '#EAF3EC', color: '#4E7D5E' }}>Devis accepté — merci ! Nous revenons vers vous.</div>
+            appt ? (
+              <div className="rounded-xl px-4 py-3.5 text-center" style={{ backgroundColor: '#EAF3EC', color: '#4E7D5E' }}>
+                <p className="text-sm font-semibold">Devis accepté — intervention programmée</p>
+                <p className="text-sm mt-1" style={{ textTransform: 'capitalize' }}>{frDate(appt.date)} à {appt.time}</p>
+                <a href={bookingUrl(devis)} className="inline-block text-xs mt-2 underline" style={{ color: '#4E7D5E' }}>Choisir un autre créneau</a>
+              </div>
+            ) : (
+              <div>
+                <div className="rounded-xl px-4 py-3 text-sm font-medium text-center" style={{ backgroundColor: '#EAF3EC', color: '#4E7D5E' }}>
+                  Devis accepté — merci !
+                </div>
+                <p className="text-sm text-center mt-4 mb-3" style={{ color: '#7A7068' }}>
+                  Dernière étape : choisissez la date de votre intervention.
+                </p>
+                <a href={bookingUrl(devis)}
+                  className="block w-full py-3 rounded-xl text-sm font-semibold text-center"
+                  style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF', textDecoration: 'none' }}>
+                  Choisir ma date d’intervention
+                </a>
+              </div>
+            )
           ) : done === 'refuse' ? (
             <div className="rounded-xl px-4 py-3 text-sm font-medium text-center" style={{ backgroundColor: '#FBECEA', color: '#B85A50' }}>Devis refusé.</div>
           ) : (
