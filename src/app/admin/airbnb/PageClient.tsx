@@ -22,7 +22,9 @@ const emptyForm = {
   // Maison à annonces multiples : '' = logement indépendant.
   parentAirbnbId: '',
   // Forfaits par nombre de chambres, sur l'annonce « maison entière ».
-  tier1Price: '', tier1Minutes: '', tier2Price: '', tier2Minutes: '', tier3Price: '', tier3Minutes: '',
+  // Clé = nombre de chambres ('1', '2', '3'…) : autant de paliers que la maison
+  // compte de chambres, sans limite codée en dur.
+  tiers: {} as Record<string, { price: string; minutes: string }>,
 };
 type FormState = typeof emptyForm;
 
@@ -31,11 +33,10 @@ type FormState = typeof emptyForm;
 // par défaut qu'écrire un forfait à 0 € qui passerait inaperçu en facturation.
 function buildTiers(f: FormState): Record<string, { price?: number; minutes?: number }> | null {
   const out: Record<string, { price?: number; minutes?: number }> = {};
-  ([['1', f.tier1Price, f.tier1Minutes], ['2', f.tier2Price, f.tier2Minutes], ['3', f.tier3Price, f.tier3Minutes]] as const)
-    .forEach(([k, p, m]) => {
-      if (!p.trim()) return;
-      out[k] = { price: Number(p), ...(m.trim() ? { minutes: Number(m) } : {}) };
-    });
+  for (const [k, v] of Object.entries(f.tiers)) {
+    if (!v.price.trim()) continue;
+    out[k] = { price: Number(v.price), ...(v.minutes.trim() ? { minutes: Number(v.minutes) } : {}) };
+  }
   return Object.keys(out).length ? out : null;
 }
 
@@ -59,12 +60,12 @@ function aptToForm(a: Apartment): FormState {
     zoneName: a.zoneName ?? '',
     notes: a.notes ?? '',
     parentAirbnbId: a.parentAirbnbId ?? '',
-    tier1Price: a.groupTiers?.['1']?.price != null ? String(a.groupTiers['1'].price) : '',
-    tier1Minutes: a.groupTiers?.['1']?.minutes != null ? String(a.groupTiers['1'].minutes) : '',
-    tier2Price: a.groupTiers?.['2']?.price != null ? String(a.groupTiers['2'].price) : '',
-    tier2Minutes: a.groupTiers?.['2']?.minutes != null ? String(a.groupTiers['2'].minutes) : '',
-    tier3Price: a.groupTiers?.['3']?.price != null ? String(a.groupTiers['3'].price) : '',
-    tier3Minutes: a.groupTiers?.['3']?.minutes != null ? String(a.groupTiers['3'].minutes) : '',
+    tiers: Object.fromEntries(
+      Object.entries(a.groupTiers ?? {}).map(([k, v]) => [k, {
+        price: v?.price != null ? String(v.price) : '',
+        minutes: v?.minutes != null ? String(v.minutes) : '',
+      }]),
+    ),
   };
 }
 
@@ -309,22 +310,33 @@ export default function AirbnbPage() {
                     {childCount} chambre{childCount > 1 ? 's' : ''} rattachée{childCount > 1 ? 's' : ''}. Les espaces communs sont inclus dans chaque forfait.
                     Laisser un prix vide désactive le palier. La durée sert à la paie du cleaner, jamais au prix client.
                   </p>
+                  {/* Un palier par nombre de chambres possible : une maison de 5
+                      chambres donne 5 lignes, le dernier palier étant la maison
+                      entière. Rien n'est codé en dur. */}
                   <div className="space-y-2">
-                    {([['1', 'tier1Price', 'tier1Minutes'], ['2', 'tier2Price', 'tier2Minutes'], ['3', 'tier3Price', 'tier3Minutes']] as const)
-                      .slice(0, Math.max(1, childCount))
-                      .map(([n, pk, mk]) => (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[11px] w-28 shrink-0" style={{ color: '#A8A09A' }}>Nombre de chambres</span>
+                      <span className="text-[11px] w-24" style={{ color: '#A8A09A' }}>Prix client</span>
+                      <span className="text-[11px] w-24" style={{ color: '#A8A09A' }}>Durée</span>
+                    </div>
+                    {Array.from({ length: childCount }, (_, i) => String(i + 1)).map(n => {
+                      const t = form.tiers[n] ?? { price: '', minutes: '' };
+                      const setTier = (patch: Partial<{ price: string; minutes: string }>) =>
+                        setForm(p => ({ ...p, tiers: { ...p.tiers, [n]: { ...t, ...patch } } }));
+                      return (
                         <div key={n} className="flex items-center gap-2">
                           <span className="text-xs w-28 shrink-0" style={{ color: '#7A7068' }}>
                             {Number(n) >= childCount ? 'Maison entière' : `${n} chambre${Number(n) > 1 ? 's' : ''}`}
                           </span>
-                          <input type="number" min="0" step="0.01" value={(form as any)[pk]}
-                            onChange={e => setForm(p => ({ ...p, [pk]: e.target.value }))}
+                          <input type="number" min="0" step="0.01" value={t.price}
+                            onChange={e => setTier({ price: e.target.value })}
                             placeholder="€" className="w-24 px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                          <input type="number" min="0" step="5" value={(form as any)[mk]}
-                            onChange={e => setForm(p => ({ ...p, [mk]: e.target.value }))}
+                          <input type="number" min="0" step="5" value={t.minutes}
+                            onChange={e => setTier({ minutes: e.target.value })}
                             placeholder="min" className="w-24 px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
                         </div>
-                      ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
