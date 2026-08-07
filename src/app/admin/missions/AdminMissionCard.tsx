@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   updateMissionStatusDB, assignCleanerToMissionDB, updateMissionDB,
   deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
-  decideMissionRequestDB,
+  decideMissionRequestDB, unassignMissionDB,
 } from '@/lib/db';
 import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -293,6 +293,23 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setDeciding(false);
     if (res.error) { setActionError(res.error); return; }
     toast(approve ? `Mission attribuée à ${mission.pendingCleanerName}.` : 'Demande refusée — mission de nouveau disponible.', 'success');
+    onRefresh();
+  }
+
+  // Retrait d'une mission à son cleaner. Confirmation demandée : il a pu
+  // organiser sa journée autour, et il est notifié dans la foulée.
+  async function handleUnassign() {
+    const ok = await confirm({
+      title: `Retirer la mission à ${mission.cleanerName} ?`,
+      message: 'Elle repart dans les missions disponibles et il en est informé.',
+      confirmLabel: 'Retirer', danger: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    const res = await unassignMissionDB(mission.id);
+    setBusy(false);
+    if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
+    toast('Mission retirée — de nouveau disponible.', 'success');
     onRefresh();
   }
 
@@ -813,6 +830,15 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
                   style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
                   Réassigner cleaner
+                </button>
+              )}
+              {/* Retirer la mission au cleaner sans la réassigner tout de suite :
+                  elle retourne au pot commun et redevient demandable. */}
+              {(mission.status === 'accepted' || mission.status === 'in_progress') && mission.cleanerName && (
+                <button onClick={handleUnassign} disabled={busy}
+                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
+                  style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+                  Retirer au cleaner
                 </button>
               )}
               {/* L'admin peut terminer/valider à la place du cleaner (oubli) — dès

@@ -959,6 +959,35 @@ export async function withdrawMissionDB(
   return { error: null };
 }
 
+// Retrait par l'ADMIN : il reprend une mission à un cleaner et la remet au pot
+// commun. Symétrique du désistement, mais dans l'autre sens — et le cleaner doit
+// être prévenu, sinon il continue de compter dessus et se déplace pour rien.
+// Interdit sur une mission terminée ou annulée : on ne réécrit pas le passé.
+export async function unassignMissionDB(missionId: string): Promise<{ error: string | null }> {
+  const { data: before } = await supabase.from('missions')
+    .select('cleaner_id, cleaner_name, status').eq('id', missionId).maybeSingle();
+  if (!before?.cleaner_id) return { error: 'Aucun cleaner sur cette mission.' };
+  if (before.status === 'done' || before.status === 'cancelled') {
+    return { error: 'Mission déjà terminée ou annulée.' };
+  }
+
+  const { data, error } = await supabase.from('missions')
+    .update({
+      status: 'pending', cleaner_id: null, cleaner_name: null,
+      // Une éventuelle demande en attente n'a plus lieu d'être.
+      pending_cleaner_id: null, pending_cleaner_name: null, pending_requested_at: null,
+    })
+    .eq('id', missionId).not('status', 'in', '(done,cancelled)').select('id');
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: 'Retrait impossible sur cette mission.' };
+
+  try {
+    const { notifyCleanerMissionUnassigned } = await import('./notifications');
+    await notifyCleanerMissionUnassigned(missionId, before.cleaner_id as string);
+  } catch (e) { console.error('notify unassign:', e); }
+  return { error: null };
+}
+
 // ── MODIFICATION / SUPPRESSION SÉCURISÉES ──────────────────────────────────────
 // La règle est appliquée ICI (logique métier = source de vérité), pas seulement
 // dans l'UI : on relit le statut + le créateur en base avant toute mutation, on

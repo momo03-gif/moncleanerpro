@@ -182,6 +182,23 @@ export async function notifyCleanerRequestDecision(missionId: string, cleanerId:
   } catch (e) { console.error('notifyCleanerRequestDecision:', e); }
 }
 
+// A quater. L'admin retire une mission à un cleaner → ce cleaner. Il compte
+// dessus et a peut-être organisé sa journée autour : il doit l'apprendre.
+export async function notifyCleanerMissionUnassigned(missionId: string, cleanerId: string) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    const { data: c } = await supabase.from('cleaners').select('user_id').eq('id', cleanerId).single();
+    if (!c?.user_id) return;
+    const quand = ctx ? ` du ${fmtDate(ctx.date)} à ${ctx.time} (${ctx.place})` : '';
+    await dispatch([{
+      userId: c.user_id, role: 'cleaner',
+      title: 'Mission retirée',
+      message: `La mission${quand} ne vous est plus attribuée. Elle a été reprise par l'administrateur.`,
+      type: 'mission_unassigned', missionId,
+    }]);
+  } catch (e) { console.error('notifyCleanerMissionUnassigned:', e); }
+}
+
 // B. Nouvelle mission pour un cleaner (assignation) → cleaner
 export async function notifyCleanerNewMission(missionId: string) {
   try {
