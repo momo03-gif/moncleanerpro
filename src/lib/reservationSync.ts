@@ -168,6 +168,22 @@ export async function syncFeed(feed: {
 // ALERTE l'admin (sinon le cleaner se déplace pour rien).
 async function handleCancelledReservationMission(missionId: string) {
   const db = getSupabaseAdmin();
+
+  // ⚠️ Une mission peut servir PLUSIEURS réservations : le garde-fou anti-doublon
+  // rattache au même ménage tous les départs d'un logement à une même date (deux
+  // calendriers pour un même bien, ou marqueurs « reserved » de Hostaway qui
+  // apparaissent et disparaissent au fil de ses recalculs). Annuler la mission dès
+  // qu'UNE de ces réservations disparaît supprimait un ménage pourtant dû : trois
+  // ménages du lendemain ont ainsi été annulés à tort en production.
+  // On ne l'annule donc que s'il ne reste PLUS AUCUNE réservation confirmée liée.
+  // L'appelant a déjà basculé la réservation courante en 'cancelled' avant d'appeler
+  // cette fonction : elle n'est donc pas comptée ici.
+  const { count } = await db.from('reservations')
+    .select('id', { count: 'exact', head: true })
+    .eq('mission_id', missionId)
+    .eq('status', 'confirmed');
+  if ((count ?? 0) > 0) return;
+
   const { data: m } = await db.from('missions')
     .select('status, auto_synced, cleaner_name, airbnbs(name)').eq('id', missionId).single();
   if (!m || !m.auto_synced) return;
@@ -188,6 +204,20 @@ async function applyReservationDateChange(missionId: string, newDate: string, ne
   const { data: m } = await db.from('missions')
     .select('status, auto_synced, airbnbs(name)').eq('id', missionId).single();
   if (!m || !m.auto_synced) return;
+
+  // Mission partagée par plusieurs réservations (cf. handleCancelledReservationMission) :
+  // la déplacer priverait les autres départs de leur ménage. On alerte plutôt.
+  const { count } = await db.from('reservations')
+    .select('id', { count: 'exact', head: true })
+    .eq('mission_id', missionId)
+    .eq('status', 'confirmed');
+  if ((count ?? 0) > 1) {
+    const place = (m as any).airbnbs?.name ?? 'un logement';
+    await notifyAdminsSync('Changement de date — ménage partagé',
+      `Le départ de ${place} a changé (nouveau départ : ${newDate}), mais ce ménage couvre plusieurs réservations. Vérifie le planning à la main.`, missionId);
+    return;
+  }
+
   if (m.status === 'pending') {
     await db.from('missions').update({
       date_from: newDate, time_from: newTime || DEFAULT_CHECKOUT_TIME,
