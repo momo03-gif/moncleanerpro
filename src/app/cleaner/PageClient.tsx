@@ -380,7 +380,7 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
       {mission.status !== 'cancelled' && !isAppointment && (
         <div className="px-5 pb-4 space-y-3">
           <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
-          <MissionReport missionId={mission.id} mode="cleaner" userId={userId} />
+          <MissionReport missionId={mission.id} mode="cleaner" userId={userId} units={mission.coveredUnitNames} />
           {/* Réparations du logement : ce que le cleaner signale ici reste ouvert
               jusqu'à ce que le propriétaire l'ait fait réparer. */}
           {mission.airbnbId && (

@@ -427,12 +427,16 @@ export async function materializeMissions(): Promise<MaterializeResult> {
 
     // `covered_units` / `whole_property` n'existent qu'une fois la migration jouée.
     // On ne les envoie donc que pour un bien groupé — preuve que la colonne existe.
+    // `covered_unit_names` porte la liste brute des chambres (toutes si la maison
+    // entière est à faire) : elle sert au rapport de fin de mission pour demander
+    // au cleaner DANS QUELLE chambre il a constaté un dégât ou trouvé un objet.
     const groupFields = group
       ? {
           covered_units: wholeProperty
             ? 'Maison entière'
             : departingRooms.map(u => u.name).join(' + ') + ' + communs',
           whole_property: wholeProperty,
+          covered_unit_names: (wholeProperty ? group.units : departingRooms).map(u => u.name),
         }
       : {};
 
