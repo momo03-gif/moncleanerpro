@@ -315,15 +315,21 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   if (!departures || departures.length === 0) return result;
 
   // Cache des fiches appartement (durée, prix, partenaire).
-  const aptCache = new Map<string, { partner_id: string | null; client_price: number; estimated_cleaning_minutes: number }>();
+  // `group_tiers` : forfait selon le NOMBRE de chambres à faire, porté par
+  // l'annonce maison entière. Les espaces communs sont refaits à chaque passage,
+  // quel que soit le nombre de chambres — le prix ne s'additionne donc pas
+  // chambre par chambre (ex. Anse : 1 ch. 55 €, 2 ch. 60 €, maison 75 €).
+  type Tier = { price?: number; minutes?: number };
+  const aptCache = new Map<string, { partner_id: string | null; client_price: number; estimated_cleaning_minutes: number; group_tiers: Record<string, Tier> | null }>();
   async function getApt(id: string) {
     if (aptCache.has(id)) return aptCache.get(id)!;
     const { data } = await db.from('airbnbs')
-      .select('partner_id, client_price, estimated_cleaning_minutes').eq('id', id).single();
+      .select('partner_id, client_price, estimated_cleaning_minutes, group_tiers').eq('id', id).single();
     const apt = {
       partner_id: data?.partner_id ?? null,
       client_price: data?.client_price != null ? Number(data.client_price) : 0,
       estimated_cleaning_minutes: data?.estimated_cleaning_minutes != null ? Number(data.estimated_cleaning_minutes) : 60,
+      group_tiers: (data as { group_tiers?: Record<string, Tier> } | null)?.group_tiers ?? null,
     };
     aptCache.set(id, apt);
     return apt;
@@ -384,17 +390,27 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     // Durée et prix : maison entière → ceux de l'annonce entière ; sinon somme des
     // chambres concernées (les communs sont inclus dans le tarif chambre).
     let minutes: number, price: number, partnerId: string | null;
-    if (wholeProperty) {
-      const apt = await getApt(targetAirbnbId);
-      minutes = apt.estimated_cleaning_minutes; price = apt.client_price; partnerId = apt.partner_id;
+    const parentApt = await getApt(targetAirbnbId);
+    // Nombre de chambres à faire : la maison entière compte pour toutes.
+    const roomCount = wholeProperty ? (group?.units.length ?? 1) : departingRooms.length;
+    const tier = group ? parentApt.group_tiers?.[String(roomCount)] : undefined;
+
+    if (tier) {
+      // Forfait par palier (communs inclus à chaque passage).
+      price = tier.price ?? parentApt.client_price;
+      minutes = tier.minutes ?? parentApt.estimated_cleaning_minutes;
+      partnerId = parentApt.partner_id;
+    } else if (wholeProperty) {
+      minutes = parentApt.estimated_cleaning_minutes; price = parentApt.client_price; partnerId = parentApt.partner_id;
     } else {
+      // Pas de palier défini → ancien calcul : somme des chambres concernées.
       minutes = 0; price = 0; partnerId = null;
       for (const u of departingRooms) {
         const a = await getApt(u.id);
         minutes += a.estimated_cleaning_minutes; price += a.client_price;
         partnerId = partnerId ?? a.partner_id;
       }
-      if (partnerId === null) partnerId = (await getApt(targetAirbnbId)).partner_id;
+      if (partnerId === null) partnerId = parentApt.partner_id;
     }
 
     // Prochaine arrivée sur le bien (turnover) — toutes annonces confondues.
