@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   updateMissionStatusDB, assignCleanerToMissionDB, updateMissionDB,
   deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
+  decideMissionRequestDB,
 } from '@/lib/db';
 import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -201,6 +202,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   const [actionError, setActionError] = useState('');
   const [addTimeOpen, setAddTimeOpen] = useState(false);
   const [addTimeVal, setAddTimeVal] = useState('30');
+  const [deciding, setDeciding] = useState(false);
   const [editForm, setEditForm] = useState({
     date: mission.date, time: mission.time,
     durationMinutes: String(mission.missionDurationMinutes ?? 60),
@@ -280,6 +282,17 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     const res = await reopenMissionDB(mission.id, { id: user.id, role: 'admin' });
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
+    onRefresh();
+  }
+
+  // Décision sur la demande d'un cleaner. Valider = attribuer la mission ;
+  // refuser = la remettre à disposition des autres cleaners.
+  async function decideRequest(approve: boolean) {
+    setDeciding(true);
+    const res = await decideMissionRequestDB(mission.id, approve);
+    setDeciding(false);
+    if (res.error) { setActionError(res.error); return; }
+    toast(approve ? `Mission attribuée à ${mission.pendingCleanerName}.` : 'Demande refusée — mission de nouveau disponible.', 'success');
     onRefresh();
   }
 
@@ -456,6 +469,28 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
             style={{ backgroundColor: mission.wholeProperty ? '#FBF4E2' : '#F5F3EF', color: mission.wholeProperty ? '#9A7B22' : '#7A7068' }}>
             {mission.coveredUnits}
           </span>
+        )}
+
+        {/* Demande d'un cleaner en attente. Un cleaner ne s'assigne plus une
+            mission lui-même : rien ne bouge tant que l'admin n'a pas tranché. */}
+        {mission.pendingCleanerName && (
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: '#EBD9A8', backgroundColor: '#FBF4E2' }}>
+            <p className="text-xs font-semibold" style={{ color: '#9A7B22' }}>
+              {mission.pendingCleanerName} demande cette mission
+            </p>
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => decideRequest(true)} disabled={deciding}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
+                {deciding ? '…' : 'Valider'}
+              </button>
+              <button onClick={() => decideRequest(false)} disabled={deciding}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-50"
+                style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                Refuser
+              </button>
+            </div>
+          </div>
         )}
 
         {mission.nextArrival && (

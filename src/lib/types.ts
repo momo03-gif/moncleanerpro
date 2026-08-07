@@ -51,6 +51,11 @@ export interface Mission {
   wholeProperty?: boolean;
   // Chambres couvertes, en liste brute — sert au rapport de fin de mission.
   coveredUnitNames?: string[];
+  // Demande d'un cleaner en attente de validation par l'admin. Le cleaner ne
+  // s'assigne jamais une mission lui-même : il la demande, l'admin tranche.
+  pendingCleanerId?: string;
+  pendingCleanerName?: string;
+  pendingRequestedAt?: string;
   // Zone de l'appartement lié (dérivée du join, lecture seule).
   zoneId?: string;
   zoneColor?: string;

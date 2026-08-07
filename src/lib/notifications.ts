@@ -148,6 +148,40 @@ export async function notifyAdminsSync(title: string, message: string, missionId
   } catch (e) { console.error('notifyAdminsSync:', e); }
 }
 
+// A bis. Un cleaner DEMANDE une mission → admins. Il ne se l'assigne pas lui-même :
+// tant que l'admin n'a pas validé, la mission reste à pourvoir.
+export async function notifyAdminsMissionRequested(missionId: string, cleanerName: string) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    const admins = await adminUserIds();
+    const quand = ctx ? ` du ${fmtDate(ctx.date)} à ${ctx.time} (${ctx.place})` : '';
+    await dispatch(admins.map(id => ({
+      userId: id, role: 'admin' as const,
+      title: 'Demande de mission',
+      message: `${cleanerName} demande la mission${quand}. À valider ou refuser.`,
+      type: 'mission_requested', missionId,
+    })));
+  } catch (e) { console.error('notifyAdminsMissionRequested:', e); }
+}
+
+// A ter. Décision de l'admin sur une demande → le cleaner concerné.
+export async function notifyCleanerRequestDecision(missionId: string, cleanerId: string, approved: boolean) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    const { data: c } = await supabase.from('cleaners').select('user_id').eq('id', cleanerId).single();
+    if (!c?.user_id) return;
+    const quand = ctx ? ` du ${fmtDate(ctx.date)} à ${ctx.time} (${ctx.place})` : '';
+    await dispatch([{
+      userId: c.user_id, role: 'cleaner',
+      title: approved ? 'Mission validée' : 'Demande refusée',
+      message: approved
+        ? `Votre demande pour la mission${quand} est validée. Elle est dans votre planning.`
+        : `Votre demande pour la mission${quand} n'a pas été retenue.`,
+      type: approved ? 'mission_new' : 'mission_request_refused', missionId,
+    }]);
+  } catch (e) { console.error('notifyCleanerRequestDecision:', e); }
+}
+
 // B. Nouvelle mission pour un cleaner (assignation) → cleaner
 export async function notifyCleanerNewMission(missionId: string) {
   try {
