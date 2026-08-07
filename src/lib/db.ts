@@ -376,6 +376,9 @@ export async function createMissionDB(fields: {
   service?: MissionService; deliveryInstructions?: string;
   addressLat?: number; addressLng?: number;
   createdBy?: string; createdByRole?: string;
+  // Maison louée à la chambre : périmètre du ménage, identique à ce que produit
+  // la synchro — une mission créée à la main doit être indiscernable des autres.
+  coveredUnits?: string; wholeProperty?: boolean; coveredUnitNames?: string[];
 }): Promise<{ error: string | null }> {
   // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
   const cleanerIdToStore: string | null = fields.cleanerId || null;
@@ -422,6 +425,13 @@ export async function createMissionDB(fields: {
     instructions: fields.instructions || null,
     next_arrival: fields.nextArrival || null,
     next_arrival_time: fields.nextArrivalTime || null,
+    // Périmètre d'une maison louée à la chambre — écrit seulement s'il est
+    // renseigné, pour ne rien changer aux logements classiques.
+    ...(fields.coveredUnits ? {
+      covered_units: fields.coveredUnits,
+      whole_property: !!fields.wholeProperty,
+      covered_unit_names: fields.coveredUnitNames ?? null,
+    } : {}),
     status: cleanerIdToStore ? 'assigned' : 'pending',
   }).select('id').single();
 
