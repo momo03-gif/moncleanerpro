@@ -13,7 +13,9 @@ function rowToReport(r: Record<string, unknown>): MissionReport {
     consumables: Array.isArray(r.consumables) ? (r.consumables as string[]) : [],
     consumablesNote: (r.consumables_note as string) ?? undefined,
     issues: (r.issues as string) ?? undefined,
+    issuesUnit: (r.issues_unit as string) ?? undefined,
     lostFound: (r.lost_found as string) ?? undefined,
+    lostFoundUnit: (r.lost_found_unit as string) ?? undefined,
     note: (r.note as string) ?? undefined,
     submittedBy: (r.submitted_by as string) ?? undefined,
     updatedAt: (r.updated_at as string) ?? undefined,
@@ -71,7 +73,11 @@ export async function saveMissionReportDB(report: MissionReport): Promise<{ erro
     consumables: report.consumables ?? [],
     consumables_note: report.consumablesNote || null,
     issues: report.issues || null,
+    // Localisation gardée seulement si le constat existe : une chambre cochée
+    // sans texte n'a aucun sens à afficher côté hôte.
+    issues_unit: (report.issues && report.issuesUnit) || null,
     lost_found: report.lostFound || null,
+    lost_found_unit: (report.lostFound && report.lostFoundUnit) || null,
     note: report.note || null,
     submitted_by: report.submittedBy || null,
     updated_at: new Date().toISOString(),

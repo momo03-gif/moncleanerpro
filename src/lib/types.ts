@@ -49,6 +49,8 @@ export interface Mission {
   // entière était louée, soit toutes les chambres se libèrent le même jour.
   coveredUnits?: string;
   wholeProperty?: boolean;
+  // Chambres couvertes, en liste brute — sert au rapport de fin de mission.
+  coveredUnitNames?: string[];
   // Zone de l'appartement lié (dérivée du join, lecture seule).
   zoneId?: string;
   zoneColor?: string;
@@ -127,7 +129,11 @@ export interface MissionReport {
   consumables: string[];      // items à réapprovisionner (liste fermée)
   consumablesNote?: string;   // précision libre (ex. « plus de pastilles lave-vaisselle »)
   issues?: string;            // problème / dégât / maintenance constaté
+  // Localisation du constat sur une maison louée à la chambre (« Fleurie-ANSE »,
+  // « Communs »). undefined = non précisé, ou logement classique.
+  issuesUnit?: string;
   lostFound?: string;         // objet oublié par le client
+  lostFoundUnit?: string;
   note?: string;              // remarque générale
   submittedBy?: string;
   updatedAt?: string;
