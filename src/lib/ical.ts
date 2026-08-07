@@ -86,10 +86,23 @@ export function parseICal(raw: string): ICalEvent[] {
     if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
     if (line === 'END:VEVENT') {
       // Robustesse multi-plateformes : un évènement sans DTEND ne doit pas être
-      // perdu. On reconstruit la fin depuis DURATION si présente, sinon on retombe
-      // sur la date de début (séjour d'un jour) — mieux que d'ignorer la réservation.
+      // perdu. On reconstruit la fin depuis DURATION si présente, sinon on suppose
+      // une nuit — mieux que d'ignorer la réservation.
+      //
+      // ⚠️ Séjour « de zéro nuit ». Certains exports produisent DTEND <= DTSTART sur
+      // un évènement tout-en-un-jour. Hostaway le fait pour ses marqueurs
+      // « reserved » (réservations croisées entre annonces d'un même logement) :
+      // une nuit occupée le 07 ressort en DTSTART=DTEND=07. Pris au pied de la
+      // lettre, le départ tombait le 07 et le ménage était programmé un jour TROP
+      // TÔT. Une nuit occupée implique un départ le lendemain : on normalise à
+      // start + 1. Ne concerne QUE les évènements sans heure — un évènement horaire
+      // qui commence et finit le même jour est parfaitement légitime.
       if (cur && cur.uid && cur.start) {
-        if (!cur.end) cur.end = cur._durDays ? addDaysISO(cur.start, cur._durDays) : cur.start;
+        if (!cur.end) {
+          cur.end = addDaysISO(cur.start, cur._durDays && cur._durDays > 0 ? cur._durDays : 1);
+        } else if (!cur.startTime && !cur.endTime && cur.end <= cur.start) {
+          cur.end = addDaysISO(cur.start, 1);
+        }
         delete cur._durDays;
         events.push(cur as ICalEvent);
       }

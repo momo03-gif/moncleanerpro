@@ -68,7 +68,7 @@ describe('parseICal — robustesse multi-plateformes', () => {
     expect(e.end).toBe('2026-04-04');
   });
 
-  it('DTEND manquant et pas de DURATION → fin = début (réservation conservée)', () => {
+  it('DTEND manquant et pas de DURATION → une nuit supposée (réservation conservée)', () => {
     const ics = [
       'BEGIN:VEVENT',
       'UID:noend-5',
@@ -77,7 +77,68 @@ describe('parseICal — robustesse multi-plateformes', () => {
     ].join('\r\n');
     const events = parseICal(ics);
     expect(events).toHaveLength(1);
-    expect(events[0].end).toBe('2026-05-01');
+    // Une réservation occupe au moins une nuit : le départ est le lendemain.
+    expect(events[0].end).toBe('2026-05-02');
+  });
+
+  // Cas réel Hostaway : marqueur « reserved » d'une réservation croisée entre deux
+  // annonces d'un même logement. Une nuit occupée sort en DTSTART == DTEND ; lu au
+  // pied de la lettre, le ménage était programmé la veille du vrai départ.
+  it('Hostaway : séjour de « zéro nuit » (DTSTART == DTEND) → départ le lendemain', () => {
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'BEGIN:VEVENT',
+      'UID:hostaway-cross-1',
+      'SUMMARY:reserved',
+      'DESCRIPTION:reserved by hostaway cross reservations: 64245633',
+      'DTSTART;VALUE=DATE:20260807',
+      'DTEND;VALUE=DATE:20260807',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const [e] = parseICal(ics);
+    expect(e.start).toBe('2026-08-07');
+    expect(e.end).toBe('2026-08-08');
+  });
+
+  it('DTEND antérieur au DTSTART (flux incohérent) → départ le lendemain', () => {
+    const ics = [
+      'BEGIN:VEVENT',
+      'UID:inverse-1',
+      'DTSTART;VALUE=DATE:20260910',
+      'DTEND;VALUE=DATE:20260909',
+      'END:VEVENT',
+    ].join('\r\n');
+    const [e] = parseICal(ics);
+    expect(e.end).toBe('2026-09-11');
+  });
+
+  // Garde-fou : un évènement HORAIRE qui commence et finit le même jour est
+  // légitime (créneau de quelques heures) — il ne doit pas être décalé.
+  it('Évènement horaire sur une même journée → dates inchangées', () => {
+    const ics = [
+      'BEGIN:VEVENT',
+      'UID:meme-jour-horaire',
+      'DTSTART:20260415T090000',
+      'DTEND:20260415T113000',
+      'END:VEVENT',
+    ].join('\r\n');
+    const [e] = parseICal(ics);
+    expect(e.start).toBe('2026-04-15');
+    expect(e.end).toBe('2026-04-15');
+    expect(e.endTime).toBe('11:30');
+  });
+
+  it('Réservation normale (DTEND > DTSTART) → inchangée', () => {
+    const ics = [
+      'BEGIN:VEVENT',
+      'UID:normale-1',
+      'DTSTART;VALUE=DATE:20260808',
+      'DTEND;VALUE=DATE:20260809',
+      'END:VEVENT',
+    ].join('\r\n');
+    const [e] = parseICal(ics);
+    expect(e.end).toBe('2026-08-09');
   });
 
   it('Évènement annulé et évènement multiple dans un même flux', () => {
