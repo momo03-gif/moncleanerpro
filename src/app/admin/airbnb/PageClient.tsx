@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB, setAirbnbCoordsDB } from '@/lib/db';
+import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB, setAirbnbCoordsDB, recalcGroupMissionsDB } from '@/lib/db';
 import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
@@ -188,6 +188,20 @@ export default function AirbnbPage() {
     if (aptId) {
       const geo = await geocodeAddress(form.address);
       if (geo) await setAirbnbCoordsDB(aptId, geo.lat, geo.lon);
+    }
+
+    // Forfaits modifiés sur une maison partagée → on réapplique aux ménages à
+    // venir. Sinon le nouveau tarif ne concernerait que les missions créées
+    // ensuite, et le planning garderait l'ancien prix sans rien signaler.
+    if (aptId && childCount > 0 && payload.groupTiers) {
+      const { updated, skipped } = await recalcGroupMissionsDB(aptId);
+      if (updated > 0 || skipped > 0) {
+        toast(
+          `${updated} ménage${updated > 1 ? 's' : ''} à venir mis à jour` +
+          (skipped > 0 ? ` · ${skipped} déjà assigné${skipped > 1 ? 's' : ''}, non modifié${skipped > 1 ? 's' : ''}` : ''),
+          'success',
+        );
+      }
     }
 
     await load();
