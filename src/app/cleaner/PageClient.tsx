@@ -263,6 +263,17 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
             </p>
           )
         )}
+        {/* Maison louée à la chambre : le cleaner doit savoir CE QU'IL FAIT avant
+            d'arriver — toute la maison, ou telle(s) chambre(s) + les communs.
+            Placé au-dessus de l'heure : c'est l'information la plus structurante
+            de la mission, elle ne doit pas se noyer dans les métadonnées. */}
+        {mission.coveredUnits && (
+          <div className="mb-3 px-3 py-2 rounded-xl border"
+            style={{ backgroundColor: mission.wholeProperty ? '#FBF4E2' : '#F5F3EF', borderColor: mission.wholeProperty ? '#EBD9A8' : '#E8E4DC' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#A8A09A' }}>À faire</p>
+            <p className="text-sm font-semibold mt-0.5" style={{ color: '#1A1A1A' }}>{mission.coveredUnits}</p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           {mission.time && (
             <div className="flex items-center gap-1.5" style={{ color: '#C9A84C' }}>

@@ -43,6 +43,12 @@ export interface Mission {
   missionDurationMinutes?: number;
   cleanerHourlyRateSnapshot?: number;
   apartmentDefaultDurationSnapshot?: number;
+  // Maison louée à la chambre : QUOI faire précisément ce jour-là.
+  // `coveredUnits` liste les chambres concernées (« Fleurie + Saint-Amour + communs »),
+  // `wholeProperty` indique que la maison entière est à faire — soit l'annonce
+  // entière était louée, soit toutes les chambres se libèrent le même jour.
+  coveredUnits?: string;
+  wholeProperty?: boolean;
   // Zone de l'appartement lié (dérivée du join, lecture seule).
   zoneId?: string;
   zoneColor?: string;

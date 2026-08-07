@@ -450,6 +450,14 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
           {(mission.missionDurationMinutes ?? 0) > 0 && <span className="inline-flex items-center gap-1"><Icon name="timer" size={14} />{formatDuration(mission.missionDurationMinutes)}</span>}
         </div>
 
+        {/* Maison louée à la chambre : périmètre exact du ménage. */}
+        {mission.coveredUnits && (
+          <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold w-fit"
+            style={{ backgroundColor: mission.wholeProperty ? '#FBF4E2' : '#F5F3EF', color: mission.wholeProperty ? '#9A7B22' : '#7A7068' }}>
+            {mission.coveredUnits}
+          </span>
+        )}
+
         {mission.nextArrival && (
           mission.nextArrival === mission.date ? (
             <div className="px-3 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
