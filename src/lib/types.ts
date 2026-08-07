@@ -219,6 +219,11 @@ export interface Apartment {
   cleanerName?: string;
   clientPrice?: number;
   estimatedCleaningMinutes?: number;
+  // Maison à annonces multiples (entière + chambres). `parentAirbnbId` rattache
+  // une chambre à l'annonce maison entière ; `groupTiers` porte les forfaits par
+  // nombre de chambres, sur l'annonce entière uniquement.
+  parentAirbnbId?: string;
+  groupTiers?: Record<string, { price?: number; minutes?: number }>;
   cleanerGain?: number;
   // Zone géographique (proximité). Coordonnées géocodées depuis l'adresse.
   latitude?: number;

@@ -19,8 +19,25 @@ const emptyForm = {
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
   structureType: 'apartment', structureLabel: '', productCostCents: '',
+  // Maison à annonces multiples : '' = logement indépendant.
+  parentAirbnbId: '',
+  // Forfaits par nombre de chambres, sur l'annonce « maison entière ».
+  tier1Price: '', tier1Minutes: '', tier2Price: '', tier2Minutes: '', tier3Price: '', tier3Minutes: '',
 };
 type FormState = typeof emptyForm;
+
+// Grille de forfaits → JSON stocké sur l'annonce « maison entière ».
+// Un palier sans prix n'est pas enregistré : mieux vaut retomber sur le calcul
+// par défaut qu'écrire un forfait à 0 € qui passerait inaperçu en facturation.
+function buildTiers(f: FormState): Record<string, { price?: number; minutes?: number }> | null {
+  const out: Record<string, { price?: number; minutes?: number }> = {};
+  ([['1', f.tier1Price, f.tier1Minutes], ['2', f.tier2Price, f.tier2Minutes], ['3', f.tier3Price, f.tier3Minutes]] as const)
+    .forEach(([k, p, m]) => {
+      if (!p.trim()) return;
+      out[k] = { price: Number(p), ...(m.trim() ? { minutes: Number(m) } : {}) };
+    });
+  return Object.keys(out).length ? out : null;
+}
 
 function aptToForm(a: Apartment): FormState {
   return {
@@ -41,6 +58,13 @@ function aptToForm(a: Apartment): FormState {
     zoneColor: a.zoneColor ?? '',
     zoneName: a.zoneName ?? '',
     notes: a.notes ?? '',
+    parentAirbnbId: a.parentAirbnbId ?? '',
+    tier1Price: a.groupTiers?.['1']?.price != null ? String(a.groupTiers['1'].price) : '',
+    tier1Minutes: a.groupTiers?.['1']?.minutes != null ? String(a.groupTiers['1'].minutes) : '',
+    tier2Price: a.groupTiers?.['2']?.price != null ? String(a.groupTiers['2'].price) : '',
+    tier2Minutes: a.groupTiers?.['2']?.minutes != null ? String(a.groupTiers['2'].minutes) : '',
+    tier3Price: a.groupTiers?.['3']?.price != null ? String(a.groupTiers['3'].price) : '',
+    tier3Minutes: a.groupTiers?.['3']?.minutes != null ? String(a.groupTiers['3'].minutes) : '',
   };
 }
 
@@ -69,6 +93,9 @@ export default function AirbnbPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [search, setSearch] = useState('');
+  // Nombre de chambres rattachées à la fiche en cours d'édition : conditionne
+  // l'affichage des forfaits (une annonce sans chambre n'en a pas besoin).
+  const childCount = editingId ? apartments.filter(a => a.parentAirbnbId === editingId).length : 0;
   const [partnerFilter, setPartnerFilter] = useState<string>('all');
   const [openPartners, setOpenPartners] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(60);
@@ -149,6 +176,10 @@ export default function AirbnbPage() {
       zoneColor: form.zoneColor || undefined,
       zoneName: form.zoneName || undefined,
       notes: form.notes || undefined,
+      // Rattachement : '' = logement indépendant → null explicite pour pouvoir
+      // aussi DÉTACHER une chambre, pas seulement la rattacher.
+      parentAirbnbId: form.parentAirbnbId || null,
+      groupTiers: buildTiers(form),
     };
 
     // Identifiant de l'appartement (existant ou nouvellement créé) pour le géocodage.
@@ -231,6 +262,60 @@ export default function AirbnbPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
             ))}
+            {/* ── Maison à plusieurs annonces ──────────────────────────────────
+                Une même maison peut être commercialisée en entier ET à la chambre
+                (ex. Anse : l'annonce maison + 3 chambres). Rattacher les chambres
+                à l'annonce maison évite de créer 4 ménages pour un seul
+                déplacement — le PMS bloque les annonces sœurs, ce que l'app
+                prendrait sinon pour autant de réservations distinctes. */}
+            <div className="md:col-span-2 rounded-xl border p-4" style={{ borderColor: '#EBD9A8', backgroundColor: '#FBF4E2' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#9A7B22' }}>
+                Maison à plusieurs annonces
+              </label>
+              <p className="text-xs mb-3" style={{ color: '#7A7068' }}>
+                Cette fiche est-elle une <strong>chambre</strong> d&apos;une maison déjà enregistrée ? Sinon, laissez « logement indépendant ».
+              </p>
+              <select value={form.parentAirbnbId} onChange={e => setForm(p => ({ ...p, parentAirbnbId: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}>
+                <option value="">Logement indépendant</option>
+                {apartments
+                  .filter(a => a.id !== editingId && !a.parentAirbnbId)
+                  .map(a => <option key={a.id} value={a.id}>Chambre de : {a.name}</option>)}
+              </select>
+
+              {/* Forfaits : sur l'annonce MAISON ENTIÈRE, donc seulement si des
+                  chambres lui sont déjà rattachées. Le prix ne s'additionne pas
+                  chambre par chambre — les communs sont refaits à chaque passage. */}
+              {editingId && childCount > 0 && (
+                <div className="mt-4 pt-4 border-t" style={{ borderColor: '#EBD9A8' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#9A7B22' }}>
+                    Forfaits par nombre de chambres
+                  </p>
+                  <p className="text-xs mb-3" style={{ color: '#7A7068' }}>
+                    {childCount} chambre{childCount > 1 ? 's' : ''} rattachée{childCount > 1 ? 's' : ''}. Les espaces communs sont inclus dans chaque forfait.
+                    Laisser un prix vide désactive le palier. La durée sert à la paie du cleaner, jamais au prix client.
+                  </p>
+                  <div className="space-y-2">
+                    {([['1', 'tier1Price', 'tier1Minutes'], ['2', 'tier2Price', 'tier2Minutes'], ['3', 'tier3Price', 'tier3Minutes']] as const)
+                      .slice(0, Math.max(1, childCount))
+                      .map(([n, pk, mk]) => (
+                        <div key={n} className="flex items-center gap-2">
+                          <span className="text-xs w-28 shrink-0" style={{ color: '#7A7068' }}>
+                            {Number(n) >= childCount ? 'Maison entière' : `${n} chambre${Number(n) > 1 ? 's' : ''}`}
+                          </span>
+                          <input type="number" min="0" step="0.01" value={(form as any)[pk]}
+                            onChange={e => setForm(p => ({ ...p, [pk]: e.target.value }))}
+                            placeholder="€" className="w-24 px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                          <input type="number" min="0" step="5" value={(form as any)[mk]}
+                            onChange={e => setForm(p => ({ ...p, [mk]: e.target.value }))}
+                            placeholder="min" className="w-24 px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Chambres/lits/canapé — uniquement pour un logement (appartement). */}
             {form.structureType === 'apartment' && (
             <div className="grid grid-cols-3 gap-4">
@@ -388,6 +473,18 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
           <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{apt.name}</p>
           <p className="text-xs truncate" style={{ color: '#A8A09A' }}>{apt.address}</p>
         </div>
+        {/* Repère visuel du rattachement : sans ça, 4 fiches à la même adresse
+            sont indiscernables d'un doublon de saisie. */}
+        {apt.parentAirbnbId && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+            chambre
+          </span>
+        )}
+        {apt.groupTiers && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#FBF4E2', color: '#9A7B22' }}>
+            maison partagée
+          </span>
+        )}
         {apt.structureType && apt.structureType !== 'apartment' && (
           <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#7C5CBF12', color: '#7C5CBF' }}>
             {structureLabel(apt.structureType, apt.structureLabel)}

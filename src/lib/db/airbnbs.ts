@@ -34,6 +34,10 @@ function rowToApartment(a: any): Apartment {
     notes: a.notes ?? undefined,
     accessVideoUrl: a.access_video_url ?? undefined,
     accessVideoPath: a.access_video_path ?? undefined,
+    // Maison à annonces multiples : rattachement chambre → annonce entière, et
+    // grille de forfaits par nombre de chambres (portée par l'annonce entière).
+    parentAirbnbId: a.parent_airbnb_id ?? undefined,
+    groupTiers: a.group_tiers ?? undefined,
   };
 }
 
@@ -62,6 +66,8 @@ export async function createAirbnb(fields: {
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
   structureType?: string; structureLabel?: string; productCostCents?: number;
+  parentAirbnbId?: string | null;
+  groupTiers?: Record<string, { price?: number; minutes?: number }> | null;
 }): Promise<string | null> {
   const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
   const { data, error } = await supabase.from('airbnbs').insert({
@@ -84,6 +90,8 @@ export async function createAirbnb(fields: {
     zone_color: fields.zoneColor || null,
     zone_name: fields.zoneName || null,
     notes: fields.notes || null,
+    parent_airbnb_id: fields.parentAirbnbId || null,
+    group_tiers: fields.groupTiers ?? null,
   }).select('id').single();
   if (error) { console.error('createAirbnb error:', error.code, error.message); return null; }
   return data?.id ?? null;
@@ -95,6 +103,8 @@ export async function updateAirbnb(id: string, fields: {
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
   structureType?: string; structureLabel?: string; productCostCents?: number;
+  parentAirbnbId?: string | null;
+  groupTiers?: Record<string, { price?: number; minutes?: number }> | null;
 }) {
   const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
   // Champs éditables par TOUT propriétaire de fiche (admin ET partenaire).
@@ -122,6 +132,9 @@ export async function updateAirbnb(id: string, fields: {
   if (fields.partnerName !== undefined) patch.partner_name = fields.partnerName || null;
   if (fields.structureType !== undefined) patch.structure_type = fields.structureType;
   if (fields.structureLabel !== undefined) patch.structure_label = fields.structureLabel || null;
+  // Rattachement et forfaits : réglages admin, même règle (écrits seulement si fournis).
+  if (fields.parentAirbnbId !== undefined) patch.parent_airbnb_id = fields.parentAirbnbId || null;
+  if (fields.groupTiers !== undefined) patch.group_tiers = fields.groupTiers ?? null;
 
   const { error } = await supabase.from('airbnbs').update(patch).eq('id', id);
   if (error) console.error('updateAirbnb error:', error.code, error.message);
