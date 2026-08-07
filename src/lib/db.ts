@@ -119,6 +119,9 @@ function rowToMission(row: any): Mission {
     coveredUnits: row.covered_units ?? undefined,
     wholeProperty: row.whole_property ?? undefined,
     coveredUnitNames: Array.isArray(row.covered_unit_names) ? row.covered_unit_names : undefined,
+    pendingCleanerId: row.pending_cleaner_id ?? undefined,
+    pendingCleanerName: row.pending_cleaner_name ?? undefined,
+    pendingRequestedAt: row.pending_requested_at ?? undefined,
     cleanerHourlyRateSnapshot: row.cleaner_hourly_rate_snapshot != null ? Number(row.cleaner_hourly_rate_snapshot) : undefined,
     apartmentDefaultDurationSnapshot: row.apartment_default_duration_snapshot != null ? Number(row.apartment_default_duration_snapshot) : undefined,
     // Zone dérivée de l'appartement lié (join), toujours à jour.
@@ -239,8 +242,19 @@ function stripInternalForPartner(m: Mission): Mission {
   };
 }
 
+// Missions ouvertes aux cleaners. On exclut celles DÉJÀ demandées par quelqu'un :
+// tant que l'admin n'a pas tranché, elles ne doivent plus apparaître comme
+// disponibles — sinon deux cleaners croient l'avoir décrochée.
 export async function getPendingMissionsDB(): Promise<Mission[]> {
-  const { data } = await supabase.from('missions').select(MISSION_SELECT).eq('status', 'pending').order('date_from');
+  const { data } = await supabase.from('missions').select(MISSION_SELECT)
+    .eq('status', 'pending').is('pending_cleaner_id', null).order('date_from');
+  return (data ?? []).map(rowToMission);
+}
+
+// Demandes en attente de décision (écran admin).
+export async function getMissionRequestsDB(): Promise<Mission[]> {
+  const { data } = await supabase.from('missions').select(MISSION_SELECT)
+    .not('pending_cleaner_id', 'is', null).order('pending_requested_at');
   return (data ?? []).map(rowToMission);
 }
 
@@ -302,11 +316,52 @@ export async function acceptMissionDB(missionId: string, userId: string): Promis
     return { error: 'Termine ta formation obligatoire pour débloquer tes missions.' };
   }
 
+  // Le cleaner ne s'assigne PLUS la mission : il la demande, l'admin valide.
+  // La mission reste en 'pending' — on ne détourne aucun statut existant.
+  // Premier arrivé, premier servi : si quelqu'un a déjà demandé, on refuse la
+  // seconde demande plutôt que de l'écraser en silence.
+  const { data: current } = await supabase.from('missions')
+    .select('pending_cleaner_id, pending_cleaner_name, status').eq('id', missionId).single();
+  if (current?.status !== 'pending') return { error: 'Cette mission n’est plus disponible.' };
+  if (current?.pending_cleaner_id && current.pending_cleaner_id !== cleanerRow.id) {
+    return { error: `Déjà demandée par ${current.pending_cleaner_name ?? 'un autre cleaner'}.` };
+  }
+
   const { error } = await supabase.from('missions').update({
-    cleaner_id: cleanerRow.id,
-    cleaner_name: cleanerRow.name,
-    status: 'assigned',
+    pending_cleaner_id: cleanerRow.id,
+    pending_cleaner_name: cleanerRow.name,
+    pending_requested_at: new Date().toISOString(),
   }).eq('id', missionId);
+  if (!error) {
+    try {
+      const { notifyAdminsMissionRequested } = await import('./notifications');
+      await notifyAdminsMissionRequested(missionId, cleanerRow.name);
+    } catch (e) { console.error('notify mission requested:', e); }
+  }
+  return { error: error?.message ?? null };
+}
+
+// Décision de l'admin sur une demande de mission.
+export async function decideMissionRequestDB(missionId: string, approve: boolean): Promise<{ error: string | null }> {
+  const { data: m } = await supabase.from('missions')
+    .select('pending_cleaner_id, pending_cleaner_name').eq('id', missionId).single();
+  if (!m?.pending_cleaner_id) return { error: 'Aucune demande sur cette mission.' };
+
+  const patch: Record<string, unknown> = {
+    pending_cleaner_id: null, pending_cleaner_name: null, pending_requested_at: null,
+  };
+  if (approve) {
+    patch.cleaner_id = m.pending_cleaner_id;
+    patch.cleaner_name = m.pending_cleaner_name;
+    patch.status = 'assigned';
+  }
+  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
+  if (!error) {
+    try {
+      const { notifyCleanerRequestDecision } = await import('./notifications');
+      await notifyCleanerRequestDecision(missionId, m.pending_cleaner_id as string, approve);
+    } catch (e) { console.error('notify request decision:', e); }
+  }
   return { error: error?.message ?? null };
 }
 

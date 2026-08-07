@@ -20,6 +20,7 @@ export default function ProposedMissionsPage() {
   const [declined, setDeclined] = useState<Set<string>>(new Set());
   const [accepting, setAccepting] = useState<string | null>(null);
   const [blockMsg, setBlockMsg] = useState('');
+  const [okMsg, setOkMsg] = useState('');
 
   const load = useCallback(async () => {
     const { getPendingMissionsDB } = await loadDb();
@@ -38,6 +39,7 @@ export default function ProposedMissionsPage() {
     setAccepting(null);
     if (res.error) { setBlockMsg(res.error); return; }
     setBlockMsg('');
+    setOkMsg('Demande envoyée — en attente de validation par l’administrateur.');
     setAccepted(prev => new Set(prev).add(id));
     // Reload to remove this mission from the list
     await load();
@@ -63,6 +65,18 @@ export default function ProposedMissionsPage() {
           {blockMsg}
         </div>
       )}
+
+      {/* Une demande n'est pas une attribution : le cleaner doit comprendre qu'il
+          ne décroche pas la mission en cliquant, sinon il la note dans son planning
+          et se déplace pour rien si l'admin l'attribue à quelqu'un d'autre. */}
+      {okMsg && (
+        <div className="rounded-2xl px-4 py-3 mb-4 text-sm font-medium" style={{ backgroundColor: '#EAF3EC', color: '#4E7D5E' }}>
+          {okMsg}
+        </div>
+      )}
+      <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>
+        Votre demande est transmise à l&apos;administrateur : la mission ne vous est attribuée qu&apos;après sa validation.
+      </p>
 
       {visible.length === 0 ? (
         <div className="rounded-2xl p-10 flex flex-col items-center text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
@@ -142,7 +156,7 @@ export default function ProposedMissionsPage() {
                   </button>
                   <button onClick={() => accept(m.id)} disabled={accepting === m.id} className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                     style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                    {accepting === m.id ? '...' : 'Accepter'}
+                    {accepting === m.id ? '...' : 'Demander'}
                   </button>
                 </div>
               </div>
