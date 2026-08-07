@@ -38,11 +38,68 @@ function addDays(isoDate: string, days: number): string {
 // Classe un évènement iCal : réservation réelle vs blocage de calendrier.
 // Airbnb/Booking exportent les indisponibilités comme « Not available / Blocked /
 // Closed » — celles-ci ne doivent JAMAIS générer de mission de ménage.
-function classifyEvent(ev: ICalEvent): 'confirmed' | 'cancelled' | 'blocked' {
+function classifyEvent(ev: ICalEvent, inGroup = false): 'confirmed' | 'cancelled' | 'blocked' {
   if (ev.status === 'CANCELLED') return 'cancelled';
   const s = (ev.summary ?? '').toLowerCase();
   if (/not available|unavailable|blocked|closed|not avail/.test(s)) return 'blocked';
+  // Marqueur de « réservation croisée » : le PMS bloque les annonces sœurs d'une
+  // même maison (annonce entière ⇄ chambres) quand l'une d'elles est réservée.
+  //   SUMMARY:reserved
+  //   DESCRIPTION:reserved by hostaway cross reservations: 64245633,63913169
+  // Ce n'est pas une réservation de plus : c'est l'ombre de celle d'à côté. On ne
+  // l'ignore QUE si le logement est rattaché à un groupe — sinon la vraie
+  // réservation n'est sur aucun calendrier connecté et on perdrait le ménage.
+  if (inGroup && /cross reservations?/i.test(ev.description ?? '')) return 'blocked';
   return 'confirmed';
+}
+
+// ── Maisons à annonces multiples ──────────────────────────────────────────────
+// Une maison peut être commercialisée sous plusieurs annonces : l'annonce
+// « maison entière » et une annonce par chambre. Elles partagent le même bien
+// physique, donc le même déplacement de ménage.
+//   • `parent_airbnb_id` (chambre → annonce maison entière) porte le lien.
+//   • Tant que la migration n'est pas passée, ou qu'aucun lien n'est renseigné,
+//     tout se comporte exactement comme avant (logements indépendants).
+interface PropertyGroup {
+  parentId: string;                                   // annonce « maison entière »
+  units: { id: string; name: string }[];              // les chambres
+}
+
+// Cache par exécution : la synchro balaie beaucoup de flux, inutile de relire.
+let groupCache: Map<string, PropertyGroup> | null = null;
+
+// Construit la table « id de logement → groupe ». Renvoie une table VIDE si la
+// colonne n'existe pas encore (migration non jouée) : aucun regroupement, donc
+// aucun changement de comportement.
+async function loadPropertyGroups(): Promise<Map<string, PropertyGroup>> {
+  if (groupCache) return groupCache;
+  const db = getSupabaseAdmin();
+  const map = new Map<string, PropertyGroup>();
+  const { data, error } = await db.from('airbnbs').select('id, name, parent_airbnb_id');
+  if (error) {
+    // Colonne absente (42703) → on log une fois et on continue sans regroupement.
+    console.warn('loadPropertyGroups (regroupement desactive):', error.message);
+    groupCache = map;
+    return map;
+  }
+  const children = (data ?? []).filter((a: any) => a.parent_airbnb_id);
+  const byParent = new Map<string, { id: string; name: string }[]>();
+  for (const c of children) {
+    const list = byParent.get(c.parent_airbnb_id) ?? [];
+    list.push({ id: c.id, name: c.name });
+    byParent.set(c.parent_airbnb_id, list);
+  }
+  for (const [parentId, units] of byParent) {
+    const group: PropertyGroup = { parentId, units };
+    map.set(parentId, group);
+    for (const u of units) map.set(u.id, group);
+  }
+  groupCache = map;
+  return map;
+}
+
+async function isInPropertyGroup(airbnbId: string): Promise<boolean> {
+  return (await loadPropertyGroups()).has(airbnbId);
 }
 
 export interface FeedSyncResult {
@@ -78,6 +135,10 @@ export async function syncFeed(feed: {
     const seenUids = new Set<string>();
     let imported = 0;
 
+    // Le logement fait-il partie d'une maison à annonces multiples ? Détermine si
+    // les marqueurs de réservation croisée peuvent être ignorés sans rien perdre.
+    const inGroup = await isInPropertyGroup(feed.airbnb_id);
+
     // État précédent (pour détecter un changement de date de départ sur une
     // réservation déjà transformée en mission).
     const { data: prevRows } = await db
@@ -89,7 +150,7 @@ export async function syncFeed(feed: {
     );
 
     for (const ev of events) {
-      const status = classifyEvent(ev);
+      const status = classifyEvent(ev, inGroup);
       seenUids.add(ev.uid);
 
       const row = {
@@ -268,73 +329,131 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     return apt;
   }
 
-  for (const dep of departures) {
-    // Garde-fou anti-doublon : si un ménage auto existe déjà pour CE logement à
-    // CETTE date de départ (cas fréquent : un logement a 2 calendriers, ex.
-    // Airbnb + Booking, qui exportent le même séjour sous deux UID différents),
-    // on ne recrée pas de ménage — on rattache la réservation au ménage existant.
+  // ── Regroupement par BIEN PHYSIQUE + date ───────────────────────────────────
+  // Une maison à annonces multiples (entière + chambres) ne représente qu'UN
+  // déplacement : tous les départs d'un même bien à une même date tombent dans le
+  // même paquet et donneront UNE mission, portée par l'annonce « maison entière ».
+  // Sans groupe défini, chaque paquet ne contient qu'un logement → comportement
+  // identique à avant.
+  type Departure = { id: string; airbnb_id: string; partner_id: string | null; check_out: string; check_out_time: string | null };
+  type Bucket = { key: string; date: string; group?: PropertyGroup; deps: Departure[] };
+  const groups = await loadPropertyGroups();
+  const buckets = new Map<string, Bucket>();
+  for (const dep of departures as Departure[]) {
+    const group = groups.get(dep.airbnb_id);
+    const key = group ? group.parentId : dep.airbnb_id;
+    const id = `${key}|${dep.check_out}`;
+    const b: Bucket = buckets.get(id) ?? { key, date: dep.check_out, group, deps: [] };
+    b.deps.push(dep);
+    buckets.set(id, b);
+  }
+
+  for (const bucket of buckets.values()) {
+    const { key: targetAirbnbId, date, group, deps } = bucket;
+    const first = deps[0];
+
+    // Garde-fou anti-doublon : si un ménage auto existe déjà pour CE bien à CETTE
+    // date (logement avec 2 calendriers exportant le même séjour sous deux UID,
+    // ou chambres d'une même maison), on ne recrée pas — on rattache.
     const { data: dup } = await db
       .from('missions')
       .select('id')
-      .eq('airbnb_id', dep.airbnb_id)
-      .eq('date_from', dep.check_out)
+      .eq('airbnb_id', targetAirbnbId)
+      .eq('date_from', date)
       .eq('auto_synced', true)
       .neq('status', 'cancelled')
       .limit(1);
     if (dup && dup.length > 0) {
-      await db.from('reservations')
-        .update({ mission_id: dup[0].id, mission_created_at: new Date().toISOString() })
-        .eq('id', dep.id);
+      for (const d of deps) {
+        await db.from('reservations')
+          .update({ mission_id: dup[0].id, mission_created_at: new Date().toISOString() })
+          .eq('id', d.id);
+      }
       continue;
     }
 
-    const apt = await getApt(dep.airbnb_id);
-    const minutes = apt.estimated_cleaning_minutes;
+    // Quoi faire ce jour-là ? Maison entière si l'annonce entière se libère, ou si
+    // TOUTES les chambres partent le même jour (règle métier : 3 chambres sur 3 =
+    // la maison entière, facturée comme telle).
+    const departingIds = new Set(deps.map(d => d.airbnb_id));
+    const departingRooms = group ? group.units.filter(u => departingIds.has(u.id)) : [];
+    const wholeProperty = !group
+      || departingIds.has(group.parentId)
+      || departingRooms.length >= group.units.length;
 
-    // Prochaine arrivée au même appartement (turnover) : la 1re réservation
-    // confirmée dont l'arrivée est >= au départ courant. Si elle tombe le jour
-    // même → turnover jour J (l'alerte rouge existante s'affiche automatiquement).
+    // Durée et prix : maison entière → ceux de l'annonce entière ; sinon somme des
+    // chambres concernées (les communs sont inclus dans le tarif chambre).
+    let minutes: number, price: number, partnerId: string | null;
+    if (wholeProperty) {
+      const apt = await getApt(targetAirbnbId);
+      minutes = apt.estimated_cleaning_minutes; price = apt.client_price; partnerId = apt.partner_id;
+    } else {
+      minutes = 0; price = 0; partnerId = null;
+      for (const u of departingRooms) {
+        const a = await getApt(u.id);
+        minutes += a.estimated_cleaning_minutes; price += a.client_price;
+        partnerId = partnerId ?? a.partner_id;
+      }
+      if (partnerId === null) partnerId = (await getApt(targetAirbnbId)).partner_id;
+    }
+
+    // Prochaine arrivée sur le bien (turnover) — toutes annonces confondues.
+    const scope = group ? [group.parentId, ...group.units.map(u => u.id)] : [targetAirbnbId];
     const { data: nextRes } = await db
       .from('reservations')
       .select('check_in, check_in_time')
-      .eq('airbnb_id', dep.airbnb_id)
+      .in('airbnb_id', scope)
       .eq('status', 'confirmed')
-      .gte('check_in', dep.check_out)
+      .gte('check_in', date)
       .order('check_in')
       .limit(1);
     const next = nextRes?.[0];
 
+    // `covered_units` / `whole_property` n'existent qu'une fois la migration jouée.
+    // On ne les envoie donc que pour un bien groupé — preuve que la colonne existe.
+    const groupFields = group
+      ? {
+          covered_units: wholeProperty
+            ? 'Maison entière'
+            : departingRooms.map(u => u.name).join(' + ') + ' + communs',
+          whole_property: wholeProperty,
+        }
+      : {};
+
     const { data: mission, error } = await db.from('missions').insert({
       type: 'checkout',
       source: 'airbnb',
-      partner_id: apt.partner_id,
+      partner_id: partnerId,
       created_by: null,
       created_by_role: 'system',
-      airbnb_id: dep.airbnb_id,
-      date_from: dep.check_out,
-      time_from: dep.check_out_time || DEFAULT_CHECKOUT_TIME,
+      airbnb_id: targetAirbnbId,
+      date_from: date,
+      time_from: first.check_out_time || DEFAULT_CHECKOUT_TIME,
       hours_worked: Math.round((minutes / 60) * 100) / 100,
       mission_duration_minutes: minutes,
       apartment_default_duration_snapshot: minutes,
-      price: apt.client_price,
+      price,
       cleaner_gain: 0,
       next_arrival: next?.check_in || null,
       next_arrival_time: next?.check_in_time || null,
       status: 'pending',
       auto_synced: true,
+      ...groupFields,
     }).select('id').single();
 
     if (error || !mission) { console.error('materialize mission insert:', error?.message); continue; }
 
-    await db.from('reservations').update({
-      mission_id: mission.id, mission_created_at: new Date().toISOString(),
-    }).eq('id', dep.id);
+    for (const d of deps) {
+      await db.from('reservations').update({
+        mission_id: mission.id, mission_created_at: new Date().toISOString(),
+      }).eq('id', d.id);
+    }
 
     // Notifie les admins (réutilise le canal « mission créée par un partenaire »).
-    await notifyPartnerCreatedMission('La synchronisation automatique', dep.check_out, DEFAULT_CHECKOUT_TIME, mission.id);
+    await notifyPartnerCreatedMission('La synchronisation automatique', date, DEFAULT_CHECKOUT_TIME, mission.id);
 
     result.created++;
-    result.details.push({ reservationId: dep.id, missionId: mission.id, airbnbId: dep.airbnb_id, date: dep.check_out });
+    result.details.push({ reservationId: first.id, missionId: mission.id, airbnbId: targetAirbnbId, date });
   }
 
   return result;
@@ -347,6 +466,7 @@ export async function runReservationSync(feedFilter?: { partnerId?: string; feed
   feeds: FeedSyncResult[]; materialized: MaterializeResult;
 }> {
   const db = getSupabaseAdmin();
+  groupCache = null;   // relit les rattachements à chaque exécution
   let query = db.from('reservation_feeds')
     .select('id, airbnb_id, partner_id, platform, ical_url, last_sync_status')
     .eq('active', true);
