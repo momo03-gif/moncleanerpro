@@ -27,6 +27,9 @@ const emptyForm = {
   durationMinutes: '60', price: '',
   deliveryInstructions: '',
   nextArrival: '', nextArrivalTime: '',
+  // Chambres à faire quand le bien est une maison louée à la chambre.
+  // Vide = toutes (maison entière).
+  selectedUnits: [] as string[],
 };
 
 // Jours de semaine (ordre Lun→Dim ; valeur = getUTCDay, 0=dimanche).
@@ -247,18 +250,58 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     setForm(p => ({ ...p, hotelId, property: h?.hotel_name ?? '', address: h?.address ?? '' }));
   }
 
+  // ── Maison louée à la chambre ────────────────────────────────────────────────
+  // Le ménage porte toujours sur la MAISON (un bien = un déplacement) : si l'admin
+  // choisit une chambre, on bascule sur son annonce maison et on pré-coche cette
+  // chambre. Sinon on créerait une mission sur une chambre isolée, incohérente
+  // avec ce que produit la synchro.
+  const houseOf = (id: string) => {
+    const a = airbnbs.find(x => x.id === id);
+    return a?.parentAirbnbId ? airbnbs.find(x => x.id === a.parentAirbnbId) : a;
+  };
+  const roomsOf = (houseId?: string) => houseId ? airbnbs.filter(a => a.parentAirbnbId === houseId) : [];
+
+  const selectedHouse = airbnbs.find(a => a.id === form.airbnbId);
+  const houseRooms = roomsOf(form.airbnbId);
+
+  // Forfait correspondant au nombre de chambres cochées (toutes = maison entière).
+  function tierFor(house: typeof selectedHouse, count: number, total: number) {
+    if (!house?.groupTiers || total === 0) return null;
+    return house.groupTiers[String(Math.min(Math.max(count, 1), total))] ?? null;
+  }
+
+  function applyUnits(units: string[]) {
+    const total = houseRooms.length;
+    const t = tierFor(selectedHouse, units.length, total);
+    setForm(p => ({
+      ...p,
+      selectedUnits: units,
+      ...(t?.price != null ? { price: String(t.price) } : {}),
+      ...(t?.minutes != null ? { durationMinutes: String(t.minutes) } : {}),
+    }));
+  }
+
   function selectAirbnb(airbnbId: string) {
-    const a = airbnbs.find(x => x.id === airbnbId);
+    const house = houseOf(airbnbId);
+    const chosen = airbnbs.find(x => x.id === airbnbId);
+    const a = house ?? chosen;
     const matchedCleaner = a?.cleanerId
       ? cleaners.find(c => c.id === a.cleanerId || c.user_id === a.cleanerId)
       : null;
+    // Chambre choisie → maison + cette chambre pré-cochée.
+    const preset = chosen?.parentAirbnbId && chosen.name ? [chosen.name] : [];
+    const rooms = roomsOf(a?.id);
+    const t = rooms.length ? tierFor(a, preset.length || rooms.length, rooms.length) : null;
     setForm(p => ({
-      ...p, airbnbId,
+      ...p,
+      airbnbId: a?.id ?? '',
       property: a?.name ?? '',
       address: a?.address ?? '',
       cleanerId: matchedCleaner?.id ?? '',
-      price: a?.clientPrice != null ? String(a.clientPrice) : p.price,  // prix CLIENT (facturation)
-      durationMinutes: a?.estimatedCleaningMinutes != null ? String(a.estimatedCleaningMinutes) : p.durationMinutes,
+      selectedUnits: preset,
+      price: t?.price != null ? String(t.price) : (a?.clientPrice != null ? String(a.clientPrice) : p.price),
+      durationMinutes: t?.minutes != null ? String(t.minutes)
+        : (a?.estimatedCleaningMinutes != null ? String(a.estimatedCleaningMinutes) : p.durationMinutes),
     }));
   }
 
@@ -316,6 +359,11 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     // l'adresse et les codes d'accès) et au partenaire propriétaire s'il existe.
     const apt = form.source === 'airbnb' ? airbnbs.find(a => a.id === form.airbnbId) : undefined;
 
+    // Maison à annonces multiples : aucune chambre cochée = maison entière.
+    const rooms = roomsOf(apt?.id);
+    const units = form.selectedUnits.filter(u => rooms.some(r => r.name === u));
+    const isWhole = rooms.length > 0 && (units.length === 0 || units.length >= rooms.length);
+
     // Champs partagés par les missions de la commande (ménage et/ou livraison).
     const common = {
       source: form.source,
@@ -331,6 +379,13 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
       nextArrivalTime: form.nextArrivalTime || undefined,
       createdBy: userId,
       createdByRole: 'admin' as const,
+      // Périmètre, formulé comme la synchro : une mission saisie à la main doit
+      // être indiscernable d'une mission automatique pour le cleaner.
+      ...(rooms.length > 0 ? {
+        coveredUnits: isWhole ? 'Maison entière' : units.join(' + ') + ' + communs',
+        wholeProperty: isWhole,
+        coveredUnitNames: isWhole ? rooms.map(r => r.name) : units,
+      } : {}),
     };
 
     setCreateError('');
@@ -567,9 +622,53 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.airbnbId ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Sélectionner un appartement</option>
-                  {airbnbs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  {airbnbs.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.parentAirbnbId ? `↳ ${a.name} (chambre)` : a.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              {/* Maison louée à la chambre : QUE faut-il faire ce jour-là ? Le prix
+                  et la durée suivent le forfait du nombre de chambres cochées —
+                  les communs sont refaits à chaque passage, donc rien ne s'additionne. */}
+              {houseRooms.length > 0 && (
+                <div className="rounded-xl border p-4" style={{ borderColor: '#EBD9A8', backgroundColor: '#FBF4E2' }}>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#9A7B22' }}>
+                    Chambres à faire
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {houseRooms.map(r => {
+                      const on = form.selectedUnits.includes(r.name);
+                      return (
+                        <button key={r.id} type="button"
+                          onClick={() => applyUnits(on ? form.selectedUnits.filter(u => u !== r.name) : [...form.selectedUnits, r.name])}
+                          className="px-3 py-2 rounded-lg text-xs font-medium border transition-colors"
+                          style={{
+                            borderColor: on ? '#C9A84C' : '#E8E4DC',
+                            backgroundColor: on ? '#C9A84C18' : '#FFFFFF',
+                            color: on ? '#9A7B22' : '#7A7068',
+                          }}>
+                          {r.name}
+                        </button>
+                      );
+                    })}
+                    <button type="button" onClick={() => applyUnits(houseRooms.map(r => r.name))}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold border"
+                      style={{ borderColor: '#C9A84C', color: '#9A7B22', backgroundColor: '#FFFFFF' }}>
+                      Maison entière
+                    </button>
+                  </div>
+                  <p className="text-xs mt-2" style={{ color: '#7A7068' }}>
+                    {form.selectedUnits.length === 0
+                      ? 'Aucune chambre cochée : la mission portera sur la maison entière.'
+                      : form.selectedUnits.length >= houseRooms.length
+                        ? 'Toutes les chambres : maison entière, au tarif maison.'
+                        : `${form.selectedUnits.length} chambre${form.selectedUnits.length > 1 ? 's' : ''} + communs. Prix et durée ajustés au forfait.`}
+                  </p>
+                </div>
+              )}
               {form.airbnbId && (() => {
                 const apt = airbnbs.find(a => a.id === form.airbnbId);
                 return (
