@@ -116,6 +116,8 @@ function rowToMission(row: any): Mission {
     price,
     cleanerGain: Number(row.cleaner_gain) || 0,
     missionDurationMinutes: minutes,
+    coveredUnits: row.covered_units ?? undefined,
+    wholeProperty: row.whole_property ?? undefined,
     cleanerHourlyRateSnapshot: row.cleaner_hourly_rate_snapshot != null ? Number(row.cleaner_hourly_rate_snapshot) : undefined,
     apartmentDefaultDurationSnapshot: row.apartment_default_duration_snapshot != null ? Number(row.apartment_default_duration_snapshot) : undefined,
     // Zone dérivée de l'appartement lié (join), toujours à jour.

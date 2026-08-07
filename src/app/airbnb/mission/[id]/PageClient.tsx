@@ -120,6 +120,13 @@ export default function PartnerMissionDetailClient() {
             <Icon name="pin" size={12} className="shrink-0" /> {mission.address}
           </p>
         )}
+        {/* Maison louée à la chambre : périmètre exact du ménage commandé. */}
+        {mission.coveredUnits && (
+          <div className={`mb-3 px-3 py-2 rounded-xl border ${mission.wholeProperty ? 'border-gold-line bg-gold-soft' : 'border-line bg-surface'}`}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">À faire</p>
+            <p className="text-sm font-semibold mt-0.5 text-ink">{mission.coveredUnits}</p>
+          </div>
+        )}
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <div>
             <p className="text-[11px] text-muted">Date</p>
