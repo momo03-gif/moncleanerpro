@@ -71,31 +71,331 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Pouvez-vous gérer le linge de l’hôtel ?', a: "Oui, le changement et la gestion du linge font partie de nos prestations hôtelières." },
     ],
   },
+  // ── PAGE PILIER du cluster « Airbnb / courte durée » ──────────────────────
   {
     slug: 'menage-airbnb-lyon',
+    cluster: 'airbnb',
     keyword: 'ménage Airbnb Lyon',
-    eyebrow: 'Conciergeries & Airbnb',
+    eyebrow: 'Airbnb & courte durée',
     h1: 'Ménage Airbnb à Lyon',
-    title: 'Ménage Airbnb à Lyon — MonCleanerPro | Entre voyageurs & conciergeries',
-    description: "Ménage Airbnb et locations courte durée à Lyon : remise en état entre voyageurs, gestion du linge, check-list de mise en place. Idéal conciergeries et propriétaires. Devis gratuit.",
+    title: 'Ménage Airbnb à Lyon — MonCleanerPro | Entre voyageurs, linge & calendrier synchronisé',
+    description: "Ménage Airbnb à Lyon entre deux voyageurs : remise en état dans la fenêtre départ/arrivée, gestion du linge, réassort, rapport photo. Calendrier synchronisé, multi-logements. Devis gratuit sous 24h.",
     intro:
-      "Pour les propriétaires de locations courte durée et les conciergeries de Lyon, MonCleanerPro assure le ménage entre voyageurs avec la régularité et la rigueur qu’exige une bonne note sur les plateformes. Draps changés, logement remis à neuf et check-list de mise en place : votre bien est prêt à accueillir, à chaque départ.",
+      "En location courte durée, tout se joue dans une fenêtre de quelques heures : le voyageur part à 11h, le suivant arrive à 15h, et entre les deux le logement doit être remis à neuf — sans exception, y compris le dimanche et en pleine saison. C’est cette contrainte, plus que le ménage lui-même, qui fait la différence entre un hôte tranquille et un hôte qui court. MonCleanerPro assure le ménage Airbnb à Lyon pour les propriétaires et les conciergeries : intervention calée sur votre calendrier de réservations, linge changé, logement remis en scène et rapport envoyé une fois la porte refermée.",
     highlights: [
-      { title: 'Entre deux voyageurs', text: "Remise en état complète après chaque départ, synchronisée avec vos arrivées." },
-      { title: 'Linge & mise en place', text: "Changement des draps et serviettes, réassort et présentation soignée du logement." },
-      { title: 'Pensé pour les conciergeries', text: "Volume, plannings serrés et multi-logements : notre organisation suit votre rythme." },
+      { title: 'Dans la fenêtre départ / arrivée', text: "Nous intervenons entre le check-out et le check-in, pas « dans la journée ». C’est la seule façon de tenir des réservations qui s’enchaînent." },
+      { title: 'Calendrier synchronisé', text: "Nous branchons votre calendrier iCal Airbnb ou Booking : les ménages se créent à partir de vos réservations réelles, sans que vous ayez à nous écrire à chaque fois." },
+      { title: 'Linge et consommables', text: "Draps et serviettes changés à chaque départ, réassort du papier, du savon et des petits consommables selon le stock convenu." },
+      { title: 'Rapport après chaque passage', text: "Dégâts, objets oubliés, consommables à recharger : vous recevez un compte rendu, photos à l’appui, avant l’arrivée suivante." },
+      { title: 'Remise en scène', text: "Le logement n’est pas seulement propre, il est présenté : linge plié, décoration replacée, aération. C’est ce que le voyageur voit en entrant." },
+      { title: 'Multi-logements', text: "Un logement ou trente : plannings coordonnés, intervenants attitrés quand c’est possible, un seul interlocuteur pour l’ensemble." },
     ],
     includes: [
-      'Ménage complet entre voyageurs',
-      'Changement des draps et du linge de toilette',
-      'Check-list de mise en place (accueil prêt)',
-      'Signalement des dégâts ou consommables manquants',
-      'Coordination avec vos arrivées / départs',
+      'Remise en état complète entre deux voyageurs',
+      'Changement des draps, housses et linge de toilette',
+      'Salle de bains détartrée, désinfectée, miroirs et robinetterie sans traces',
+      'Cuisine dégraissée, réfrigérateur vidé et contrôlé, vaisselle vérifiée',
+      'Sols aspirés puis lavés, surfaces et points de contact désinfectés',
+      'Réassort des consommables (papier, savon, sacs, éponges) selon votre stock',
+      'Mise en scène d’accueil : linge plié, décoration replacée, logement aéré',
+      'Signalement des dégâts, objets oubliés et équipements défectueux',
+      'Rapport d’intervention avec photos, envoyé après chaque passage',
+    ],
+    sections: [
+      {
+        h2: 'Le vrai sujet, ce n’est pas le ménage — c’est le créneau',
+        paragraphs: [
+          "Un logement en courte durée n’a pas besoin d’un ménage plus long qu’un autre. Il a besoin d’un ménage qui tombe au bon moment. Départ à 11h, arrivée à 15h : la fenêtre utile est de trois à quatre heures, et elle n’est pas négociable. Un prestataire qui promet de passer « dans l’après-midi » ne peut pas tenir un enchaînement de réservations — c’est la raison numéro un pour laquelle les hôtes changent de prestataire.",
+          "Nous construisons donc le planning à l’envers : à partir de vos arrivées, pas de nos disponibilités. Quand plusieurs de vos logements tournent le même jour — le samedi, typiquement — les passages sont ordonnancés par proximité géographique pour que les déplacements ne mangent pas le temps de ménage. Et si une réservation se prolonge ou s’annule la veille, le ménage est décalé ou annulé sans que vous ayez à gérer un aller-retour de messages.",
+        ],
+      },
+      {
+        h2: 'Votre calendrier de réservations pilote nos interventions',
+        paragraphs: [
+          "La plupart des hôtes perdent un temps considérable à recopier leurs réservations vers leur femme de ménage. Nous supprimons cette étape : vous nous transmettez le lien iCal de votre annonce Airbnb, Booking ou de votre PMS, et les ménages sont générés automatiquement à partir des départs réels.",
+          "Concrètement, une réservation ajoutée ou modifiée sur la plateforme se répercute sur le planning sans intervention de votre part. Vous gardez la main pour ajuster un horaire, ajouter une demande particulière ou bloquer une date — mais vous n’avez plus à surveiller si le ménage a bien été noté quelque part.",
+        ],
+      },
+      {
+        h2: 'La propreté est une note, pas une impression',
+        paragraphs: [
+          "Sur Airbnb, la propreté est notée séparément des autres critères, et c’est celui qui descend le plus vite. Un cheveu dans la douche ou une plaque de cuisson grasse suffit à déclencher un commentaire — et un commentaire sur la propreté pèse longtemps sur une annonce, bien après que le problème a été corrigé. À l’inverse, un logement irréprochable est rarement commenté en tant que tel : il se traduit simplement par une note haute et des réservations qui continuent.",
+          "Nos intervenants travaillent sur check-list, pièce par pièce, avec les mêmes points de contrôle à chaque passage. Ce ne sont pas les grandes surfaces qui font la note, ce sont les détails que le voyageur inspecte en arrivant : l’intérieur du micro-ondes, le joint de douche, le dessous du couvercle des WC, le fond du réfrigérateur, l’état des serviettes.",
+        ],
+      },
+      {
+        h2: 'Le linge : le point qui fait dérailler les plannings',
+        paragraphs: [
+          "Laver le linge sur place entre deux voyageurs est mathématiquement impossible : un cycle machine plus un séchage dépassent la fenêtre disponible. C’est pourtant l’organisation la plus répandue chez les hôtes qui débutent, et c’est ce qui provoque les retards de check-in.",
+          "La seule méthode qui tient sur la durée est le stock de rotation : deux à trois parures complètes par lit, autant de jeux de serviettes, de sorte qu’il y ait toujours du linge propre disponible pendant que le reste est en traitement. Nous changeons le linge à chaque départ et récupérons le sale ; selon votre fonctionnement, le lavage est assuré par vos soins, par une blanchisserie, ou organisé avec vous. Nous vous disons ce qu’il manque pour que la rotation tienne, plutôt que de subir la pénurie un samedi de forte affluence.",
+        ],
+      },
+      {
+        h2: 'Ce que vous recevez après chaque passage',
+        paragraphs: [
+          "Un hôte qui n’habite pas Lyon, ou qui gère plusieurs biens, a besoin de savoir ce qui s’est passé chez lui sans avoir à demander. Après chaque intervention, vous recevez un rapport : ce qui a été fait, l’état constaté à l’arrivée de notre intervenant, et les points qui appellent une décision de votre part.",
+        ],
+        list: [
+          "Dégâts et casse constatés, avec photos — utile pour une réclamation auprès de la plateforme, qui exige des preuves datées",
+          "Objets oubliés par le voyageur précédent, mis de côté et signalés",
+          "Consommables à recharger avant que le stock ne soit épuisé",
+          "Équipements défectueux repérés (ampoule, robinet qui fuit, télécommande sans piles)",
+          "Usure du linge et de la vaisselle, pour anticiper les remplacements",
+        ],
+      },
+      {
+        h2: 'Propriétaire indépendant ou conciergerie : deux fonctionnements',
+        paragraphs: [
+          "Si vous gérez vous-même un ou deux logements, nous devenons simplement votre prestataire ménage : vous nous donnez accès au calendrier et au logement, nous nous occupons du reste. C’est le cas le plus fréquent chez les propriétaires lyonnais qui louent un appartement en complément de revenu.",
+          "Si vous êtes une conciergerie, le fonctionnement change : vous avez besoin de volume, d’un planning consolidé sur l’ensemble de votre parc et d’une traçabilité que vous pouvez montrer à vos propres clients. Nous travaillons dans ce cadre en sous-traitance, avec un espace dédié où vous suivez vos logements et vos rapports. Nous ne sommes pas une conciergerie et ne démarchons pas vos propriétaires : nous sommes le prestataire ménage derrière votre marque.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Gérez-vous plusieurs logements pour une conciergerie ?', a: "Oui, nous travaillons régulièrement avec des conciergeries sur plusieurs logements, avec plannings synchronisés." },
-      { q: 'Fournissez-vous le linge ?', a: "Nous gérons le changement du linge ; la fourniture peut être organisée selon votre fonctionnement." },
+      { q: 'Pouvez-vous intervenir entre un départ à 11h et une arrivée à 15h ?', a: "Oui, c’est le cadre normal de notre organisation en courte durée. Nous calons les passages sur vos horaires réels de check-out et de check-in. Si la fenêtre est particulièrement serrée ou si le logement est grand, nous prévoyons deux intervenants plutôt que de faire déborder l’arrivée." },
+      { q: 'Comment savez-vous quand un logement se libère ?', a: "Nous branchons le lien iCal de votre annonce Airbnb, Booking ou de votre PMS : les ménages sont générés à partir de vos réservations réelles et se mettent à jour tout seuls. Vous n’avez plus à nous transmettre votre planning chaque semaine." },
+      { q: 'Intervenez-vous le week-end et les jours fériés ?', a: "Oui. En courte durée, le samedi et le dimanche sont les jours de rotation les plus chargés : une organisation qui s’arrête le vendredi soir n’a aucun intérêt pour un hôte." },
+      { q: 'Fournissez-vous le linge ?', a: "Nous assurons le changement du linge à chaque départ et récupérons le linge sale. La fourniture et le lavage s’organisent selon votre fonctionnement — stock qui vous appartient, blanchisserie, ou solution que nous cadrons ensemble. L’essentiel est d’avoir assez de parures en rotation pour ne jamais bloquer une arrivée." },
+      { q: 'Comment accédez-vous au logement ?', a: "Boîte à clés, serrure connectée, clés confiées ou remise par un voisin : nous nous adaptons à ce qui existe déjà. Pour les biens que nous traitons régulièrement, une solution en autonomie est préférable — elle évite qu’un imprévu d’accès bloque toute la rotation de la journée." },
+      { q: 'Que se passe-t-il si le voyageur laisse le logement dans un état anormal ?', a: "Nous documentons immédiatement l’état constaté avec des photos horodatées et vous prévenons avant l’arrivée suivante. C’est ce qui vous permet d’ouvrir une réclamation auprès de la plateforme, qui demande systématiquement des preuves. Si le temps nécessaire dépasse largement une remise en état standard, nous vous le signalons avant d’engager le supplément." },
+      { q: 'Gérez-vous plusieurs logements pour une conciergerie ?', a: "Oui, c’est une part importante de notre activité. Plannings consolidés, intervenants attitrés quand c’est possible, rapports par logement et interlocuteur unique. Nous intervenons en sous-traitance, derrière votre marque, sans contact commercial avec vos propriétaires." },
+      { q: 'Quels quartiers et communes couvrez-vous ?', a: "L’ensemble de Lyon et de la métropole, ainsi que le Beaujolais — Villefranche-sur-Saône, Anse et les communes des Pierres Dorées, où la location saisonnière est très présente." },
     ],
+    related: [
+      'menage-conciergerie-lyon',
+      'menage-location-courte-duree-lyon',
+      'prix-menage-airbnb-lyon',
+      'menage-airbnb-villefranche-sur-saone',
+      'menage-airbnb-anse',
+      'nettoyage-hotel-lyon',
+    ],
+    relatedPosts: [
+      'checklist-menage-airbnb-entre-voyageurs',
+      'menage-airbnb-creneau-entre-deux-voyageurs',
+      'linge-location-courte-duree',
+    ],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'menage-conciergerie-lyon',
+    cluster: 'airbnb',
+    keyword: 'ménage pour conciergerie Lyon',
+    eyebrow: 'Conciergeries',
+    h1: 'Prestataire ménage pour conciergerie à Lyon',
+    title: 'Ménage pour conciergerie à Lyon — MonCleanerPro | Sous-traitance courte durée',
+    description: "Prestataire de ménage pour conciergeries Airbnb à Lyon : sous-traitance des rotations, planning consolidé multi-logements, rapports photo par bien. Nous intervenons derrière votre marque. Devis sous 24h.",
+    intro:
+      "Une conciergerie ne se casse pas sur la relation propriétaire ni sur les annonces : elle se casse sur l’exécution du samedi, quand douze logements tournent en même temps et qu’un intervenant manque à l’appel. MonCleanerPro est le prestataire ménage qui absorbe cette charge à Lyon. Nous ne gérons pas d’annonces, nous ne parlons pas à vos propriétaires : nous assurons les rotations, avec les effectifs, le planning et la traçabilité qu’un parc en croissance exige.",
+    highlights: [
+      { title: 'Nous restons à notre place', text: "Nous sommes prestataire, pas concurrent. Aucun contact commercial avec vos propriétaires, aucune sollicitation : votre parc reste le vôtre." },
+      { title: 'Le samedi tient debout', text: "Le jour de rotation le plus dense est dimensionné à l’avance, avec des effectifs prévus et une tournée ordonnancée par proximité." },
+      { title: 'Un planning pour tout le parc', text: "Vos logements sont consolidés dans une même vue : ce qui est fait, ce qui reste, ce qui a dérapé — sans reconstituer l’information logement par logement." },
+      { title: 'Traçabilité présentable', text: "Chaque passage produit un rapport photo daté, que vous pouvez transmettre tel quel à votre propriétaire en cas de litige." },
+      { title: 'Absorption des pics', text: "Congés, week-ends prolongés, événements lyonnais : nous montons en charge sans vous demander de trouver une solution de secours." },
+      { title: 'Un seul interlocuteur', text: "Un contact dédié pour l’ensemble du contrat, qui connaît vos logements et vos exigences — pas un standard différent à chaque appel." },
+    ],
+    includes: [
+      'Rotations entre voyageurs sur l’ensemble de votre parc',
+      'Planning consolidé multi-logements, alimenté par vos calendriers',
+      'Changement du linge et récupération du linge sale',
+      'Réassort des consommables selon le stock défini par logement',
+      'Rapport photo daté par intervention, exploitable en litige',
+      'Signalement des dégâts, objets oubliés et équipements défectueux',
+      'Remises en état renforcées après séjour difficile',
+      'Interventions de rattrapage en urgence sur demande',
+    ],
+    sections: [
+      {
+        h2: 'Ce qui fait tomber une conciergerie, c’est l’exécution',
+        paragraphs: [
+          "Le modèle de la conciergerie est simple sur le papier : capter des propriétaires, gérer les annonces, prendre une commission. Ce qui est difficile, c’est le jour où quinze logements se libèrent avant midi et doivent être prêts à quinze heures. Ce jour-là, la conciergerie ne vend plus un service de gestion, elle vend une capacité opérationnelle — et c’est là que les modèles reposant sur des indépendants recrutés au coup par coup atteignent leur limite.",
+          "Le symptôme habituel arrive vite : un intervenant qui ne confirme pas, un remplacement trouvé en catastrophe, un logement livré en retard, un voyageur qui attend dans la rue et un propriétaire qui appelle. Une fois, c’est un incident. Trois fois, c’est un mandat perdu. Externaliser la partie ménage auprès d’un prestataire structuré, c’est transformer un aléa humain permanent en engagement contractuel.",
+        ],
+      },
+      {
+        h2: 'Comment nous nous intégrons à votre fonctionnement',
+        list: [
+          "Cadrage du parc : par logement, on fixe la durée type, le stock de linge, les consommables, les particularités d’accès et le niveau d’exigence attendu.",
+          "Raccordement des calendriers : vos liens iCal (Airbnb, Booking, PMS) alimentent directement le planning des ménages. Aucune ressaisie.",
+          "Intervenants attitrés : sur les logements réguliers, nous cherchons la stabilité — un intervenant qui connaît un appartement va plus vite et voit ce qui a changé.",
+          "Rapports : chaque passage produit un compte rendu photo daté, accessible logement par logement.",
+          "Point de suivi : sur les parcs importants, un point régulier permet d’ajuster les durées, les stocks et les niveaux de service.",
+        ],
+      },
+      {
+        h2: 'La traçabilité, votre meilleure protection',
+        paragraphs: [
+          "Dans la relation avec un propriétaire, la parole ne suffit pas. « Le logement était propre en partant » et « il ne l’était pas en arrivant » se valent tant que personne n’a de preuve. Un rapport photo daté, produit systématiquement et non à la demande, met fin à ce type de discussion en trente secondes.",
+          "Le même mécanisme joue face aux plateformes. Une réclamation pour dégradation n’aboutit que si elle est documentée rapidement, avec des images horodatées prises avant toute remise en état. Nos intervenants ont pour consigne de photographier avant d’intervenir dès qu’un état anormal est constaté — c’est précisément le moment où la preuve existe encore.",
+        ],
+      },
+      {
+        h2: 'Nous ne sommes pas une conciergerie',
+        paragraphs: [
+          "C’est une question posée systématiquement, et la réponse compte : nous n’exerçons pas votre métier. Nous ne créons pas d’annonces, ne fixons pas de tarifs de nuitée, ne gérons pas la relation voyageur et n’avons aucun intérêt à connaître vos propriétaires. Notre activité est le nettoyage professionnel — hôtellerie, tertiaire, courte durée.",
+          "C’est ce qui rend la sous-traitance saine : vous confiez l’exécution à un prestataire dont le modèle économique ne consiste pas, un jour, à récupérer vos mandats. Plusieurs conciergeries lyonnaises travaillent avec nous sur cette base.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Travaillez-vous en sous-traitance sous notre marque ?', a: "Oui. Nos intervenants exécutent la prestation, vous conservez la relation client. Nous n’apparaissons pas auprès de vos propriétaires si vous ne le souhaitez pas, et nous ne les sollicitons en aucun cas." },
+      { q: 'Combien de logements pouvez-vous absorber ?', a: "Cela dépend de la densité géographique et des créneaux, plus que du nombre brut. Un parc concentré sur quelques quartiers lyonnais se traite bien mieux qu’un parc éclaté sur toute la métropole. Nous cadrons la capacité réelle lors de l’étude de votre parc, et nous préférons refuser un volume que nous ne tiendrions pas." },
+      { q: 'Que se passe-t-il si un intervenant est absent ?', a: "C’est notre problème, pas le vôtre — c’est l’intérêt d’externaliser. Le remplacement est organisé en interne, et vous êtes informé si l’horaire prévu doit bouger. Vous n’avez pas à chercher une solution de secours." },
+      { q: 'Pouvez-vous reprendre un parc en cours d’année ?', a: "Oui. La reprise se fait par vagues plutôt que d’un bloc : on démarre sur un échantillon de logements pour caler les durées et les attentes réelles, puis on étend. C’est plus sûr qu’un basculement complet en pleine saison." },
+      { q: 'Fournissez-vous les produits et le matériel ?', a: "Oui, nos intervenants viennent équipés. Pour les logements disposant déjà d’un stock sur place, nous utilisons ce qui est prévu par le propriétaire et signalons ce qui doit être racheté." },
+      { q: 'Comment sont facturées les prestations ?', a: "Sur une base contractuelle définie par type de logement et de rotation, avec une facturation consolidée pour l’ensemble du parc. Les remises en état exceptionnelles sont signalées avant d’être engagées, jamais découvertes sur la facture." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-location-courte-duree-lyon', 'prix-menage-airbnb-lyon', 'nettoyage-hotel-lyon'],
+    relatedPosts: ['menage-airbnb-creneau-entre-deux-voyageurs', 'linge-location-courte-duree'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'menage-location-courte-duree-lyon',
+    cluster: 'airbnb',
+    keyword: 'ménage location courte durée Lyon',
+    eyebrow: 'Location saisonnière',
+    h1: 'Ménage de location courte durée à Lyon',
+    title: 'Ménage location courte durée à Lyon — MonCleanerPro | Airbnb, Booking, Abritel',
+    description: "Ménage de location saisonnière à Lyon, toutes plateformes : rotations entre voyageurs, moyenne durée, remise en état de fin de saison. Propriétaires indépendants et multipropriétaires. Devis sous 24h.",
+    intro:
+      "Airbnb n’est qu’une plateforme parmi d’autres. Beaucoup de propriétaires lyonnais diffusent le même bien sur Booking, Abritel ou en direct, louent parfois au mois à des salariés en mission, et alternent avec des périodes d’occupation personnelle. Le ménage doit suivre cette réalité-là, pas un modèle unique. MonCleanerPro assure l’entretien des locations courte et moyenne durée à Lyon quel que soit le canal de réservation, avec des prestations calibrées sur le type de séjour plutôt que sur le nom du site.",
+    highlights: [
+      { title: 'Toutes plateformes', text: "Airbnb, Booking, Abritel, agences ou réservation directe : nous travaillons à partir de vos calendriers, pas d’un canal imposé." },
+      { title: 'Courte et moyenne durée', text: "Rotation entre deux nuitées ou entretien mensuel d’un locataire en mission longue : deux prestations différentes, pas le même contenu." },
+      { title: 'Propriétaires non résidents', text: "Vous ne vivez pas à Lyon ? Le rapport photo après chaque passage remplace le contrôle sur place." },
+      { title: 'Ouverture et fermeture de saison', text: "Remise en route après une période creuse, remise en état renforcée en fin de saison : les deux moments où un logement se dégrade sans qu’on le voie." },
+    ],
+    includes: [
+      'Rotation complète entre deux séjours',
+      'Entretien périodique des séjours longs (moyenne durée)',
+      'Changement et récupération du linge',
+      'Réassort des consommables et de la vaisselle manquante',
+      'Nettoyage des vitres et surfaces vitrées accessibles',
+      'Remise en état renforcée d’ouverture ou de fin de saison',
+      'Contrôle de l’état du mobilier et des équipements',
+      'Rapport photo daté après chaque intervention',
+    ],
+    sections: [
+      {
+        h2: 'Courte durée, moyenne durée : deux métiers, pas un',
+        paragraphs: [
+          "Une rotation de deux nuits et un séjour de trois mois n’appellent pas le même travail. En courte durée, l’enjeu est la vitesse et l’exhaustivité : tout est remis à zéro entre chaque voyageur, dans une fenêtre très courte, avec un changement de linge systématique. Rien n’est reporté au passage suivant, parce qu’il n’y a pas de passage suivant avant l’arrivée.",
+          "En moyenne durée — le salarié en mission, l’étudiant, le patient d’un traitement long, l’expatrié en transition — le logement est occupé en continu. La prestation devient un entretien périodique : on maintient le bien en état pendant l’occupation, avec un ménage de fond à l’entrée et à la sortie. Beaucoup de propriétaires lyonnais alternent les deux régimes selon la saison ; nous adaptons la prestation à chaque période plutôt que d’appliquer un forfait unique toute l’année.",
+        ],
+      },
+      {
+        h2: 'Ce que Lyon impose comme contraintes',
+        list: [
+          "Des immeubles anciens en Presqu’île, à la Croix-Rousse ou dans le Vieux Lyon : escaliers, pas d’ascenseur, portage du linge à prendre en compte dans la durée réelle du passage",
+          "Un stationnement difficile en hypercentre, qui pèse sur l’enchaînement des interventions et se planifie",
+          "Une saisonnalité marquée : congrès, salons et événements créent des pics de rotation sur des dates précises",
+          "Une réglementation locale de la location meublée touristique qui pousse les propriétaires vers des durées plus longues — et donc vers un besoin d’entretien différent",
+          "Une forte concentration de logements sur quelques quartiers, ce qui permet d’optimiser les tournées quand un propriétaire en détient plusieurs",
+        ],
+      },
+      {
+        h2: 'Louer sans être sur place',
+        paragraphs: [
+          "Une bonne partie des logements loués à Lyon appartient à des propriétaires qui vivent ailleurs. Ils partagent tous le même angle mort : ils ne voient jamais leur bien. L’usure s’installe progressivement — une poêle rayée, un joint noirci, des serviettes grises, une chaise bancale — et rien de tout cela n’est signalé par les voyageurs, qui se contentent de le refléter dans la note.",
+          "Le rapport photo après chaque passage sert exactement à ça : donner à un propriétaire distant la vision qu’il aurait en entrant chez lui. Sur les biens que nous suivons régulièrement, nous signalons ce qui se dégrade avant que ça n’apparaisse dans un commentaire public — c’est beaucoup moins cher à corriger à ce stade.",
+        ],
+      },
+      {
+        h2: 'Les deux moments qu’il ne faut pas rater',
+        paragraphs: [
+          "L’ouverture de saison, d’abord. Un logement resté fermé plusieurs semaines n’est pas propre, même s’il l’était en fermant : poussière déposée, odeur de renfermé, siphons asséchés qui remontent, linge qui a pris l’humidité du placard. Une simple rotation ne corrige rien de tout ça. Il faut une remise en route complète avant le premier voyageur.",
+          "La fin de saison, ensuite. C’est le seul créneau où l’on peut traiter ce qu’une rotation ne permet jamais : intérieur des placards et du four, détartrage en profondeur, vitres complètes, matelas et protège-matelas, dessous des meubles. Un logement qui reçoit ce traitement une à deux fois par an ne dérive pas ; un logement qui n’a jamais que des rotations se dégrade lentement, sans qu’aucun passage individuel soit en cause.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Travaillez-vous uniquement avec Airbnb ?', a: "Non. Airbnb est le canal le plus répandu, mais nous intervenons indifféremment pour des biens diffusés sur Booking, Abritel, via une agence ou en réservation directe. Ce qui compte pour nous est le calendrier des départs et arrivées, pas la plateforme." },
+      { q: 'Prenez-vous les locations à la semaine ou au mois ?', a: "Oui. Pour un séjour long, la prestation devient un entretien périodique — hebdomadaire ou bimensuel selon votre formule — avec un ménage de fond à l’entrée et à la sortie du locataire." },
+      { q: 'Je ne vis pas à Lyon, comment suivre ce qui est fait ?', a: "Chaque intervention donne lieu à un rapport photo daté. Vous voyez l’état du logement après notre passage et les points signalés — usure, équipement défectueux, consommable manquant — sans avoir à vous déplacer ni à demander." },
+      { q: 'Pouvez-vous préparer le logement avant la reprise de saison ?', a: "Oui, et c’est vivement conseillé après plusieurs semaines de fermeture. Poussière, odeur de renfermé et siphons asséchés ne se traitent pas dans une rotation classique : il faut une remise en route dédiée avant le premier voyageur." },
+      { q: 'Intervenez-vous pour un seul logement ?', a: "Oui, sans volume minimum. Un propriétaire avec un appartement est traité avec la même organisation qu’une conciergerie — la différence est le nombre d’interventions, pas le niveau d’exigence." },
+      { q: 'Que faites-vous des objets oubliés par les voyageurs ?', a: "Ils sont mis de côté dans le logement à un endroit convenu et signalés dans le rapport, avec photo. Vous décidez de la suite : restitution, envoi ou mise au rebut après un délai." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-conciergerie-lyon', 'prix-menage-airbnb-lyon', 'grand-menage-lyon'],
+    relatedPosts: ['checklist-menage-airbnb-entre-voyageurs', 'linge-location-courte-duree'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'prix-menage-airbnb-lyon',
+    cluster: 'airbnb',
+    keyword: 'prix ménage Airbnb',
+    eyebrow: 'Prix & devis',
+    h1: 'Prix d’un ménage Airbnb à Lyon',
+    title: 'Prix ménage Airbnb à Lyon — MonCleanerPro | Ce qui fait varier le devis',
+    description: "Comment se calcule le prix d’un ménage Airbnb à Lyon : surface, nombre de couchages, linge, fréquence de rotation, accès et créneau. Estimation immédiate en ligne, devis confirmé sous 24h.",
+    intro:
+      "La question arrive toujours en premier, et c’est normal : le ménage est le poste de charge le plus régulier d’une location courte durée, celui qui revient à chaque réservation. Mais un tarif affiché en ligne ne vous dirait rien d’utile — un studio sans linge fourni et un T3 avec deux salles de bains et six couchages n’ont pas le même contenu de prestation. Voici précisément ce qui fait varier le devis, ce que vous pouvez actionner pour le réduire, et comment obtenir votre chiffre en quelques minutes.",
+    highlights: [
+      { title: 'Estimation immédiate', text: "Décrivez votre logement en ligne et obtenez une fourchette tout de suite, sans attendre un rappel commercial." },
+      { title: 'Devis confirmé sous 24h', text: "Un devis écrit et détaillé, ajusté après vérification de votre situation réelle, sans engagement." },
+      { title: 'Un tarif par rotation, stable', text: "Une fois le logement cadré, le prix d’une rotation standard ne bouge pas d’une réservation à l’autre." },
+      { title: 'Les écarts sont annoncés', text: "Une remise en état exceptionnelle après un séjour difficile vous est signalée avant d’être engagée, jamais découverte sur la facture." },
+    ],
+    includes: [
+      'Une estimation immédiate à partir de votre description',
+      'Un devis écrit confirmé sous 24h, sans engagement',
+      'Le détail précis de ce qui est inclus dans une rotation',
+      'La durée prévue et le nombre d’intervenants',
+      'Les conditions applicables aux logements récurrents et aux parcs',
+    ],
+    sections: [
+      {
+        h2: 'Les six critères qui déterminent le prix d’une rotation',
+        paragraphs: [
+          "Un devis de ménage en courte durée repose sur une estimation du temps de travail réel par rotation. Voici ce que nous regardons.",
+        ],
+        list: [
+          "La surface et le nombre de pièces — la base, mais jamais suffisante à elle seule.",
+          "Le nombre de couchages et de salles d’eau — c’est le facteur le plus sous-estimé. Deux salles de bains doublent le poste le plus long de la prestation, et six couchages représentent six lits à refaire, pas une surface de plus.",
+          "Le linge — fourni, lavé, simplement changé, ou géré par une blanchisserie : selon le montage, le temps passé et la logistique changent nettement.",
+          "La fréquence de rotation — un logement qui tourne trois fois par semaine se planifie et se traite mieux qu’une intervention isolée deux fois par an.",
+          "Le créneau — une fenêtre très serrée entre un départ et une arrivée peut imposer deux intervenants au lieu d’un pour tenir l’horaire.",
+          "L’accès — étage élevé sans ascenseur, portage du linge, stationnement impossible en hypercentre : autant de minutes qui ne servent pas à nettoyer mais qui se paient.",
+        ],
+      },
+      {
+        h2: 'Pourquoi nous n’affichons pas de grille tarifaire',
+        paragraphs: [
+          "Un prix affiché « à partir de » est presque toujours trompeur en courte durée. Soit il correspond à un studio sans linge, et il ne s’applique à aucun logement familial réel. Soit il est calé haut, et vous payez pour des prestations que votre bien ne nécessite pas. Dans les deux cas, le chiffre affiché n’est pas celui que vous paierez.",
+          "Nous préférons construire l’estimation sur votre logement : vous le décrivez dans notre outil, vous obtenez une fourchette immédiate, et nous confirmons par un devis écrit sous 24h. C’est plus rapide qu’un rendez-vous commercial, et le montant correspond à votre bien.",
+        ],
+      },
+      {
+        h2: 'Ce qui peut faire baisser la note',
+        list: [
+          "Constituer un vrai stock de linge en rotation : cela supprime les attentes et les allers-retours qui allongent chaque passage",
+          "Regrouper plusieurs logements proches : une tournée cohérente coûte moins qu’une somme d’interventions isolées",
+          "Nous donner un accès en autonomie (boîte à clés ou serrure connectée) plutôt qu’une remise de clés à organiser à chaque fois",
+          "Éviter les fenêtres inutilement serrées quand votre calendrier le permet — un check-out à 10h plutôt qu’à midi change beaucoup de choses",
+          "Simplifier la décoration : un logement surchargé d’objets décoratifs demande un temps de remise en place qui n’apporte rien à la note",
+          "Signaler à l’avance les séjours à risque (groupe, fête, long séjour) pour dimensionner la rotation plutôt que de la subir",
+        ],
+      },
+      {
+        h2: 'Le bon calcul n’est pas le prix, c’est le prix par nuitée',
+        paragraphs: [
+          "Un ménage rapporté au coût d’une nuitée pèse rarement lourd, surtout à Lyon où les tarifs de nuitée se tiennent bien. À l’inverse, une seule mauvaise note sur la propreté fait baisser le classement d’une annonce, réduit les réservations pendant des semaines et coûte immédiatement plus cher que l’écart entre deux prestataires.",
+          "C’est le raisonnement que nous invitons à tenir : le ménage n’est pas une charge à comprimer au maximum, c’est ce qui protège la seule chose qui compte vraiment — le taux de remplissage et la note. Un prestataire un peu moins cher qui livre en retard un samedi sur trois vous coûte plus que la différence.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Le ménage Airbnb se facture-t-il au m² ?', a: "Non, et c’est une base de calcul trompeuse en courte durée. Le nombre de couchages et de salles d’eau pèse davantage que la surface : un T2 avec deux salles de bains et un canapé-lit demande plus de travail qu’un grand studio. Notre devis part du temps réel estimé par rotation." },
+      { q: 'Le devis est-il gratuit et sans engagement ?', a: "Oui. L’estimation en ligne est immédiate et gratuite, et le devis confirmé sous 24h ne vous engage à rien." },
+      { q: 'Le tarif change-t-il d’une rotation à l’autre ?', a: "Non. Une fois le logement cadré, le prix d’une rotation standard est stable, ce qui vous permet de le répercuter sereinement dans vos frais de ménage. Seules les remises en état exceptionnelles sortent de ce cadre, et elles vous sont signalées avant d’être engagées." },
+      { q: 'Le linge est-il compris dans le prix ?', a: "Cela dépend du montage retenu. Le changement du linge est inclus dans la rotation ; la fourniture et le lavage se cadrent séparément, selon que vous disposez d’un stock, passez par une blanchisserie ou souhaitez que nous l’organisions." },
+      { q: 'Proposez-vous des conditions pour plusieurs logements ?', a: "Oui. Les conciergeries et multipropriétaires bénéficient de conditions adaptées, principalement parce qu’une tournée groupée est plus efficace qu’une série d’interventions isolées. La densité géographique de votre parc compte autant que le nombre de biens." },
+      { q: 'Facturez-vous un supplément en urgence ?', a: "Une intervention à caler dans un délai très court, hors planning, mobilise un intervenant sur un créneau déjà occupé et se répercute sur le devis. Un calendrier raccordé en amont suffit généralement à l’éviter." },
+      { q: 'Comment obtenir mon chiffre ?', a: "Décrivez votre logement dans notre estimation en ligne : surface, couchages, salles d’eau, gestion du linge et fréquence. Vous obtenez une fourchette immédiate, puis un devis confirmé sous 24h." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-location-courte-duree-lyon', 'menage-conciergerie-lyon'],
+    relatedPosts: ['linge-location-courte-duree', 'menage-airbnb-creneau-entre-deux-voyageurs'],
+    updatedAt: '2026-08-08',
   },
   {
     slug: 'nettoyage-ehpad-lyon',
@@ -616,21 +916,151 @@ export const SEO_PAGES: SeoPage[] = [
     intro:
       "MonCleanerPro étend son savoir-faire au-delà de Lyon jusqu’à Villefranche-sur-Saône et au Beaujolais. Bureaux, commerces, copropriétés, hôtels, locations courte durée ou logements de particuliers : nous assurons un nettoyage régulier ou ponctuel, avec des équipes formées, un contrôle qualité systématique et un suivi digital de chaque intervention. Un seul interlocuteur, la même exigence que sur la métropole lyonnaise.",
     highlights: [
-      { title: 'Caladois de proximité', text: "Interventions à Villefranche-sur-Saône et communes voisines du Beaujolais, avec réactivité locale." },
-      { title: 'Pros & particuliers', text: "Entreprises, commerces, syndics, conciergeries et particuliers : une solution pour chaque besoin." },
-      { title: 'Régulier ou ponctuel', text: "Contrat d’entretien récurrent ou prestation unique (grand ménage, fin de chantier), selon vos attentes." },
+      { title: 'Une présence locale, pas un passage', text: "Villefranche et le Beaujolais ne sont pas une extension lointaine de notre zone : c’est un secteur que nous couvrons en propre, avec des interventions régulières." },
+      { title: 'Réactivité caladoise', text: "Une demande urgente à Villefranche ne dépend pas d’une équipe qui descendrait de Lyon dans les embouteillages de l’A6." },
+      { title: 'Pros & particuliers', text: "Commerces de la rue Nationale, bureaux, cabinets, copropriétés, locations saisonnières et logements de particuliers." },
+      { title: 'Régulier ou ponctuel', text: "Contrat d’entretien récurrent ou prestation unique — grand ménage, fin de chantier, remise en état avant vente." },
+      { title: 'Le Beaujolais avec ses matériaux', text: "Pierres dorées, tomettes, parquets anciens, poutres : le bâti local ne se nettoie pas comme un immeuble neuf de la métropole." },
+      { title: 'Interlocuteur unique', text: "Un seul contact pour l’ensemble de vos sites, y compris si vous avez des locaux à la fois à Villefranche et sur Lyon." },
+    ],
+    includes: [
+      'Nettoyage de bureaux, cabinets et locaux professionnels',
+      'Entretien des parties communes de copropriété',
+      'Ménage de locations courte durée et saisonnières',
+      'Nettoyage de commerces, vitrines et surfaces de vente',
+      'Nettoyage de fin de chantier et après travaux',
+      'Grand ménage et remise en état avant vente ou location',
+      'Nettoyage de vitres et surfaces vitrées',
+      'Interventions ponctuelles ou contrats d’entretien récurrents',
+    ],
+    sections: [
+      {
+        h2: 'Pourquoi Villefranche est un vrai secteur pour nous',
+        paragraphs: [
+          "Beaucoup d’entreprises de nettoyage lyonnaises annoncent couvrir Villefranche-sur-Saône. Dans les faits, cela signifie souvent qu’elles y envoient une équipe quand le planning lyonnais le permet — c’est-à-dire rarement, et jamais en urgence. Un client caladois qui appelle un vendredi pour une intervention le lundi s’entend répondre que le secteur est « un peu loin ».",
+          "Nous avons fait le choix inverse : traiter Villefranche et le nord du Rhône comme un secteur à part entière, avec des interventions régulières et une capacité à répondre localement. C’est ce qui permet de tenir un contrat d’entretien hebdomadaire sur un cabinet ou une copropriété caladoise sans que la prestation dépende de ce qui se passe à Lyon ce jour-là.",
+        ],
+      },
+      {
+        h2: 'Ce que nous nettoyons à Villefranche',
+        list: [
+          "Commerces et vitrines du centre-ville, autour de la rue Nationale et des rues commerçantes attenantes",
+          "Bureaux, cabinets libéraux, professions de santé et agences du centre et des zones d’activité",
+          "Parties communes de copropriétés : halls, cages d’escalier, paliers, locaux poubelles",
+          "Locations saisonnières et meublés touristiques, en rotation entre deux séjours",
+          "Logements de particuliers : grand ménage, remise en état, entretien régulier",
+          "Chantiers de rénovation et livraisons neuves, en fin de chantier comme après travaux",
+        ],
+      },
+      {
+        h2: 'Le bâti caladois demande des gestes adaptés',
+        paragraphs: [
+          "Le centre de Villefranche, ce sont des immeubles anciens, des façades et des intérieurs qui ont traversé plusieurs siècles, et des matériaux qui ne pardonnent pas l’erreur de produit. Une pierre dorée absorbe : un détergent acide y laisse une auréole que rien ne rattrape. Une tomette se ternit définitivement à l’eau savonneuse mal rincée. Un parquet ancien gonfle si on l’inonde.",
+          "Sur un immeuble neuf, ces questions ne se posent pas ; ici, elles se posent presque à chaque intervention. Nos intervenants identifient le support avant de choisir le produit, et privilégient systématiquement le geste le plus doux qui fonctionne. C’est un réflexe qu’on n’acquiert qu’en travaillant régulièrement sur ce type de bâti.",
+        ],
+      },
+      {
+        h2: 'Villefranche, Anse et les communes du Beaujolais',
+        paragraphs: [
+          "Notre couverture ne s’arrête pas à la commune. Nous intervenons sur l’ensemble du secteur : Anse et le pays des Pierres Dorées, Gleizé, Limas, Arnas, Belleville, et les villages du vignoble jusqu’aux portes de la métropole lyonnaise.",
+          "C’est particulièrement utile pour les propriétaires et les gestionnaires qui ont plusieurs biens dispersés dans le Beaujolais : plutôt que de composer avec un prestataire différent par commune, un seul interlocuteur couvre l’ensemble, avec des tournées organisées par proximité.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Intervenez-vous vraiment à Villefranche, ou seulement depuis Lyon ?', a: "Villefranche et le Beaujolais sont un secteur que nous couvrons en propre, avec des interventions régulières. C’est ce qui nous permet de tenir des contrats d’entretien hebdomadaires et de répondre à des demandes urgentes sans dépendre du planning lyonnais du jour." },
+      { q: 'Quelles communes du Beaujolais couvrez-vous ?', a: "Villefranche-sur-Saône, Anse, Gleizé, Limas, Arnas, Belleville et les communes du vignoble et des Pierres Dorées, jusqu’aux portes de la métropole lyonnaise. Si votre commune n’est pas citée, demandez-nous : elle est probablement dans notre zone." },
+      { q: 'Proposez-vous du régulier comme du ponctuel ?', a: "Les deux. Contrats d’entretien réguliers pour les professionnels, commerces et copropriétés ; prestations ponctuelles pour les particuliers — grand ménage, fin de chantier, remise en état avant une vente ou un état des lieux." },
+      { q: 'Intervenez-vous en dehors des heures d’ouverture d’un commerce ?', a: "Oui. Pour les commerces, bureaux et cabinets, nous intervenons avant l’ouverture, après la fermeture ou le week-end, afin de ne jamais gêner votre activité ni votre clientèle." },
+      { q: 'Savez-vous traiter les sols anciens et la pierre ?', a: "Oui, c’est courant sur le secteur. Tomettes, pierres dorées, parquets anciens et poutres appellent des produits neutres, peu d’eau et un rinçage soigné. Nous vérifions systématiquement la nature du support avant de commencer." },
+      { q: 'Gérez-vous plusieurs sites entre Villefranche et Lyon ?', a: "Oui, et c’est un cas fréquent pour les entreprises et les gestionnaires immobiliers du secteur. Un seul interlocuteur, un contrat unique et une facturation consolidée pour l’ensemble de vos implantations." },
+    ],
+    related: [
+      'nettoyage-anse',
+      'nettoyage-fin-de-chantier-villefranche-sur-saone',
+      'menage-airbnb-villefranche-sur-saone',
+      'nettoyage-bureaux-lyon',
+      'nettoyage-copropriete-lyon',
+    ],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-anse',
+    keyword: 'nettoyage Anse',
+    eyebrow: 'Anse',
+    h1: 'Entreprise de nettoyage à Anse',
+    title: 'Nettoyage à Anse (69480) — MonCleanerPro | Entreprises, copropriétés & particuliers',
+    description: "Entreprise de nettoyage à Anse et dans le pays des Pierres Dorées : bureaux, commerces, copropriétés, locations saisonnières, fin de chantier et grand ménage. Équipe locale, devis gratuit sous 24h.",
+    intro:
+      "Anse occupe une position particulière : porte d’entrée du Beaujolais, à quelques minutes de Villefranche, mais à moins de trente kilomètres de Lyon par l’A6 — ce qui en fait autant une commune viticole qu’une commune résidentielle où l’on habite en travaillant dans la métropole. Cette double nature se retrouve dans les besoins de nettoyage : des maisons en pierres dorées et des locations saisonnières d’un côté, des bureaux, des commerces et des copropriétés récentes de l’autre. MonCleanerPro intervient sur l’ensemble, avec une équipe qui couvre réellement le secteur.",
+    highlights: [
+      { title: 'Sur place, pas de passage', text: "Anse fait partie de notre secteur Beaujolais couvert en propre — pas d’une zone lointaine desservie quand le planning lyonnais le permet." },
+      { title: 'Pierres dorées', text: "Le bâti local en pierre calcaire et les sols anciens demandent des produits neutres et peu d’eau. Nous adaptons le geste au support." },
+      { title: 'Résidentiel et professionnel', text: "Maisons, copropriétés, bureaux, commerces et locaux d’activité : la commune a les deux visages, nous traitons les deux." },
+      { title: 'Location saisonnière', text: "Gîtes, meublés touristiques et locations de bord de Saône : rotations entre deux séjours et remise en route de saison." },
+      { title: 'Régulier ou ponctuel', text: "Contrat d’entretien hebdomadaire comme intervention unique avant une vente, un état des lieux ou une réception de travaux." },
+      { title: 'Un seul interlocuteur', text: "Y compris si vous avez des biens à Anse, à Villefranche et sur la métropole lyonnaise." },
     ],
     includes: [
       'Nettoyage de bureaux et locaux professionnels',
       'Entretien des parties communes de copropriété',
-      'Ménage de locations courte durée (Airbnb)',
-      'Nettoyage de fin de chantier et grand ménage',
-      'Nettoyage de vitres et vitrines de commerces',
+      'Nettoyage de commerces et de vitrines',
+      'Ménage de gîtes et de locations saisonnières',
+      'Grand ménage et remise en état de maisons',
+      'Nettoyage de fin de chantier et après travaux',
+      'Traitement adapté des sols anciens et de la pierre',
+      'Nettoyage de vitres et surfaces vitrées',
+    ],
+    sections: [
+      {
+        h2: 'Une commune à deux vitesses, deux types de besoins',
+        paragraphs: [
+          "Anse n’est pas un village du vignoble figé, ni une banlieue lyonnaise. C’est une commune qui a beaucoup construit ces dernières années, où de jeunes ménages s’installent parce qu’on y accède facilement à Lyon comme à Villefranche, et où le tissu ancien continue de vivre à côté des programmes récents.",
+          "Pour nous, cela veut dire deux réalités très différentes à traiter parfois dans la même journée. D’un côté, des copropriétés récentes et des locaux d’activité qui demandent de la régularité et de la méthode. De l’autre, des maisons anciennes en pierres dorées, des logements aux tomettes et aux poutres, des biens de caractère loués en saisonnier. On ne travaille pas de la même façon sur les deux — et un prestataire qui applique un protocole unique abîme forcément l’un ou bâcle l’autre.",
+        ],
+      },
+      {
+        h2: 'Nos interventions à Anse',
+        list: [
+          "Copropriétés et résidences : halls, cages d’escalier, paliers, locaux techniques et poubelles",
+          "Bureaux, cabinets et commerces du centre et des zones d’activité",
+          "Maisons de particuliers : grand ménage, entretien régulier, remise en état avant vente",
+          "Gîtes, chambres d’hôtes et meublés touristiques du secteur",
+          "Logements neufs livrés dans les programmes récents de la commune",
+          "Fin de chantier après rénovation d’une maison ancienne ou d’un corps de ferme",
+        ],
+      },
+      {
+        h2: 'La pierre dorée ne se nettoie pas comme du carrelage',
+        paragraphs: [
+          "C’est le point technique qui distingue vraiment le secteur. La pierre calcaire qui donne au pays des Pierres Dorées sa couleur est poreuse : elle absorbe ce qu’on lui applique. Un produit acide — y compris certains détartrants du commerce — y laisse une trace claire, irréversible. Un nettoyage haute pression mal dosé creuse le joint et fragilise la surface.",
+          "Même logique à l’intérieur : les tomettes se ternissent à l’eau savonneuse insuffisamment rincée, les poutres ne se lavent pas mais se dépoussièrent, les parquets anciens ne supportent pas l’eau stagnante. Notre règle est simple : identifier le support avant de choisir le produit, et retenir toujours le geste le plus doux qui donne le résultat. Sur un bien de caractère, un nettoyage trop énergique coûte plus cher que l’absence de nettoyage.",
+        ],
+      },
+      {
+        h2: 'Le tourisme local change le rythme',
+        paragraphs: [
+          "Entre la Saône, la base de loisirs et le vignoble, Anse reçoit une fréquentation saisonnière réelle. Gîtes, chambres d’hôtes et meublés touristiques y connaissent des pics très marqués — week-ends d’été, ponts de printemps, périodes de vendanges — avec des rotations qui s’enchaînent sur quelques jours puis retombent.",
+          "Nous adaptons la présence à cette courbe plutôt que d’appliquer une fréquence fixe toute l’année : rotations rapprochées en haute saison, remise en route complète avant la reprise, et remise en état renforcée à la fermeture. C’est le mode de fonctionnement le plus économique pour un propriétaire qui ne loue pas douze mois sur douze.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Intervenez-vous à Villefranche-sur-Saône et dans le Beaujolais ?', a: "Oui, nous couvrons Villefranche-sur-Saône et les communes voisines du Beaujolais, en plus de Lyon et de la métropole." },
-      { q: 'Proposez-vous du régulier comme du ponctuel ?', a: "Oui : contrats d’entretien réguliers pour les pros et copropriétés, comme prestations ponctuelles (grand ménage, fin de chantier) pour les particuliers." },
+      { q: 'Intervenez-vous réellement à Anse ou depuis Lyon ?', a: "Anse fait partie de notre secteur Beaujolais, couvert avec des interventions régulières. Nous ne traitons pas la commune comme un déplacement exceptionnel : c’est ce qui rend possible un contrat d’entretien hebdomadaire ou une intervention à quelques jours." },
+      { q: 'Couvrez-vous les communes voisines ?', a: "Oui : Villefranche-sur-Saône, Limas, Gleizé, Lucenay, Ambérieux-d’Azergues, Pommiers et plus largement le pays des Pierres Dorées, jusqu’à la métropole lyonnaise." },
+      { q: 'Nettoyez-vous les maisons en pierres dorées ?', a: "Oui, avec des produits neutres et un dosage adapté. La pierre calcaire est poreuse : un produit acide y laisse une auréole définitive, et une haute pression mal maîtrisée creuse les joints. Nous vérifions toujours la nature du support avant d’intervenir." },
+      { q: 'Prenez-vous les gîtes et locations saisonnières ?', a: "Oui, en rotation entre deux séjours comme en remise en route de début de saison. Le secteur connaît des pics très marqués : nous calons la fréquence sur votre calendrier réel plutôt que sur un forfait annuel figé." },
+      { q: 'Intervenez-vous pour les copropriétés de la commune ?', a: "Oui, halls, cages d’escalier, paliers et locaux communs, pour les syndics professionnels comme pour les copropriétés en gestion bénévole, avec un passage régulier et un suivi des interventions." },
+      { q: 'Pouvez-vous intervenir après des travaux ?', a: "Oui, en fin de chantier comme en nettoyage après travaux. C’est fréquent sur le secteur, entre les rénovations de bâti ancien et les livraisons de logements neufs. Nous calons l’intervention juste avant la réception ou l’emménagement." },
     ],
+    related: [
+      'nettoyage-villefranche-sur-saone',
+      'menage-airbnb-anse',
+      'nettoyage-fin-de-chantier-anse',
+      'grand-menage-lyon',
+      'nettoyage-copropriete-lyon',
+    ],
+    updatedAt: '2026-08-08',
   },
   {
     slug: 'nettoyage-caluire-et-cuire',
@@ -1255,10 +1685,213 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Mon chantier a pris du retard, pouvez-vous décaler ?', a: "Oui. Les rénovations en maison glissent souvent de quelques jours ou semaines : prévenez-nous et nous replanifions plutôt que d’intervenir sur un chantier qui n’est pas prêt." },
       { q: 'Nettoyez-vous aussi la terrasse et les abords ?', a: "Sur demande, oui. Les abords immédiats et la terrasse salis par le passage des artisans peuvent être inclus : précisez-le lors de l’estimation." },
     ],
-    related: ['nettoyage-fin-de-chantier-lyon', 'nettoyage-villefranche-sur-saone', 'prix-nettoyage-fin-de-chantier-lyon'],
+    related: ['nettoyage-fin-de-chantier-lyon', 'nettoyage-villefranche-sur-saone', 'nettoyage-fin-de-chantier-anse', 'prix-nettoyage-fin-de-chantier-lyon'],
     relatedPosts: ['poussiere-de-chantier-eliminer', 'etapes-nettoyage-fin-de-chantier'],
   },
+  {
+    slug: 'nettoyage-fin-de-chantier-anse',
+    cluster: 'fin-de-chantier',
+    keyword: 'nettoyage fin de chantier Anse',
+    eyebrow: 'Fin de chantier · Anse',
+    h1: 'Nettoyage de fin de chantier à Anse',
+    title: 'Nettoyage fin de chantier à Anse (69480) — MonCleanerPro | Neuf & rénovation ancienne',
+    description: "Nettoyage de fin de chantier à Anse et dans les Pierres Dorées : livraisons de logements neufs, rénovations de maisons anciennes, extensions. Poussière, traces et finitions avant remise des clés. Devis sous 24h.",
+    intro:
+      "À Anse, deux types de chantiers cohabitent et ne se ressemblent pas. D’un côté, les programmes récents livrés à des ménages qui viennent s’installer : du neuf, avec ses films de protection, ses étiquettes de vitrage et son voile de ciment. De l’autre, la rénovation de maisons en pierres dorées, de corps de ferme et de bâtis anciens, où la poussière de chaux et de pierre se dépose sur des supports fragiles. MonCleanerPro assure la remise en état de fin de chantier dans les deux cas, avec la méthode que chacun demande.",
+    highlights: [
+      { title: 'Neuf et ancien, deux méthodes', text: "Retrait des protections et du voile de ciment sur du neuf ; produits neutres et peu d’eau sur de la pierre et des tomettes." },
+      { title: 'Calé sur votre échéance', text: "Réception, état des lieux, emménagement ou séance photo : nous intervenons juste avant la date qui compte." },
+      { title: 'Secteur couvert en propre', text: "Anse et les Pierres Dorées font partie de notre zone Beaujolais — planification souple, y compris à quelques jours." },
+      { title: 'Maisons et volumes', text: "Une maison rénovée représente plus de surface qu’un appartement : nous dimensionnons l’équipe en conséquence." },
+      { title: 'Extérieurs compris', text: "Terrasse, abords et menuiseries extérieures salis par le passage des artisans, sur demande." },
+      { title: 'Chantiers qui glissent', text: "Les rénovations en maison prennent du retard : nous replanifions plutôt que d’intervenir sur un chantier qui n’est pas prêt." },
+    ],
+    includes: [
+      'Retrait des films de protection, étiquettes et adhésifs',
+      'Dépoussiérage de haut en bas, poutres et points hauts compris',
+      'Élimination du voile de ciment et des résidus de pose',
+      'Traitement adapté des sols anciens (tomettes, pierre, parquet)',
+      'Projections de peinture, enduit, chaux et colle éliminées',
+      'Vitres, baies et menuiseries extérieures sans traces',
+      'Cuisine et sanitaires détaillés avant remise des clés',
+      'Abords et terrasse salis par le chantier, sur demande',
+    ],
+    sections: [
+      {
+        h2: 'Rénover de la pierre dorée : la poussière n’est pas la même',
+        paragraphs: [
+          "Une rénovation en bâti ancien du Beaujolais produit un mélange caractéristique : poussière de pierre calcaire, chaux, plâtre et parfois sciure de charpente. C’est une poussière lourde, abrasive et abondante, parce que les volumes sont grands et les chantiers longs. Elle se loge dans les joints de tomettes, sur les poutres, dans les irrégularités des murs en pierre apparente — des surfaces où un simple passage ne suffit jamais.",
+          "Le piège vient ensuite : ces supports sont sensibles. La pierre dorée absorbe tout produit acide et garde la marque. Une tomette mal rincée reste terne. Une poutre lavée à l’eau se tache. C’est exactement le type de chantier où un nettoyage énergique et générique abîme un bien qu’on vient de restaurer à grands frais.",
+        ],
+      },
+      {
+        h2: 'Livrer du neuf sans réserves de propreté',
+        paragraphs: [
+          "Sur les programmes récents de la commune, l’enjeu est différent et beaucoup plus mécanique. Les réserves de propreté portent toujours sur les mêmes points : une étiquette de vitrage oubliée, un voile blanchâtre sur un carrelage neuf, du silicone frais sur un plan de travail, de la poussière de découpe restée dans les rails de placard ou sur les grilles de ventilation.",
+          "Nous construisons le passage autour de cette liste. L’objectif n’est pas de « faire propre » en général mais de neutraliser précisément ce que l’acquéreur ou le maître d’ouvrage regarde en premier lors de la visite de livraison.",
+        ],
+      },
+      {
+        h2: 'Les chantiers qu’on nous confie à Anse',
+        list: [
+          "Maisons anciennes et corps de ferme rénovés, avant emménagement",
+          "Livraisons de logements neufs dans les programmes récents de la commune",
+          "Extensions, surélévations et aménagements de combles",
+          "Appartements remis en état avant location ou mise en vente",
+          "Gîtes et meublés touristiques créés ou rénovés avant ouverture",
+          "Locaux professionnels et commerces avant réouverture",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Intervenez-vous rapidement à Anse ?', a: "Oui, la commune fait partie de notre secteur Beaujolais couvert en propre. Nous planifions facilement à quelques jours, y compris avant un état des lieux ou une réception." },
+      { q: 'Comment nettoyez-vous la pierre dorée et les tomettes ?', a: "Avec des produits neutres, peu d’eau et un rinçage soigné. Ces supports sont poreux : un produit acide y laisse une auréole définitive et une haute pression mal dosée creuse les joints. Nous vérifions la nature du support avant de commencer." },
+      { q: 'Faut-il que tous les artisans aient terminé ?', a: "Idéalement oui, retouches de peinture comprises. Intervenir avant la fin réelle oblige à repasser. Si le planning l’impose, nous organisons un nettoyage intermédiaire puis la remise en état finale." },
+      { q: 'Mon chantier a du retard, pouvez-vous décaler ?', a: "Oui, et c’est fréquent sur les rénovations de maison. Prévenez-nous : nous replanifions plutôt que d’intervenir sur un chantier qui n’est pas prêt, ce qui reviendrait à nettoyer deux fois." },
+      { q: 'Nettoyez-vous aussi la terrasse et les abords ?', a: "Sur demande. Les abords immédiats, la terrasse et les menuiseries extérieures salis par le passage des artisans peuvent être inclus : précisez-le lors de l’estimation." },
+      { q: 'Travaillez-vous avec les artisans du secteur ?', a: "Oui, en prestation ponctuelle comme en partenariat régulier. Livrer un chantier propre est le dernier geste que le client retient d’une entreprise : beaucoup d’artisans du Beaujolais préfèrent le confier à un prestataire dédié." },
+    ],
+    related: ['nettoyage-fin-de-chantier-lyon', 'nettoyage-anse', 'nettoyage-fin-de-chantier-villefranche-sur-saone', 'prix-nettoyage-fin-de-chantier-lyon'],
+    relatedPosts: ['poussiere-de-chantier-eliminer', 'etapes-nettoyage-fin-de-chantier'],
+    updatedAt: '2026-08-08',
+  },
+
+  // ── Déclinaisons communales du cluster « Airbnb / courte durée » ───────────
+  {
+    slug: 'menage-airbnb-villefranche-sur-saone',
+    cluster: 'airbnb',
+    keyword: 'ménage Airbnb Villefranche-sur-Saône',
+    eyebrow: 'Airbnb · Villefranche-sur-Saône',
+    h1: 'Ménage Airbnb à Villefranche-sur-Saône',
+    title: 'Ménage Airbnb à Villefranche-sur-Saône — MonCleanerPro | Courte durée & Beaujolais',
+    description: "Ménage de location courte durée à Villefranche-sur-Saône : rotations entre voyageurs, gestion du linge, rapport photo. Séjours affaires en semaine, œnotourisme le week-end. Devis gratuit sous 24h.",
+    intro:
+      "La location courte durée à Villefranche ne ressemble pas à celle de Lyon. Ici, la semaine appartient aux déplacements professionnels — techniciens, commerciaux, intervenants sur les zones d’activité et l’hôpital — pendant que le week-end se remplit de visiteurs venus pour le vignoble et les Pierres Dorées. Deux clientèles, deux rythmes, et des rotations qui se concentrent sur le vendredi et le dimanche. MonCleanerPro assure le ménage de vos meublés caladois avec une organisation calée sur cette saisonnalité-là.",
+    highlights: [
+      { title: 'Prestataire local', text: "Nous couvrons Villefranche en propre : la rotation du dimanche ne dépend pas d’une équipe qui remonterait de Lyon." },
+      { title: 'Semaine pro, week-end tourisme', text: "Séjours d’affaires en semaine et courts séjours œnotouristiques le week-end : deux usages, une même exigence de remise à neuf." },
+      { title: 'Calendrier synchronisé', text: "Votre lien iCal Airbnb ou Booking génère les ménages à partir des départs réels, sans transmission manuelle." },
+      { title: 'Linge et consommables', text: "Draps et serviettes changés à chaque départ, réassort selon le stock convenu pour votre logement." },
+      { title: 'Rapport photo', text: "Vous ne vivez pas à Villefranche ? Chaque passage produit un compte rendu daté avec photos." },
+      { title: 'Bâti ancien du centre', text: "Immeubles anciens sans ascenseur, parquets et tomettes : les gestes sont adaptés au support." },
+    ],
+    includes: [
+      'Rotation complète entre deux voyageurs',
+      'Changement des draps, housses et linge de toilette',
+      'Salle de bains détartrée et désinfectée, sans traces',
+      'Cuisine dégraissée, réfrigérateur vidé et contrôlé',
+      'Réassort des consommables selon votre stock',
+      'Mise en scène d’accueil et aération du logement',
+      'Signalement des dégâts et objets oubliés',
+      'Rapport d’intervention photo après chaque passage',
+    ],
+    sections: [
+      {
+        h2: 'Deux clientèles, deux façons de laisser un logement',
+        paragraphs: [
+          "Un voyageur d’affaires en semaine occupe peu le logement : il dort, il part tôt, il rentre tard. La rotation est rapide, mais elle est fréquente — parfois trois fois sur cinq jours, avec des séjours d’une ou deux nuits qui s’enchaînent. Ce qui compte alors, c’est la ponctualité absolue : un professionnel qui arrive à 19h après sa journée n’attend pas dans la rue.",
+          "Le week-end change complètement la donne. Séjours en couple ou en groupe pour le vignoble, arrivées tardives le vendredi, départs le dimanche en fin de matinée : le logement est réellement vécu, la cuisine sert, et la remise en état demande davantage. C’est aussi le moment où les rotations se concentrent, dimanche midi, toutes en même temps — le créneau qu’il faut avoir dimensionné à l’avance plutôt que découvert le jour même.",
+        ],
+      },
+      {
+        h2: 'Ce que le centre ancien impose',
+        list: [
+          "Des immeubles sans ascenseur : le portage du linge compte dans la durée réelle du passage et doit être prévu",
+          "Des parquets et tomettes anciens qui n’acceptent ni l’eau stagnante ni les produits agressifs",
+          "Un stationnement contraint dans les rues du centre, qui se planifie plutôt qu’il ne s’improvise",
+          "Des logements souvent petits mais très compartimentés, où le temps de ménage ne suit pas la surface",
+          "Des boîtes à clés à généraliser : sur un parc caladois, l’accès en autonomie est ce qui sécurise le plus la rotation",
+        ],
+      },
+      {
+        h2: 'La saison compte plus qu’à Lyon',
+        paragraphs: [
+          "Lyon loue toute l’année. Villefranche vit davantage au rythme des saisons : le printemps et l’automne concentrent l’œnotourisme, l’été apporte les séjours de passage le long de la Saône, et janvier-février restent calmes. Un contrat de ménage à fréquence fixe n’a donc pas de sens ici — il facture des passages inutiles en creux et sature en haute saison.",
+          "Nous calons la présence sur votre calendrier réel, avec une remise en route complète avant la reprise de saison et une remise en état renforcée à la fermeture. C’est là qu’on traite ce qu’une rotation ne permet jamais : intérieur des placards et du four, détartrage profond, vitres complètes, matelas et protège-matelas.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Couvrez-vous Villefranche pour la courte durée toute l’année ?', a: "Oui, y compris en basse saison. Villefranche fait partie de notre secteur Beaujolais couvert en propre, ce qui permet d’assurer les rotations du week-end comme les séjours professionnels de semaine." },
+      { q: 'Pouvez-vous gérer les rotations groupées du dimanche ?', a: "Oui, à condition de les avoir prévues. C’est le créneau le plus dense du secteur : nous dimensionnons les effectifs à l’avance et ordonnançons la tournée par proximité pour que les déplacements ne mangent pas le temps de ménage." },
+      { q: 'Intervenez-vous aussi à Anse et dans le vignoble ?', a: "Oui : Anse, Limas, Gleizé, Arnas, Pommiers, Lucenay et plus largement les communes des Pierres Dorées et du vignoble beaujolais." },
+      { q: 'Comment accédez-vous au logement ?', a: "Boîte à clés, serrure connectée ou clés confiées. Sur un parc en courte durée, l’accès en autonomie est vivement recommandé : il évite qu’un imprévu de remise de clés bloque toute la rotation de la journée." },
+      { q: 'Je loue seulement d’avril à octobre, est-ce un problème ?', a: "Non, c’est même le fonctionnement le plus courant sur le secteur. Nous calons la présence sur votre calendrier réel, avec une remise en route avant la reprise et une remise en état renforcée à la fermeture." },
+      { q: 'Gérez-vous le linge ?', a: "Le changement du linge est assuré à chaque départ et le linge sale récupéré. La fourniture et le lavage s’organisent selon votre fonctionnement — stock personnel, blanchisserie ou solution cadrée avec vous." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-airbnb-anse', 'nettoyage-villefranche-sur-saone', 'prix-menage-airbnb-lyon'],
+    relatedPosts: ['checklist-menage-airbnb-entre-voyageurs', 'linge-location-courte-duree'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'menage-airbnb-anse',
+    cluster: 'airbnb',
+    keyword: 'ménage Airbnb Anse',
+    eyebrow: 'Airbnb · Anse',
+    h1: 'Ménage Airbnb et gîtes à Anse',
+    title: 'Ménage Airbnb à Anse (69480) — MonCleanerPro | Gîtes, meublés & Pierres Dorées',
+    description: "Ménage de location saisonnière à Anse : gîtes, chambres d’hôtes et meublés touristiques du pays des Pierres Dorées. Rotations, linge, remise en route de saison. Devis gratuit sous 24h.",
+    intro:
+      "À Anse, la location saisonnière ne se joue pas sur la nuitée d’affaires mais sur le séjour : un week-end dans le vignoble, quelques jours au bord de la Saône, une base pour visiter les Pierres Dorées à trente minutes de Lyon. Les biens loués sont souvent des maisons de caractère, des gîtes ou des dépendances aménagées — plus grands qu’un studio urbain, avec des matériaux anciens et une saisonnalité très marquée. MonCleanerPro assure leur entretien avec les gestes que ce type de bien demande et une présence calée sur les pics de fréquentation.",
+    highlights: [
+      { title: 'Gîtes et maisons de caractère', text: "Des volumes plus importants qu’un meublé urbain, avec plusieurs chambres et souvent plusieurs salles d’eau." },
+      { title: 'Matériaux anciens respectés', text: "Pierres dorées, tomettes, poutres et parquets : produits neutres, peu d’eau, jamais de traitement générique." },
+      { title: 'Saison marquée', text: "Pics de printemps, d’été et de vendanges, creux hivernal : la fréquence suit votre calendrier, pas un forfait annuel." },
+      { title: 'Remise en route de saison', text: "Un bien resté fermé plusieurs semaines n’est pas propre. Une rotation ne suffit pas avant le premier voyageur." },
+      { title: 'Propriétaires non résidents', text: "Beaucoup de biens du secteur appartiennent à des propriétaires lyonnais ou plus lointains : le rapport photo remplace le contrôle sur place." },
+      { title: 'Secteur couvert en propre', text: "Anse et les Pierres Dorées font partie de notre zone Beaujolais, pas d’une extension desservie à l’occasion." },
+    ],
+    includes: [
+      'Rotation complète entre deux séjours',
+      'Changement des draps et du linge de toilette, plusieurs chambres',
+      'Salles d’eau détartrées et désinfectées',
+      'Cuisine dégraissée, réfrigérateur vidé et contrôlé',
+      'Traitement adapté des sols anciens et de la pierre',
+      'Extérieurs d’usage courant : terrasse, salon de jardin, abords',
+      'Remise en route de début de saison et fermeture renforcée',
+      'Rapport d’intervention photo après chaque passage',
+    ],
+    sections: [
+      {
+        h2: 'Un gîte ne se traite pas comme un studio urbain',
+        paragraphs: [
+          "La différence est d’abord une question de volume. Là où un meublé lyonnais se résume souvent à une pièce, une salle d’eau et un couchage, un gîte du secteur compte plusieurs chambres, parfois deux salles d’eau, une vraie cuisine et un extérieur. Le temps de rotation n’a rien à voir, et le nombre de lits à refaire pèse bien plus que la surface au sol.",
+          "S’ajoute l’usage : un groupe qui passe un week-end dans le Beaujolais cuisine, mange dehors, utilise le barbecue et la terrasse. La remise en état inclut donc des postes qu’un logement urbain ne connaît pas — mobilier de jardin, plancha, sols extérieurs — et qu’il faut avoir prévus dans le cadrage, sinon ils sont soit oubliés, soit facturés en supplément à chaque fois.",
+        ],
+      },
+      {
+        h2: 'Ouvrir et fermer la saison, les deux passages qui comptent',
+        paragraphs: [
+          "C’est l’erreur la plus fréquente chez les propriétaires du secteur : considérer qu’un logement fermé proprement en octobre sera propre en avril. Il ne l’est pas. Une poussière fine s’est déposée sur toutes les surfaces, les siphons asséchés remontent une odeur désagréable, le linge stocké a pris l’humidité du placard, et l’air sent le renfermé dès qu’on ouvre la porte. Le premier voyageur de la saison arrive dans ce logement-là — et c’est souvent lui qui laisse le commentaire qui plombera l’été.",
+          "À l’autre bout, la fermeture est le seul créneau de l’année où l’on peut traiter ce qu’aucune rotation ne permet : intérieur des placards et du four, détartrage en profondeur, vitres complètes, matelas, protège-matelas, dessous des meubles. Un bien qui reçoit ce traitement une fois par an ne dérive pas ; un bien qui n’a que des rotations se dégrade lentement, sans qu’un passage précis soit en cause.",
+        ],
+      },
+      {
+        h2: 'Les biens que nous entretenons à Anse et alentour',
+        list: [
+          "Gîtes et maisons de caractère en pierres dorées loués à la semaine ou au week-end",
+          "Chambres d’hôtes, avec un rythme de rotation quotidien en haute saison",
+          "Dépendances, granges et corps de ferme aménagés en meublé touristique",
+          "Appartements et petits meublés du centre, loués à l’année sur les plateformes",
+          "Logements de bord de Saône, très saisonniers, à forte fréquentation estivale",
+          "Biens en création : remise en état après travaux avant la mise en ligne de l’annonce",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Intervenez-vous à Anse et dans les communes voisines ?', a: "Oui : Anse, Lucenay, Ambérieux-d’Azergues, Pommiers, Limas, Villefranche-sur-Saône et plus largement le pays des Pierres Dorées et le vignoble." },
+      { q: 'Je ne loue qu’en saison, pouvez-vous vous adapter ?', a: "Oui, c’est le fonctionnement normal sur le secteur. Nous calons la présence sur votre calendrier réel : rotations rapprochées en haute saison, remise en route avant la reprise, fermeture renforcée à la fin. Aucun passage facturé en creux." },
+      { q: 'Nettoyez-vous les extérieurs du gîte ?', a: "Les extérieurs d’usage courant — terrasse, salon de jardin, plancha ou barbecue, abords immédiats — peuvent être inclus dans la rotation. Il suffit de le prévoir au cadrage pour que ce ne soit ni oublié ni facturé en supplément à chaque passage." },
+      { q: 'Mes sols sont anciens, y a-t-il un risque ?', a: "Non, à condition d’adapter le geste. Tomettes, pierre et parquets anciens demandent des produits neutres, peu d’eau et un rinçage soigné. Nous identifions le support avant de choisir le produit — c’est un réflexe indispensable sur le bâti du secteur." },
+      { q: 'Faut-il vraiment un nettoyage avant la reprise de saison ?', a: "Oui. Après plusieurs semaines de fermeture, un logement a repris de la poussière, ses siphons sont asséchés et l’air est confiné. Une rotation classique ne corrige rien de tout ça, et c’est le premier voyageur de la saison qui en fait les frais dans son commentaire." },
+      { q: 'Comment suivre les interventions si je n’habite pas sur place ?', a: "Chaque passage donne lieu à un rapport photo daté : état constaté, travail réalisé, dégâts ou objets oubliés, consommables à recharger. C’est ce qui permet à un propriétaire distant de garder la main sans se déplacer." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-airbnb-villefranche-sur-saone', 'nettoyage-anse', 'menage-location-courte-duree-lyon'],
+    relatedPosts: ['linge-location-courte-duree', 'checklist-menage-airbnb-entre-voyageurs'],
+    updatedAt: '2026-08-08',
+  },
 ];
+
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
 export const getSeoPage = (slug: string) => SEO_PAGES.find(p => p.slug === slug);
@@ -1269,6 +1902,7 @@ export const getSeoPage = (slug: string) => SEO_PAGES.find(p => p.slug === slug)
 export interface CityGeo { city: string; lat: number; lng: number; postalCode?: string }
 export const CITY_GEO: Record<string, CityGeo> = {
   'nettoyage-villefranche-sur-saone': { city: 'Villefranche-sur-Saône', lat: 45.9847, lng: 4.7267, postalCode: '69400' },
+  'nettoyage-anse':                   { city: 'Anse',                   lat: 45.9364, lng: 4.7186, postalCode: '69480' },
   'nettoyage-caluire-et-cuire':       { city: 'Caluire-et-Cuire',       lat: 45.7955, lng: 4.8442, postalCode: '69300' },
   'nettoyage-venissieux':             { city: 'Vénissieux',             lat: 45.6976, lng: 4.8859, postalCode: '69200' },
   'nettoyage-neuville-sur-saone':     { city: 'Neuville-sur-Saône',     lat: 45.8779, lng: 4.8419, postalCode: '69250' },
@@ -1291,6 +1925,13 @@ export const CITY_GEO: Record<string, CityGeo> = {
   'nettoyage-fin-de-chantier-venissieux':              { city: 'Vénissieux',              lat: 45.6976, lng: 4.8859, postalCode: '69200' },
   'nettoyage-fin-de-chantier-saint-priest':            { city: 'Saint-Priest',            lat: 45.6966, lng: 4.9439, postalCode: '69800' },
   'nettoyage-fin-de-chantier-villefranche-sur-saone':  { city: 'Villefranche-sur-Saône',  lat: 45.9847, lng: 4.7267, postalCode: '69400' },
+  'nettoyage-fin-de-chantier-anse':                    { city: 'Anse',                    lat: 45.9364, lng: 4.7186, postalCode: '69480' },
+
+  // Pages « ménage Airbnb × commune » : même logique géo. Le signal local vaut
+  // autant en courte durée qu'en fin de chantier — la requête est toujours
+  // formulée avec le nom de la commune.
+  'menage-airbnb-villefranche-sur-saone':              { city: 'Villefranche-sur-Saône',  lat: 45.9847, lng: 4.7267, postalCode: '69400' },
+  'menage-airbnb-anse':                                { city: 'Anse',                    lat: 45.9364, lng: 4.7186, postalCode: '69480' },
 };
 export const getCityGeo = (slug: string): CityGeo | undefined => CITY_GEO[slug];
 

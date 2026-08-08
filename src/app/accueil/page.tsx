@@ -463,7 +463,7 @@ export default function VitrinePage() {
       <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-7xl mx-auto px-5 py-12">
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Zones desservies</p>
-          <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon et dans la métropole</h2>
+          <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon, dans la métropole et le Beaujolais</h2>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
             {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e'].join(' · ')}
           </p>
@@ -478,7 +478,7 @@ export default function VitrinePage() {
                 {i < arr.length - 1 ? ' · ' : ''}
               </span>
             ))}
-            {' '}— et l’ensemble du Rhône-Alpes.
+            {' '}— ainsi que les communes du Beaujolais et des Pierres Dorées, et l’ensemble du Rhône-Alpes.
           </p>
         </div>
       </section>
