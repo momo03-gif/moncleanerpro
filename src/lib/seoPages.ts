@@ -36,6 +36,16 @@ export interface SeoPage {
   related?: string[];          // slugs SEO à mettre en avant (maillage curaté)
   relatedPosts?: string[];     // slugs d'articles de blog liés
   updatedAt?: string;          // ISO — dernière révision réelle du contenu
+
+  // Portée géographique. Par défaut une page dessert Lyon (ou la commune déclarée
+  // dans CITY_GEO) : c'est le bon signal pour l'activité locale récurrente. Les
+  // pages « gros chantiers » desservent la France entière — sans ce marqueur,
+  // le balisage continuerait de les rattacher au seul bassin lyonnais et elles
+  // ne remonteraient jamais sur une requête nationale.
+  // Ces pages sont aussi exclues de SERVED_CITIES : revendiquer Paris ou Lille
+  // dans l'areaServed de l'accueil diluerait le signal local, qui porte le
+  // cœur de l'activité.
+  scope?: 'national';
 }
 
 // Date de révision par défaut des pages SEO. Volontairement figée : un
@@ -510,11 +520,13 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     related: [
       'nettoyage-apres-travaux-lyon',
+      // La page Lyon est la mieux installée du cluster : c'est elle qui doit
+      // pousser le pilier national, pas l'inverse.
+      'nettoyage-fin-de-chantier-france',
       'prix-nettoyage-fin-de-chantier-lyon',
       'nettoyage-fin-de-chantier-villeurbanne',
       'nettoyage-fin-de-chantier-venissieux',
       'nettoyage-fin-de-chantier-saint-priest',
-      'nettoyage-fin-de-chantier-villefranche-sur-saone',
     ],
     relatedPosts: [
       'etapes-nettoyage-fin-de-chantier',
@@ -1890,8 +1902,1028 @@ export const SEO_PAGES: SeoPage[] = [
     relatedPosts: ['linge-location-courte-duree', 'checklist-menage-airbnb-entre-voyageurs'],
     updatedAt: '2026-08-08',
   },
-];
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Cluster « chantier-national » — GROS CHANTIERS, FRANCE ENTIÈRE
+  //  Modèle assumé : une équipe complète se déplace depuis Lyon, à partir d'un
+  //  volume qui justifie le déplacement. Ces pages ne revendiquent JAMAIS une
+  //  implantation ou une agence locale — ce serait faux, et c'est exactement ce
+  //  que Google sanctionne comme « doorway page ». Chaque page ville porte donc
+  //  un angle réellement distinct (tissu économique, contraintes du bâti).
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    slug: 'nettoyage-fin-de-chantier-france',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier France',
+    eyebrow: 'Gros chantiers · France entière',
+    h1: 'Nettoyage de fin de chantier partout en France',
+    title: 'Nettoyage fin de chantier France — MonCleanerPro | Équipe qui se déplace',
+    description: "Entreprise de nettoyage de fin de chantier intervenant sur toute la France : programmes neufs, tertiaire, industriel, multi-sites. Une équipe complète se déplace, un seul interlocuteur. Devis sous 24h.",
+    intro:
+      "Sur un gros chantier, la remise en état n’est pas une ligne de finition : c’est l’étape qui décide si la réception se passe bien ou si elle génère des réserves en série. Et c’est presque toujours celle qu’on cale en dernier, sur un prestataire local trouvé dans l’urgence, dont personne n’a vérifié la capacité réelle. MonCleanerPro intervient sur l’ensemble du territoire français avec un modèle différent : une équipe complète qui se déplace, encadrée, avec la même méthode d’un chantier à l’autre. Vous ne pilotez pas un prestataire de plus dans chaque ville — vous avez un seul interlocuteur, du devis à la levée des réserves.",
+    highlights: [
+      { title: 'L’équipe se déplace', text: "Nous n’assemblons pas une équipe locale au dernier moment : ce sont nos intervenants, encadrés par notre chef d’équipe, qui viennent sur site." },
+      { title: 'Un seul interlocuteur', text: "Un contrat, un contact, une facturation — quel que soit le nombre de sites et de régions concernés." },
+      { title: 'La même méthode partout', text: "Un chantier livré à Lille est traité avec le protocole appliqué à Lyon. C’est tout l’intérêt d’une équipe qui ne change pas." },
+      { title: 'Calé sur la réception', text: "Nous partons de votre date de livraison et remontons le planning, pas l’inverse. Le chantier est prêt quand il doit l’être." },
+      { title: 'Effectifs dimensionnés', text: "Une surface importante en délai court se traite en nombre. Nous annonçons les effectifs prévus dans le devis, pas après." },
+      { title: 'Dossier administratif complet', text: "Attestations, assurances, documents de prévention : le dossier est fourni en amont, pas réclamé la veille de l’intervention." },
+    ],
+    includes: [
+      'Remise en état complète avant réception ou livraison',
+      'Retrait des protections, films, étiquettes et adhésifs',
+      'Élimination du voile de ciment et des résidus de pose',
+      'Dépoussiérage descendant, faux plafonds et points hauts compris',
+      'Vitrages, châssis et menuiseries traités sans traces',
+      'Sanitaires, kitchenettes, locaux techniques et circulations',
+      'Sols traités selon le revêtement posé, lot par lot',
+      'Contrôle final et accompagnement à la levée des réserves de propreté',
+      'Interlocuteur unique et rapports d’intervention par lot ou par site',
+    ],
+    sections: [
+      {
+        h2: 'Le problème du prestataire local trouvé en urgence',
+        paragraphs: [
+          "Quand un chantier se termine à quatre cents kilomètres du siège, le réflexe est de chercher une entreprise de nettoyage sur place. C’est logique, et c’est souvent ce qui coûte le plus cher au final. Parce qu’à trois semaines de la livraison, on ne choisit plus : on prend qui est disponible. Personne n’a vu travailler cette entreprise, personne ne connaît ses effectifs réels, et le conducteur de travaux découvre le niveau de finition le jour de la visite de réception.",
+          "Le second effet est plus insidieux. Un prestataire différent par chantier, c’est un niveau de qualité différent par chantier — et donc l’impossibilité de tenir un standard sur une opération multi-sites ou sur un enchaînement de livraisons. Vous ne construisez aucune expérience commune : à chaque fois, il faut réexpliquer les attentes, refaire le cadrage, et espérer.",
+          "Notre modèle répond exactement à ce point. L’équipe qui intervient est la nôtre, elle connaît notre protocole, et le chef d’équipe qui a livré votre chantier précédent est celui qui livrera le suivant. C’est ce qui rend une exigence de finition réellement reproductible d’une région à l’autre.",
+        ],
+      },
+      {
+        h2: 'Ce que « gros chantier » veut dire chez nous',
+        paragraphs: [
+          "Soyons directs, cela évite une perte de temps réciproque : déplacer une équipe complète n’a de sens qu’à partir d’un certain volume. En dessous, le coût du déplacement pèse plus que la prestation elle-même, et vous serez mieux servi par une entreprise de votre bassin — nous vous le dirons franchement plutôt que de vous vendre une intervention qui n’a pas de sens.",
+        ],
+        list: [
+          "Des interventions qui se comptent en jours d’équipe, pas en heures",
+          "Des surfaces importantes : plateaux tertiaires, bâtiments entiers, programmes livrés en plusieurs lots",
+          "Des opérations à lots multiples, où la livraison s’étale sur plusieurs semaines",
+          "Des déploiements sur plusieurs sites, où c’est justement l’homogénéité qui a de la valeur",
+          "Des délais contraints qui imposent plusieurs intervenants en simultané",
+          "Des chantiers à enjeu, où une réserve de propreté coûte bien plus cher que la prestation",
+        ],
+      },
+      {
+        h2: 'Comment se déroule une intervention hors région',
+        list: [
+          "Cadrage à distance : plans, surfaces, revêtements posés, date de réception et contraintes d’accès. Une visite préalable est organisée quand l’opération le justifie.",
+          "Devis avec effectifs et durée : vous savez combien d’intervenants viennent et combien de jours sont prévus, pas seulement un montant.",
+          "Dossier administratif : attestations, assurances et documents de prévention transmis en amont, avant la mobilisation.",
+          "Logistique prise en charge : déplacement, hébergement et matériel sont notre affaire, intégrés au devis. Vous n’avez rien à organiser sur place.",
+          "Intervention encadrée : un chef d’équipe sur site est votre interlocuteur direct pendant toute la durée du chantier.",
+          "Contrôle et réception : passage de contrôle lot par lot, rapport d’intervention, et présence pour la levée des réserves de propreté si vous le souhaitez.",
+        ],
+      },
+      {
+        h2: 'Ce que vous n’avez pas à gérer',
+        paragraphs: [
+          "C’est souvent l’argument décisif pour un conducteur de travaux ou un directeur d’opération : le temps passé à piloter le nettoyage. Sur une intervention hors région, la charge cachée est considérable — trouver l’entreprise, vérifier ses attestations, cadrer le périmètre, négocier, relancer, contrôler le résultat, gérer les reprises.",
+          "En confiant l’ensemble à une seule équipe qui se déplace, cette charge disparaît. Nous arrivons avec notre matériel et nos produits, nous gérons notre hébergement et nos horaires, et nous rendons compte à une seule personne chez vous. Sur une opération à lots multiples, cela représente des dizaines d’heures de coordination économisées — bien plus que l’écart de prix avec une solution locale.",
+        ],
+      },
+      {
+        h2: 'Les secteurs sur lesquels nous intervenons',
+        list: [
+          "Promotion immobilière et logement neuf : livraison de programmes, lot par lot ou bâtiment entier",
+          "Immobilier tertiaire : plateaux de bureaux, sièges sociaux, immeubles restructurés",
+          "Industrie et logistique : bâtiments d’activité, entrepôts, sites de production après travaux",
+          "Commerce et réseaux : déploiements multi-sites, ouvertures et rénovations d’enseignes",
+          "Hôtellerie : réouverture après rénovation, étage par étage ou établissement complet",
+          "Commande publique : équipements, groupes scolaires, bâtiments administratifs et marchés allotis",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Intervenez-vous vraiment partout en France ?', a: "Oui, sur les chantiers dont le volume justifie le déplacement d’une équipe complète. Nous sommes basés à Lyon et nos intervenants se déplacent sur l’ensemble du territoire. Nous ne revendiquons pas d’agence locale dans chaque ville : ce serait faux, et ce n’est pas ce qui fait la qualité d’une remise en état." },
+      { q: 'À partir de quel volume cela devient-il pertinent ?', a: "En pratique, à partir d’interventions qui se comptent en jours d’équipe plutôt qu’en heures : grandes surfaces tertiaires, bâtiments entiers, programmes livrés en plusieurs lots ou opérations multi-sites. En dessous, le déplacement pèse trop dans le coût et nous vous le disons franchement — mieux vaut une entreprise de votre bassin." },
+      { q: 'Les frais de déplacement et d’hébergement sont-ils en supplément ?', a: "Non, ils sont intégrés au devis et annoncés dès le départ. Vous recevez un montant global pour l’intervention, pas un prix de base auquel s’ajouteraient des frais découverts à la facturation." },
+      { q: 'Combien d’intervenants mobilisez-vous ?', a: "Cela dépend de la surface et du délai. Le nombre d’intervenants et la durée prévue figurent explicitement dans le devis : c’est la seule façon de vérifier qu’une entreprise a réellement dimensionné votre chantier plutôt que d’avoir aligné un prix." },
+      { q: 'Fournissez-vous les documents administratifs attendus ?', a: "Oui : attestations d’assurance, attestation de vigilance et documents de prévention nécessaires à l’intervention sur un chantier. Le dossier est transmis en amont de la mobilisation, pas réclamé la veille." },
+      { q: 'Pouvez-vous intervenir sur un site encore en activité ?', a: "Oui, c’est fréquent en restructuration de bureaux ou en site industriel. Nous intervenons hors horaires d’exploitation — tôt le matin, en soirée, la nuit ou le week-end — dans le cadre du plan de prévention établi avec vous." },
+      { q: 'Que se passe-t-il si le chantier prend du retard ?', a: "Nous replanifions plutôt que d’intervenir sur un chantier qui n’est pas prêt, ce qui reviendrait à nettoyer deux fois. Prévenez-nous dès que le glissement est connu : plus il est anticipé, plus la reprogrammation est simple, y compris sur une mobilisation avec hébergement." },
+      { q: 'Répondez-vous aux appels d’offres et marchés publics ?', a: "Oui, en candidature directe comme en co-traitance ou en sous-traitance déclarée. Nous produisons les pièces attendues au dossier et pouvons répondre lot par lot sur les opérations alloties." },
+    ],
+    related: [
+      'nettoyage-livraison-programme-neuf',
+      'nettoyage-fin-de-chantier-tertiaire',
+      'nettoyage-fin-de-chantier-industriel',
+      'nettoyage-fin-de-chantier-multi-sites',
+      'nettoyage-chantier-marche-public',
+      'nettoyage-fin-de-chantier-paris',
+    ],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-livraison-programme-neuf',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage livraison programme neuf',
+    eyebrow: 'Promotion immobilière',
+    h1: 'Nettoyage de livraison de programmes neufs',
+    title: 'Nettoyage livraison programme neuf — MonCleanerPro | Promoteurs, lot par lot',
+    description: "Nettoyage de livraison pour promoteurs et maîtres d’ouvrage, partout en France : remise en état lot par lot avant réception, zéro réserve de propreté, planning calé sur les visites. Devis sous 24h.",
+    intro:
+      "Sur une livraison de programme neuf, les réserves de propreté sont les plus faciles à éviter et pourtant les plus fréquentes. Elles ne remettent pas en cause la qualité de l’ouvrage, mais elles polluent la visite, mobilisent des équipes en reprise et abîment la relation avec l’acquéreur au moment précis où elle se joue. MonCleanerPro intervient pour les promoteurs et maîtres d’ouvrage sur l’ensemble du territoire, lot par lot, avec un planning construit à l’envers depuis vos dates de visite.",
+    highlights: [
+      { title: 'Lot par lot, pas en bloc', text: "Nous livrons au rythme de votre calendrier de visites, pas tous les logements en même temps au dernier moment." },
+      { title: 'Zéro réserve de propreté', text: "Notre passage est construit autour de la liste précise des points qui déclenchent une réserve, pas autour d’un ménage général." },
+      { title: 'Le dernier lot vaut le premier', text: "Même check-list de contrôle sur le dernier logement livré que sur le premier, quelle que soit la pression de la date." },
+      { title: 'Traçabilité par lot', text: "Chaque logement contrôlé fait l’objet d’un rapport daté, opposable en cas de contestation en visite." },
+      { title: 'Reprises après réserves', text: "Si une réserve de propreté est émise, nous repassons dans les délais de levée sans rediscussion." },
+      { title: 'Toute la France', text: "Une équipe complète se déplace sur votre opération, où qu’elle se trouve, avec la même méthode." },
+    ],
+    includes: [
+      'Retrait des films de protection, étiquettes de vitrage et adhésifs',
+      'Élimination du voile de ciment et des résidus de pose',
+      'Dépoussiérage complet, rails de placard et grilles de ventilation compris',
+      'Menuiseries, plinthes, seuils, gorges et points hauts',
+      'Vitrages et châssis nettoyés sans traces, intérieur comme accessible',
+      'Sanitaires et cuisines détaillés, silicone et traces de pose retirés',
+      'Sols traités selon le revêtement posé, lot par lot',
+      'Parties communes, halls, circulations et locaux techniques',
+      'Contrôle final logement par logement et rapport daté',
+    ],
+    sections: [
+      {
+        h2: 'Les réserves de propreté sont toujours les mêmes',
+        paragraphs: [
+          "Après suffisamment de livraisons, on connaît la liste par cœur. Une étiquette de vitrage laissée en place. Un voile blanchâtre de ciment sur un carrelage neuf. Du silicone frais étalé sur un plan de travail. De la poussière de découpe restée dans les rails de placard ou sur les grilles de ventilation. Des traces de doigts sur une menuiserie laquée. Un dessus de porte oublié.",
+          "Aucun de ces points n’est difficile à traiter. Tous sont systématiquement relevés par un acquéreur en visite, parce que ce sont précisément les endroits qu’il regarde — il ne peut pas juger la qualité d’une étanchéité ou d’un raccordement, alors il juge ce qu’il voit. Une réserve de propreté n’est pas seulement une reprise à organiser : c’est le premier signal que l’acquéreur reçoit sur le sérieux de l’opération.",
+          "Nous construisons donc l’intervention autour de cette liste plutôt qu’autour d’un nettoyage générique. L’objectif n’est pas de « faire propre » au sens large, c’est de neutraliser exactement ce qui sera regardé.",
+        ],
+      },
+      {
+        h2: 'Le piège du dernier lot',
+        paragraphs: [
+          "Le risque, sur une opération en volume, est connu de tous les conducteurs de travaux : les premiers logements sont impeccables, les derniers sont expédiés parce que la date de livraison approche et que le nettoyage est la dernière variable d’ajustement. C’est là que la série de réserves se concentre, et c’est ce qui donne l’impression d’un chantier bâclé alors que seule la fin l’a été.",
+          "Nous l’évitons de deux façons. D’abord en calant le nombre d’intervenants sur le planning réel de livraison, pas sur une moyenne : si trente lots doivent être livrés en une semaine, l’effectif suit. Ensuite en appliquant la même check-list de contrôle sur le dernier lot que sur le premier, avec un rapport daté par logement — ce qui rend l’écart visible immédiatement s’il existe.",
+        ],
+      },
+      {
+        h2: 'Quand intervenir, et pourquoi c’est plus tard qu’on croit',
+        paragraphs: [
+          "Le bon moment se situe après le passage de tous les corps de métier, retouches de peinture comprises. C’est le point le plus sous-estimé : il reste presque toujours une reprise de peinture ou un réglage de menuiserie après le nettoyage, et cette intervention seule suffit à réintroduire de la poussière dans le logement.",
+          "Sur les opérations où le planning ne permet pas d’attendre, nous organisons un nettoyage intermédiaire — qui rend les lots présentables et praticables pour les dernières interventions — puis la remise en état finale juste avant les visites. C’est plus efficace qu’un passage unique mal placé, qu’il faut de toute façon reprendre.",
+        ],
+      },
+      {
+        h2: 'Ce que nous traitons au-delà des logements',
+        list: [
+          "Halls d’entrée, circulations, paliers et cages d’escalier",
+          "Parkings, locaux vélos, locaux poubelles et locaux techniques",
+          "Celliers, caves et annexes privatives",
+          "Vitrages des parties communes et menuiseries extérieures accessibles",
+          "Espaces communs livrés avec le programme : local commun résidentiel, terrasses partagées",
+          "Bureaux de vente et logements témoins, avant et pendant la commercialisation",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Livrez-vous les logements au fur et à mesure ?', a: "Oui, c’est le mode de fonctionnement le plus courant. Nous suivons votre calendrier de visites de livraison plutôt que de traiter l’ensemble d’un bloc, ce qui garantit que chaque lot est propre au moment où il est vu, et non trois semaines avant." },
+      { q: 'Que se passe-t-il si une réserve de propreté est émise en visite ?', a: "Nous repassons dans les délais de levée, sans rediscussion sur le principe. Le rapport de contrôle daté produit lors de notre passage permet par ailleurs de distinguer une véritable réserve d’une salissure survenue après notre intervention." },
+      { q: 'Intervenez-vous aussi sur les parties communes et les parkings ?', a: "Oui. Halls, circulations, cages d’escalier, parkings, locaux techniques et locaux vélos font partie de la livraison au même titre que les logements, et concentrent souvent les résidus de fin de chantier." },
+      { q: 'Prenez-vous en charge l’évacuation des gravats ?', a: "Nous retirons les protections, films, emballages et résidus de finition. L’évacuation de gravats en volume relève d’une benne et d’un prestataire spécialisé : le périmètre est cadré explicitement dans le devis pour qu’il n’y ait aucune ambiguïté le jour de l’intervention." },
+      { q: 'Pouvez-vous traiter une opération de plusieurs centaines de lots ?', a: "Oui, en dimensionnant l’équipe sur le planning de livraison et en travaillant par vagues. Sur ce type d’opération, un point de suivi régulier avec le conducteur de travaux permet d’ajuster les effectifs au rythme réel du chantier, qui bouge toujours." },
+      { q: 'Travaillez-vous en direct avec le promoteur ou via l’entreprise générale ?', a: "Les deux. Nous intervenons en direct pour des maîtres d’ouvrage comme en sous-traitance déclarée d’une entreprise générale, avec dans les deux cas le dossier administratif complet fourni en amont." },
+      { q: 'Nettoyez-vous les logements témoins et bureaux de vente ?', a: "Oui, avant l’ouverture à la commercialisation puis en entretien pendant toute sa durée. Ce sont des espaces vus par des acquéreurs potentiels chaque semaine : ils demandent un niveau de finition constant, pas une remise en état ponctuelle." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-tertiaire', 'nettoyage-chantier-marche-public', 'nettoyage-fin-de-chantier-lyon'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'difference-fin-de-chantier-apres-travaux'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-tertiaire',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier bureaux',
+    eyebrow: 'Immobilier tertiaire',
+    h1: 'Nettoyage de fin de chantier tertiaire et bureaux',
+    title: 'Nettoyage fin de chantier tertiaire — MonCleanerPro | Plateaux de bureaux & sièges',
+    description: "Remise en état de plateaux de bureaux, sièges sociaux et immeubles tertiaires après travaux, partout en France : grandes surfaces, faux plafonds, vitrages, intervention hors exploitation. Devis sous 24h.",
+    intro:
+      "Un plateau de bureaux livré sale ne se rattrape pas discrètement : il est vu le premier jour par des dizaines de collaborateurs, et l’impression qu’il laisse colle au projet d’aménagement tout entier. Sur ce type d’opération, la remise en état finale porte une exigence particulière — grandes surfaces à traiter en délai court, vitrages omniprésents, faux plafonds et sols techniques, et souvent un immeuble encore partiellement occupé. MonCleanerPro intervient sur les chantiers tertiaires dans toute la France, avec les effectifs que ces volumes demandent.",
+    highlights: [
+      { title: 'Dimensionné pour la surface', text: "Un plateau de plusieurs milliers de mètres carrés en fin de semaine se traite en nombre, pas avec deux intervenants et de la bonne volonté." },
+      { title: 'Hors exploitation', text: "Nuit, soirée, week-end : nous intervenons quand l’immeuble est vide, y compris en site partiellement occupé." },
+      { title: 'Le vitrage, poste majeur', text: "Cloisons vitrées, façades intérieures et garde-corps : en tertiaire, le verre représente une part considérable du temps." },
+      { title: 'Sols techniques et faux plafonds', text: "Moquette dalles, résine, planchers techniques et plenums : des supports qui appellent chacun un traitement propre." },
+      { title: 'Prêt pour l’emménagement', text: "Nous livrons un plateau utilisable immédiatement, mobilier déballé et protections retirées." },
+      { title: 'Partout en France', text: "Siège social, agence régionale ou plateau isolé : la même équipe se déplace avec la même méthode." },
+    ],
+    includes: [
+      'Retrait des protections de sol, films de menuiserie et emballages de mobilier',
+      'Dépoussiérage descendant, faux plafonds, luminaires et plenums accessibles',
+      'Cloisons vitrées, façades intérieures et garde-corps sans traces',
+      'Sols techniques, moquette dalles, résine et carrelage selon le revêtement',
+      'Sanitaires, douches, kitchenettes et espaces de restauration',
+      'Salles de réunion, phone box et espaces collaboratifs',
+      'Locaux techniques, locaux serveurs et zones de stockage',
+      'Circulations, halls d’étage, escaliers et ascenseurs',
+      'Contrôle final avant remise des clés au preneur',
+    ],
+    sections: [
+      {
+        h2: 'En tertiaire, le verre change tout',
+        paragraphs: [
+          "C’est la différence la plus nette avec un chantier de logement. Un aménagement de bureaux contemporain, ce sont des cloisons vitrées partout : salles de réunion, phone box, façades intérieures, garde-corps d’atrium, portes vitrées. Sur un plateau, la surface de verre à traiter dépasse fréquemment la surface de sol.",
+          "Or le vitrage ne pardonne rien. Une trace, un voile, une auréole de produit sont visibles à contre-jour depuis l’autre bout du plateau, et l’œil s’y accroche immédiatement. C’est le poste qui fait le plus varier la durée réelle d’une remise en état tertiaire, et c’est aussi celui qui est le plus systématiquement sous-estimé dans les devis — ce qui se traduit par un plateau expédié la dernière nuit.",
+          "Nous le chiffrons explicitement, en surface de vitrage et pas seulement en surface de plancher. C’est ce qui permet d’annoncer une durée qui tient.",
+        ],
+      },
+      {
+        h2: 'Livrer sans arrêter l’immeuble',
+        paragraphs: [
+          "La restructuration de bureaux se fait rarement dans un immeuble vide. Un étage se rénove pendant que les autres travaillent, un preneur emménage pendant que le suivant fait ses travaux. Cela impose des contraintes qui n’ont rien de secondaire : accès par un monte-charge unique, horaires imposés par le règlement de l’immeuble, nuisances sonores encadrées, circulation des équipes et du matériel séparée de celle des occupants.",
+          "Nous travaillons dans ce cadre en intervenant hors exploitation — en soirée, la nuit ou le week-end selon ce que le site permet — et en calant la logistique sur le plan de prévention établi avec le maître d’ouvrage ou le property manager. Une équipe qui découvre ces contraintes le jour J perd la moitié de sa première nuit.",
+        ],
+      },
+      {
+        h2: 'Les supports du tertiaire et ce qu’ils demandent',
+        list: [
+          "Moquette en dalles : aspiration profonde, traitement des taches de chantier, jamais de trempage",
+          "Sol souple et résine : retrait du voile de pose, produits neutres, pas d’abrasif qui matifierait la finition",
+          "Plancher technique : dépoussiérage des trappes et des réservations, poussière de découpe dans les joints",
+          "Faux plafonds : dalles et rails dépoussiérés, luminaires et grilles de soufflage accessibles",
+          "Menuiseries laquées et métal : traces de doigts et de manipulation, sans produit qui marque",
+          "Mobilier livré sur site : déballage, retrait des films et des cartons, essuyage avant occupation",
+        ],
+      },
+      {
+        h2: 'Le jour de l’emménagement, tout se voit',
+        paragraphs: [
+          "La particularité d’un projet tertiaire est le nombre de personnes qui découvrent le résultat en même temps. Là où un logement est vu par un acquéreur, un plateau est vu par toute une direction et par les collaborateurs le premier lundi. Une poussière de découpe restée sur un bureau, une étiquette sur une vitre, une trace sur une cloison vitrée : ces détails deviennent le sujet de conversation de la première semaine, devant un aménagement qui a coûté des mois de travail.",
+          "C’est pourquoi nous prévoyons systématiquement un passage de contrôle après le nettoyage principal, une fois le mobilier en place — pas avant. La mise en place du mobilier salit toujours, et un plateau contrôlé avant l’installation n’est pas un plateau prêt.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Pouvez-vous traiter un plateau de plusieurs milliers de mètres carrés en un week-end ?', a: "Oui, à condition de dimensionner l’équipe en conséquence et de le savoir à l’avance. Le devis précise le nombre d’intervenants et la durée prévue : c’est ce qui vous permet de vérifier que le chantier a été calculé, et pas seulement chiffré." },
+      { q: 'Intervenez-vous de nuit ou le week-end ?', a: "Oui, et c’est le cas le plus fréquent en tertiaire, notamment en site partiellement occupé. Nous calons les horaires sur le règlement de l’immeuble et le plan de prévention." },
+      { q: 'Le nettoyage des vitrages est-il compris ?', a: "Les vitrages intérieurs — cloisons, portes, garde-corps, façades intérieures — sont inclus et constituent une part importante du travail. Les façades extérieures nécessitant une nacelle ou des travaux en hauteur relèvent d’une entreprise spécialisée, et nous le précisons dans le devis." },
+      { q: 'Déballez-vous le mobilier livré sur site ?', a: "Oui, retrait des films, cartons et protections, puis essuyage avant occupation. Nous recommandons de faire le passage de contrôle final après l’installation du mobilier, jamais avant : la mise en place salit toujours." },
+      { q: 'Traitez-vous les sols techniques et la moquette en dalles ?', a: "Oui, avec le traitement propre à chaque support. La moquette en dalles ne se trempe pas, une résine ne supporte pas l’abrasif, et un plancher technique demande un dépoussiérage des trappes et des réservations où la poussière de découpe s’accumule." },
+      { q: 'Pouvez-vous intervenir sur plusieurs sites d’un même parc ?', a: "Oui. C’est même une configuration où notre modèle prend tout son sens : la même équipe applique le même standard sur l’ensemble des implantations, ce qu’un prestataire différent par ville ne permet pas." },
+      { q: 'Assurez-vous l’entretien après la livraison ?', a: "C’est un autre métier que la remise en état, mais nous le pratiquons également. Beaucoup de clients enchaînent la livraison de chantier et l’entretien régulier avec le même interlocuteur, ce qui évite un nouvel appel d’offres et une nouvelle phase d’apprentissage du site." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-multi-sites', 'nettoyage-livraison-programme-neuf', 'nettoyage-bureaux-lyon'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-industriel',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier industriel',
+    eyebrow: 'Industrie & logistique',
+    h1: 'Nettoyage de fin de chantier industriel et logistique',
+    title: 'Nettoyage fin de chantier industriel — MonCleanerPro | Entrepôts & sites de production',
+    description: "Remise en état de bâtiments industriels et logistiques après travaux, partout en France : entrepôts, sites de production, locaux d’activité. Grandes surfaces, hors exploitation, équipe dimensionnée. Devis sous 24h.",
+    intro:
+      "Un bâtiment industriel ou logistique livré après travaux pose un problème d’échelle avant tout : les surfaces se comptent en dizaines de milliers de mètres carrés, les hauteurs interdisent une bonne partie des gestes habituels, et la mise en exploitation est souvent calée à la semaine près parce que des flux en dépendent. MonCleanerPro intervient sur ces chantiers dans toute la France, avec des équipes dimensionnées pour le volume et une organisation calée sur votre date de démarrage.",
+    highlights: [
+      { title: 'Pensé pour le volume', text: "Des surfaces qui se comptent en dizaines de milliers de mètres carrés appellent des effectifs et une organisation par zones, pas une équipe standard." },
+      { title: 'Avant la mise en exploitation', text: "Nous calons l’intervention sur votre date de démarrage : un entrepôt qui doit recevoir ses premiers flux ne se nettoie pas après." },
+      { title: 'Poussière de béton et de découpe', text: "Dallage, bardage, charpente métallique : une poussière abrasive qui se dépose partout et qu’un balayage ne fait que déplacer." },
+      { title: 'Site en activité', text: "Extension ou réaménagement d’un site en production : intervention hors horaires, dans le cadre du plan de prévention." },
+      { title: 'Limites annoncées', text: "Ce qui relève du travail en hauteur ou d’une filière spécialisée est identifié dans le devis, pas découvert sur place." },
+      { title: 'Partout en France', text: "Une équipe complète se déplace sur votre site, quelle que soit sa localisation." },
+    ],
+    includes: [
+      'Dépoussiérage et lavage mécanisé des dallages',
+      'Élimination du voile de ciment et des résidus de dallage',
+      'Retrait des protections, films, cerclages et emballages',
+      'Structures, poteaux, bardages et menuiseries accessibles',
+      'Quais, portes sectionnelles, niveleurs et zones de chargement',
+      'Locaux sociaux, vestiaires, sanitaires et réfectoires',
+      'Bureaux, mezzanines et locaux techniques attenants',
+      'Vitrages et châssis accessibles en sécurité',
+      'Contrôle par zones avant mise en exploitation',
+    ],
+    sections: [
+      {
+        h2: 'La poussière de dallage n’est pas une poussière ordinaire',
+        paragraphs: [
+          "Sur un bâtiment industriel neuf, la salissure dominante vient du sol lui-même. Un dallage béton, quelle que soit sa qualité de finition, libère une poussière fine et abrasive pendant des semaines — à laquelle s’ajoutent la poussière de découpe du bardage, les résidus de la charpente métallique et les projections liées aux scellements.",
+          "Cette poussière pose deux problèmes concrets. Elle est abrasive, donc elle abîme ce qu’elle touche : elle raye les sols si on la traîne, et elle s’attaque aux roulements et aux capteurs des équipements dès la mise en service. Et elle est volatile : un balayage classique la remet en suspension, d’où elle retombe pendant plusieurs jours sur les surfaces qu’on venait de traiter. C’est la raison pour laquelle un entrepôt « balayé » par l’entreprise de travaux n’est jamais un entrepôt livrable.",
+          "Le traitement passe par un lavage mécanisé, en plusieurs passes, avec un ordre d’intervention descendant : structures et hauteurs accessibles d’abord, dallage en dernier. Prendre le problème dans l’autre sens revient à repasser.",
+        ],
+      },
+      {
+        h2: 'Livrer avant les premiers flux',
+        paragraphs: [
+          "Sur une plateforme logistique, la date qui compte n’est pas la réception du bâtiment mais la mise en exploitation. Un entrepôt reçoit ses racks, puis ses équipements de manutention, puis ses premières palettes — et chaque étape rend le nettoyage plus difficile et plus cher. Une fois les racks montés, l’accès aux surfaces et aux hauteurs est contraint ; une fois les palettes en place, une partie du sol devient inaccessible pour des mois.",
+          "Nous intervenons donc en amont, sur un bâtiment vide, ce qui permet de traiter l’intégralité de la surface en une seule opération. Quand le planning ne le permet pas — c’est fréquent quand le montage des racks démarre avant la réception —, nous travaillons par zones libérées successivement, ce qui coûte davantage mais reste très préférable à une intervention après démarrage.",
+        ],
+      },
+      {
+        h2: 'Intervenir sur un site en production',
+        paragraphs: [
+          "L’extension d’une usine ou le réaménagement d’une ligne ne s’accompagne presque jamais d’un arrêt complet du site. Les contraintes deviennent alors majoritairement des contraintes de sécurité : circulation encadrée, zones à accès restreint, consignes propres au site, coactivité avec les équipes de production, parfois habilitations spécifiques.",
+          "Nous travaillons dans ce cadre à partir du plan de prévention établi avec vous, en intervenant hors horaires d’exploitation et en séparant strictement nos circulations de celles de la production. C’est un point à cadrer en amont, pas le jour de la mobilisation : une équipe qui découvre les règles du site sur place perd une journée, et une équipe qui les ignore crée un risque.",
+        ],
+      },
+      {
+        h2: 'Ce que nous ne faisons pas — et pourquoi le dire',
+        list: [
+          "Le travail en hauteur nécessitant nacelle ou cordistes : charpentes, sous-faces de toiture et bardages hauts relèvent d’entreprises spécialisées et habilitées",
+          "Le nettoyage de process et d’équipements de production, qui engage la responsabilité du constructeur de la machine",
+          "La dépollution, le désamiantage et l’élimination de déchets dangereux, qui relèvent de filières agréées",
+          "L’évacuation de gravats en volume, qui demande une benne et un prestataire dédié",
+          "Les environnements à atmosphère contrôlée exigeant une qualification spécifique",
+        ],
+      },
+      {
+        h2: 'Les bâtiments que nous traitons',
+        list: [
+          "Entrepôts et plateformes logistiques neufs, avant mise en exploitation",
+          "Bâtiments d’activité et locaux industriels livrés clé en main",
+          "Extensions et réaménagements de sites en production",
+          "Bureaux, mezzanines et locaux sociaux attenants aux zones d’exploitation",
+          "Bâtiments reconvertis, après démantèlement d’une activité précédente",
+          "Sites multi-bâtiments livrés par phases",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Quelle surface pouvez-vous traiter ?', a: "Les surfaces de plusieurs dizaines de milliers de mètres carrés font partie de nos interventions, à condition de disposer du délai correspondant ou d’un effectif dimensionné. Le devis précise le nombre d’intervenants et la durée : c’est ce qui distingue un chantier calculé d’un chantier simplement chiffré." },
+      { q: 'Utilisez-vous du matériel mécanisé ?', a: "Oui, le lavage mécanisé est indispensable au-delà d’une certaine surface de dallage. Le matériel est acheminé avec l’équipe et intégré au devis : vous n’avez rien à mettre à disposition sur site." },
+      { q: 'Pouvez-vous intervenir pendant que le site fonctionne ?', a: "Oui, hors horaires d’exploitation et dans le cadre du plan de prévention établi avec vous. Les règles de circulation, les zones à accès restreint et les consignes du site se cadrent en amont, jamais le jour de la mobilisation." },
+      { q: 'Nettoyez-vous la charpente et les sous-faces de toiture ?', a: "Non lorsque cela relève du travail en hauteur avec nacelle ou cordistes : c’est une activité spécialisée et habilitée, et nous ne la revendiquons pas. Nous traitons les structures et hauteurs accessibles en sécurité, et nous le précisons explicitement dans le devis." },
+      { q: 'Intervenez-vous avant ou après le montage des racks ?', a: "Avant, chaque fois que c’est possible : un bâtiment vide se traite intégralement en une opération. Si le montage a commencé, nous travaillons par zones libérées successivement — c’est plus coûteux, mais très préférable à une intervention après démarrage des flux." },
+      { q: 'Prenez-vous en charge les déchets de chantier ?', a: "Nous retirons protections, films, cerclages, emballages et résidus de finition. L’évacuation de gravats en volume et les déchets relevant de filières spécialisées sont exclus et identifiés comme tels dans le devis." },
+      { q: 'Fournissez-vous les documents de prévention ?', a: "Oui : attestations d’assurance, attestation de vigilance et éléments nécessaires à l’établissement du plan de prévention ou du PPSPS selon l’organisation du chantier, transmis avant la mobilisation." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-tertiaire', 'nettoyage-chantier-marche-public', 'nettoyage-fin-de-chantier-saint-priest'],
+    relatedPosts: ['poussiere-de-chantier-eliminer', 'etapes-nettoyage-fin-de-chantier'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-multi-sites',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier multi-sites',
+    eyebrow: 'Réseaux & déploiements',
+    h1: 'Nettoyage de fin de chantier multi-sites',
+    title: 'Nettoyage fin de chantier multi-sites — MonCleanerPro | Réseaux & déploiements',
+    description: "Nettoyage de livraison pour déploiements multi-sites partout en France : ouvertures d’enseignes, rénovations de réseau, agences. Même standard sur chaque site, un seul interlocuteur. Devis sous 24h.",
+    intro:
+      "Déployer un concept sur trente points de vente, c’est répéter trente fois la même opération en espérant qu’elle produise trente fois le même résultat. C’est précisément là que le nettoyage de livraison casse le plus souvent : un prestataire différent par ville, un niveau de finition différent par ville, et une ouverture sur deux qui se fait dans un local qui ne ressemble pas à ce qui avait été validé. MonCleanerPro traite les déploiements multi-sites avec une équipe unique qui se déplace, ce qui rend l’homogénéité mécanique plutôt qu’espérée.",
+    highlights: [
+      { title: 'Le même standard partout', text: "Le trentième site est livré comme le premier, parce que c’est la même équipe qui applique le même protocole." },
+      { title: 'Un seul interlocuteur', text: "Un contrat, un contact, une facturation pour l’ensemble du déploiement — pas un prestataire par ville à sourcer et à contrôler." },
+      { title: 'Calé sur les ouvertures', text: "Chaque site est livré juste avant son ouverture ou sa réouverture, selon votre calendrier de déploiement." },
+      { title: 'Tournées optimisées', text: "Les sites proches sont regroupés en tournées cohérentes, ce qui réduit les frais de déplacement et le délai global." },
+      { title: 'Traçabilité par site', text: "Un rapport photo daté par point de vente, exploitable pour votre suivi de déploiement et vos comptes rendus internes." },
+      { title: 'Reprises et rattrapages', text: "Un site livré en retard ou repris tardivement ne fait pas dérailler l’ensemble du planning." },
+    ],
+    includes: [
+      'Remise en état complète avant ouverture ou réouverture',
+      'Retrait des protections, films, étiquettes et emballages d’agencement',
+      'Surfaces de vente, mobilier d’agencement et présentoirs',
+      'Vitrines, vitrages et enseignes accessibles, sans traces',
+      'Réserves, arrière-boutiques et locaux de stockage',
+      'Sanitaires, vestiaires et espaces personnel',
+      'Sols traités selon le revêtement posé',
+      'Rapport photo daté par site, pour le suivi du déploiement',
+    ],
+    sections: [
+      {
+        h2: 'Le vrai coût d’un prestataire par ville',
+        paragraphs: [
+          "Sur le papier, sourcer localement paraît économique : on prend le meilleur prix dans chaque bassin. Dans les faits, le déploiement multi-sites est le cas où cette logique coûte le plus cher, et le surcoût n’apparaît jamais sur les devis.",
+          "Il apparaît ailleurs. Dans le temps passé par votre équipe projet à sourcer, vérifier, cadrer et relancer trente entreprises différentes. Dans les attestations à collecter trente fois. Dans les niveaux de finition qui varient d’un site à l’autre sans qu’on puisse rien y faire, parce qu’il n’y a aucun standard commun. Dans les ouvertures repoussées quand un prestataire fait défaut à trois jours de l’échéance et qu’il faut en retrouver un autre, sur place, en urgence.",
+          "Une équipe unique qui se déplace supprime ces trois postes d’un coup. Le prix affiché est plus élevé qu’un devis local pris isolément ; le coût complet du déploiement est nettement plus bas.",
+        ],
+      },
+      {
+        h2: 'Comment nous organisons un déploiement',
+        list: [
+          "Cadrage du concept : un site pilote sert de référence, on y fige le protocole, le niveau de finition attendu et la durée type.",
+          "Découpage en tournées : les sites sont regroupés par proximité géographique et par fenêtre d’ouverture, ce qui réduit les déplacements et le délai global.",
+          "Calendrier partagé : chaque site a sa date d’intervention, calée juste avant son ouverture, et visible par votre équipe projet.",
+          "Intervention : la même équipe, avec le même chef d’équipe, applique le protocole validé sur le site pilote.",
+          "Rapport par site : photos datées, points signalés, état de livraison — directement exploitable dans votre suivi de déploiement.",
+          "Ajustements en cours de route : un concept évolue toujours entre le site 1 et le site 30, et le protocole suit.",
+        ],
+      },
+      {
+        h2: 'Le site pilote fige tout le reste',
+        paragraphs: [
+          "C’est le point de méthode qui fait la différence sur un déploiement. Tant que le niveau de finition attendu n’a pas été matérialisé sur un site réel, il reste une intention — et chaque intervenant l’interprétera. Sur le premier site, nous travaillons donc avec votre équipe projet présente ou en validation à distance, pour caler précisément ce qui est attendu : le traitement des vitrines, le niveau de détail sur l’agencement, ce qui relève du nettoyage et ce qui relève de l’agenceur.",
+          "Une fois ce référentiel figé et documenté, il devient répétable. C’est aussi ce qui permet d’annoncer une durée fiable pour les sites suivants, et donc un budget de déploiement qui ne dérive pas.",
+        ],
+      },
+      {
+        h2: 'Les déploiements que nous accompagnons',
+        list: [
+          "Ouvertures de points de vente et déploiements de concept sur un réseau",
+          "Rénovations de parc : mise au nouveau concept, site après site",
+          "Réseaux d’agences bancaires, d’assurance et de services",
+          "Restauration en réseau, avant réouverture après travaux",
+          "Parcs hôteliers rénovés par vagues, établissement par établissement",
+          "Locaux d’exploitation d’un même groupe, répartis sur plusieurs régions",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Combien de sites pouvez-vous traiter sur un déploiement ?', a: "Ce qui compte est le rythme d’ouverture et la dispersion géographique, davantage que le nombre brut. Un déploiement étalé sur plusieurs mois se traite sans difficulté ; dix ouvertures simultanées dans dix régions demandent un dimensionnement particulier, que nous cadrons ensemble avant de nous engager." },
+      { q: 'Comment garantissez-vous le même résultat partout ?', a: "Parce que c’est la même équipe. Le protocole est figé sur un site pilote avec votre équipe projet, documenté, puis appliqué à l’identique. C’est ce qu’un réseau de prestataires locaux ne peut structurellement pas offrir, quel que soit le cahier des charges rédigé." },
+      { q: 'Facturez-vous chaque site séparément ?', a: "Vous choisissez : facturation consolidée pour l’ensemble du déploiement, ou par site si votre comptabilité analytique le demande — par exemple quand chaque point de vente porte son propre budget d’ouverture." },
+      { q: 'Que se passe-t-il si une ouverture est repoussée ?', a: "Nous replanifions le site concerné sans remettre en cause la tournée. C’est justement l’intérêt d’un pilotage centralisé : un décalage sur un site ne provoque pas la perte d’un prestataire local qui ne sera plus disponible ensuite." },
+      { q: 'Intervenez-vous aussi sur les rénovations de parc existant ?', a: "Oui, et c’est fréquent : la mise au nouveau concept d’un réseau existant se fait site après site, souvent de nuit ou sur des fermetures courtes pour limiter la perte d’exploitation." },
+      { q: 'Pouvez-vous assurer l’entretien après l’ouverture ?', a: "C’est un métier différent de la remise en état, mais nous le pratiquons. Certains clients enchaînent les deux avec le même interlocuteur ; d’autres préfèrent confier l’entretien courant à un prestataire de proximité, ce qui se défend parfaitement sur un réseau très dispersé." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-tertiaire', 'nettoyage-fin-de-chantier-hotellerie', 'nettoyage-commerce-lyon'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-chantier-marche-public',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'marché public nettoyage fin de chantier',
+    eyebrow: 'Commande publique',
+    h1: 'Nettoyage de fin de chantier en marché public',
+    title: 'Marché public nettoyage fin de chantier — MonCleanerPro | Appels d’offres & lots',
+    description: "Nettoyage de fin de chantier en marché public partout en France : groupes scolaires, équipements sportifs et culturels, bâtiments administratifs. Candidature directe, co-traitance ou sous-traitance déclarée.",
+    intro:
+      "Une opération publique impose au nettoyage de fin de chantier des contraintes que le privé ne connaît pas : un calendrier verrouillé par une date d’ouverture au public qui ne se négocie pas, une réception formalisée avec procès-verbal et réserves opposables, et un dossier administratif qui doit être irréprochable avant même que la première heure soit travaillée. MonCleanerPro répond à ces opérations sur l’ensemble du territoire, en candidature directe comme en co-traitance ou en sous-traitance déclarée d’une entreprise générale.",
+    highlights: [
+      { title: 'Dossier conforme', text: "Pièces de candidature, attestations et déclarations produites au format attendu, dans les délais de la consultation." },
+      { title: 'La date d’ouverture est ferme', text: "Une rentrée scolaire ou une inauguration ne se décale pas. Le planning est construit à partir de cette date, avec la marge nécessaire." },
+      { title: 'Réception et réserves', text: "Passage de contrôle avant l’OPR, présence à la visite si vous le souhaitez, et levée des réserves de propreté dans les délais." },
+      { title: 'Opérations alloties', text: "Nous répondons lot par lot et nous nous coordonnons avec les autres titulaires sur le calendrier d’exécution." },
+      { title: 'Co-traitance et sous-traitance', text: "Membre d’un groupement ou sous-traitant déclaré d’une entreprise générale, selon le montage de l’opération." },
+      { title: 'Équipe qui se déplace', text: "L’opération peut se situer n’importe où en France : c’est notre équipe qui vient, avec son matériel." },
+    ],
+    includes: [
+      'Remise en état complète avant OPR et réception',
+      'Retrait des protections, films, étiquettes et adhésifs',
+      'Dépoussiérage descendant, faux plafonds et points hauts compris',
+      'Vitrages, châssis et menuiseries traités sans traces',
+      'Sanitaires collectifs, vestiaires et locaux de service',
+      'Circulations, escaliers, halls et espaces d’accueil',
+      'Sols traités selon le revêtement, salle par salle',
+      'Passage de contrôle avant réception et levée des réserves de propreté',
+      'Rapports d’intervention par zone, exploitables au dossier',
+    ],
+    sections: [
+      {
+        h2: 'La date d’ouverture au public ne se négocie pas',
+        paragraphs: [
+          "C’est la contrainte structurante d’une opération publique, et elle change complètement la façon de planifier. Un groupe scolaire ouvre à la rentrée. Un équipement sportif ouvre pour la saison. Une médiathèque ouvre le jour de son inauguration, annoncée publiquement depuis des mois. Ces dates ne glissent pas, quel que soit l’état d’avancement du chantier.",
+          "Le nettoyage étant la dernière intervention avant la réception, il absorbe mécaniquement tous les retards accumulés en amont. C’est une réalité qu’il vaut mieux intégrer dès le devis plutôt que découvrir : nous prévoyons donc la capacité de renforcer l’équipe si le chantier nous est livré plus tard que prévu, ce qui est le cas le plus fréquent. Une entreprise qui a dimensionné au plus juste ne peut pas absorber ce décalage, et c’est à ce moment-là que la qualité s’effondre.",
+        ],
+      },
+      {
+        h2: 'Ce qui est réellement regardé à l’OPR',
+        paragraphs: [
+          "Les opérations préalables à la réception donnent lieu à un procès-verbal, et les réserves qui y figurent sont opposables. Sur le volet propreté, elles portent presque toujours sur les mêmes points : étiquettes de vitrage, voile de ciment, projections de peinture, poussière dans les gorges de menuiserie et sur les dessus de portes, résidus de silicone, traces sur les vitrages.",
+          "Nous effectuons systématiquement un passage de contrôle dédié avant l’OPR, distinct du nettoyage lui-même, en reprenant précisément cette liste. Et si des réserves de propreté sont malgré tout portées au procès-verbal, nous intervenons dans le délai de levée : c’est un engagement, pas une prestation à renégocier après coup.",
+        ],
+      },
+      {
+        h2: 'Les montages contractuels que nous pratiquons',
+        list: [
+          "Candidature directe sur un lot nettoyage de fin de chantier, quand l’opération est allotie de cette façon",
+          "Co-traitance au sein d’un groupement momentané d’entreprises, conjoint ou solidaire",
+          "Sous-traitance déclarée d’une entreprise générale ou du titulaire du lot, avec acte spécial",
+          "Prestation intégrée au marché de travaux du titulaire, sur des opérations où le nettoyage n’est pas alloti séparément",
+          "Marchés à bons de commande pour les collectivités et bailleurs livrant régulièrement des opérations",
+        ],
+      },
+      {
+        h2: 'Les équipements sur lesquels nous intervenons',
+        list: [
+          "Groupes scolaires, collèges, lycées et bâtiments universitaires",
+          "Équipements sportifs : gymnases, piscines, salles polyvalentes",
+          "Équipements culturels : médiathèques, salles de spectacle, musées",
+          "Bâtiments administratifs, mairies et centres techniques",
+          "Établissements médico-sociaux, crèches et résidences autonomie",
+          "Logement social : opérations neuves et réhabilitations livrées par lots",
+        ],
+      },
+      {
+        h2: 'Réhabilitation en site occupé',
+        paragraphs: [
+          "Une part importante de la commande publique porte sur de la réhabilitation, et rarement sur un bâtiment vide. Une école se rénove pendant les vacances scolaires, avec des délais extrêmement courts et une date de retour des élèves absolument ferme. Un bâtiment administratif se restructure aile par aile pendant que les services continuent de recevoir du public.",
+          "Ces opérations demandent surtout de la rigueur sur la séparation des zones et sur la sécurité : le public et les usagers ne doivent jamais croiser le chantier. Nous intervenons dans ce cadre en travaillant hors présence du public, avec des circulations et un stockage de matériel strictement séparés — et une attention particulière aux établissements accueillant des enfants, où les produits et le stockage relèvent d’une vigilance renforcée.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Répondez-vous directement aux appels d’offres ?', a: "Oui, en candidature directe lorsque le nettoyage de fin de chantier fait l’objet d’un lot, et nous produisons les pièces attendues au format de la consultation dans les délais fixés." },
+      { q: 'Pouvez-vous intervenir en sous-traitance d’une entreprise générale ?', a: "Oui, en sous-traitance déclarée avec acte spécial, ce qui est le montage le plus fréquent quand le nettoyage est intégré au marché de travaux du titulaire. Nous fournissons l’ensemble des pièces nécessaires à la déclaration." },
+      { q: 'Acceptez-vous les groupements momentanés d’entreprises ?', a: "Oui, en groupement conjoint comme solidaire, y compris lorsque le nettoyage n’est qu’une partie d’un lot plus large porté par un mandataire." },
+      { q: 'Que se passe-t-il si des réserves de propreté figurent au PV ?', a: "Nous intervenons dans le délai de levée fixé, sans renégociation. Le passage de contrôle que nous effectuons avant l’OPR vise précisément à ce que cette situation ne se produise pas, mais l’engagement de reprise fait partie de la prestation." },
+      { q: 'Pouvez-vous absorber un retard de chantier ?', a: "C’est prévu dès le devis. Le nettoyage étant la dernière intervention avant réception, il absorbe les retards amont — c’est la règle, pas l’exception. Nous conservons donc la possibilité de renforcer l’équipe pour tenir une date d’ouverture qui, elle, ne bouge pas." },
+      { q: 'Intervenez-vous pendant les vacances scolaires ?', a: "Oui, et c’est la fenêtre habituelle pour les établissements scolaires. Ce sont des délais très courts avec une date de retour ferme : le dimensionnement de l’équipe est la clé, et il se décide en amont, pas la semaine précédente." },
+      { q: 'Travaillez-vous pour les bailleurs sociaux ?', a: "Oui, sur les opérations neuves comme sur les réhabilitations livrées par lots, y compris en marché à bons de commande pour les bailleurs qui livrent régulièrement." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-livraison-programme-neuf', 'nettoyage-fin-de-chantier-industriel', 'nettoyage-fin-de-chantier-tertiaire'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'difference-fin-de-chantier-apres-travaux'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-hotellerie',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier hôtel',
+    eyebrow: 'Hôtellerie',
+    h1: 'Nettoyage de fin de chantier hôtelier',
+    title: 'Nettoyage fin de chantier hôtel — MonCleanerPro | Réouverture après rénovation',
+    description: "Remise en état d’hôtels après rénovation, partout en France : chambres livrées par étages, parties communes, réouverture en site partiellement exploité. Standard hôtelier tenu. Devis sous 24h.",
+    intro:
+      "Rouvrir un hôtel après rénovation n’a rien de commun avec la livraison d’un bâtiment ordinaire. Le niveau de finition attendu n’est pas celui d’un chantier réussi, c’est celui d’une chambre vendue au prix fort à un client qui inspectera le joint de douche et le dessous du lit. Et la rénovation se fait presque toujours par étages, l’établissement continuant d’accueillir des clients pendant les travaux. MonCleanerPro assure la remise en état de fin de chantier hôtelier dans toute la France — un domaine où notre activité quotidienne en hôtellerie nous sert directement.",
+    highlights: [
+      { title: 'Le standard hôtelier, pas le standard chantier', text: "Une chambre livrée doit être vendable le soir même. Le niveau attendu est celui du client, pas celui de la réception de travaux." },
+      { title: 'Livraison par étages', text: "Nous suivons le phasage de la rénovation, étage par étage ou aile par aile, au rythme de la remise en exploitation." },
+      { title: 'Site partiellement exploité', text: "Des clients dorment dans l’établissement pendant les travaux : circulations séparées, horaires encadrés, nuisances maîtrisées." },
+      { title: 'Nous connaissons le métier', text: "L’hôtellerie est une part de notre activité quotidienne : nous savons ce qu’une gouvernante contrôle avant de mettre une chambre en vente." },
+      { title: 'Parties communes soignées', text: "Lobby, restaurant, spa et circulations sont ce que le client voit en premier, souvent avant même sa chambre." },
+      { title: 'Enchaînement possible', text: "La remise en état peut être suivie de l’entretien courant, avec le même interlocuteur." },
+    ],
+    includes: [
+      'Remise en état des chambres et salles de bains après travaux',
+      'Retrait des protections, films, étiquettes et emballages de mobilier',
+      'Élimination des projections de peinture, colle et silicone',
+      'Vitrages, miroirs, robinetterie et chromes sans traces',
+      'Mobilier, têtes de lit, dessous de lit et intérieurs de placard',
+      'Lobby, réception, couloirs, ascenseurs et circulations',
+      'Restaurant, bar, cuisine et espaces de service',
+      'Espaces bien-être, salles de séminaire et sanitaires publics',
+      'Contrôle chambre par chambre avant remise en vente',
+    ],
+    sections: [
+      {
+        h2: 'Une chambre livrée doit être vendable le soir même',
+        paragraphs: [
+          "C’est ce qui distingue radicalement un chantier hôtelier d’un autre. Sur un immeuble de bureaux, un défaut de finition est relevé en réception puis repris tranquillement. Sur une chambre d’hôtel, il est découvert par un client qui a payé sa nuit et qui le raconte publiquement le lendemain matin. Le délai entre la livraison et le jugement est de quelques heures, et le jugement est écrit.",
+          "Le niveau de contrôle doit donc être celui d’une gouvernante, pas celui d’un conducteur de travaux : le dessous du lit, l’intérieur des tiroirs et du minibar, le joint de douche, le dessus de la tête de lit, l’arrière des rideaux, le siphon. Ce sont les points qu’un client inspecte instinctivement en arrivant, et aucun n’apparaît sur une check-list de réception de travaux classique.",
+          "C’est précisément là que notre activité hôtelière quotidienne fait la différence : nous ne découvrons pas ces exigences sur votre chantier, nous les appliquons toute l’année.",
+        ],
+      },
+      {
+        h2: 'Rénover un hôtel qui continue de tourner',
+        paragraphs: [
+          "L’arrêt complet d’un établissement est rare : il coûte trop cher. La rénovation se fait donc par étages ou par ailes, avec des clients qui dorment à un niveau pendant que le chantier avance au-dessus. Cette configuration impose des règles strictes, et le nettoyage y est directement concerné puisqu’il intervient en toute fin, souvent tard.",
+          "Concrètement : des circulations séparées de celles des clients, un usage réservé du monte-charge, des horaires compatibles avec le sommeil des occupants, un stockage de matériel invisible depuis les espaces clients, et une attention permanente à la poussière qui migre — d’un étage en travaux vers un étage en exploitation, elle passe par les gaines, les cages d’escalier et les ascenseurs. Un étage livré impeccable au-dessus d’un étage encore en chantier se resalit en continu tant que le chantier n’est pas terminé.",
+        ],
+      },
+      {
+        h2: 'Les parties communes se jugent avant les chambres',
+        paragraphs: [
+          "Un client se fait son opinion en entrant dans le lobby, bien avant d’ouvrir la porte de sa chambre. Les espaces communs rénovés — réception, salon, bar, restaurant, ascenseurs — sont donc à traiter avec le même niveau d’exigence, avec une difficulté supplémentaire : ils sont rarement fermés au public aussi longtemps que les chambres.",
+          "Ces espaces concentrent en outre les matériaux délicats d’un projet hôtelier : laiton, marbre, verre, bois vernis, textiles muraux, luminaires décoratifs. Autant de supports qui ne supportent pas un produit générique et sur lesquels une erreur se voit immédiatement, en pleine lumière, au centre de l’établissement.",
+        ],
+      },
+      {
+        h2: 'Les opérations que nous accompagnons',
+        list: [
+          "Rénovation complète d’un établissement avant réouverture",
+          "Rénovation par étages ou par ailes, en site partiellement exploité",
+          "Changement d’enseigne ou montée en gamme, avec remise au standard de la marque",
+          "Rénovation des seules parties communes : lobby, restaurant, espace bien-être",
+          "Création ou extension d’un établissement, en livraison neuve",
+          "Déploiement sur plusieurs établissements d’un même groupe ou d’une même franchise",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Pouvez-vous livrer les chambres au fur et à mesure ?', a: "Oui, c’est le mode normal en rénovation hôtelière. Nous suivons votre phasage — étage par étage ou aile par aile — pour que les chambres soient remises en vente dès qu’elles sont prêtes, sans attendre la fin globale du chantier." },
+      { q: 'Intervenez-vous pendant que l’hôtel accueille des clients ?', a: "Oui, c’est la configuration la plus fréquente. Circulations séparées, usage réservé du monte-charge, horaires compatibles avec le sommeil des clients et stockage invisible depuis les espaces publics : ces points se cadrent avec la direction avant la mobilisation." },
+      { q: 'Le niveau attendu est-il différent d’un autre chantier ?', a: "Oui, nettement. Le contrôle doit être celui d’une gouvernante avant mise en vente : dessous de lit, intérieurs de tiroirs et de minibar, joints de douche, dessus de tête de lit, arrière des rideaux. Aucun de ces points ne figure sur une check-list de réception de travaux classique." },
+      { q: 'Traitez-vous les matériaux délicats des parties communes ?', a: "Oui. Laiton, marbre, verre, bois vernis et textiles muraux appellent chacun un produit et un geste spécifiques. C’est un point que nous cadrons avec l’architecte d’intérieur ou le maître d’œuvre quand le projet comporte des finitions particulières." },
+      { q: 'La poussière peut-elle passer d’un étage à l’autre ?', a: "Oui, et c’est un point sous-estimé : elle migre par les gaines, les cages d’escalier et les ascenseurs. Un étage livré au-dessus d’un étage encore en chantier se resalit en continu. Nous en tenons compte dans l’ordre des interventions et prévoyons les reprises nécessaires en fin d’opération." },
+      { q: 'Pouvez-vous enchaîner sur l’entretien courant ?', a: "Oui. L’hôtellerie est une part de notre activité quotidienne, et plusieurs établissements nous confient l’entretien après nous avoir confié leur remise en état. Cela évite une nouvelle phase d’apprentissage du site." },
+      { q: 'Intervenez-vous sur plusieurs établissements d’un groupe ?', a: "Oui, notamment sur les rénovations de parc déployées par vagues. C’est le cas où l’homogénéité du résultat compte le plus, puisque tous les établissements doivent atteindre le même standard de marque." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-multi-sites', 'nettoyage-hotel-lyon', 'nettoyage-fin-de-chantier-tertiaire'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+
+  // ── Déclinaisons villes du cluster national ───────────────────────────────
+  // Chaque page porte un angle propre au tissu économique et au bâti local.
+  // Aucune ne revendique d'agence sur place : le modèle assumé est le
+  // déplacement d'une équipe complète depuis Lyon.
+  {
+    slug: 'nettoyage-fin-de-chantier-paris',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier Paris',
+    eyebrow: 'Gros chantiers · Paris & Île-de-France',
+    h1: 'Nettoyage de fin de chantier à Paris et en Île-de-France',
+    title: 'Nettoyage fin de chantier Paris — MonCleanerPro | Tertiaire & restructuration',
+    description: "Nettoyage de fin de chantier à Paris et en Île-de-France : plateaux de bureaux, restructurations, livraisons tertiaires. Intervention de nuit, logistique maîtrisée, équipe dédiée. Devis sous 24h.",
+    intro:
+      "À Paris, la difficulté d’un chantier de fin de travaux n’est presque jamais le nettoyage lui-même : c’est tout ce qui l’entoure. Faire entrer une équipe et son matériel dans un immeuble haussmannien restructuré en bureaux, avec un monte-charge unique, une autorisation de stationnement à obtenir et des horaires imposés par le règlement de copropriété, demande une préparation qui n’a pas d’équivalent en région. MonCleanerPro intervient sur les livraisons parisiennes et franciliennes avec une équipe complète qui se déplace et une logistique cadrée en amont.",
+    highlights: [
+      { title: 'La logistique d’abord', text: "Accès, stationnement, monte-charge et horaires se règlent avant la mobilisation. Une équipe bloquée sur le trottoir coûte une journée." },
+      { title: 'Intervention de nuit', text: "En site occupé ou en immeuble partagé, nous travaillons quand l’immeuble est vide — soirée, nuit ou week-end." },
+      { title: 'Restructuration tertiaire', text: "Immeubles anciens transformés en plateaux : le mélange de bâti historique et d’aménagement contemporain demande deux savoir-faire." },
+      { title: 'Volumes tenus en délai court', text: "Les livraisons parisiennes se font souvent sur une fenêtre de quelques nuits. L’effectif est dimensionné pour ça." },
+      { title: 'Matériel acheminé', text: "Nous venons avec notre matériel et nos produits : rien à mettre à disposition sur un site où le stockage est déjà un problème." },
+      { title: 'Toute l’Île-de-France', text: "Paris intra-muros comme La Défense, les Hauts-de-Seine et la première couronne." },
+    ],
+    includes: [
+      'Remise en état de plateaux de bureaux avant prise de possession',
+      'Retrait des protections de sol, films de menuiserie et emballages',
+      'Cloisons vitrées, verrières et façades intérieures sans traces',
+      'Dépoussiérage descendant, faux plafonds et points hauts',
+      'Moulures, parquets et éléments anciens conservés en restructuration',
+      'Sanitaires, kitchenettes et espaces de restauration',
+      'Halls, circulations, escaliers et ascenseurs',
+      'Contrôle final après mise en place du mobilier',
+    ],
+    sections: [
+      {
+        h2: 'Ce qui fait rater une intervention parisienne',
+        paragraphs: [
+          "Ce n’est jamais le niveau de finition. C’est l’accès. Une équipe qui arrive à 20h devant un immeuble du 8e sans autorisation de stationnement, avec du matériel à décharger et un gardien qui n’a pas été prévenu, perd sa nuit — et une nuit perdue sur une fenêtre de trois nuits, c’est un tiers du chantier.",
+          "Les contraintes s’accumulent vite : voirie encombrée, livraisons interdites sur certaines plages horaires, monte-charge unique partagé avec les autres corps de métier, ascenseurs interdits au matériel, règlement de copropriété qui limite les horaires de travaux, zone à faibles émissions pour les véhicules. Aucune n’est insurmontable, toutes sont bloquantes si elles sont découvertes le jour J.",
+          "Nous les traitons donc au cadrage, pas à la mobilisation : accès et créneaux confirmés, badges ou clés prévus, interlocuteur sur place identifié, point de déchargement validé. C’est un travail peu spectaculaire, et c’est ce qui fait qu’une intervention parisienne se déroule normalement.",
+        ],
+      },
+      {
+        h2: 'Le bâti ancien restructuré en bureaux',
+        paragraphs: [
+          "C’est la signature des chantiers parisiens : un immeuble du XIXe siècle transformé en plateaux contemporains. Le résultat mélange des éléments qu’on ne trouve jamais ensemble ailleurs — parquets d’origine conservés, moulures et cheminées maintenues, à côté de cloisons vitrées, de sols techniques et de faux plafonds acoustiques.",
+          "Pour la remise en état, cela signifie deux protocoles dans la même pièce. Le parquet ancien ne supporte ni l’eau stagnante ni un produit décapant, alors que la cloison vitrée installée à un mètre demande un traitement sans traces qui, mal maîtrisé, coule sur ce même parquet. Les moulures et les corniches conservées, elles, concentrent la poussière de ponçage dans leurs gorges — c’est de là qu’elle redescend une semaine après la livraison, sur un plateau qu’on croyait terminé.",
+        ],
+      },
+      {
+        h2: 'Nos interventions en Île-de-France',
+        list: [
+          "Livraisons de plateaux de bureaux, à Paris comme à La Défense et en première couronne",
+          "Restructurations d’immeubles anciens transformés en tertiaire",
+          "Sièges sociaux et aménagements sur mesure, avant emménagement",
+          "Commerces et flagships avant ouverture, souvent sur des fenêtres très courtes",
+          "Hôtels rénovés, en site partiellement exploité",
+          "Programmes de logements neufs livrés en périphérie et en première couronne",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Avez-vous une agence à Paris ?', a: "Non, et nous préférons le dire clairement : nous sommes basés à Lyon et c’est notre équipe qui se déplace, avec son matériel. C’est précisément ce qui garantit que le niveau de finition sera le même que sur nos chantiers habituels, plutôt que celui d’une équipe recrutée localement pour l’occasion." },
+      { q: 'Comment gérez-vous les contraintes d’accès et de stationnement ?', a: "Elles se règlent au cadrage, jamais à la mobilisation. Créneaux d’accès, autorisation de stationnement, usage du monte-charge, badges et interlocuteur sur place sont confirmés avant que l’équipe ne parte. C’est le premier poste de risque d’une intervention parisienne." },
+      { q: 'Pouvez-vous intervenir de nuit ?', a: "Oui, et c’est fréquent en immeuble partagé ou partiellement occupé. Nous calons les horaires sur le règlement de l’immeuble et sur le plan de prévention établi avec le maître d’ouvrage ou le property manager." },
+      { q: 'Traitez-vous les parquets et moulures conservés en restructuration ?', a: "Oui, avec un traitement distinct de celui des éléments neufs. Un parquet d’origine ne supporte ni l’eau stagnante ni un produit décapant, et les gorges de moulures retiennent la poussière de ponçage qui redescend plus tard. Ces deux points sont traités spécifiquement." },
+      { q: 'Pouvez-vous livrer un plateau sur une fenêtre de deux ou trois nuits ?', a: "Oui, à condition de le savoir en amont pour dimensionner l’équipe. Le nombre d’intervenants et la durée figurent dans le devis : c’est ce qui permet de vérifier que la fenêtre a réellement été calculée." },
+      { q: 'Intervenez-vous au-delà de Paris intra-muros ?', a: "Oui : La Défense, les Hauts-de-Seine, la première couronne et plus largement l’Île-de-France, y compris sur des opérations réparties sur plusieurs sites franciliens." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-tertiaire', 'nettoyage-livraison-programme-neuf', 'nettoyage-fin-de-chantier-lille'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-marseille',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier Marseille',
+    eyebrow: 'Gros chantiers · Marseille',
+    h1: 'Nettoyage de fin de chantier à Marseille',
+    title: 'Nettoyage fin de chantier Marseille — MonCleanerPro | Tertiaire, réhabilitation & hôtellerie',
+    description: "Nettoyage de fin de chantier à Marseille et dans les Bouches-du-Rhône : livraisons tertiaires, réhabilitation du centre ancien, hôtellerie, logistique portuaire. Équipe dédiée. Devis sous 24h.",
+    intro:
+      "Marseille fait cohabiter deux types de chantiers que peu de villes réunissent à cette échelle : des livraisons tertiaires neuves, portées par les opérations d’aménagement du front de mer et des quartiers d’affaires, et une réhabilitation massive du bâti ancien du centre-ville. Les deux appellent des méthodes opposées — le neuf demande de retirer des protections, l’ancien demande de ne rien abîmer. MonCleanerPro intervient sur les deux, avec une équipe complète qui se déplace.",
+    highlights: [
+      { title: 'Neuf et réhabilitation', text: "Livraison tertiaire et remise en état de bâti ancien sont deux métiers. Nous ne les traitons pas avec le même protocole." },
+      { title: 'Hôtellerie et tourisme', text: "Rénovation d’établissements avant la saison : une date d’ouverture ferme et un standard client, pas un standard chantier." },
+      { title: 'Logistique et activité portuaire', text: "Bâtiments d’activité et entrepôts : surfaces importantes traitées avant mise en exploitation." },
+      { title: 'Centre ancien contraint', text: "Rues étroites, immeubles sans ascenseur, accès difficile : la logistique se cadre avant la mobilisation." },
+      { title: 'Effectifs dimensionnés', text: "Le nombre d’intervenants et la durée sont annoncés dans le devis, pas ajustés en cours de chantier." },
+      { title: 'Bouches-du-Rhône', text: "Marseille, Aix-en-Provence et l’ensemble du département sur les opérations qui justifient le déplacement." },
+    ],
+    includes: [
+      'Remise en état avant réception ou mise en exploitation',
+      'Retrait des protections, films, étiquettes et adhésifs',
+      'Élimination du voile de ciment et des résidus de pose',
+      'Traitement adapté aux sols et pierres du bâti ancien',
+      'Vitrages, châssis et menuiseries sans traces',
+      'Sanitaires, cuisines et locaux techniques',
+      'Parties communes, halls et circulations',
+      'Contrôle final par lot ou par zone',
+    ],
+    sections: [
+      {
+        h2: 'Deux villes, deux chantiers',
+        paragraphs: [
+          "Sur une livraison tertiaire neuve, le travail est mécanique et connu : films de protection, étiquettes de vitrage, voile de ciment, poussière de découpe. La difficulté est le volume et le délai, rarement la technique.",
+          "Dans le centre ancien réhabilité, tout change. On travaille sur des immeubles qui ont plus d’un siècle, avec des sols anciens, des pierres apparentes, des menuiseries et des ferronneries d’origine parfois conservées. La poussière y est plus abondante — les réhabilitations lourdes touchent à la structure — et les supports sont fragiles. Un produit acide sur une pierre calcaire laisse une marque définitive ; un carrelage ancien à motifs se ternit à l’eau savonneuse mal rincée.",
+          "Ce sont deux protocoles distincts, et c’est un point que nous cadrons dès le devis : appliquer la méthode du neuf sur de l’ancien abîme, appliquer la méthode de l’ancien sur du neuf coûte inutilement du temps.",
+        ],
+      },
+      {
+        h2: 'La saison commande les dates',
+        paragraphs: [
+          "Une bonne partie des chantiers marseillais — hôtels, résidences, commerces, établissements de bord de mer — est calée sur une ouverture avant la saison touristique. Cette date ne se décale pas : un établissement qui rouvre avec trois semaines de retard perd sa haute saison, pas seulement trois semaines de chiffre d’affaires.",
+          "Le nettoyage étant la dernière intervention avant l’ouverture, il absorbe tous les retards accumulés en amont. Nous le prévoyons dès le devis en conservant la possibilité de renforcer l’équipe, plutôt que de dimensionner au plus juste et de découvrir en avril que le chantier nous est livré deux semaines plus tard que prévu.",
+        ],
+      },
+      {
+        h2: 'Nos interventions dans les Bouches-du-Rhône',
+        list: [
+          "Livraisons de plateaux tertiaires et d’immeubles de bureaux neufs",
+          "Réhabilitation d’immeubles du centre ancien, logement comme tertiaire",
+          "Hôtels et résidences de tourisme rénovés avant la saison",
+          "Bâtiments d’activité, entrepôts et locaux logistiques avant exploitation",
+          "Commerces et surfaces de vente avant ouverture",
+          "Programmes de logements neufs livrés par lots",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Avez-vous une implantation à Marseille ?', a: "Non. Nous sommes basés à Lyon et notre équipe se déplace avec son matériel, sur les chantiers dont le volume le justifie. Nous ne revendiquons pas d’agence locale : c’est la continuité de l’équipe, pas la proximité, qui garantit le niveau de finition." },
+      { q: 'Traitez-vous la réhabilitation du bâti ancien ?', a: "Oui, avec un protocole distinct de celui du neuf. Pierre calcaire, carrelages anciens à motifs, menuiseries et ferronneries conservées demandent des produits neutres, peu d’eau et un rinçage soigné — un produit acide y laisse une marque définitive." },
+      { q: 'Pouvez-vous livrer un hôtel avant l’ouverture de saison ?', a: "Oui, et c’est un cas fréquent. La date d’ouverture étant ferme, nous prévoyons dès le devis la possibilité de renforcer l’équipe : le nettoyage arrive en dernier et absorbe les retards du chantier, c’est la règle plutôt que l’exception." },
+      { q: 'Comment gérez-vous l’accès dans le centre ancien ?', a: "Au cadrage. Rues étroites, absence d’ascenseur, stationnement contraint et créneaux de livraison sont identifiés avant la mobilisation, avec un point de déchargement validé et un interlocuteur sur place." },
+      { q: 'Intervenez-vous à Aix-en-Provence et dans le département ?', a: "Oui, sur l’ensemble des Bouches-du-Rhône pour les opérations qui justifient le déplacement d’une équipe complète — notamment les opérations réparties sur plusieurs sites du département." },
+      { q: 'Traitez-vous les entrepôts et bâtiments logistiques ?', a: "Oui, avant mise en exploitation, avec lavage mécanisé des dallages et traitement de la poussière de dallage et de découpe. Les travaux en hauteur nécessitant nacelle ou cordistes sont exclus et signalés dans le devis." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-hotellerie', 'nettoyage-fin-de-chantier-tertiaire', 'nettoyage-fin-de-chantier-bordeaux'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-bordeaux',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier Bordeaux',
+    eyebrow: 'Gros chantiers · Bordeaux',
+    h1: 'Nettoyage de fin de chantier à Bordeaux',
+    title: 'Nettoyage fin de chantier Bordeaux — MonCleanerPro | Programmes neufs & pierre de taille',
+    description: "Nettoyage de fin de chantier à Bordeaux et en Gironde : livraisons de programmes neufs, réhabilitation en pierre de taille, tertiaire. Livraison lot par lot, équipe dédiée. Devis sous 24h.",
+    intro:
+      "Bordeaux livre beaucoup de logements neufs, et rénove énormément de pierre de taille. Ces deux réalités définissent nos interventions sur la métropole : d’un côté des programmes résidentiels livrés par vagues, où l’enjeu est de ne pas laisser filer la qualité sur les derniers lots ; de l’autre un bâti blond, poreux et fragile, où un produit mal choisi laisse une trace que personne ne rattrapera. MonCleanerPro intervient sur les deux avec une équipe complète qui se déplace depuis Lyon.",
+    highlights: [
+      { title: 'Livraison lot par lot', text: "Les programmes se livrent par vagues : nous suivons votre calendrier de visites plutôt que de traiter l’ensemble d’un bloc." },
+      { title: 'La pierre de taille est poreuse', text: "Le calcaire bordelais absorbe : un produit acide y laisse une auréole définitive, et la haute pression creuse les joints." },
+      { title: 'Zéro réserve de propreté', text: "Notre passage cible précisément les points qui déclenchent une réserve en visite de livraison." },
+      { title: 'Le dernier lot vaut le premier', text: "Même check-list de contrôle en fin d’opération qu’au début, quelle que soit la pression sur la date." },
+      { title: 'Traçabilité par lot', text: "Rapport daté logement par logement, opposable en cas de contestation." },
+      { title: 'Gironde entière', text: "Bordeaux métropole et le département, sur les opérations qui justifient le déplacement." },
+    ],
+    includes: [
+      'Remise en état lot par lot avant visite de livraison',
+      'Retrait des films de protection, étiquettes et adhésifs',
+      'Élimination du voile de ciment et des résidus de pose',
+      'Traitement adapté à la pierre de taille et aux sols anciens',
+      'Vitrages, châssis et menuiseries sans traces',
+      'Sanitaires et cuisines détaillés, silicone retiré',
+      'Parties communes, halls, parkings et locaux techniques',
+      'Contrôle final logement par logement et rapport daté',
+    ],
+    sections: [
+      {
+        h2: 'La pierre blonde ne pardonne pas',
+        paragraphs: [
+          "C’est la particularité technique de la métropole. Le calcaire qui donne à Bordeaux sa couleur est une pierre tendre et poreuse : elle absorbe tout ce qu’on lui applique, et elle le garde. Un détartrant acide utilisé par réflexe sur une trace de ciment y laisse une zone plus claire, définitive. Un nettoyage haute pression mal dosé creuse le joint, désolidarise la surface et fait vieillir la façade d’un coup.",
+          "Sur un chantier de réhabilitation, le risque est maximal en fin d’opération, quand il faut retirer des projections d’enduit ou de ciment sur une pierre qui vient d’être ravalée. C’est exactement le moment où un geste générique détruit le travail d’un tailleur de pierre. Nous identifions donc le support avant de choisir le produit, et retenons systématiquement le geste le plus doux qui donne le résultat.",
+          "C’est une vigilance que nous pratiquons déjà quotidiennement sur les pierres dorées du Beaujolais, dont le comportement est très proche.",
+        ],
+      },
+      {
+        h2: 'Livrer un programme sans laisser filer la fin',
+        paragraphs: [
+          "Sur une opération résidentielle en volume, le schéma est toujours le même : les premiers logements sont impeccables, les derniers sont expédiés parce que la date approche. C’est là que les réserves se concentrent, et c’est ce qui donne à un acquéreur l’impression d’une opération bâclée alors que seule sa fin l’a été.",
+          "Nous calons donc les effectifs sur le planning réel de livraison — si vingt lots doivent être visités dans la même semaine, l’équipe suit — et nous appliquons la même check-list de contrôle sur le dernier logement que sur le premier, avec un rapport daté par lot. L’écart, s’il existe, devient visible immédiatement plutôt qu’en visite.",
+        ],
+      },
+      {
+        h2: 'Nos interventions en Gironde',
+        list: [
+          "Livraisons de programmes de logements neufs, lot par lot ou bâtiment entier",
+          "Réhabilitation d’immeubles anciens en pierre de taille",
+          "Plateaux de bureaux et immeubles tertiaires neufs",
+          "Commerces et surfaces de vente avant ouverture",
+          "Résidences gérées, étudiantes et seniors, livrées par vagues",
+          "Bâtiments d’activité et locaux professionnels avant exploitation",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Êtes-vous implantés à Bordeaux ?', a: "Non. Nous sommes basés à Lyon et notre équipe se déplace sur les opérations dont le volume le justifie. Nous préférons l’annoncer plutôt que de laisser croire à une agence locale : ce qui compte sur une livraison, c’est la continuité de l’équipe et de la méthode." },
+      { q: 'Savez-vous traiter la pierre de taille ?', a: "Oui. C’est une pierre tendre et poreuse : produits neutres, dosage maîtrisé et jamais de haute pression mal réglée, qui creuse les joints. Nous pratiquons déjà cette vigilance sur les pierres dorées du Beaujolais, dont le comportement est très proche." },
+      { q: 'Livrez-vous les logements au fur et à mesure ?', a: "Oui, en suivant votre calendrier de visites. Chaque lot est propre au moment où il est vu, et non trois semaines avant — ce qui reviendrait au même problème." },
+      { q: 'Que se passe-t-il si une réserve de propreté est émise ?', a: "Nous repassons dans le délai de levée. Le rapport de contrôle daté produit lors de notre passage permet par ailleurs de distinguer une vraie réserve d’une salissure survenue après notre intervention." },
+      { q: 'Traitez-vous les parties communes et les parkings ?', a: "Oui. Halls, circulations, cages d’escalier, parkings et locaux techniques concentrent les résidus de fin de chantier et font partie de la livraison au même titre que les logements." },
+      { q: 'Intervenez-vous au-delà de Bordeaux ?', a: "Oui, sur la métropole et l’ensemble de la Gironde, en particulier sur les opérations réparties sur plusieurs sites du département." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-livraison-programme-neuf', 'nettoyage-fin-de-chantier-marseille', 'nettoyage-fin-de-chantier-tertiaire'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-lille',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier Lille',
+    eyebrow: 'Gros chantiers · Lille',
+    h1: 'Nettoyage de fin de chantier à Lille',
+    title: 'Nettoyage fin de chantier Lille — MonCleanerPro | Tertiaire, logistique & reconversion',
+    description: "Nettoyage de fin de chantier à Lille et dans les Hauts-de-France : livraisons tertiaires, plateformes logistiques, reconversion de friches industrielles. Équipe dédiée. Devis sous 24h.",
+    intro:
+      "La métropole lilloise concentre trois types d’opérations que nous traitons régulièrement : des livraisons tertiaires dans les quartiers d’affaires, des plateformes logistiques portées par la position de carrefour européen de la région, et une reconversion continue du patrimoine industriel en bureaux, logements et équipements. Ce dernier point est la vraie spécificité locale — transformer une friche en plateau de bureaux produit un chantier de nettoyage qui ne ressemble à aucun autre. MonCleanerPro y intervient avec une équipe complète qui se déplace.",
+    highlights: [
+      { title: 'Reconversion de friches', text: "Brique, béton brut, charpente métallique conservée : un bâti industriel réhabilité concentre une poussière et des supports atypiques." },
+      { title: 'Plateformes logistiques', text: "Grandes surfaces avant mise en exploitation, lavage mécanisé et traitement de la poussière de dallage." },
+      { title: 'Livraisons tertiaires', text: "Plateaux de bureaux et sièges régionaux, souvent livrés sur des fenêtres de quelques nuits." },
+      { title: 'Brique et bâti ancien', text: "La brique est poreuse et se marque : le nettoyage d’un parement intérieur conservé n’a rien d’évident." },
+      { title: 'Hors exploitation', text: "Nuit, soirée ou week-end selon ce que le site permet, y compris en immeuble partiellement occupé." },
+      { title: 'Hauts-de-France', text: "Lille métropole et la région, sur les opérations qui justifient le déplacement d’une équipe complète." },
+    ],
+    includes: [
+      'Remise en état avant réception ou mise en exploitation',
+      'Retrait des protections, films, étiquettes et emballages',
+      'Traitement des parements de brique et béton brut conservés',
+      'Structures et charpentes métalliques accessibles en sécurité',
+      'Dépoussiérage descendant, faux plafonds et points hauts',
+      'Vitrages, verrières et châssis sans traces',
+      'Dallages et sols industriels, lavage mécanisé',
+      'Sanitaires, vestiaires, locaux sociaux et circulations',
+    ],
+    sections: [
+      {
+        h2: 'Réhabiliter une friche : un chantier hybride',
+        paragraphs: [
+          "Transformer une ancienne halle industrielle en plateau de bureaux ou en logements produit un bâtiment qui n’est ni neuf ni ancien. On conserve délibérément ce qui fait le caractère du lieu — parement de brique apparent, béton brut, charpente ou poteaux métalliques, verrières — et on installe autour un aménagement contemporain complet.",
+          "Pour le nettoyage, cela crée une situation inhabituelle : les éléments conservés portent une saleté incrustée de plusieurs décennies, qui n’est pas de la salissure de chantier, pendant que les éléments neufs portent la salissure classique de fin de travaux. Les deux ne se traitent ni avec les mêmes produits ni avec la même intention. Et surtout, il faut savoir où s’arrêter : sur un parement de brique ou un béton brut conservé pour son aspect, un nettoyage trop poussé détruit exactement ce que l’architecte a voulu garder.",
+          "C’est un point que nous cadrons systématiquement avec la maîtrise d’œuvre avant d’intervenir. La question n’est pas « jusqu’où peut-on nettoyer » mais « jusqu’où faut-il nettoyer » — et la réponse est un choix de projet, pas une décision d’exécutant.",
+        ],
+      },
+      {
+        h2: 'La brique se marque',
+        paragraphs: [
+          "C’est le support emblématique de la région, et il est plus délicat qu’il n’y paraît. La brique est poreuse : elle absorbe les produits, et un détergent acide y laisse un éclaircissement irrégulier. Un nettoyage haute pression creuse le joint de mortier, souvent plus tendre que la brique elle-même, et fragilise durablement le parement.",
+          "Sur un parement intérieur conservé dans un loft ou un plateau de bureaux, ces erreurs se voient en pleine lumière et ne se rattrapent pas. Nous travaillons donc par dépoussiérage et par tests localisés avant tout traitement généralisé — la règle étant, ici aussi, de retenir le geste le plus doux qui donne le résultat attendu.",
+        ],
+      },
+      {
+        h2: 'Nos interventions dans les Hauts-de-France',
+        list: [
+          "Plateaux de bureaux et sièges régionaux avant prise de possession",
+          "Reconversion de bâtiments industriels en tertiaire, logements ou équipements",
+          "Plateformes logistiques et bâtiments d’activité avant mise en exploitation",
+          "Programmes de logements neufs livrés par lots",
+          "Équipements publics et opérations de commande publique",
+          "Commerces et surfaces de vente avant ouverture",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Avez-vous une agence à Lille ?', a: "Non, nous sommes basés à Lyon et notre équipe se déplace sur les chantiers dont le volume le justifie. C’est un modèle assumé : la continuité de l’équipe et du protocole vaut mieux, sur une livraison, qu’une proximité géographique." },
+      { q: 'Nettoyez-vous les parements de brique conservés ?', a: "Oui, avec beaucoup de précaution. La brique est poreuse et se marque, et son joint de mortier est souvent plus tendre qu’elle : nous procédons par dépoussiérage et tests localisés avant tout traitement généralisé, jamais par haute pression non maîtrisée." },
+      { q: 'Comment décidez-vous du niveau de nettoyage sur un élément conservé ?', a: "Avec la maîtrise d’œuvre, avant d’intervenir. Sur un béton brut ou une brique gardés pour leur aspect, trop nettoyer détruit ce que l’architecte a voulu conserver. C’est un choix de projet, et il doit être validé, pas improvisé sur le chantier." },
+      { q: 'Traitez-vous les plateformes logistiques ?', a: "Oui, avant mise en exploitation, avec lavage mécanisé des dallages. Nous intervenons de préférence sur un bâtiment vide, avant montage des racks : une fois les racks en place, une partie des surfaces devient inaccessible." },
+      { q: 'Pouvez-vous intervenir de nuit ou le week-end ?', a: "Oui, notamment en tertiaire et en site partiellement occupé. Les horaires se calent sur le règlement de l’immeuble et sur le plan de prévention." },
+      { q: 'Intervenez-vous ailleurs dans les Hauts-de-France ?', a: "Oui, sur la métropole lilloise et la région, en particulier pour les opérations multi-sites ou les livraisons qui s’étalent sur plusieurs semaines." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-industriel', 'nettoyage-fin-de-chantier-tertiaire', 'nettoyage-fin-de-chantier-paris'],
+    relatedPosts: ['poussiere-de-chantier-eliminer', 'etapes-nettoyage-fin-de-chantier'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-grenoble',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier Grenoble',
+    eyebrow: 'Gros chantiers · Grenoble',
+    h1: 'Nettoyage de fin de chantier à Grenoble',
+    title: 'Nettoyage fin de chantier Grenoble — MonCleanerPro | Tertiaire, industrie & montagne',
+    description: "Nettoyage de fin de chantier à Grenoble et en Isère : bâtiments tertiaires et scientifiques, sites industriels, résidences de tourisme en station avant ouverture de saison. Devis sous 24h.",
+    intro:
+      "Grenoble a deux visages pour un chantier de fin de travaux. Dans l’agglomération, un tissu tertiaire, universitaire et industriel dense, avec des bâtiments techniques qui appellent une remise en état soignée avant mise en service. Dans les massifs autour, des résidences de tourisme et des hébergements de station dont la livraison est verrouillée par une seule date : l’ouverture de la saison. MonCleanerPro intervient sur les deux, à moins de deux heures de notre base lyonnaise — ce qui rend la réactivité réelle sur ce secteur.",
+    highlights: [
+      { title: 'Proximité réelle', text: "Grenoble est à moins de deux heures de Lyon : nous pouvons intervenir à quelques jours, y compris en renfort de dernière minute." },
+      { title: 'Bâtiments techniques', text: "Tertiaire, laboratoires et bâtiments universitaires : des locaux où la finition avant mise en service compte particulièrement." },
+      { title: 'Ouverture de saison', text: "En station, la date d’ouverture ne bouge pas. Le planning se construit à partir d’elle, avec la marge nécessaire." },
+      { title: 'Accès de montagne', text: "Accès contraints, météo, altitude : la logistique d’une intervention en station se prépare, elle ne s’improvise pas." },
+      { title: 'Sites industriels', text: "Locaux d’activité et bâtiments de production, en neuf comme en extension de site en exploitation." },
+      { title: 'Isère entière', text: "L’agglomération grenobloise, les vallées et les stations des massifs environnants." },
+    ],
+    includes: [
+      'Remise en état avant réception ou mise en service',
+      'Retrait des protections, films, étiquettes et adhésifs',
+      'Élimination du voile de ciment et des résidus de pose',
+      'Dépoussiérage descendant, faux plafonds et points hauts',
+      'Vitrages, châssis et menuiseries sans traces',
+      'Sanitaires, kitchenettes et locaux techniques',
+      'Appartements de résidence livrés lot par lot',
+      'Parties communes, halls, circulations et espaces d’accueil',
+    ],
+    sections: [
+      {
+        h2: 'En station, la date d’ouverture commande tout',
+        paragraphs: [
+          "Une résidence de tourisme qui doit ouvrir pour le début de saison n’a aucune marge. Les premiers vacanciers arrivent à une date connue depuis un an, les réservations sont encaissées, et un retard ne se traduit pas par un décalage mais par des annulations et des remboursements. C’est une contrainte plus dure encore que celle d’une livraison classique, parce qu’il n’existe aucune solution de repli.",
+          "Le nettoyage arrivant en dernier, il absorbe l’intégralité des retards accumulés — et sur un chantier de montagne, les retards sont fréquents : les intempéries et les contraintes d’accès pèsent sur tout le déroulement. Nous prévoyons donc systématiquement la capacité de renforcer l’équipe sur ce type d’opération, plutôt que de dimensionner au plus juste et de découvrir en novembre que le chantier nous est livré avec dix jours de retard.",
+        ],
+      },
+      {
+        h2: 'La logistique de montagne se prépare',
+        paragraphs: [
+          "Intervenir en station ajoute des contraintes qu’un chantier de plaine ignore. L’accès peut être limité en largeur ou en tonnage, la météo peut fermer une route, l’hébergement de l’équipe en pleine saison touristique est difficile à trouver et cher, et les livraisons de matériel demandent une anticipation réelle. Certaines résidences ne sont accessibles qu’à certaines heures ou par des cheminements dédiés.",
+          "Ce sont des points que nous traitons au cadrage, avec une marge de sécurité sur les dates plutôt qu’un planning tendu. Une équipe bloquée une journée par une route fermée sur un chantier qui doit ouvrir le samedi, c’est un problème qui ne se rattrape pas.",
+        ],
+      },
+      {
+        h2: 'Nos interventions en Isère',
+        list: [
+          "Résidences de tourisme et hébergements de station, avant ouverture de saison",
+          "Bâtiments tertiaires, sièges et plateaux de bureaux de l’agglomération",
+          "Bâtiments universitaires, de recherche et locaux techniques",
+          "Sites industriels et locaux d’activité, en neuf comme en extension",
+          "Programmes de logements neufs livrés par lots",
+          "Équipements publics et opérations de commande publique",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Grenoble fait-il partie de vos secteurs réactifs ?', a: "Oui, c’est l’un des plus proches de notre base : moins de deux heures depuis Lyon. Nous pouvons y intervenir à quelques jours, y compris en renfort de dernière minute sur un chantier qui a pris du retard." },
+      { q: 'Intervenez-vous en station de ski ?', a: "Oui, sur les résidences de tourisme et hébergements collectifs, avec un planning construit à partir de la date d’ouverture de saison et une marge de sécurité sur les aléas d’accès et de météo." },
+      { q: 'Comment gérez-vous l’hébergement de l’équipe en station ?', a: "C’est notre affaire et c’est intégré au devis, mais cela demande de l’anticipation : en pleine saison, l’hébergement est rare et cher. Plus l’intervention est calée tôt, mieux elle se prépare — et moins elle coûte." },
+      { q: 'Traitez-vous les bâtiments techniques et de recherche ?', a: "Nous traitons la remise en état de fin de chantier de ces bâtiments : bureaux, circulations, sanitaires, locaux techniques. Les environnements à atmosphère contrôlée exigeant une qualification spécifique sortent de notre périmètre et nous le signalons dans le devis." },
+      { q: 'Livrez-vous les appartements de résidence lot par lot ?', a: "Oui, en suivant le calendrier de remise. C’est particulièrement utile en station où la mise en location peut démarrer progressivement, appartement par appartement." },
+      { q: 'Que se passe-t-il si la météo bloque l’accès ?', a: "Nous replanifions. C’est précisément pour cela que nous ne construisons pas un planning tendu sur ce type d’opération : la marge de sécurité fait partie du dimensionnement dès le devis." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-fin-de-chantier-hotellerie', 'nettoyage-fin-de-chantier-industriel', 'nettoyage-fin-de-chantier-saint-etienne'],
+    relatedPosts: ['etapes-nettoyage-fin-de-chantier', 'poussiere-de-chantier-eliminer'],
+    updatedAt: '2026-08-08',
+  },
+  {
+    slug: 'nettoyage-fin-de-chantier-saint-etienne',
+    cluster: 'chantier-national',
+    scope: 'national',
+    keyword: 'nettoyage fin de chantier Saint-Étienne',
+    eyebrow: 'Gros chantiers · Saint-Étienne',
+    h1: 'Nettoyage de fin de chantier à Saint-Étienne',
+    title: 'Nettoyage fin de chantier Saint-Étienne — MonCleanerPro | Réhabilitation & bailleurs',
+    description: "Nettoyage de fin de chantier à Saint-Étienne et dans la Loire : réhabilitation de logements, opérations bailleurs multi-lots, reconversion industrielle, tertiaire. Devis gratuit sous 24h.",
+    intro:
+      "À Saint-Étienne, les chantiers se comptent rarement à l’unité. Réhabilitation d’une cage entière pour un bailleur, remise en état de plusieurs dizaines de logements avant relocation, reconversion d’un bâtiment industriel : ce sont des opérations de volume, étalées dans le temps, où le nettoyage doit suivre un calendrier de livraison lot par lot sans que la qualité du dernier logement diffère de celle du premier. À moins d’une heure de Lyon, c’est un secteur sur lequel nous sommes réellement réactifs.",
+    highlights: [
+      { title: 'À une heure de Lyon', text: "L’un de nos secteurs les plus accessibles : intervention à quelques jours, y compris en renfort sur un chantier en retard." },
+      { title: 'Opérations multi-lots', text: "Plusieurs dizaines de logements livrés par vagues, au rythme de votre calendrier de remise." },
+      { title: 'Réhabilitation lourde', text: "Bâti ancien remis à neuf : démolition partielle, poussière de plâtre dans tout le volume, supports fragiles." },
+      { title: 'Traçabilité pour les bailleurs', text: "Rapport d’intervention par lot, exploitable devant un maître d’ouvrage ou un conseil d’administration." },
+      { title: 'Reconversion industrielle', text: "Bâtiments réhabilités en logements, bureaux ou équipements : un chantier hybride, ni neuf ni ancien." },
+      { title: 'Loire entière', text: "Saint-Étienne, la métropole et le département sur les opérations de volume." },
+    ],
+    includes: [
+      'Remise en état de logements après réhabilitation, lot par lot',
+      'Dépoussiérage complet après démolition partielle',
+      'Traitement des sols anciens sans les gorger d’eau',
+      'Menuiseries, plinthes, radiateurs et points hauts',
+      'Élimination des projections de peinture, plâtre et colle',
+      'Vitrages, encadrements et rebords sans traces',
+      'Cuisines et sanitaires détaillés avant état des lieux',
+      'Parties communes, halls et cages d’escalier après travaux',
+      'Rapport d’intervention par lot livré',
+    ],
+    sections: [
+      {
+        h2: 'Livrer cinquante logements sans que le dernier soit bâclé',
+        paragraphs: [
+          "C’est le risque connu de toute opération en volume, et il est particulièrement présent sur les réhabilitations de parc : les premiers logements sont impeccables, les derniers sont expédiés parce que la date de remise approche. Le maître d’ouvrage ne s’en aperçoit souvent qu’à la réception, quand il visite les lots dans le désordre.",
+          "Nous l’évitons en calant le nombre d’intervenants sur le calendrier réel de livraison plutôt que sur une moyenne, et en appliquant la même check-list de contrôle sur le dernier lot que sur le premier. Chaque logement est contrôlé pièce par pièce avant d’être déclaré livré, et le rapport associé indique ce qui a été fait, où et quand.",
+          "Pour un bailleur, cette traçabilité a une valeur qui dépasse le contrôle qualité : c’est ce qui rend la prestation défendable devant un maître d’ouvrage, un conseil d’administration ou un locataire qui conteste l’état de son logement à l’entrée.",
+        ],
+      },
+      {
+        h2: 'La réhabilitation lourde n’est pas de la rénovation',
+        paragraphs: [
+          "Sur une réhabilitation de bâti ancien, on ne rafraîchit pas : on démolit partiellement, on ouvre des murs, on refait des réseaux. La poussière produite est une poussière de plâtre et de maçonnerie qui envahit le volume entier — y compris les logements voisins et les parties communes, quand l’opération se fait en site partiellement occupé.",
+          "Les supports, eux, ont déjà vécu. Parquets anciens qui ne supportent pas l’eau stagnante, menuiseries dont la peinture part au mauvais produit, moulures dont les gorges retiennent la poussière de ponçage et la relâchent une semaine plus tard. Un nettoyage trop énergique abîme plus qu’il ne répare, et sur un parc en réhabilitation cette erreur se répète autant de fois qu’il y a de lots.",
+        ],
+      },
+      {
+        h2: 'Nos interventions dans la Loire',
+        list: [
+          "Réhabilitation de logements pour bailleurs sociaux et privés, par cages ou par immeubles",
+          "Remise en état avant relocation, lot par lot",
+          "Reconversion de bâtiments industriels en logements, bureaux ou équipements",
+          "Parties communes après ravalement ou réfection de cage",
+          "Plateaux tertiaires et locaux professionnels avant prise de possession",
+          "Équipements publics et opérations de commande publique",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Pouvez-vous traiter plusieurs dizaines de logements sur une même opération ?', a: "Oui, c’est un cas d’usage courant sur le secteur. Nous adaptons le nombre d’intervenants au calendrier de livraison et livrons les lots au fur et à mesure, avec le même niveau de contrôle du premier au dernier." },
+      { q: 'Fournissez-vous un suivi pour le maître d’ouvrage ?', a: "Oui, un rapport d’intervention par lot, daté. C’est ce qui permet de justifier précisément ce qui a été livré et quand — utile devant un conseil d’administration comme face à un locataire qui conteste l’état à l’entrée." },
+      { q: 'Intervenez-vous en site partiellement occupé ?', a: "Oui, c’est fréquent en réhabilitation de parc. Cela demande surtout de la rigueur sur la séparation des circulations et sur la maîtrise de la poussière, qui migre facilement vers les logements encore habités et les parties communes." },
+      { q: 'Saint-Étienne fait-il partie de vos secteurs réactifs ?', a: "Oui, c’est l’un des plus proches de notre base : moins d’une heure depuis Lyon. Nous y intervenons à quelques jours, y compris en renfort sur un chantier qui a glissé." },
+      { q: 'Traitez-vous les parties communes après travaux d’immeuble ?', a: "Oui, halls, cages d’escalier et paliers après ravalement ou réfection, pour les syndics professionnels comme pour les bailleurs." },
+      { q: 'Prenez-vous les opérations de reconversion industrielle ?', a: "Oui. Ce sont des chantiers hybrides, où des éléments conservés pour leur aspect côtoient un aménagement neuf. Le niveau de nettoyage attendu sur les parties conservées se cadre avec la maîtrise d’œuvre avant l’intervention." },
+    ],
+    related: ['nettoyage-fin-de-chantier-france', 'nettoyage-livraison-programme-neuf', 'nettoyage-chantier-marche-public', 'nettoyage-fin-de-chantier-grenoble'],
+    relatedPosts: ['poussiere-de-chantier-eliminer', 'etapes-nettoyage-fin-de-chantier'],
+    updatedAt: '2026-08-08',
+  },
+];
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
 export const getSeoPage = (slug: string) => SEO_PAGES.find(p => p.slug === slug);
@@ -1899,7 +2931,10 @@ export const getSeoPage = (slug: string) => SEO_PAGES.find(p => p.slug === slug)
 // Zone desservie (géo) par page VILLE : nom de la commune + coordonnées. Sert aux
 // données structurées (schema.org areaServed + geo) — signal local fort pour Google.
 // Les pages « service » (non listées ici) desservent Lyon par défaut.
-export interface CityGeo { city: string; lat: number; lng: number; postalCode?: string }
+// `region` : département ou région administrative pour le balisage PostalAddress.
+// Par défaut « Rhône » — les pages nationales, elles, sortent du département et
+// doivent porter leur propre valeur, sinon le balisage devient faux.
+export interface CityGeo { city: string; lat: number; lng: number; postalCode?: string; region?: string }
 export const CITY_GEO: Record<string, CityGeo> = {
   'nettoyage-villefranche-sur-saone': { city: 'Villefranche-sur-Saône', lat: 45.9847, lng: 4.7267, postalCode: '69400' },
   'nettoyage-anse':                   { city: 'Anse',                   lat: 45.9364, lng: 4.7186, postalCode: '69480' },
@@ -1932,13 +2967,32 @@ export const CITY_GEO: Record<string, CityGeo> = {
   // formulée avec le nom de la commune.
   'menage-airbnb-villefranche-sur-saone':              { city: 'Villefranche-sur-Saône',  lat: 45.9847, lng: 4.7267, postalCode: '69400' },
   'menage-airbnb-anse':                                { city: 'Anse',                    lat: 45.9364, lng: 4.7186, postalCode: '69480' },
+
+  // Villes du cluster « chantier-national ». `region` est obligatoire ici : sans
+  // elle, le balisage les déclarerait dans le Rhône. Ces entrées sont exclues de
+  // SERVED_CITIES (voir `scope: 'national'`) pour ne pas laisser l'accueil
+  // revendiquer une implantation nationale qui n'existe pas.
+  'nettoyage-fin-de-chantier-paris':         { city: 'Paris',         lat: 48.8566, lng:  2.3522, postalCode: '75000', region: 'Île-de-France' },
+  'nettoyage-fin-de-chantier-marseille':     { city: 'Marseille',     lat: 43.2965, lng:  5.3698, postalCode: '13000', region: 'Bouches-du-Rhône' },
+  'nettoyage-fin-de-chantier-bordeaux':      { city: 'Bordeaux',      lat: 44.8378, lng: -0.5792, postalCode: '33000', region: 'Gironde' },
+  'nettoyage-fin-de-chantier-lille':         { city: 'Lille',         lat: 50.6292, lng:  3.0573, postalCode: '59000', region: 'Nord' },
+  'nettoyage-fin-de-chantier-grenoble':      { city: 'Grenoble',      lat: 45.1885, lng:  5.7245, postalCode: '38000', region: 'Isère' },
+  'nettoyage-fin-de-chantier-saint-etienne': { city: 'Saint-Étienne', lat: 45.4397, lng:  4.3872, postalCode: '42000', region: 'Loire' },
 };
 export const getCityGeo = (slug: string): CityGeo | undefined => CITY_GEO[slug];
 
 // Liste des communes desservies (villes ciblées) — pour l'accueil (areaServed global).
 // Dédupliquée : plusieurs slugs peuvent viser la même commune (ex. une page ville
 // généraliste + sa déclinaison « fin de chantier »).
-export const SERVED_CITIES = Array.from(new Set(['Lyon', ...Object.values(CITY_GEO).map(c => c.city)]));
+// Les villes des pages `scope: 'national'` (gros chantiers hors région) en sont
+// volontairement exclues : l'accueil doit continuer de porter un signal local
+// net, sinon il revendique une implantation nationale qui n'existe pas.
+export const SERVED_CITIES = Array.from(new Set([
+  'Lyon',
+  ...SEO_PAGES.filter(p => p.scope !== 'national')
+    .map(p => CITY_GEO[p.slug]?.city)
+    .filter((c): c is string => !!c),
+]));
 
 // Pages d'un même cluster thématique (maillage interne ciblé).
 export const getCluster = (name: string) => SEO_PAGES.filter(p => p.cluster === name);

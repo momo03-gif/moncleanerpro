@@ -493,7 +493,7 @@ export default function VitrinePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos prestations à Lyon</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {SEO_PAGES.filter(p => !getCityGeo(p.slug)).map(p => (
+              {SEO_PAGES.filter(p => !getCityGeo(p.slug) && p.scope !== 'national').map(p => (
                 <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
               ))}
             </div>
@@ -501,10 +501,22 @@ export default function VitrinePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos interventions par commune</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {SEO_PAGES.filter(p => getCityGeo(p.slug)).map(p => (
+              {SEO_PAGES.filter(p => getCityGeo(p.slug) && p.scope !== 'national').map(p => (
                 <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Bloc distinct pour l'activité « gros chantiers » nationale : la mélanger
+            aux prestations lyonnaises brouillerait les deux signaux — le local
+            porte le récurrent, le national porte les grosses opérations. */}
+        <div className="max-w-7xl mx-auto px-5 pt-8 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Gros chantiers — France entière</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {SEO_PAGES.filter(p => p.scope === 'national').map(p => (
+              <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+            ))}
           </div>
         </div>
 
