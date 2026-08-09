@@ -4,6 +4,10 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { FeedbackProvider } from '@/contexts/FeedbackContext';
 import ServiceWorkerReg from '@/components/ServiceWorkerReg';
 import PwaSetup from '@/components/PwaSetup';
+// Mesure d'audience Vercel : sans cookie ni identifiant persistant, donc pas de
+// bandeau de consentement à ajouter (contrairement à Google Analytics). Sans
+// mesure, impossible de savoir quelles pages amènent réellement des demandes.
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://moncleanerpro.fr'),
@@ -42,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </FeedbackProvider>
         </AuthProvider>
         <ServiceWorkerReg />
+        <Analytics />
       </body>
     </html>
   );

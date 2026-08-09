@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Motion from './Motion';
 import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
+import TrustBar from '@/components/TrustBar';
+import FloatingContact from '@/components/FloatingContact';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Vitrine publique MonCleanerPro (remplace le site Hostinger Horizons).
@@ -459,6 +461,8 @@ export default function VitrinePage() {
         </div>
       </section>
 
+      <TrustBar />
+
       {/* ── ZONES DESSERVIES (SEO local longue traîne) ────────────────────── */}
       <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-7xl mx-auto px-5 py-12">
@@ -548,21 +552,7 @@ export default function VitrinePage() {
         </div>
       </footer>
 
-      {/* Boutons flottants — appel & WhatsApp toujours accessibles (surtout mobile).
-          Lèvent la friction : un visiteur peut contacter à tout moment sans remonter. */}
-      <div className="fixed z-40 right-4 flex flex-col items-end gap-2.5" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 18px)' }}>
-        <a href="https://wa.me/33783431700?text=Bonjour%2C%20je%20souhaite%20un%20devis%20de%20nettoyage."
-          target="_blank" rel="noopener noreferrer" aria-label="Contacter par WhatsApp"
-          className="flex items-center justify-center rounded-full shadow-lg active:scale-95"
-          style={{ width: 52, height: 52, backgroundColor: '#25D366', color: '#FFFFFF' }}>
-          <Icon path={IconWhatsApp} size={26} />
-        </a>
-        <a href={PHONE_HREF} aria-label="Appeler MonCleanerPro"
-          className="inline-flex items-center gap-2 rounded-full shadow-lg pl-4 pr-5 font-semibold text-sm active:scale-95"
-          style={{ height: 52, backgroundColor: GOLD, color: INK }}>
-          <Icon path={IconPhone} size={20} /> Appeler
-        </a>
-      </div>
+      <FloatingContact />
     </main>
   );
 }
