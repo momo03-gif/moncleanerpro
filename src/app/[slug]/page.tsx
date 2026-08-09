@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Motion from '../accueil/Motion';
 import { SEO_PAGES, SEO_SLUGS, getSeoPage, getCityGeo } from '@/lib/seoPages';
 import { getBlogPost } from '@/lib/blogPosts';
-import TrustBar from '@/components/TrustBar';
+import TrustBar, { ReviewsInline } from '@/components/TrustBar';
 import QuickQuote from '@/components/QuickQuote';
 import FloatingContact from '@/components/FloatingContact';
 
@@ -170,6 +170,8 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
             <a href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit sous 24h</a>
             <a href={PHONE_HREF} className="mcp-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>{PHONE}</a>
           </div>
+          {/* Preuve sociale au niveau du bouton : c'est là qu'elle lève l'hésitation. */}
+          <div className="mcp-rise mt-6" style={{ animationDelay: '300ms' }}><ReviewsInline tone="dark" /></div>
         </div>
       </section>
 

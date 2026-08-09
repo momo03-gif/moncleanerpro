@@ -28,20 +28,25 @@ function Star({ filled }: { filled: boolean }) {
   );
 }
 
-function Reviews() {
+// Ligne d'avis réutilisable. `tone="dark"` pour les fonds sombres (hero des
+// pages SEO) : une note 5/5 sur 36 avis est l'argument le plus fort de la page,
+// elle doit être visible à côté du bouton de devis, pas seulement en milieu de page.
+export function ReviewsInline({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   if (!REVIEWS.count) return null;
   const r = REVIEWS.rating;
+  const strong = tone === 'dark' ? '#FFFFFF' : INK;
+  const soft = tone === 'dark' ? '#B8B2A8' : MUTED;
   const inner = (
-    <span className="inline-flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
+    <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
       {r !== null && (
         <span className="inline-flex items-center gap-0.5" aria-hidden="true">
           {[1, 2, 3, 4, 5].map(i => <Star key={i} filled={i <= Math.round(r)} />)}
         </span>
       )}
-      <span className="text-sm font-semibold" style={{ color: INK }}>
+      <span className="text-sm font-semibold" style={{ color: strong }}>
         {r !== null ? `${r.toFixed(1).replace('.', ',')} sur 5` : 'Avis vérifiés'}
       </span>
-      <span className="text-sm" style={{ color: MUTED }}>
+      <span className="text-sm" style={{ color: soft }}>
         · {REVIEWS.count} avis Google
       </span>
     </span>
@@ -56,7 +61,7 @@ export default function TrustBar({ withGuarantee = true }: { withGuarantee?: boo
     <section aria-label="Nos engagements" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
       <div className="max-w-5xl mx-auto px-5 py-10 sm:py-12">
         {REVIEWS.count > 0 && (
-          <div className="text-center mb-8"><Reviews /></div>
+          <div className="text-center mb-8"><ReviewsInline /></div>
         )}
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

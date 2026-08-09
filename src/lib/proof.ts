@@ -17,7 +17,7 @@ export const REVIEWS = {
   count: 36,
   // Note moyenne affichée. `null` tant qu'elle n'est pas confirmée : mieux vaut
   // n'afficher que le nombre d'avis qu'une note approximative.
-  rating: null as number | null,
+  rating: 5 as number | null,
   // Lien public vers les avis de la fiche Google Business. Vide = pas de lien.
   url: '',
 };
