@@ -22,6 +22,12 @@ export const REVIEWS = {
   url: '',
 };
 
+// Année de début d'activité, affichée en pied de page. L'ancienneté est un
+// signal de confiance bien plus utile qu'un « © 2026 » qui ne dit rien —
+// et qui, généré depuis la date du jour, donnait l'impression d'un site créé
+// cette année.
+export const SINCE = 2018;
+
 export interface TrustItem { title: string; text: string }
 
 // Réassurance : uniquement des faits vérifiables. Aucune promesse vague type
