@@ -60,8 +60,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage hôtel Lyon',
     eyebrow: 'Hôtellerie',
     h1: 'Nettoyage d’hôtel à Lyon',
-    title: 'Nettoyage d’hôtel à Lyon — MonCleanerPro | Chambres & parties communes',
-    description: "Société de nettoyage hôtelier à Lyon : chambres, parties communes, remise en état entre séjours. Cadence soutenue, standing hôtelier, équipe formée. Devis gratuit sous 24h.",
+    title: "Nettoyage d’hôtel à Lyon — MonCleanerPro",
+    description: "Société de nettoyage hôtelier à Lyon : chambres, parties communes, remise en état entre séjours. Cadence hôtelière tenue. Devis gratuit sous 24h.",
     intro:
       "MonCleanerPro accompagne les hôtels, résidences hôtelières et hôtels de tourisme de Lyon et de la métropole dans l’entretien quotidien de leurs espaces. Nous tenons la cadence propre à l’hôtellerie — rotations rapides des chambres, exigence de finitions et régularité irréprochable — pour que vos clients trouvent toujours un établissement impeccable.",
     highlights: [
@@ -76,9 +76,29 @@ export const SEO_PAGES: SeoPage[] = [
       'Gestion et changement du linge',
       'Interventions récurrentes planifiées',
     ],
+    sections: [
+      {
+        h2: "Une chambre livrée doit être vendable, pas seulement propre",
+        paragraphs: [
+          "C’est la différence entre un standard de nettoyage et un standard hôtelier. Une chambre « propre » au sens général peut parfaitement générer un commentaire négatif, parce que le client ne juge pas ce qui est visible — il juge ce qu’il inspecte. Et il inspecte toujours les mêmes endroits : le dessous du lit, l’intérieur des tiroirs et du minibar, le joint de la douche, le dessus de la tête de lit, l’arrière des rideaux, la bonde du lavabo.",
+          "Aucun de ces points n’apparaît sur une check-list de nettoyage générique. Tous figurent sur celle d’une gouvernante. Nos intervenants travaillent sur ce référentiel-là, avec les mêmes points de contrôle à chaque chambre — c’est ce qui rend le résultat reproductible quand le taux d’occupation monte.",
+        ],
+      },
+      {
+        h2: "Tenir la cadence un jour de forte occupation",
+        paragraphs: [
+          "Un établissement complet qui se vide à onze heures et se remplit à quinze impose une contrainte que peu de prestataires savent absorber : toutes les chambres à traiter dans la même fenêtre, sans que la dernière soit moins bien faite que la première. C’est un problème d’effectif et d’ordonnancement, pas de rapidité individuelle.",
+          "Nous distinguons explicitement les recouches, plus rapides, et les chambres à blanc après départ, qui demandent une remise en état complète — puis nous calons le nombre d’intervenants sur le mix réel de la journée, pas sur une moyenne. Un planning bâti sur la moyenne tient quatre jours sur sept et échoue précisément les jours où l’établissement est plein.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous tous les jours, week-ends compris ?', a: "Oui, nous adaptons la fréquence à votre taux d’occupation, y compris les week-ends et périodes de forte affluence." },
       { q: 'Pouvez-vous gérer le linge de l’hôtel ?', a: "Oui, le changement et la gestion du linge font partie de nos prestations hôtelières." },
+      { q: "Comment gérez-vous les jours de forte occupation ?", a: "En dimensionnant l’équipe sur le mix réel de la journée — recouches et chambres à blanc n’ont pas la même durée — plutôt que sur une moyenne hebdomadaire. Un planning calé sur la moyenne échoue exactement les jours où l’hôtel est plein." },
+      { q: "Vos intervenants connaissent-ils les standards hôteliers ?", a: "Ils travaillent sur un référentiel de contrôle de type gouvernante : dessous de lit, intérieurs de tiroirs et de minibar, joints de douche, dessus de tête de lit. Ce sont les points qu’un client inspecte, et ils ne figurent sur aucune check-list de nettoyage générique." },
+      { q: "Intervenez-vous aussi pendant une rénovation ?", a: "Oui. La remise en état après travaux est une prestation distincte de l’entretien courant, avec sa propre méthode : voir notre page dédiée au nettoyage de fin de chantier hôtelier, qui traite la livraison par étages en site partiellement exploité." },
     ],
   },
   // ── PAGE PILIER du cluster « Airbnb / courte durée » ──────────────────────
@@ -88,8 +108,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage Airbnb Lyon',
     eyebrow: 'Airbnb & courte durée',
     h1: 'Ménage Airbnb à Lyon',
-    title: 'Ménage Airbnb à Lyon — MonCleanerPro | Entre voyageurs, linge & calendrier synchronisé',
-    description: "Ménage Airbnb à Lyon entre deux voyageurs : remise en état dans la fenêtre départ/arrivée, gestion du linge, réassort, rapport photo. Calendrier synchronisé, multi-logements. Devis gratuit sous 24h.",
+    title: "Ménage Airbnb à Lyon — MonCleanerPro",
+    description: "Ménage Airbnb à Lyon entre deux voyageurs : rotation dans la fenêtre départ/arrivée, linge, réassort, rapport photo. Calendrier synchronisé. Devis sous 24h.",
     intro:
       "En location courte durée, tout se joue dans une fenêtre de quelques heures : le voyageur part à 11h, le suivant arrive à 15h, et entre les deux le logement doit être remis à neuf — sans exception, y compris le dimanche et en pleine saison. C’est cette contrainte, plus que le ménage lui-même, qui fait la différence entre un hôte tranquille et un hôte qui court. MonCleanerPro assure le ménage Airbnb à Lyon pour les propriétaires et les conciergeries : intervention calée sur votre calendrier de réservations, linge changé, logement remis en scène et rapport envoyé une fois la porte refermée.",
     highlights: [
@@ -192,8 +212,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage pour conciergerie Lyon',
     eyebrow: 'Conciergeries',
     h1: 'Prestataire ménage pour conciergerie à Lyon',
-    title: 'Ménage pour conciergerie à Lyon — MonCleanerPro | Sous-traitance courte durée',
-    description: "Prestataire de ménage pour conciergeries Airbnb à Lyon : sous-traitance des rotations, planning consolidé multi-logements, rapports photo par bien. Nous intervenons derrière votre marque. Devis sous 24h.",
+    title: "Ménage pour conciergerie à Lyon — MonCleanerPro",
+    description: "Prestataire ménage pour conciergeries Airbnb à Lyon : rotations sous-traitées, planning consolidé, rapports par logement. Derrière votre marque. Devis sous 24h.",
     intro:
       "Une conciergerie ne se casse pas sur la relation propriétaire ni sur les annonces : elle se casse sur l’exécution du samedi, quand douze logements tournent en même temps et qu’un intervenant manque à l’appel. MonCleanerPro est le prestataire ménage qui absorbe cette charge à Lyon. Nous ne gérons pas d’annonces, nous ne parlons pas à vos propriétaires : nous assurons les rotations, avec les effectifs, le planning et la traçabilité qu’un parc en croissance exige.",
     highlights: [
@@ -265,8 +285,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage location courte durée Lyon',
     eyebrow: 'Location saisonnière',
     h1: 'Ménage de location courte durée à Lyon',
-    title: 'Ménage location courte durée à Lyon — MonCleanerPro | Airbnb, Booking, Abritel',
-    description: "Ménage de location saisonnière à Lyon, toutes plateformes : rotations entre voyageurs, moyenne durée, remise en état de fin de saison. Propriétaires indépendants et multipropriétaires. Devis sous 24h.",
+    title: "Ménage location courte durée à Lyon — MonCleanerPro",
+    description: "Ménage de location saisonnière à Lyon, toutes plateformes : rotations, moyenne durée, remise en état de fin de saison. Rapport photo. Devis sous 24h.",
     intro:
       "Airbnb n’est qu’une plateforme parmi d’autres. Beaucoup de propriétaires lyonnais diffusent le même bien sur Booking, Abritel ou en direct, louent parfois au mois à des salariés en mission, et alternent avec des périodes d’occupation personnelle. Le ménage doit suivre cette réalité-là, pas un modèle unique. MonCleanerPro assure l’entretien des locations courte et moyenne durée à Lyon quel que soit le canal de réservation, avec des prestations calibrées sur le type de séjour plutôt que sur le nom du site.",
     highlights: [
@@ -336,8 +356,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'prix ménage Airbnb',
     eyebrow: 'Prix & devis',
     h1: 'Prix d’un ménage Airbnb à Lyon',
-    title: 'Prix ménage Airbnb à Lyon — MonCleanerPro | Ce qui fait varier le devis',
-    description: "Comment se calcule le prix d’un ménage Airbnb à Lyon : surface, nombre de couchages, linge, fréquence de rotation, accès et créneau. Estimation immédiate en ligne, devis confirmé sous 24h.",
+    title: "Prix d’un ménage Airbnb à Lyon — MonCleanerPro",
+    description: "Ce qui fait varier le prix d’un ménage Airbnb à Lyon : couchages, salles d’eau, linge, fréquence, accès. Estimation immédiate, devis sous 24h.",
     intro:
       "La question arrive toujours en premier, et c’est normal : le ménage est le poste de charge le plus régulier d’une location courte durée, celui qui revient à chaque réservation. Mais un tarif affiché en ligne ne vous dirait rien d’utile — un studio sans linge fourni et un T3 avec deux salles de bains et six couchages n’ont pas le même contenu de prestation. Voici précisément ce qui fait varier le devis, ce que vous pouvez actionner pour le réduire, et comment obtenir votre chiffre en quelques minutes.",
     highlights: [
@@ -412,8 +432,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage EHPAD Lyon',
     eyebrow: 'EHPAD & résidences',
     h1: 'Nettoyage d’EHPAD et de résidences à Lyon',
-    title: 'Nettoyage EHPAD à Lyon — MonCleanerPro | Hygiène & protocoles stricts',
-    description: "Nettoyage d’EHPAD et de résidences à Lyon : protocoles d’hygiène stricts, régularité, discrétion auprès d’un public sensible. Équipe formée et encadrée. Devis gratuit sous 24h.",
+    title: "Nettoyage d’EHPAD à Lyon — MonCleanerPro",
+    description: "Nettoyage d’EHPAD et de résidences à Lyon : protocoles d’hygiène stricts, régularité, discrétion auprès d’un public sensible. Devis gratuit sous 24h.",
     intro:
       "Les établissements accueillant des personnes âgées ou du public sensible demandent une rigueur particulière. MonCleanerPro intervient dans les EHPAD et résidences de Lyon avec des protocoles d’hygiène stricts, une grande régularité et la discrétion indispensable dans ces lieux de vie.",
     highlights: [
@@ -428,9 +448,29 @@ export const SEO_PAGES: SeoPage[] = [
       'Fréquence adaptée à l’établissement',
       'Traçabilité et suivi des interventions',
     ],
+    sections: [
+      {
+        h2: "Un lieu de vie avant d’être un établissement",
+        paragraphs: [
+          "C’est ce qu’on oublie en parlant de protocoles : une chambre d’EHPAD est le domicile de quelqu’un. Les objets qui s’y trouvent ont une valeur affective, leur emplacement a souvent été choisi, et un résident désorienté peut être profondément perturbé par un cadre déplacé de vingt centimètres. Un intervenant qui range « mieux » fait du tort, même en toute bonne foi.",
+          "Nos consignes sont donc explicites sur ce point : on nettoie autour des affaires personnelles sans les réorganiser, on remet chaque chose exactement où elle était, on frappe et on attend avant d’entrer, et on adapte le moment du passage au rythme du résident plutôt que l’inverse. La qualité perçue par les familles tient autant à cela qu’à la propreté elle-même.",
+        ],
+      },
+      {
+        h2: "Ce qui relève de nous, ce qui relève du soin",
+        paragraphs: [
+          "La frontière doit être posée avant tout devis, parce qu’elle engage des responsabilités différentes. Nous assurons l’entretien et la désinfection des locaux : chambres, sanitaires, circulations, espaces de vie, surfaces et mobilier. Cela inclut le respect des temps de contact des produits — un désinfectant essuyé immédiatement n’a rien désinfecté, et c’est l’erreur la plus courante.",
+          "En revanche, l’élimination des déchets d’activités de soins à risques infectieux relève d’une filière agréée, et la désinfection des dispositifs médicaux relève de vos protocoles internes et de votre responsabilité professionnelle. Une entreprise de nettoyage qui accepte tout sur ces sujets devrait vous alerter plutôt que vous rassurer.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Respectez-vous des protocoles d’hygiène spécifiques ?', a: "Oui, nous appliquons des protocoles stricts adaptés aux établissements accueillant du public sensible." },
       { q: 'Vos équipes sont-elles formées à ces environnements ?', a: "Nos intervenants sont formés et encadrés, avec un souci constant de discrétion et de régularité." },
+      { q: "Vos intervenants sont-ils sensibilisés au public accueilli ?", a: "Oui, et cela va au-delà de l’hygiène. On ne réorganise pas les affaires d’un résident, on remet chaque objet où il était, on frappe et on attend avant d’entrer. Un cadre déplacé de vingt centimètres peut désorienter durablement une personne âgée." },
+      { q: "Prenez-vous en charge les DASRI ?", a: "Non. Les déchets d’activités de soins à risques infectieux relèvent d’une filière agréée avec sa traçabilité propre. Notre périmètre couvre les locaux, les surfaces, le mobilier et les sanitaires." },
+      { q: "Comment assurez-vous la continuité en cas d’absence ?", a: "Le remplacement est organisé en interne, avec les consignes écrites de l’établissement et du secteur concerné. Sur un lieu de vie, un intervenant qui découvre les lieux sans consigne est un risque, pas seulement une baisse de qualité." },
     ],
   },
   // ── PAGE PILIER du cluster « fin de chantier » ────────────────────────────
@@ -440,8 +480,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Lyon',
     eyebrow: 'Fin de chantier',
     h1: 'Nettoyage de fin de chantier à Lyon',
-    title: 'Nettoyage fin de chantier à Lyon — MonCleanerPro | Remise en état après travaux',
-    description: "Entreprise de nettoyage de fin de chantier à Lyon : poussières fines, traces de peinture, résidus de travaux, vitres et finitions avant livraison, état des lieux ou mise en vente. Équipe formée, devis gratuit sous 24h.",
+    title: "Nettoyage fin de chantier à Lyon — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Lyon : poussières fines, traces, vitres et finitions avant livraison ou état des lieux. Équipe formée. Devis sous 24h.",
     intro:
       "Un chantier qui se termine laisse toujours deux choses derrière lui : des résidus visibles, et une poussière fine qui s’est infiltrée partout — dans les rainures de parquet, sur les rails de placard, au-dessus des portes. Tant qu’elle n’est pas éliminée méthodiquement, elle continue de retomber pendant des semaines. MonCleanerPro réalise le nettoyage de fin de chantier à Lyon et dans la métropole pour les particuliers, les artisans, les promoteurs et les agences : un logement ou un local livrable, présentable et sain dès la remise des clés.",
     highlights: [
@@ -540,8 +580,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage après travaux Lyon',
     eyebrow: 'Après travaux',
     h1: 'Nettoyage après travaux à Lyon',
-    title: 'Nettoyage après travaux à Lyon — MonCleanerPro | Logement habitable après rénovation',
-    description: "Nettoyage après travaux à Lyon pour les particuliers : poussière de rénovation, traces de peinture, vitres et finitions après une cuisine, une salle de bains ou un logement entier. Devis gratuit sous 24h.",
+    title: "Nettoyage après travaux à Lyon — MonCleanerPro",
+    description: "Nettoyage après travaux à Lyon pour les particuliers : poussière de rénovation, traces de peinture, vitres et finitions. Logement habitable. Devis sous 24h.",
     intro:
       "Vos travaux sont finis, l’artisan est parti — et le logement est inhabitable. C’est la situation la plus fréquente après une rénovation : le gros œuvre est terminé, mais la poussière recouvre chaque surface et les finitions portent encore les traces du chantier. MonCleanerPro réalise le nettoyage après travaux à Lyon pour les particuliers, afin que vous puissiez emménager, réemménager ou simplement réoccuper vos pièces sans y passer vos week-ends.",
     highlights: [
@@ -615,8 +655,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'prix nettoyage fin de chantier',
     eyebrow: 'Prix & devis',
     h1: 'Prix d’un nettoyage de fin de chantier à Lyon',
-    title: 'Prix nettoyage fin de chantier à Lyon — MonCleanerPro | Ce qui fait varier le devis',
-    description: "Comment est calculé le prix d’un nettoyage de fin de chantier à Lyon : surface, état après travaux, délai, accessibilité, vitrage. Estimation immédiate en ligne et devis confirmé sous 24h.",
+    title: "Prix nettoyage fin de chantier à Lyon — MonCleanerPro",
+    description: "Ce qui fait varier le prix d’un nettoyage de fin de chantier à Lyon : surface, état après travaux, délai, vitrage. Estimation immédiate, devis sous 24h.",
     intro:
       "« Combien coûte un nettoyage de fin de chantier ? » est la première question qu’on nous pose — et la seule à laquelle personne ne peut répondre honnêtement sans savoir de quel chantier il s’agit. Deux appartements de même surface peuvent demander du simple au double de travail selon l’ampleur des travaux et l’état dans lequel les entreprises ont laissé les lieux. Plutôt qu’un tarif affiché qui ne correspondrait à personne, voici précisément ce qui fait varier le devis — et comment obtenir votre chiffre en quelques minutes.",
     highlights: [
@@ -692,8 +732,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'grand ménage Lyon',
     eyebrow: 'Particuliers',
     h1: 'Grand ménage à Lyon',
-    title: 'Grand ménage à Lyon — MonCleanerPro | Nettoyage en profondeur',
-    description: "Grand ménage et nettoyage en profondeur à Lyon pour les particuliers : remise à neuf, ponctuel ou avant/après un événement. Intervenants soignés, devis clair et gratuit sous 24h.",
+    title: "Grand ménage à Lyon — MonCleanerPro",
+    description: "Grand ménage et nettoyage en profondeur à Lyon : remise en état complète, pièce par pièce, pour particuliers et logements loués. Devis gratuit sous 24h.",
     intro:
       "Besoin d’une remise à neuf complète de votre logement ? MonCleanerPro réalise le grand ménage à Lyon et dans la métropole : un nettoyage en profondeur, pièce par pièce, ponctuel ou avant/après un déménagement, une location ou un événement. Un intérieur qui respire le propre, sans que vous ayez à lever le petit doigt.",
     highlights: [
@@ -708,9 +748,38 @@ export const SEO_PAGES: SeoPage[] = [
       'Sols, plinthes et surfaces',
       'Vitres intérieures sur demande',
     ],
+    sections: [
+      {
+        h2: "Ce qu’un grand ménage traite et qu’un entretien courant ne touche jamais",
+        paragraphs: [
+          "La différence n’est pas une question d’intensité mais de périmètre. Un entretien régulier maintient les surfaces vues et utilisées : sols, sanitaires, cuisine, poussière. Il ne touche presque jamais à ce qui demande de vider, de déplacer ou de démonter — et c’est précisément là que la saleté s’installe sur la durée.",
+        ],
+        list: [
+          "Intérieur des placards, tiroirs et rangements, vidés puis nettoyés",
+          "Intérieur du four, de la hotte, du réfrigérateur et du lave-vaisselle",
+          "Dessous et arrière des meubles et de l’électroménager déplaçable",
+          "Points hauts : dessus d’armoires, luminaires, grilles de ventilation",
+          "Plinthes, portes, huisseries et interrupteurs détachés un à un",
+          "Vitres, encadrements, rebords et volets accessibles",
+          "Détartrage complet des sanitaires et de la robinetterie",
+          "Textiles, matelas et tapis aspirés en profondeur",
+        ],
+      },
+      {
+        h2: "Les situations qui appellent un grand ménage",
+        paragraphs: [
+          "Ce n’est presque jamais une envie, c’est toujours une échéance. Un emménagement, quand on veut récupérer un logement propre avant de poser ses meubles — et c’est le meilleur moment, parce que tout est accessible. Un déménagement, quand un état des lieux de sortie conditionne la restitution du dépôt de garantie. Une mise en vente ou une séance photo, où le logement doit être vu sous son meilleur jour.",
+          "Il y a aussi les situations plus difficiles, et elles sont fréquentes : un logement resté fermé plusieurs mois, une succession à vider et à préparer, un retour après une hospitalisation longue, ou simplement une maison devenue trop grande à entretenir. Nous intervenons dans ces cas sans jugement et avec discrétion — c’est une part réelle de notre activité, et il n’y a rien d’exceptionnel à faire appel à quelqu’un.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Le grand ménage est-il ponctuel ou régulier ?', a: "Les deux : nous réalisons des grands ménages ponctuels comme des prestations récurrentes selon vos besoins." },
       { q: 'Puis-je le programmer avant un état des lieux ?', a: "Oui, c’est un cas fréquent : nous intervenons avant un état des lieux, une remise de clés ou une vente." },
+      { q: "Quelle différence avec un ménage classique ?", a: "Le périmètre, pas l’intensité. Un grand ménage traite ce qu’un entretien courant ne touche jamais : intérieur des placards et du four, dessous et arrière des meubles, points hauts, plinthes, détartrage complet, textiles en profondeur." },
+      { q: "Combien de temps faut-il prévoir ?", a: "Cela dépend de la surface et surtout de l’état de départ, qui pèse davantage. Un appartement de taille moyenne se traite généralement sur une journée ; un logement resté fermé longtemps ou une maison demandent plusieurs intervenants ou plusieurs jours. La durée estimée figure au devis." },
+      { q: "Intervenez-vous avant un état des lieux de sortie ?", a: "Oui, c’est l’une des demandes les plus fréquentes, et le moment se cale juste avant le rendez-vous. Le logement doit être vide ou presque pour que tout soit accessible : un grand ménage réalisé autour des meubles restants n’a pas le même résultat." },
     ],
   },
   {
@@ -718,8 +787,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage bureaux Lyon',
     eyebrow: 'Entreprises & bureaux',
     h1: 'Nettoyage de bureaux à Lyon',
-    title: 'Nettoyage de bureaux à Lyon — MonCleanerPro | Entretien pro régulier',
-    description: "Nettoyage de bureaux et locaux professionnels à Lyon : entretien régulier, postes de travail, sanitaires, espaces communs. Interventions hors présence, discrètes et fiables. Devis gratuit sous 24h.",
+    title: "Nettoyage de bureaux à Lyon — MonCleanerPro",
+    description: "Nettoyage de bureaux à Lyon : entretien récurrent hors horaires, sanitaires, points de contact et vitrages. Contrats sur mesure. Devis gratuit sous 24h.",
     intro:
       "Un bureau propre, c’est une image soignée pour vos clients et un cadre sain pour vos équipes. MonCleanerPro assure l’entretien des bureaux et locaux professionnels de Lyon et de la métropole : passages réguliers, tôt le matin ou en soirée pour ne pas gêner votre activité, avec la fiabilité et la discrétion qu’attend une entreprise.",
     highlights: [
@@ -734,9 +803,29 @@ export const SEO_PAGES: SeoPage[] = [
       'Sols, vitres intérieures et espaces communs',
       'Gestion des corbeilles et réassort consommables',
     ],
+    sections: [
+      {
+        h2: "Ce qu’un contrat de bureaux couvre vraiment",
+        paragraphs: [
+          "La déception, sur un contrat d’entretien, vient presque toujours d’un malentendu sur le périmètre plutôt que d’un travail mal fait. Le client suppose que tout est traité à chaque passage ; le contrat prévoit en réalité un socle quotidien ou hebdomadaire, et des postes périodiques beaucoup plus espacés.",
+          "Nous préférons l’écrire noir sur blanc. Le socle de chaque passage : sols de circulation, sanitaires, points de contact, corbeilles, point café, salles de réunion utilisées. Les postes périodiques, à fréquence définie : vitrages intérieurs, dessus d’armoires et points hauts, moquette en profondeur, luminaires et grilles de ventilation, intérieur du réfrigérateur. Quand ces deux listes sont explicites, il n’y a plus de discussion — et vous pouvez arbitrer en connaissance de cause.",
+        ],
+      },
+      {
+        h2: "Les sanitaires et le point café décident de tout",
+        paragraphs: [
+          "C’est une réalité que tous les responsables de site finissent par constater : personne ne remonte jamais qu’un dessus d’armoire est poussiéreux. En revanche, un distributeur de savon vide, un rouleau manquant ou un micro-ondes sale déclenchent une remontée dans la journée. Ces deux endroits concentrent l’essentiel de la perception qu’ont vos équipes de la qualité de l’entretien.",
+          "Nous les traitons donc comme prioritaires, y compris sur le suivi des consommables : signaler un stock en fin de course avant la rupture fait partie du passage. C’est un détail qui ne coûte rien et qui évite la seule situation où un contrat d’entretien devient visible — quand il manque quelque chose.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous en dehors des heures de bureau ?', a: "Oui, la plupart de nos prestations en entreprise se font tôt le matin ou en soirée, hors présence des équipes." },
       { q: 'Proposez-vous un contrat régulier ?', a: "Oui, nous mettons en place un planning régulier adapté à vos locaux, avec un interlocuteur dédié et un suivi qualité." },
+      { q: "Que comprend exactement un passage ?", a: "Un socle traité à chaque fois — sols de circulation, sanitaires, points de contact, corbeilles, point café, salles de réunion utilisées — et des postes périodiques à fréquence définie : vitrages intérieurs, points hauts, moquette en profondeur, luminaires. Les deux listes figurent au contrat." },
+      { q: "Gérez-vous les consommables sanitaires ?", a: "Le réassort et le suivi peuvent être inclus. Nous signalons de toute façon un stock en fin de course avant la rupture : un distributeur vide est ce qui rend un contrat d’entretien visible, et jamais en bien." },
+      { q: "Intervenez-vous en présence des équipes ?", a: "Nous le déconseillons. Un nettoyage réalisé en journée contourne les postes occupés et saute les bureaux fermés : une partie des surfaces reste intacte semaine après semaine. Tôt le matin ou en soirée, le coût est identique et le résultat sans commune mesure." },
     ],
   },
   {
@@ -744,8 +833,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage copropriété Lyon',
     eyebrow: 'Copropriétés & syndics',
     h1: 'Nettoyage de copropriété à Lyon',
-    title: 'Nettoyage de copropriété à Lyon — MonCleanerPro | Parties communes & syndics',
-    description: "Nettoyage des parties communes de copropriété à Lyon : halls, escaliers, ascenseurs, local poubelles. Passages réguliers pour syndics et gestionnaires. Fiabilité et suivi. Devis gratuit.",
+    title: "Nettoyage de copropriété à Lyon — MonCleanerPro",
+    description: "Nettoyage de copropriété à Lyon : halls, cages d’escalier, ascenseurs et locaux poubelles. Passages réguliers, suivi vérifiable. Devis gratuit sous 24h.",
     intro:
       "L’entretien des parties communes est le premier signe visible d’une copropriété bien gérée. MonCleanerPro accompagne les syndics, gestionnaires et conseils syndicaux de Lyon dans le nettoyage régulier des immeubles : halls, cages d’escalier, ascenseurs et locaux techniques, avec des passages fiables et un suivi transparent que vous pouvez présenter aux copropriétaires.",
     highlights: [
@@ -760,9 +849,30 @@ export const SEO_PAGES: SeoPage[] = [
       'Local poubelles et sortie / rentrée des bacs',
       'Vitres des parties communes et boîtes aux lettres',
     ],
+    sections: [
+      {
+        h2: "Trouver la bonne fréquence, ni plus ni moins",
+        paragraphs: [
+          "C’est la question qui revient à chaque assemblée générale, et elle est presque toujours mal posée. La fréquence ne dépend pas du nombre de lots mais du passage réel : un immeuble de quinze logements avec un accès direct sur rue et des commerces en pied d’immeuble se salit beaucoup plus vite qu’une résidence de quarante lots fermée sur cour.",
+          "S’y ajoute une saisonnalité que peu de contrats prennent en compte : l’automne apporte les feuilles dans les halls et les sas, l’hiver le sel et l’eau boueuse dans les cages d’escalier, le printemps le pollen sur les vitrages. Un contrat intelligent module ces passages plutôt que d’appliquer la même fréquence douze mois sur douze — c’est plus efficace et souvent moins cher sur l’année.",
+        ],
+      },
+      {
+        h2: "Pourquoi le moins-disant coûte plus cher",
+        paragraphs: [
+          "En copropriété, le prestataire est choisi en assemblée générale, souvent sur la base de trois devis comparés ligne à ligne. Le moins cher l’emporte fréquemment — et c’est le mécanisme qui explique la rotation permanente des entreprises de nettoyage dans les immeubles.",
+          "La raison est arithmétique. Un devis nettement plus bas ne correspond pas à une meilleure organisation, mais à moins de temps sur place. Les premières semaines, cela ne se voit pas. Puis les postes secondaires sautent, la fréquence réelle s’écarte de la fréquence contractuelle, et dix-huit mois plus tard le conseil syndical relance une consultation. Le coût complet, en temps de gestion et en dégradation du bâti, dépasse largement l’économie initiale.",
+          "Le bon réflexe n’est pas de prendre le devis le plus cher, mais de comparer les temps de passage annoncés et le détail du périmètre. Deux devis sans ces éléments ne sont tout simplement pas comparables.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Travaillez-vous avec les syndics et gestionnaires ?', a: "Oui, nous intervenons pour des syndics professionnels comme pour des copropriétés en gestion bénévole, avec un contrat régulier." },
       { q: 'Gérez-vous la sortie des poubelles ?', a: "Oui, la sortie et la rentrée des conteneurs ainsi que l’entretien du local poubelles peuvent être inclus dans la prestation." },
+      { q: "Quelle fréquence choisir pour notre immeuble ?", a: "Elle dépend du passage réel, pas du nombre de lots. Un immeuble ouvert sur rue avec des commerces se salit bien plus vite qu’une résidence fermée sur cour de taille double. Nous proposons une fréquence après avoir vu l’immeuble." },
+      { q: "Comment comparer deux devis de nettoyage ?", a: "Sur le temps de passage annoncé et le détail du périmètre, pas sur le montant seul. Un devis nettement moins cher correspond presque toujours à moins de temps sur place : cela ne se voit pas les premières semaines, puis les postes secondaires sautent." },
+      { q: "La sortie des bacs est-elle comprise ?", a: "Elle se cadre explicitement au contrat, avec le lavage périodique des bacs et la désinfection du local. C’est le poste qui génère le plus de réclamations en copropriété, et celui que les contrats couvrent le plus mal." },
     ],
   },
   {
@@ -770,8 +880,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage vitres Lyon',
     eyebrow: 'Vitrerie',
     h1: 'Nettoyage de vitres à Lyon',
-    title: 'Nettoyage de vitres à Lyon — MonCleanerPro | Vitres, baies & vitrines',
-    description: "Nettoyage de vitres à Lyon pour professionnels et particuliers : vitrines, baies vitrées, fenêtres, sans traces. Ponctuel ou régulier, en intérieur comme en extérieur accessible. Devis gratuit.",
+    title: "Nettoyage de vitres à Lyon — MonCleanerPro",
+    description: "Nettoyage de vitres et vitrines à Lyon : bureaux, commerces, copropriétés et particuliers. Résultat sans traces, accès en sécurité. Devis sous 24h.",
     intro:
       "Des vitres nettes changent tout : une vitrine qui attire, des bureaux lumineux, un logement qui respire. MonCleanerPro réalise le nettoyage de vitres à Lyon pour les commerces, les bureaux et les particuliers — vitrines, baies vitrées et fenêtres, sans traces, en ponctuel ou en passage régulier.",
     highlights: [
@@ -786,9 +896,29 @@ export const SEO_PAGES: SeoPage[] = [
       'Encadrements, rebords et traces nettoyés',
       'Passage ponctuel ou récurrent programmé',
     ],
+    sections: [
+      {
+        h2: "Pourquoi une vitre garde des traces",
+        paragraphs: [
+          "Une vitre qui sèche avec un voile n’a presque jamais été mal nettoyée : elle a été mal rincée ou mal séchée. Les trois causes sont toujours les mêmes. Un excès de produit d’abord — le détergent qui n’est pas entièrement retiré laisse un film qui se révèle en séchant. L’eau ensuite : l’eau lyonnaise est calcaire, et une vitre séchée à l’air libre garde la trace du minéral. Le soleil enfin, qui fait sécher la surface avant qu’on ait eu le temps de la racler.",
+          "La méthode professionnelle répond aux trois : mouilleur pour décoller, raclette pour retirer l’eau en un seul geste continu, et essuyage des bords à la microfibre. On travaille à l’ombre ou en début de journée quand la façade est exposée. C’est ce qui distingue un vitrage sans traces d’un vitrage simplement lavé — et c’est visible immédiatement, à contre-jour.",
+        ],
+      },
+      {
+        h2: "Ce que nous faisons, et où nous nous arrêtons",
+        paragraphs: [
+          "Nous traitons tout ce qui est accessible en sécurité depuis l’intérieur ou depuis le sol : vitrines et devantures, cloisons vitrées, fenêtres et baies, garde-corps, verrières accessibles, encadrements et rebords.",
+          "En revanche, tout ce qui suppose une nacelle, une plateforme élévatrice ou un travail sur corde relève d’une entreprise spécialisée et habilitée. Nous ne le proposons pas, et nous vous le disons au devis plutôt que de le découvrir sur place. Une entreprise qui accepte un vitrage de grande hauteur sans mentionner les moyens d’accès vous engage dans un risque qui n’est pas le vôtre à porter.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Nettoyez-vous les vitres en hauteur ?', a: "Nous traitons les vitres accessibles en sécurité ; pour les grandes hauteurs nécessitant du matériel spécifique, nous vous orientons vers la solution adaptée." },
       { q: 'Intervenez-vous pour les commerces ?', a: "Oui, nous nettoyons régulièrement les vitrines et façades vitrées de commerces et de bureaux, en ponctuel ou en contrat régulier." },
+      { q: "Pourquoi mes vitres gardent-elles des traces ?", a: "Presque toujours pour trois raisons : trop de produit non rincé, une eau calcaire séchée à l’air libre, ou une surface exposée au soleil qui sèche avant d’être raclée. La réponse est la méthode — mouilleur, raclette en un geste continu, bords essuyés à la microfibre." },
+      { q: "Nettoyez-vous les vitres en hauteur ?", a: "Uniquement ce qui est accessible en sécurité depuis l’intérieur ou depuis le sol. Tout ce qui nécessite une nacelle ou un travail sur corde relève d’une entreprise habilitée : nous le signalons au devis plutôt que sur place." },
+      { q: "À quelle fréquence faire nettoyer une vitrine ?", a: "Sur un axe passant, au moins deux fois par semaine. Une vitrine accumule en quelques jours les traces de mains, les projections du caniveau et le film gras de la circulation — et tout se voit à contre-jour en fin de journée, quand les passants regardent." },
     ],
   },
   {
@@ -796,8 +926,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage commerce Lyon',
     eyebrow: 'Commerces & boutiques',
     h1: 'Nettoyage de commerce à Lyon',
-    title: 'Nettoyage de commerce à Lyon — MonCleanerPro | Boutiques, vitrines & surfaces de vente',
-    description: "Nettoyage de commerces et boutiques à Lyon : surface de vente, vitrine, cabines d’essayage, sanitaires et réserve. Passages avant ouverture ou après fermeture. Devis gratuit sous 24h.",
+    title: "Nettoyage de commerce à Lyon — MonCleanerPro",
+    description: "Nettoyage de commerce à Lyon : vitrines, surfaces de vente, sanitaires et réserves. Passage avant ouverture, contrats réguliers. Devis gratuit sous 24h.",
     intro:
       "Dans un commerce, la propreté se voit avant le produit. Une vitrine marquée, un sol terne ou une cabine d’essayage négligée coûtent des ventes sans qu’aucun client ne vous le dise. MonCleanerPro entretient les boutiques, surfaces de vente et locaux commerciaux de Lyon et de la métropole, avec des passages calés avant l’ouverture ou après la fermeture pour ne jamais croiser votre clientèle.",
     highlights: [
@@ -827,8 +957,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage restaurant Lyon',
     eyebrow: 'Restauration',
     h1: 'Nettoyage de restaurant à Lyon',
-    title: 'Nettoyage de restaurant à Lyon — MonCleanerPro | Salle, cuisine & sanitaires',
-    description: "Nettoyage de restaurants, bars et brasseries à Lyon : salle, cuisine, plonge, sanitaires et vitrerie. Passages de nuit ou entre deux services, en appui de votre plan de maîtrise sanitaire. Devis gratuit.",
+    title: "Nettoyage de restaurant à Lyon — MonCleanerPro",
+    description: "Nettoyage de restaurant à Lyon : salle, sanitaires, sols et surfaces, en appui de votre plan de maîtrise sanitaire. Hors service. Devis sous 24h.",
     intro:
       "En restauration, la propreté n’est pas qu’une question d’image : c’est une obligation quotidienne, contrôlée, et le premier motif d’avis négatif en ligne. MonCleanerPro accompagne restaurants, brasseries et bars de Lyon sur l’entretien de la salle, des sanitaires et des zones de production, en appui de votre plan de maîtrise sanitaire — avec des passages de nuit ou entre deux services pour ne jamais bloquer votre exploitation.",
     highlights: [
@@ -858,8 +988,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage cabinet médical Lyon',
     eyebrow: 'Santé & cabinets',
     h1: 'Nettoyage de cabinet médical à Lyon',
-    title: 'Nettoyage de cabinet médical à Lyon — MonCleanerPro | Hygiène & discrétion',
-    description: "Nettoyage de cabinets médicaux, dentaires et paramédicaux à Lyon : salle d’attente, salle de soins, points de contact, sanitaires. Protocoles rigoureux, passages hors consultation. Devis gratuit.",
+    title: "Nettoyage de cabinet médical à Lyon — MonCleanerPro",
+    description: "Nettoyage de cabinet médical à Lyon : salle d’attente, salles de soins, points de contact et sanitaires. Hors consultation. Devis gratuit sous 24h.",
     intro:
       "Un cabinet de santé accueille chaque jour des patients dont certains sont fragiles, dans des locaux où les surfaces sont touchées en permanence. L’entretien y demande plus de méthode qu’ailleurs : un ordre de nettoyage qui évite les transferts, une attention constante aux points de contact, et une discrétion absolue. MonCleanerPro entretient les cabinets médicaux, dentaires et paramédicaux de Lyon et de la métropole, hors des heures de consultation.",
     highlights: [
@@ -889,8 +1019,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage à domicile Lyon',
     eyebrow: 'Ménage régulier',
     h1: 'Ménage à domicile à Lyon',
-    title: 'Ménage à domicile à Lyon — MonCleanerPro | Entretien régulier de votre logement',
-    description: "Ménage à domicile régulier à Lyon : entretien hebdomadaire ou bimensuel de votre appartement ou maison, par un intervenant attitré. Prestations cadrées, remplacement assuré. Devis gratuit sous 24h.",
+    title: "Ménage à domicile à Lyon — MonCleanerPro",
+    description: "Ménage à domicile régulier à Lyon : entretien hebdomadaire ou bimensuel, intervenant attitré, consignes respectées. Devis gratuit sous 24h.",
     intro:
       "Le ménage régulier, ce n’est pas le même métier qu’un grand ménage ponctuel. Ce qui compte ici, c’est la constance : le même intervenant qui connaît votre logement, la même qualité chaque semaine, et surtout quelqu’un qui vient vraiment — y compris pendant les congés. MonCleanerPro assure l’entretien régulier des logements de particuliers à Lyon et dans la métropole, avec un intervenant attitré et une continuité de service qui ne repose jamais sur une seule personne.",
     highlights: [
@@ -923,8 +1053,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Villefranche-sur-Saône',
     eyebrow: 'Villefranche-sur-Saône',
     h1: 'Entreprise de nettoyage à Villefranche-sur-Saône',
-    title: 'Nettoyage à Villefranche-sur-Saône — MonCleanerPro | Pros & particuliers',
-    description: "Entreprise de nettoyage à Villefranche-sur-Saône et dans le Beaujolais : bureaux, commerces, copropriétés, locations Airbnb, fin de chantier et grand ménage. Équipe formée, devis gratuit sous 24h.",
+    title: "Nettoyage à Villefranche-sur-Saône — MonCleanerPro",
+    description: "Entreprise de nettoyage à Villefranche-sur-Saône : commerces, bureaux, copropriétés, fin de chantier et grand ménage. Secteur couvert en propre. Devis sous 24h.",
     intro:
       "MonCleanerPro étend son savoir-faire au-delà de Lyon jusqu’à Villefranche-sur-Saône et au Beaujolais. Bureaux, commerces, copropriétés, hôtels, locations courte durée ou logements de particuliers : nous assurons un nettoyage régulier ou ponctuel, avec des équipes formées, un contrôle qualité systématique et un suivi digital de chaque intervention. Un seul interlocuteur, la même exigence que sur la métropole lyonnaise.",
     highlights: [
@@ -1001,8 +1131,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Anse',
     eyebrow: 'Anse',
     h1: 'Entreprise de nettoyage à Anse',
-    title: 'Nettoyage à Anse (69480) — MonCleanerPro | Entreprises, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Anse et dans le pays des Pierres Dorées : bureaux, commerces, copropriétés, locations saisonnières, fin de chantier et grand ménage. Équipe locale, devis gratuit sous 24h.",
+    title: "Nettoyage à Anse (69480) — MonCleanerPro",
+    description: "Entreprise de nettoyage à Anse et dans les Pierres Dorées : bureaux, copropriétés, gîtes, fin de chantier et grand ménage. Devis gratuit sous 24h.",
     intro:
       "Anse occupe une position particulière : porte d’entrée du Beaujolais, à quelques minutes de Villefranche, mais à moins de trente kilomètres de Lyon par l’A6 — ce qui en fait autant une commune viticole qu’une commune résidentielle où l’on habite en travaillant dans la métropole. Cette double nature se retrouve dans les besoins de nettoyage : des maisons en pierres dorées et des locations saisonnières d’un côté, des bureaux, des commerces et des copropriétés récentes de l’autre. MonCleanerPro intervient sur l’ensemble, avec une équipe qui couvre réellement le secteur.",
     highlights: [
@@ -1078,209 +1208,402 @@ export const SEO_PAGES: SeoPage[] = [
     slug: 'nettoyage-caluire-et-cuire',
     keyword: 'nettoyage Caluire-et-Cuire',
     eyebrow: 'Caluire-et-Cuire',
-    h1: 'Entreprise de nettoyage à Caluire-et-Cuire',
-    title: 'Nettoyage à Caluire-et-Cuire — MonCleanerPro | Pros & particuliers',
-    description: "Entreprise de nettoyage à Caluire-et-Cuire : bureaux, copropriétés, résidences, locations Airbnb et grand ménage chez les particuliers. Équipe formée, proximité lyonnaise, devis gratuit sous 24h.",
+    h1: 'Nettoyage de copropriétés et de bureaux à Caluire-et-Cuire',
+    title: 'Nettoyage à Caluire-et-Cuire — MonCleanerPro',
+    description: "Nettoyage à Caluire-et-Cuire : parties communes de copropriété, bureaux, résidences et grand ménage. Passages réguliers, équipe formée. Devis sous 24h.",
     intro:
-      "Aux portes nord de Lyon, Caluire-et-Cuire mêle résidences soignées, copropriétés et petites entreprises. MonCleanerPro y assure l’entretien des bureaux, des parties communes d’immeubles et des logements — en récurrent ou en ponctuel. Grâce à notre proximité immédiate avec Lyon, nous intervenons vite et gardons partout le même standard : équipes formées, contrôle qualité et suivi digital de chaque passage.",
+      "Caluire-et-Cuire est d’abord une commune de copropriétés. Résidences des coteaux, immeubles du plateau, petits collectifs de centre-ville : l’essentiel de nos interventions y porte sur des parties communes, ces espaces que personne ne remarque quand ils sont propres et que tout le monde commente dès qu’ils ne le sont plus. MonCleanerPro y assure l’entretien régulier des halls, cages d’escalier et locaux communs, en plus des bureaux et des logements de particuliers.",
     highlights: [
-      { title: 'Proximité immédiate de Lyon', text: "À deux pas de nos zones lyonnaises : réactivité et interventions faciles à planifier à Caluire-et-Cuire." },
-      { title: 'Résidences & copropriétés', text: "Entretien régulier des parties communes et des logements, avec un interlocuteur dédié." },
-      { title: 'Pros & particuliers', text: "Bureaux, commerces de quartier et particuliers : une réponse adaptée à chaque besoin." },
+      { title: 'Le hall avant tout', text: "C’est la première chose que voient les résidents, les visiteurs et surtout les acquéreurs potentiels. Il conditionne le jugement sur tout l’immeuble." },
+      { title: 'Passages réguliers tenus', text: "Un entretien de copropriété ne vaut que s’il est régulier. Notre engagement porte sur la fréquence autant que sur le résultat." },
+      { title: 'Le relief se planifie', text: "Coteaux, escaliers extérieurs, immeubles anciens sans ascenseur : le portage du matériel se prévoit, il pèse sur la durée réelle." },
+      { title: 'Syndics et bénévoles', text: "Syndics professionnels comme copropriétés en gestion bénévole, avec un compte rendu simple et vérifiable." },
     ],
     includes: [
-      'Entretien de bureaux et locaux professionnels',
-      'Parties communes de copropriété (halls, escaliers)',
-      'Ménage de locations courte durée (Airbnb)',
+      'Halls d’entrée, sas et boîtes aux lettres',
+      'Cages d’escalier, paliers et rampes',
+      'Ascenseurs : parois, sols et miroirs',
+      'Locaux poubelles, locaux vélos et caves communes',
+      'Vitrages des parties communes et portes d’accès',
+      'Bureaux et locaux professionnels du secteur',
       'Grand ménage et remise en état de logements',
-      'Nettoyage de vitres et surfaces vitrées',
+    ],
+    sections: [
+      {
+        h2: 'Les parties communes se jugent en trois secondes',
+        paragraphs: [
+          "Un hall d’immeuble ne se remarque jamais quand il est propre. Il se remarque immédiatement quand il ne l’est pas — et le jugement porte alors sur toute la copropriété, pas sur le hall. C’est particulièrement vrai lors d’une visite : un acquéreur qui monte un escalier poussiéreux et longe un local poubelles qui sent se fait une opinion avant même d’avoir vu l’appartement. Un conseil syndical qui néglige ce poste le paie sur la valeur des lots.",
+          "Les points qui trahissent un entretien insuffisant sont toujours les mêmes, et rarement les plus visibles : les nez de marche où la poussière s’accumule, le bas des parois d’ascenseur, les traces de mains sur les vitrages du hall, les rainures de la porte d’entrée, les toiles au plafond des paliers hauts. Ce sont ces points que nous traitons systématiquement, plutôt que de repasser sur les surfaces déjà propres.",
+        ],
+      },
+      {
+        h2: 'Le local poubelles, le vrai sujet',
+        paragraphs: [
+          "C’est le poste qui génère le plus de réclamations en copropriété, et celui que les contrats d’entretien couvrent le plus mal. Un local poubelles mal traité ne se voit pas depuis le hall, mais il s’entend dans les assemblées générales — parce qu’il sent, parce qu’il attire les nuisibles, et parce qu’il finit par contaminer l’odeur de la cage d’escalier.",
+          "Le traiter correctement demande davantage qu’un coup de balai : sortie et rentrée des bacs selon le calendrier de collecte, lavage périodique des bacs eux-mêmes, désinfection du sol et des parois, et surtout un signalement quand un dépôt sauvage ou un encombrant bloque l’accès. C’est un poste que nous cadrons explicitement dans le contrat, parce qu’il est trop souvent laissé dans le flou.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Intervenez-vous rapidement à Caluire-et-Cuire ?', a: "Oui, la commune est limitrophe de nos zones lyonnaises : nous y planifions facilement des interventions régulières comme ponctuelles." },
-      { q: 'Gérez-vous les copropriétés du secteur ?', a: "Oui, nous entretenons les parties communes pour les syndics et copropriétés de Caluire-et-Cuire, avec un suivi transparent." },
+      { q: 'Intervenez-vous rapidement à Caluire-et-Cuire ?', a: "Oui, la commune est limitrophe de nos zones lyonnaises. Nous y planifions sans difficulté des passages réguliers comme des interventions ponctuelles à quelques jours." },
+      { q: 'Travaillez-vous avec les copropriétés en gestion bénévole ?', a: "Oui, autant qu’avec les syndics professionnels. Le fonctionnement change surtout sur le suivi : nous fournissons un compte rendu simple, présentable en assemblée générale sans avoir à le retraiter." },
+      { q: 'La sortie des bacs à ordures est-elle incluse ?', a: "Elle peut l’être, et nous recommandons de le prévoir explicitement : c’est le poste qui génère le plus de réclamations en copropriété. Sortie et rentrée selon le calendrier de collecte, lavage périodique des bacs et désinfection du local se cadrent au contrat." },
+      { q: 'Mon immeuble n’a pas d’ascenseur, est-ce un problème ?', a: "Non, mais cela se prévoit. Le portage du matériel dans les immeubles anciens des coteaux pèse sur la durée réelle du passage : nous en tenons compte au devis plutôt que de le découvrir sur place." },
+      { q: 'Quelle fréquence pour une copropriété ?', a: "Cela dépend du nombre de lots et du passage. Un petit collectif se tient avec un passage hebdomadaire ; une résidence avec beaucoup de circulation demande deux à trois passages. Nous proposons une fréquence après avoir vu l’immeuble, pas avant." },
     ],
+    related: ['nettoyage-copropriete-lyon', 'nettoyage-rillieux-la-pape', 'nettoyage-neuville-sur-saone', 'nettoyage-villeurbanne'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-venissieux',
     keyword: 'nettoyage Vénissieux',
     eyebrow: 'Vénissieux',
-    h1: 'Entreprise de nettoyage à Vénissieux',
-    title: 'Nettoyage à Vénissieux — MonCleanerPro | Entreprises, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Vénissieux : bureaux, locaux d’activité, copropriétés, commerces et logements. Interventions régulières hors horaires, équipe formée. Devis gratuit sous 24h.",
+    h1: 'Nettoyage de bureaux et de locaux d’activité à Vénissieux',
+    title: 'Nettoyage à Vénissieux — MonCleanerPro',
+    description: "Nettoyage à Vénissieux : bureaux, locaux d’activité, parties communes de bailleurs et commerces. Intervention hors horaires, multi-sites. Devis sous 24h.",
     intro:
-      "Au sud-est de Lyon, Vénissieux conjugue zones d’activité, tertiaire, commerces et habitat collectif. MonCleanerPro y accompagne les entreprises, les syndics et les particuliers : entretien de bureaux et de locaux d’activité hors horaires, nettoyage des parties communes de copropriété et prestations ponctuelles à domicile. Une organisation pensée pour le volume et les plannings serrés, avec la régularité qui fait la différence.",
+      "À Vénissieux, deux mondes se côtoient et tombent rarement aux mêmes horaires : le tissu d’entreprises des zones d’activité, qui ne peut être nettoyé qu’avant l’ouverture ou après la fermeture, et l’habitat collectif géré par des bailleurs, où ce qui compte est la régularité sur un grand nombre de cages. MonCleanerPro couvre les deux avec la même organisation : des passages calés sur votre exploitation, pas sur nos disponibilités.",
     highlights: [
-      { title: 'Tertiaire & locaux d’activité', text: "Bureaux, plateformes et locaux professionnels entretenus tôt le matin ou en soirée, hors présence." },
-      { title: 'Habitat collectif', text: "Nettoyage régulier des parties communes pour les copropriétés et bailleurs du secteur." },
-      { title: 'Volume maîtrisé', text: "Multi-sites et plannings serrés : notre organisation suit la cadence sans perdre en qualité." },
+      { title: 'Hors exploitation', text: "Tôt le matin, en soirée ou le week-end : vos locaux sont entretenus sans qu’un seul poste de travail soit gêné." },
+      { title: 'Volume bailleur', text: "Plusieurs cages, plusieurs immeubles : des tournées organisées par proximité, avec un suivi par entrée." },
+      { title: 'Locaux d’activité', text: "Ateliers, entrepôts légers et surfaces techniques : des sols et des salissures qui n’ont rien de tertiaire." },
+      { title: 'Un seul interlocuteur', text: "Un contact unique pour l’ensemble de vos sites, même quand ils relèvent de budgets différents." },
     ],
     includes: [
-      'Nettoyage de bureaux et locaux d’activité',
-      'Entretien des parties communes d’immeubles',
-      'Nettoyage de commerces et surfaces de vente',
-      'Grand ménage et remise en état de logements',
-      'Vitres, vitrines et points de contact',
+      'Bureaux, open spaces et salles de réunion',
+      'Locaux d’activité, ateliers et entrepôts légers',
+      'Vestiaires, réfectoires et sanitaires collectifs',
+      'Parties communes d’immeubles : halls, cages, paliers',
+      'Locaux poubelles et locaux techniques',
+      'Commerces, surfaces de vente et vitrines',
+      'Points de contact désinfectés à chaque passage',
+    ],
+    sections: [
+      {
+        h2: 'Nettoyer hors exploitation, ce que ça change vraiment',
+        paragraphs: [
+          "Un nettoyage réalisé pendant les heures de travail n’est pas le même nettoyage. L’intervenant contourne les postes occupés, ne déplace pas ce qui gêne, saute les bureaux dont la porte est fermée et écourte les zones où il dérange. Le résultat paraît correct et laisse pourtant la moitié des surfaces intactes, semaine après semaine.",
+          "Hors exploitation, ces contraintes disparaissent : on accède à tout, on déplace ce qu’il faut, on traite les sols en une seule fois sans slalomer. C’est aussi ce qui permet d’utiliser du matériel qui serait insupportable en journée. Pour vos équipes, la différence est visible dès la première semaine — et pour vous, le coût est identique.",
+        ],
+      },
+      {
+        h2: 'Le sol d’un local d’activité n’est pas un sol de bureau',
+        paragraphs: [
+          "C’est l’erreur classique d’un prestataire habitué au tertiaire. Un atelier ou un entrepôt léger accumule des salissures que la serpillière ne retire pas : traces de roues de transpalette, poussière métallique, résidus gras autour des postes, marquages au sol à préserver. Un lavage classique étale au lieu de nettoyer, et laisse un film qui devient glissant — c’est un sujet de sécurité, pas seulement de propreté.",
+          "Ces surfaces demandent un matériel mécanisé et un dosage adapté au revêtement, béton brut ou résine. Nous distinguons donc explicitement, dans le devis, ce qui relève du tertiaire et ce qui relève de l’activité : mélanger les deux dans un forfait unique aboutit toujours à sous-traiter le second.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Intervenez-vous en dehors des heures d’activité ?', a: "Oui, pour les entreprises de Vénissieux nous intervenons tôt le matin ou en soirée afin de ne pas perturber votre activité." },
-      { q: 'Pouvez-vous gérer plusieurs sites ?', a: "Oui, nous organisons des tournées multi-sites avec plannings synchronisés et un interlocuteur unique." },
+      { q: 'Intervenez-vous en dehors des heures d’activité ?', a: "Oui, c’est notre mode normal pour les entreprises : tôt le matin, en soirée ou le week-end. Un nettoyage fait en présence des équipes laisse mécaniquement une partie des surfaces intactes, parce que l’intervenant contourne ce qui est occupé." },
+      { q: 'Pouvez-vous gérer plusieurs sites ?', a: "Oui, avec des tournées organisées par proximité géographique et un interlocuteur unique. C’est plus efficace qu’une somme d’interventions isolées, et cela se voit sur le devis." },
+      { q: 'Traitez-vous les sols d’atelier et d’entrepôt ?', a: "Oui, avec du matériel mécanisé et un dosage adapté au revêtement. Une serpillière sur un sol d’activité étale les résidus gras et laisse un film glissant : c’est un sujet de sécurité autant que de propreté." },
+      { q: 'Travaillez-vous pour les bailleurs du secteur ?', a: "Oui, sur l’entretien récurrent des parties communes comme sur les remises en état avant relocation. Le suivi se fait par entrée, ce qui permet de justifier précisément ce qui a été fait et où." },
+      { q: 'Assurez-vous aussi la remise en état après travaux ?', a: "Oui, mais c’est une prestation distincte de l’entretien courant, avec sa propre méthode. Voir notre page dédiée au nettoyage de fin de chantier à Vénissieux." },
     ],
+    related: ['nettoyage-fin-de-chantier-venissieux', 'nettoyage-saint-priest', 'nettoyage-bron', 'nettoyage-bureaux-lyon'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-neuville-sur-saone',
     keyword: 'nettoyage Neuville-sur-Saône',
     eyebrow: 'Neuville-sur-Saône',
-    h1: 'Entreprise de nettoyage à Neuville-sur-Saône',
-    title: 'Nettoyage à Neuville-sur-Saône — MonCleanerPro | Commerces, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Neuville-sur-Saône et au Val de Saône : commerces, bureaux, copropriétés, locations et grand ménage. Service de proximité, équipe formée. Devis gratuit sous 24h.",
+    h1: 'Nettoyage de commerces et de bureaux à Neuville-sur-Saône',
+    title: 'Nettoyage à Neuville-sur-Saône — MonCleanerPro',
+    description: "Nettoyage à Neuville-sur-Saône et dans le Val de Saône : commerces, vitrines, bureaux, copropriétés et grand ménage. Prestataire de proximité. Devis sous 24h.",
     intro:
-      "Au nord de la métropole, le long de la Saône, Neuville-sur-Saône et les communes du Val de Saône allient centre-bourg commerçant et habitat résidentiel. MonCleanerPro y propose un nettoyage de proximité : commerces et bureaux, parties communes de copropriété, locations courte durée et grand ménage chez les particuliers. Un service à taille humaine, régulier et soigné, avec le même contrôle qualité que sur Lyon.",
+      "Le Val de Saône a un problème que les communes de la première couronne ne connaissent pas : les entreprises de nettoyage lyonnaises l’annoncent dans leur zone, mais y viennent quand le planning du jour le permet. Résultat, un commerçant de Neuville qui appelle pour une intervention la semaine suivante s’entend souvent répondre que le secteur est « un peu excentré ». MonCleanerPro traite le Val de Saône comme un secteur à part entière, avec des passages réguliers réellement tenus.",
     highlights: [
-      { title: 'Service de proximité', text: "Interventions à Neuville-sur-Saône et dans les communes du Val de Saône, avec réactivité locale." },
-      { title: 'Commerces & centre-bourg', text: "Vitrines, boutiques et bureaux entretenus régulièrement pour une image toujours nette." },
-      { title: 'Copropriétés & particuliers', text: "Parties communes d’immeubles et grands ménages ponctuels chez les particuliers." },
+      { title: 'Un secteur, pas un détour', text: "Le Val de Saône fait partie de nos tournées régulières. Un contrat hebdomadaire y tient aussi bien qu’en centre-ville lyonnais." },
+      { title: 'Vitrines de centre-bourg', text: "La vitrine est le premier argument de vente d’un commerce de proximité. Elle se salit vite et se voit de loin." },
+      { title: 'Avant l’ouverture', text: "Boutiques et cabinets entretenus avant l’arrivée du premier client, jamais pendant." },
+      { title: 'Copropriétés et particuliers', text: "Parties communes d’immeubles et grands ménages ponctuels chez les habitants du secteur." },
     ],
     includes: [
-      'Nettoyage de commerces et vitrines',
-      'Entretien de bureaux et locaux professionnels',
+      'Vitrines, devantures et surfaces vitrées de commerce',
+      'Surfaces de vente, cabines et comptoirs',
+      'Bureaux, cabinets et locaux professionnels',
       'Parties communes de copropriété',
-      'Ménage de locations courte durée (Airbnb)',
+      'Sanitaires et espaces recevant du public',
       'Grand ménage et remise en état de logements',
+      'Interventions ponctuelles ou contrats réguliers',
+    ],
+    sections: [
+      {
+        h2: 'La vitrine d’un commerce de proximité se salit plus vite qu’on croit',
+        paragraphs: [
+          "Sur une rue passante de centre-bourg, une vitrine accumule en quelques jours ce qu’une façade de zone commerciale met des semaines à prendre : traces de mains à hauteur de poignée, projections du caniveau au bas du vitrage, film gras déposé par la circulation, marques de pluie séchée. À contre-jour, en fin d’après-midi, tout se voit — et c’est précisément le moment où les passants regardent.",
+          "C’est pourquoi une vitrine ne se traite pas au même rythme que l’intérieur du magasin. Beaucoup de commerçants prennent un passage complet par semaine alors qu’ils auraient intérêt à deux passages courts sur la vitrine et un passage de fond. Nous proposons ce découpage plutôt qu’un forfait unique : c’est plus efficace pour l’image du commerce, et souvent moins cher.",
+        ],
+      },
+      {
+        h2: 'Pourquoi la proximité change tout ici',
+        paragraphs: [
+          "Sur un contrat d’entretien, la question n’est pas de savoir si le prestataire sait nettoyer — la plupart savent. La question est de savoir s’il vient, toutes les semaines, y compris la semaine où son planning déborde. Un secteur traité comme une extension lointaine est toujours le premier sacrifié quand une urgence tombe en centre-ville.",
+          "C’est la seule raison pour laquelle nous insistons sur ce point : à Neuville et dans les communes voisines du Val de Saône, nos passages sont intégrés à des tournées locales, pas ajoutés en bout de journée. Cela vaut aussi pour les demandes ponctuelles — une remise en état avant une réouverture ou un état des lieux se cale à quelques jours.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Couvrez-vous le Val de Saône autour de Neuville ?', a: "Oui, nous intervenons à Neuville-sur-Saône et dans les communes voisines du Val de Saône, en plus de Lyon et de la métropole." },
-      { q: 'Travaillez-vous avec les commerces du centre ?', a: "Oui, nous entretenons régulièrement vitrines, boutiques et bureaux du centre-bourg, en ponctuel ou en contrat régulier." },
+      { q: 'Couvrez-vous les communes autour de Neuville ?', a: "Oui, Neuville-sur-Saône et les communes voisines du Val de Saône font partie de nos tournées régulières, en plus de Lyon et de la métropole." },
+      { q: 'À quelle fréquence nettoyer une vitrine ?', a: "Plus souvent que l’intérieur du commerce, presque toujours. Sur une rue passante, une vitrine se marque en quelques jours. Deux passages courts sur la vitrine et un passage de fond coûtent souvent moins qu’un passage complet hebdomadaire, pour un meilleur résultat visible." },
+      { q: 'Intervenez-vous avant l’ouverture du magasin ?', a: "Oui, c’est le cas normal pour un commerce : avant l’arrivée du premier client. Aucun client ne devrait croiser l’entretien en cours, c’est mauvais pour l’image du commerce." },
+      { q: 'Prenez-vous les petits contrats ?', a: "Oui, sans volume minimum. Une boutique de centre-bourg avec deux passages hebdomadaires est un client aussi normal qu’un plateau de bureaux, et c’est le tissu économique local." },
+      { q: 'Pouvez-vous intervenir en ponctuel ?', a: "Oui : remise en état avant une réouverture, après des travaux, avant un état des lieux ou un grand ménage saisonnier. Ces demandes se calent à quelques jours." },
     ],
+    related: ['nettoyage-commerce-lyon', 'nettoyage-caluire-et-cuire', 'nettoyage-rillieux-la-pape', 'nettoyage-vitres-lyon'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-bron',
     keyword: 'nettoyage Bron',
     eyebrow: 'Bron',
-    h1: 'Entreprise de nettoyage à Bron',
-    title: 'Nettoyage à Bron — MonCleanerPro | Bureaux, santé, copropriétés',
-    description: "Entreprise de nettoyage à Bron : bureaux, cabinets et établissements de santé, copropriétés, commerces et logements. Protocoles rigoureux, interventions régulières. Devis gratuit sous 24h.",
+    h1: 'Nettoyage de cabinets et de bureaux à Bron',
+    title: 'Nettoyage à Bron — MonCleanerPro',
+    description: "Nettoyage à Bron : cabinets et locaux de santé, bureaux, copropriétés et commerces. Protocoles d’hygiène, passages hors présence. Devis sous 24h.",
     intro:
-      "À l’est de Lyon, Bron accueille pôles de santé, tertiaire et zones résidentielles à proximité de l’aéroport et des grands axes. MonCleanerPro y assure l’entretien des bureaux, cabinets médicaux, copropriétés et logements avec une exigence particulière sur l’hygiène et la régularité. Nos équipes formées et notre suivi digital garantissent un standard constant, même sur des sites à forte fréquentation.",
+      "Bron concentre une densité inhabituelle de lieux qui reçoivent du public toute la journée : cabinets médicaux et paramédicaux, établissements de santé, bureaux d’accueil, commerces. Ces locaux partagent une caractéristique qui change complètement la façon de les entretenir — ce n’est pas la saleté visible qui pose problème, c’est ce qui se dépose sur les surfaces que des dizaines de personnes touchent chaque jour. MonCleanerPro y travaille avec des protocoles centrés sur ces points-là.",
     highlights: [
-      { title: 'Exigence santé & tertiaire', text: "Cabinets, bureaux et sites à forte fréquentation : protocoles d’hygiène et points de contact désinfectés." },
-      { title: 'Accès faciles', text: "Proche de l’aéroport et des grands axes : interventions planifiées sans contrainte à Bron." },
-      { title: 'Copropriétés & logements', text: "Entretien régulier des parties communes et grands ménages ponctuels chez les particuliers." },
+      { title: 'Les points de contact d’abord', text: "Poignées, interrupteurs, comptoirs, accoudoirs de salle d’attente : c’est là que tout se joue, pas sur les surfaces qu’on voit." },
+      { title: 'Hors présence du public', text: "Avant l’ouverture ou après la fermeture. Un cabinet ne se nettoie pas devant les patients." },
+      { title: 'Salle d’attente', text: "L’espace le plus scruté d’un cabinet : c’est là que le patient attend, désœuvré, et regarde tout." },
+      { title: 'Régularité avant profondeur', text: "Sur un lieu à forte fréquentation, deux passages courts valent mieux qu’un passage long par semaine." },
     ],
     includes: [
-      'Nettoyage de bureaux et cabinets',
-      'Désinfection des points de contact et sanitaires',
+      'Salles d’attente, accueils et comptoirs',
+      'Cabinets de consultation et salles de soins',
+      'Points de contact désinfectés à chaque passage',
+      'Sanitaires accessibles au public',
+      'Bureaux, open spaces et salles de réunion',
+      'Sols traités selon le revêtement, vitrages et miroirs',
       'Parties communes de copropriété',
-      'Ménage de locations courte durée (Airbnb)',
-      'Grand ménage et vitres',
+    ],
+    sections: [
+      {
+        h2: 'Dans un lieu qui reçoit du public, la fréquence bat la profondeur',
+        paragraphs: [
+          "C’est l’arbitrage que beaucoup de cabinets et de bureaux d’accueil font à l’envers. On prend un passage hebdomadaire long, très complet, en pensant faire une économie. Mais une poignée de porte touchée par soixante personnes redevient un point de contact chargé au bout de quelques heures — pas au bout d’une semaine. Le mardi après-midi, le local est dans le même état qu’avant le passage du lundi.",
+          "Sur ce type de lieu, deux passages courts et bien ciblés valent mieux qu’un passage long. Le premier traite ce qui se recharge vite : points de contact, sanitaires, salle d’attente, sols de circulation. Le second, plus espacé, prend le reste. C’est un découpage que nous proposons systématiquement, parce qu’il donne un local perçu comme propre en permanence, au lieu d’un local propre le lundi matin.",
+        ],
+      },
+      {
+        h2: 'Ce que nous ne prenons pas en charge',
+        paragraphs: [
+          "Un point à cadrer d’emblée avec tout établissement de santé : nous assurons le nettoyage et la désinfection des locaux, pas l’élimination des déchets d’activités de soins à risques infectieux. Les DASRI relèvent d’une filière agréée et d’un prestataire spécialisé, avec sa traçabilité propre.",
+          "De la même façon, la désinfection de dispositifs médicaux et la stérilisation d’instruments relèvent de vos protocoles internes et de votre responsabilité professionnelle. Nous intervenons sur les locaux, les surfaces et le mobilier. Le dire clairement avant le devis évite la mauvaise surprise du premier passage.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Intervenez-vous dans les cabinets et bureaux de Bron ?', a: "Oui, nous entretenons bureaux et cabinets avec des protocoles d’hygiène adaptés, en passages réguliers hors présence." },
-      { q: 'Gérez-vous les copropriétés ?', a: "Oui, nous assurons le nettoyage régulier des parties communes pour les syndics et copropriétés de Bron." },
+      { q: 'Intervenez-vous hors présence des patients ?', a: "Oui, avant l’ouverture ou après la fermeture. Un cabinet ne se nettoie pas devant les patients, ni pour l’image ni pour le confort de la salle d’attente." },
+      { q: 'Prenez-vous en charge les DASRI ?', a: "Non. Les déchets d’activités de soins à risques infectieux relèvent d’une filière agréée avec sa propre traçabilité. Nous assurons le nettoyage et la désinfection des locaux, des surfaces et du mobilier." },
+      { q: 'Quelle fréquence pour un cabinet ?', a: "Souvent deux passages courts plutôt qu’un long. Les points de contact se rechargent en quelques heures, pas en une semaine : un seul passage hebdomadaire laisse le local dans son état d’avant dès le mardi." },
+      { q: 'Utilisez-vous des produits désinfectants adaptés ?', a: "Oui, avec les temps de contact respectés — un désinfectant essuyé immédiatement ne désinfecte pas. C’est un point de méthode que nous vérifions, et il distingue un passage sérieux d’un passage rapide." },
+      { q: 'Entretenez-vous aussi les copropriétés de Bron ?', a: "Oui, halls, cages d’escalier, paliers et locaux communs, pour les syndics professionnels comme pour les copropriétés en gestion bénévole." },
     ],
+    related: ['nettoyage-cabinet-medical-lyon', 'nettoyage-venissieux', 'nettoyage-vaulx-en-velin', 'nettoyage-bureaux-lyon'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-saint-priest',
     keyword: 'nettoyage Saint-Priest',
     eyebrow: 'Saint-Priest',
-    h1: 'Entreprise de nettoyage à Saint-Priest',
-    title: 'Nettoyage à Saint-Priest — MonCleanerPro | Locaux d’activité & bureaux',
-    description: "Entreprise de nettoyage à Saint-Priest : bureaux, locaux d’activité et logistiques, commerces, copropriétés et logements. Interventions multi-sites hors horaires. Devis gratuit sous 24h.",
+    h1: 'Entretien de locaux d’activité et de bureaux à Saint-Priest',
+    title: 'Nettoyage à Saint-Priest — MonCleanerPro',
+    description: "Nettoyage à Saint-Priest : bureaux du parc technologique, locaux d’activité, entrepôts et commerces. Contrats récurrents multi-sites. Devis sous 24h.",
     intro:
-      "Au sud-est de la métropole, Saint-Priest est un pôle d’activité majeur : parc technologique, zones logistiques, tertiaire et habitat. MonCleanerPro y accompagne les entreprises et les copropriétés avec un entretien fiable, organisé pour les grands volumes et les plannings serrés. Bureaux nettoyés hors horaires, locaux d’activité entretenus régulièrement, parties communes suivies : un seul interlocuteur pour tous vos sites.",
+      "Saint-Priest est une commune d’entreprises avant d’être une commune d’habitants : parc technologique, zones logistiques, bâtiments d’activité, plateaux tertiaires. Le besoin dominant n’y est donc pas l’intervention ponctuelle mais le contrat d’entretien qui tient dans la durée, souvent sur plusieurs bâtiments à la fois. MonCleanerPro y assure cet entretien récurrent, avec des tournées construites autour de vos horaires d’exploitation.",
     highlights: [
-      { title: 'Zones d’activité & tertiaire', text: "Locaux logistiques, bureaux et parc technologique entretenus tôt le matin ou en soirée." },
-      { title: 'Multi-sites', text: "Tournées organisées pour plusieurs sites, avec plannings synchronisés et suivi qualité." },
-      { title: 'Copropriétés & particuliers', text: "Parties communes d’immeubles et prestations ponctuelles chez les particuliers." },
+      { title: 'Contrat qui tient', text: "Un entretien récurrent se juge au bout de six mois, pas au premier passage. C’est là que la plupart des prestataires décrochent." },
+      { title: 'Tournée, pas interventions isolées', text: "Plusieurs bâtiments proches se traitent en tournée : moins de déplacement, plus de temps utile sur site." },
+      { title: 'Sols techniques', text: "Béton, résine, marquages au sol : des revêtements qui n’appellent ni le même matériel ni le même produit que du tertiaire." },
+      { title: 'Continuité assurée', text: "Congés, absences, remplacements : c’est notre problème. Votre site est entretenu, la question ne remonte pas jusqu’à vous." },
     ],
     includes: [
-      'Nettoyage de bureaux et locaux d’activité',
-      'Entretien de surfaces logistiques et industrielles légères',
-      'Parties communes de copropriété',
-      'Commerces et vitrines',
-      'Grand ménage et remise en état de logements',
+      'Bureaux, plateaux tertiaires et salles de réunion',
+      'Locaux d’activité, ateliers et entrepôts',
+      'Vestiaires, réfectoires et sanitaires collectifs',
+      'Accueils, halls et zones de réception visiteurs',
+      'Sols techniques traités au matériel mécanisé',
+      'Vitrages intérieurs et cloisons vitrées',
+      'Parties communes de copropriété et commerces',
+    ],
+    sections: [
+      {
+        h2: 'Un contrat d’entretien se juge au sixième mois',
+        paragraphs: [
+          "Le premier mois, tous les prestataires sont bons : l’équipe est motivée, le responsable passe, le site est neuf pour tout le monde. Le problème arrive plus tard, quand l’intervenant habituel part en congés, quand un remplaçant découvre le site sans consigne, quand une zone est oubliée deux semaines de suite sans que personne ne le signale. C’est à ce moment qu’un contrat se dégrade, silencieusement.",
+          "Nous traitons ce risque comme un sujet d’organisation, pas de bonne volonté : consignes écrites par site, intervenant attitré quand c’est possible, et un remplacement préparé plutôt qu’improvisé. Un responsable de site ne devrait jamais avoir à signaler qu’une zone a été sautée — s’il doit le faire, le contrat a déjà échoué.",
+        ],
+      },
+      {
+        h2: 'Entretien récurrent et fin de chantier : ne pas confondre',
+        paragraphs: [
+          "Ce sont deux prestations différentes, et les confondre coûte cher dans les deux sens. L’entretien récurrent maintient un local en état : il suppose un local déjà propre au départ. La remise en état de fin de chantier traite une salissure de construction — poussière de dallage, voile de ciment, protections, projections — qui ne relève ni du même matériel ni du même temps.",
+          "Demander à un contrat d’entretien d’absorber une livraison de bâtiment aboutit toujours au même résultat : un local insuffisamment traité et un prestataire en difficulté. Si vous livrez un bâtiment à Saint-Priest, c’est notre prestation de fin de chantier qu’il vous faut ; l’entretien récurrent prend le relais ensuite, sur un local sain.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Pouvez-vous entretenir de grands locaux d’activité ?', a: "Oui, nous intervenons sur des locaux d’activité et bureaux à Saint-Priest, avec une organisation adaptée aux volumes et aux horaires décalés." },
-      { q: 'Gérez-vous plusieurs sites d’entreprise ?', a: "Oui, nous mettons en place des tournées multi-sites avec un interlocuteur unique et un planning régulier." },
+      { q: 'Pouvez-vous entretenir de grands locaux d’activité ?', a: "Oui, avec du matériel mécanisé adapté aux surfaces et aux revêtements techniques. Les horaires se calent sur votre exploitation : tôt le matin, en soirée ou le week-end." },
+      { q: 'Gérez-vous plusieurs sites d’entreprise ?', a: "Oui, en tournée plutôt qu’en interventions isolées. Sur des bâtiments proches, cela réduit le temps de déplacement et augmente le temps réellement passé sur site — l’écart se voit sur le devis." },
+      { q: 'Que se passe-t-il pendant les congés de l’intervenant ?', a: "Le remplacement est organisé en interne, avec les consignes écrites du site. C’est précisément le moment où un contrat d’entretien se dégrade d’habitude : nous le traitons comme un sujet d’organisation, pas de bonne volonté." },
+      { q: 'Faites-vous aussi la remise en état après travaux ?', a: "Oui, mais c’est une prestation distincte, avec sa méthode et son matériel. Un contrat d’entretien ne peut pas absorber une livraison de bâtiment : voir notre page dédiée au nettoyage de fin de chantier à Saint-Priest." },
+      { q: 'Intervenez-vous pour les copropriétés et commerces ?', a: "Oui, la commune ne se résume pas à ses zones d’activité. Parties communes d’immeubles, commerces et surfaces de vente font partie de nos interventions régulières." },
     ],
+    related: ['nettoyage-fin-de-chantier-saint-priest', 'nettoyage-venissieux', 'nettoyage-meyzieu', 'nettoyage-bureaux-lyon'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-ecully',
     keyword: 'nettoyage Écully',
     eyebrow: 'Écully',
-    h1: 'Entreprise de nettoyage à Écully',
-    title: 'Nettoyage à Écully — MonCleanerPro | Bureaux, résidences & particuliers',
-    description: "Entreprise de nettoyage à Écully : bureaux et écoles, résidences et copropriétés de standing, locations et grand ménage chez les particuliers. Finitions soignées. Devis gratuit sous 24h.",
+    h1: 'Nettoyage de maisons et de sièges d’entreprise à Écully',
+    title: 'Nettoyage à Écully — MonCleanerPro',
+    description: "Nettoyage à Écully : maisons et propriétés, sièges d’entreprise, espaces d’accueil et copropriétés de standing. Discrétion, finitions. Devis sous 24h.",
     intro:
-      "À l’ouest de Lyon, Écully est réputée pour son cadre résidentiel de standing, ses grandes écoles et ses sièges d’entreprise. MonCleanerPro y apporte un nettoyage haut de gamme, attentif aux finitions : bureaux et espaces d’accueil soignés, parties communes de résidences entretenues avec régularité, et grands ménages exigeants chez les particuliers. Des équipes formées, discrètes et respectueuses des lieux.",
+      "À Écully, l’exigence ne porte pas sur la difficulté technique mais sur le niveau de finition et sur la discrétion. On y intervient dans des maisons habitées, des propriétés meublées avec soin, des espaces d’accueil de sièges d’entreprise où le premier visiteur de la journée est parfois un client important. Ce sont des lieux où le travail doit être invisible et le résultat évident — l’inverse exact d’un chantier.",
     highlights: [
-      { title: 'Finitions haut de gamme', text: "Un souci du détail adapté aux résidences de standing et aux espaces d’accueil d’entreprise." },
-      { title: 'Bureaux & écoles', text: "Entretien régulier des bureaux, sièges et établissements, hors horaires de présence." },
-      { title: 'Discrétion & régularité', text: "Des intervenants soignés et discrets, pour une qualité constante dans la durée." },
+      { title: 'Le travail ne doit pas se voir', text: "Pas de matériel qui traîne, pas d’odeur de produit, rien de déplacé. Le lieu doit sembler ne jamais avoir été nettoyé." },
+      { title: 'Matériaux délicats', text: "Marbre, laiton, bois vernis, textiles, parquets anciens : chacun a son produit, et une erreur se voit immédiatement." },
+      { title: 'Même intervenant', text: "Sur un domicile, la stabilité de la personne compte autant que la qualité. On ne fait pas défiler des inconnus chez vous." },
+      { title: 'Espaces d’accueil', text: "Hall, réception, salles de direction : ce que voit un visiteur avant d’avoir rencontré qui que ce soit." },
     ],
     includes: [
-      'Nettoyage de bureaux et espaces d’accueil',
-      'Parties communes de résidences et copropriétés',
-      'Grand ménage et remise en état de logements',
-      'Ménage de locations courte durée (Airbnb)',
-      'Vitres et surfaces vitrées',
+      'Entretien régulier de maisons et de propriétés',
+      'Grand ménage et remise en état avant réception ou vente',
+      'Traitement adapté aux marbres, bois vernis et parquets anciens',
+      'Halls d’accueil, réceptions et salles de direction',
+      'Bureaux, sièges d’entreprise et espaces de représentation',
+      'Parties communes de résidences de standing',
+      'Vitrages, miroirs et surfaces vitrées sans traces',
+    ],
+    sections: [
+      {
+        h2: 'Chez un particulier, la confiance passe avant la technique',
+        paragraphs: [
+          "Faire entrer quelqu’un chez soi toutes les semaines n’est pas un acte anodin, et c’est la vraie question que se posent nos clients à Écully — bien avant la qualité du nettoyage. Qui vient ? Est-ce toujours la même personne ? Que se passe-t-il si elle est absente ? Sait-elle que la porte du bureau reste fermée et qu’on ne touche pas aux papiers ?",
+          "Nous répondons par la stabilité : un intervenant attitré, informé des consignes du foyer, et un remplacement préparé plutôt qu’un inconnu envoyé au dernier moment. Une maison entretenue par la même personne est aussi mieux entretenue — elle voit ce qui a changé, remarque ce qui s’abîme, et n’a plus besoin qu’on lui explique où sont les choses.",
+        ],
+      },
+      {
+        h2: 'Les matériaux nobles ne pardonnent pas le produit universel',
+        paragraphs: [
+          "C’est ce qui distingue concrètement une intervention dans une propriété d’un ménage standard. Un plan de travail en marbre se ternit irrémédiatement au produit acide — et beaucoup de nettoyants ménagers courants le sont. Le laiton se pique si on le laisse humide, un bois vernis blanchit à l’excès d’eau, un parquet ancien gonfle, un textile mural se marque au premier essai de détachage.",
+          "Aucune de ces erreurs ne se rattrape, et chacune coûte plus cher que plusieurs années de prestation. Nos intervenants identifient le support avant de choisir le produit et, dans le doute, s’abstiennent et le signalent plutôt que de tenter. C’est une consigne explicite : sur ce type de bien, ne rien faire vaut toujours mieux qu’abîmer.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Proposez-vous un service soigné pour les résidences de standing ?', a: "Oui, à Écully nous portons une attention particulière aux finitions et à la discrétion, pour les résidences comme pour les entreprises." },
-      { q: 'Intervenez-vous chez les particuliers ?', a: "Oui, nous réalisons grands ménages et prestations ponctuelles à domicile, en plus de nos contrats professionnels." },
+      { q: 'Est-ce toujours le même intervenant qui vient ?', a: "C’est ce que nous visons sur les domiciles, et c’est un point que nous prenons au sérieux. En cas d’absence, le remplacement est préparé avec les consignes du foyer, pas improvisé le matin même." },
+      { q: 'Vos intervenants savent-ils traiter le marbre et les bois vernis ?', a: "Oui, avec des produits neutres et un dosage adapté. La consigne est explicite : en cas de doute sur un support, on s’abstient et on le signale plutôt que de tenter. Une erreur sur du marbre ou du laiton ne se rattrape pas." },
+      { q: 'Intervenez-vous en notre absence ?', a: "Oui, c’est le cas le plus fréquent. L’accès s’organise selon ce qui vous convient — clés confiées, code, boîte à clés — et un compte rendu vous informe de ce qui a été fait et de ce qui a été signalé." },
+      { q: 'Prenez-vous les sièges d’entreprise et espaces d’accueil ?', a: "Oui, avec une intervention hors présence : avant l’arrivée des équipes ou après leur départ. Un hall d’accueil se juge dans les premières secondes d’une visite client." },
+      { q: 'Proposez-vous une remise en état avant une réception ou une vente ?', a: "Oui, en prestation ponctuelle : grand ménage complet avant un événement, une séance photo ou une mise en vente. C’est une intervention plus longue et plus détaillée que l’entretien courant." },
     ],
+    related: ['menage-domicile-lyon', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon', 'grand-menage-lyon'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-tassin-la-demi-lune',
     keyword: 'nettoyage Tassin-la-Demi-Lune',
     eyebrow: 'Tassin-la-Demi-Lune',
-    h1: 'Entreprise de nettoyage à Tassin-la-Demi-Lune',
-    title: 'Nettoyage à Tassin-la-Demi-Lune — MonCleanerPro | Commerces, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Tassin-la-Demi-Lune : commerces et bureaux, copropriétés, locations et grand ménage chez les particuliers. Service de proximité à l’ouest lyonnais. Devis gratuit sous 24h.",
+    h1: 'Nettoyage de commerces et de cabinets à Tassin-la-Demi-Lune',
+    title: 'Nettoyage à Tassin-la-Demi-Lune — MonCleanerPro',
+    description: "Nettoyage à Tassin-la-Demi-Lune : commerces et vitrines, cabinets libéraux, bureaux et copropriétés. Passage avant ouverture. Devis sous 24h.",
     intro:
-      "Aux portes ouest de Lyon, Tassin-la-Demi-Lune associe centre commerçant dynamique et quartiers résidentiels. MonCleanerPro y propose un nettoyage de proximité : vitrines et bureaux du centre entretenus régulièrement, parties communes de copropriété suivies, et grands ménages ponctuels chez les particuliers. Une intervention fiable et soignée, avec le même contrôle qualité que sur toute la métropole.",
+      "Tassin-la-Demi-Lune vit beaucoup de ses commerces et de ses professions libérales : boutiques, cabinets dentaires, kinés, avocats, agences, le long des axes du centre. Ce sont des locaux de petite surface mais à forte fréquentation, où le nettoyage doit passer avant l’arrivée du premier client ou patient, et où la moindre trace se voit parce que tout est à portée de regard. MonCleanerPro y assure ces passages courts et réguliers.",
     highlights: [
-      { title: 'Commerces & centre-ville', text: "Vitrines, boutiques et bureaux du centre de Tassin entretenus pour une image toujours nette." },
-      { title: 'Copropriétés résidentielles', text: "Nettoyage régulier des parties communes pour les immeubles et résidences du secteur." },
-      { title: 'Proximité ouest lyonnais', text: "Interventions faciles à planifier, avec la réactivité d’un prestataire local." },
+      { title: 'Avant le premier client', text: "Un local commercial ou un cabinet se nettoie avant l’ouverture. Personne ne devrait croiser l’entretien en cours." },
+      { title: 'Petites surfaces, forte fréquentation', text: "Ce n’est pas le mètre carré qui commande le temps, c’est le nombre de personnes qui passent." },
+      { title: 'Vitrine et devanture', text: "Sur un axe passant, la vitrine se marque en quelques jours et se juge de loin, à contre-jour." },
+      { title: 'Contrats courts assumés', text: "Deux à trois passages hebdomadaires de trente minutes sont un contrat normal chez nous, pas un dossier trop petit." },
     ],
     includes: [
-      'Nettoyage de commerces et vitrines',
-      'Entretien de bureaux et locaux professionnels',
+      'Vitrines, devantures et portes vitrées',
+      'Surfaces de vente, comptoirs et cabines d’essayage',
+      'Salles d’attente et accueils de cabinet',
+      'Points de contact désinfectés à chaque passage',
+      'Sanitaires recevant du public',
+      'Bureaux et locaux professionnels du centre',
       'Parties communes de copropriété',
-      'Grand ménage et remise en état de logements',
-      'Ménage de locations courte durée (Airbnb)',
+    ],
+    sections: [
+      {
+        h2: 'Un petit local n’est pas un petit chantier',
+        paragraphs: [
+          "C’est l’erreur de calcul classique quand on chiffre au mètre carré : une boutique de quarante mètres carrés recevant deux cents personnes par jour demande plus de travail qu’un plateau de bureaux de deux cents mètres carrés occupé par huit personnes. Ce qui consomme le temps, ce n’est pas la surface, c’est le passage — les traces au sol, les poignées, le comptoir, la porte vitrée touchée par chaque entrant, les sanitaires ouverts au public.",
+          "C’est pourquoi nous chiffrons les commerces et cabinets sur la fréquentation autant que sur la surface. Un prestataire qui applique un tarif au mètre carré vous fera une offre attractive puis réduira le temps passé jusqu’à ce que le résultat se dégrade — c’est mécanique, et c’est ce qui explique la rotation permanente des prestataires sur ce type de local.",
+        ],
+      },
+      {
+        h2: 'Le créneau du matin, la contrainte qui structure tout',
+        paragraphs: [
+          "Sur un axe commerçant, presque tous les locaux veulent le même créneau : entre sept et neuf heures, avant l’ouverture. C’est une contrainte réelle pour un prestataire, et c’est ce qui limite le nombre de commerces qu’il peut servir sur un même secteur sans dégrader ses passages.",
+          "Nous la gérons en construisant des tournées géographiquement serrées — plusieurs locaux du même axe, enchaînés à pied ou à quelques minutes — plutôt qu’en dispersant les clients sur toute la commune. Concrètement, cela veut dire que nous préférons dire non à un local isolé mal placé dans la tournée plutôt que d’accepter et de servir tout le monde avec dix minutes de retard chaque matin.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Entretenez-vous les commerces du centre de Tassin ?', a: "Oui, nous nettoyons régulièrement vitrines, boutiques et bureaux, en ponctuel ou en contrat régulier." },
-      { q: 'Gérez-vous les copropriétés du secteur ?', a: "Oui, nous assurons l’entretien des parties communes pour les copropriétés et syndics de Tassin-la-Demi-Lune." },
+      { q: 'Intervenez-vous avant l’ouverture ?', a: "Oui, c’est le créneau normal pour un commerce ou un cabinet : entre sept et neuf heures selon votre horaire d’ouverture. Aucun client ni patient ne devrait croiser l’entretien en cours." },
+      { q: 'Mon local est petit, cela vous intéresse-t-il ?', a: "Oui. Deux ou trois passages hebdomadaires de trente minutes sont un contrat parfaitement normal chez nous. C’est le tissu commerçant local, pas un dossier trop petit." },
+      { q: 'Comment chiffrez-vous un commerce ?', a: "Sur la fréquentation autant que sur la surface. Une boutique de quarante mètres carrés qui reçoit deux cents personnes par jour demande plus de travail qu’un bureau bien plus grand occupé par huit personnes. Un tarif au mètre carré seul conduit à réduire le temps passé jusqu’à ce que ça se voie." },
+      { q: 'À quelle fréquence nettoyer la vitrine ?', a: "Sur un axe passant, deux fois par semaine au minimum. Une vitrine se marque en quelques jours — traces de mains, projections du caniveau, film gras de la circulation — et tout se voit à contre-jour en fin de journée." },
+      { q: 'Entretenez-vous les copropriétés de Tassin ?', a: "Oui, halls, cages d’escalier et parties communes, en passages réguliers, pour les syndics comme pour les copropriétés en gestion bénévole." },
     ],
+    related: ['nettoyage-commerce-lyon', 'nettoyage-ecully', 'nettoyage-sainte-foy-les-lyon', 'nettoyage-cabinet-medical-lyon'],
+    updatedAt: '2026-08-09',
   },
   {
     slug: 'nettoyage-rillieux-la-pape',
     keyword: 'nettoyage Rillieux-la-Pape',
     eyebrow: 'Rillieux-la-Pape',
-    h1: 'Entreprise de nettoyage à Rillieux-la-Pape',
-    title: 'Nettoyage à Rillieux-la-Pape — MonCleanerPro | Entreprises, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Rillieux-la-Pape : bureaux et locaux d’activité, copropriétés et bailleurs, commerces et logements. Interventions régulières fiables. Devis gratuit sous 24h.",
+    h1: 'Nettoyage de parties communes et de bureaux à Rillieux-la-Pape',
+    title: 'Nettoyage à Rillieux-la-Pape — MonCleanerPro',
+    description: "Nettoyage à Rillieux-la-Pape : parties communes pour bailleurs et syndics, bureaux et locaux d’activité, commerces. Suivi par entrée. Devis sous 24h.",
     intro:
-      "Au nord-est de Lyon, Rillieux-la-Pape mêle zones d’activité, habitat collectif et commerces. MonCleanerPro y accompagne les entreprises, les bailleurs et les copropriétés avec un entretien régulier et fiable : bureaux et locaux nettoyés hors horaires, parties communes d’immeubles suivies sans oublis, et prestations ponctuelles chez les particuliers. La régularité et la traçabilité qui rassurent gestionnaires et habitants.",
+      "À Rillieux-la-Pape, une grande part de la demande vient des gestionnaires de parc : bailleurs et syndics qui doivent entretenir un grand nombre d’entrées, souvent réparties sur plusieurs immeubles. Le sujet n’y est pas la difficulté technique — nettoyer une cage d’escalier n’a rien de complexe — mais la preuve : savoir, entrée par entrée, ce qui a été fait et quand, pour pouvoir le défendre devant un conseil syndical ou un locataire mécontent.",
     highlights: [
-      { title: 'Entreprises & locaux', text: "Bureaux et locaux d’activité entretenus tôt le matin ou en soirée, sans gêner l’activité." },
-      { title: 'Bailleurs & copropriétés', text: "Parties communes suivies avec régularité et traçabilité, pour syndics et bailleurs sociaux." },
-      { title: 'Fiabilité dans la durée', text: "Des passages tenus, un interlocuteur dédié et un suivi digital de chaque intervention." },
+      { title: 'Suivi par entrée', text: "Chaque passage est tracé par entrée, pas globalement pour l’immeuble. C’est ce qui rend la prestation vérifiable." },
+      { title: 'Aucun oubli silencieux', text: "Le risque du volume, c’est l’entrée sautée que personne ne signale pendant trois semaines. Le suivi le rend visible tout de suite." },
+      { title: 'Réclamations documentées', text: "Face à un locataire qui conteste, un relevé daté met fin à la discussion en trente secondes." },
+      { title: 'Entreprises hors horaires', text: "Bureaux et locaux d’activité entretenus tôt le matin ou en soirée, sans gêner l’exploitation." },
     ],
     includes: [
-      'Nettoyage de bureaux et locaux d’activité',
-      'Entretien des parties communes d’immeubles',
-      'Commerces et surfaces de vente',
-      'Grand ménage et remise en état de logements',
-      'Vitres et points de contact',
+      'Halls, cages d’escalier, paliers et coursives',
+      'Ascenseurs, boîtes aux lettres et sas d’entrée',
+      'Locaux poubelles : lavage, désinfection, sortie des bacs',
+      'Locaux vélos, caves communes et locaux techniques',
+      'Abords immédiats et cheminements d’accès',
+      'Bureaux, locaux d’activité et commerces',
+      'Relevé daté par entrée après chaque passage',
+    ],
+    sections: [
+      {
+        h2: 'Sur un parc, le vrai risque est l’oubli silencieux',
+        paragraphs: [
+          "Quand un prestataire entretient trente entrées, la question n’est pas de savoir s’il sait nettoyer une cage d’escalier. C’est de savoir ce qui se passe le jour où une entrée est sautée. Sans traçabilité, personne ne le voit : l’intervenant ne le signale pas, le gestionnaire ne passe pas tous les jours, et les locataires mettent souvent plusieurs semaines à remonter l’information — quand ils la remontent.",
+          "Résultat, le problème n’apparaît qu’au moment le plus coûteux : en assemblée générale, ou dans une réclamation collective, quand plusieurs semaines se sont accumulées et que la parole du prestataire ne vaut plus rien face à celle des habitants.",
+          "Un relevé daté par entrée change complètement cette dynamique. L’écart devient visible en quelques jours, il se corrige avant de devenir un litige, et le gestionnaire dispose d’un élément factuel plutôt que d’une discussion d’impressions.",
+        ],
+      },
+      {
+        h2: 'Ce que l’entretien courant ne peut pas absorber',
+        paragraphs: [
+          "Il faut le dire franchement, parce que c’est la source la plus fréquente de tension sur un contrat de parc : un passage d’entretien ne traite pas un dépôt sauvage, un encombrant abandonné dans une coursive, un tag, ni les suites d’un dégât des eaux. Ce sont des interventions distinctes, avec un temps et parfois un matériel différents.",
+          "Nous les signalons systématiquement avec photo plutôt que de les ignorer ou de les absorber silencieusement au détriment du reste du passage. Vous décidez ensuite : intervention ponctuelle chiffrée, ou traitement par une autre filière. Ce qui compte est que ce ne soit jamais découvert par un habitant avant de l’être par vous.",
+        ],
+      },
     ],
     faq: [
-      { q: 'Travaillez-vous avec les bailleurs et copropriétés ?', a: "Oui, nous entretenons les parties communes pour bailleurs et syndics à Rillieux-la-Pape, avec un suivi transparent." },
-      { q: 'Intervenez-vous hors des heures d’activité ?', a: "Oui, pour les entreprises nous intervenons tôt le matin ou en soirée afin de ne pas perturber votre activité." },
+      { q: 'Travaillez-vous avec les bailleurs et les syndics ?', a: "Oui, c’est une part importante de notre activité sur la commune, sur des parcs de plusieurs entrées comme sur des copropriétés isolées." },
+      { q: 'Comment puis-je vérifier ce qui a été fait ?', a: "Par un relevé daté, entrée par entrée. C’est ce qui permet de repérer un écart en quelques jours plutôt qu’en assemblée générale, et de répondre factuellement à un locataire qui conteste." },
+      { q: 'La sortie des bacs à ordures est-elle incluse ?', a: "Elle peut l’être, et se cadre explicitement au contrat : sortie et rentrée selon le calendrier de collecte, lavage périodique des bacs et désinfection du local. C’est le poste qui génère le plus de réclamations." },
+      { q: 'Que faites-vous en cas de dépôt sauvage ou d’encombrant ?', a: "Nous le signalons avec photo. Un encombrant ou un dépôt sauvage n’entre pas dans un passage d’entretien courant : c’est une intervention distincte, que vous décidez de commander ou de traiter autrement. Nous ne l’absorbons pas en silence au détriment du reste." },
+      { q: 'Intervenez-vous hors des heures d’activité pour les entreprises ?', a: "Oui, tôt le matin ou en soirée pour les bureaux et locaux d’activité, afin de ne jamais gêner votre exploitation." },
     ],
+    related: ['nettoyage-copropriete-lyon', 'nettoyage-caluire-et-cuire', 'nettoyage-vaulx-en-velin', 'nettoyage-neuville-sur-saone'],
+    updatedAt: '2026-08-09',
   },
 
   {
@@ -1288,8 +1611,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Villeurbanne',
     eyebrow: 'Villeurbanne',
     h1: 'Entreprise de nettoyage à Villeurbanne',
-    title: 'Nettoyage à Villeurbanne — MonCleanerPro | Entreprises, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Villeurbanne : bureaux, commerces, copropriétés, locations étudiantes et Airbnb, grand ménage chez les particuliers. Équipe formée, réactivité locale. Devis gratuit sous 24h.",
+    title: "Nettoyage à Villeurbanne — MonCleanerPro",
+    description: "Nettoyage à Villeurbanne : parties communes, remises en état locatives, bureaux et commerces. Rotation étudiante tenue en été. Devis sous 24h.",
     intro:
       "Deuxième ville de la métropole, Villeurbanne concentre à peu près tous les besoins d’entretien à la fois : sièges d’entreprise et bureaux vers Charpennes, commerces du centre et des Gratte-Ciel, copropriétés anciennes en pleine réhabilitation, et un parc locatif très mouvementé autour de la Doua et des campus. MonCleanerPro y intervient pour les professionnels comme pour les particuliers, avec l’avantage d’être immédiatement voisin de nos zones lyonnaises — donc capable de planifier vite.",
     highlights: [
@@ -1305,6 +1628,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Grand ménage et nettoyage en profondeur chez les particuliers',
       'Remise en état après travaux ou fin de chantier',
     ],
+    sections: [
+      {
+        h2: "L’été, tout se joue en six semaines",
+        paragraphs: [
+          "Villeurbanne a une saisonnalité que peu de communes connaissent avec cette intensité. Entre début juillet et mi-septembre, une part considérable du parc locatif change de mains d’un coup : étudiants qui partent, étudiants qui arrivent, jeunes actifs en mobilité. Sur cette fenêtre, un gestionnaire ou un bailleur privé n’a pas besoin d’un prestataire capable de faire un beau logement — il a besoin d’un prestataire capable d’en faire quinze en trois semaines, chacun calé sur une date d’état des lieux.",
+          "C’est un problème de capacité, pas de savoir-faire. Nous le traitons en dimensionnant l’équipe à l’avance sur la base de votre calendrier de sorties, plutôt qu’en acceptant les demandes au fil de l’eau jusqu’à saturation. Concrètement, un propriétaire qui nous annonce ses dates en mai est servi ; celui qui appelle le 20 août pour une entrée le 25 arrive au pire moment de l’année.",
+        ],
+      },
+      {
+        h2: "Le parc ancien impose ses gestes",
+        paragraphs: [
+          "Une grande partie des logements villeurbannais se trouve dans des immeubles d’avant-guerre ou des résidences des années soixante : parquets anciens, menuiseries d’époque, souvent pas d’ascenseur. Une remise en état locative y demande des précautions qu’un logement récent ne réclame pas — un parquet ne se gorge pas d’eau, une peinture ancienne part au mauvais produit, et le portage du matériel jusqu’au quatrième étage pèse réellement sur la durée du passage.",
+          "C’est aussi ce qui explique l’écart entre deux devis sur un même appartement. Un prestataire qui n’a pas prévu ces contraintes les découvre sur place, et arbitre en réduisant le temps passé sur ce qui se voit le moins — c’est-à-dire précisément ce qu’un état des lieux d’entrée regarde.",
+        ],
+      },
+    ],
     faq: [
       { q: 'Intervenez-vous rapidement à Villeurbanne ?', a: "Oui. La commune est limitrophe de nos zones lyonnaises : nous y planifions facilement des interventions régulières comme ponctuelles, souvent à quelques jours." },
       { q: 'Gérez-vous les remises en état entre deux locataires ?', a: "Oui, c’est une demande fréquente à Villeurbanne compte tenu de la rotation locative. Nous calons l’intervention juste avant l’état des lieux d’entrée." },
@@ -1318,8 +1657,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Oullins',
     eyebrow: 'Oullins-Pierre-Bénite',
     h1: 'Entreprise de nettoyage à Oullins-Pierre-Bénite',
-    title: 'Nettoyage à Oullins-Pierre-Bénite — MonCleanerPro | Commerces, copropriétés & particuliers',
-    description: "Entreprise de nettoyage à Oullins-Pierre-Bénite : commerces du centre, bureaux, copropriétés, cabinets et logements de particuliers. Service de proximité au sud-ouest lyonnais. Devis gratuit sous 24h.",
+    title: "Nettoyage à Oullins-Pierre-Bénite — MonCleanerPro",
+    description: "Nettoyage à Oullins-Pierre-Bénite : commerces du centre, cabinets libéraux, bureaux et copropriétés. Passage avant ouverture. Devis sous 24h.",
     intro:
       "Au sud-ouest de Lyon, Oullins-Pierre-Bénite associe un centre commerçant animé, un habitat mixte entre immeubles et maisons, et la proximité immédiate du pôle hospitalier Lyon Sud. MonCleanerPro y assure l’entretien des commerces, des bureaux, des cabinets et des parties communes d’immeubles, ainsi que les prestations ponctuelles chez les particuliers — avec la réactivité que permet la desserte directe par le métro et les grands axes.",
     highlights: [
@@ -1335,6 +1674,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Ménage de locations courte durée (Airbnb)',
       'Nettoyage de vitres et surfaces vitrées',
     ],
+    sections: [
+      {
+        h2: "Un centre commerçant qui se renouvelle vite",
+        paragraphs: [
+          "Le centre d’Oullins connaît un mouvement continu : des locaux qui changent d’enseigne, des commerces qui se rénovent, des cabinets qui s’installent à proximité du pôle hospitalier. Pour nous, cela veut dire deux prestations différentes qui se suivent sur le même local — d’abord une remise en état avant ouverture, une fois les travaux d’agencement terminés, puis l’entretien courant une fois l’activité lancée.",
+          "Ce sont deux métiers distincts, et les confondre coûte cher. La remise en état d’ouverture traite une salissure de chantier : poussière de découpe, adhésifs, traces de pose, protections de vitrine. L’entretien courant maintient un local déjà propre. Un commerçant qui demande à son contrat d’entretien d’absorber sa remise en état ouvre avec un local insuffisamment traité — et c’est le jour où il reçoit le plus de monde.",
+        ],
+      },
+      {
+        h2: "Un cabinet ne se nettoie pas entre deux patients",
+        paragraphs: [
+          "C’est une idée qui revient souvent chez les praticiens qui s’installent : profiter d’un créneau libre en milieu de journée. Elle ne fonctionne pas. Un passage de vingt minutes coincé entre deux consultations ne permet ni de traiter les sols correctement, ni de respecter les temps de contact des désinfectants, ni d’intervenir dans une salle d’attente occupée.",
+          "Le seul créneau qui tienne est avant l’ouverture ou après la fermeture. C’est plus contraignant à organiser, notamment pour l’accès au local, mais c’est la condition d’un entretien qui vaut quelque chose — et cela évite le spectacle d’un intervenant qui passe la serpillière devant des patients qui attendent.",
+        ],
+      },
+    ],
     faq: [
       { q: 'La commune s’appelle-t-elle encore Oullins ?', a: "Oullins et Pierre-Bénite forment désormais la commune nouvelle d’Oullins-Pierre-Bénite. Nous intervenons sur l’ensemble du territoire, quel que soit le nom que vous utilisez." },
       { q: 'Entretenez-vous les cabinets médicaux et paramédicaux ?', a: "Oui, avec des protocoles adaptés et des passages hors consultation. C’est une demande fréquente du fait de la proximité du pôle hospitalier Lyon Sud." },
@@ -1347,8 +1702,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Vaulx-en-Velin',
     eyebrow: 'Vaulx-en-Velin',
     h1: 'Entreprise de nettoyage à Vaulx-en-Velin',
-    title: 'Nettoyage à Vaulx-en-Velin — MonCleanerPro | Bailleurs, entreprises & commerces',
-    description: "Entreprise de nettoyage à Vaulx-en-Velin : parties communes pour bailleurs et copropriétés, bureaux et locaux d’activité, commerces du Carré de Soie. Interventions régulières. Devis gratuit sous 24h.",
+    title: "Nettoyage à Vaulx-en-Velin — MonCleanerPro",
+    description: "Nettoyage à Vaulx-en-Velin : parties communes pour bailleurs, bureaux du Carré de Soie, commerces et locaux d’activité. Devis sous 24h.",
     intro:
       "Vaulx-en-Velin conjugue un habitat collectif important, un tissu d’activité dense et un secteur en pleine transformation autour du Carré de Soie. Les besoins d’entretien y sont d’abord des besoins de régularité : des parties communes suivies sans oubli, des locaux professionnels nettoyés hors exploitation, et une traçabilité que les bailleurs et gestionnaires puissent présenter. MonCleanerPro y intervient avec cette exigence de constance dans la durée.",
     highlights: [
@@ -1364,6 +1719,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Remise en état de logements avant relocation',
       'Vitres des parties communes et points de contact',
     ],
+    sections: [
+      {
+        h2: "Deux communes en une, deux besoins opposés",
+        paragraphs: [
+          "Vaulx-en-Velin fait cohabiter un habitat collectif important, largement géré par des bailleurs, et un secteur tertiaire récent autour du Carré de Soie. Les deux n’appellent ni le même travail ni le même rythme. D’un côté, un entretien de parties communes où l’enjeu est la régularité sur un grand nombre d’entrées et la capacité à prouver ce qui a été fait. De l’autre, des plateaux de bureaux et des commerces récents, où l’on intervient hors exploitation sur des surfaces neuves et beaucoup de vitrage.",
+          "Un prestataire qui applique la même méthode aux deux échoue forcément quelque part. Nous distinguons explicitement les deux dans le devis, avec des fréquences, des horaires et des matériels différents.",
+        ],
+      },
+      {
+        h2: "Le vitrage des immeubles récents",
+        paragraphs: [
+          "Les programmes tertiaires et résidentiels récents du secteur ont un point commun : beaucoup de surfaces vitrées, en hall comme en façade intérieure. C’est un poste que les contrats d’entretien sous-estiment presque systématiquement, parce qu’il est chiffré au mètre carré de sol et non au mètre carré de verre.",
+          "Or une trace sur un vitrage de hall se voit à contre-jour depuis l’extérieur, et c’est la première chose que perçoit un visiteur. Nous chiffrons donc le vitrage séparément, avec une fréquence qui lui est propre : elle est presque toujours plus élevée que celle du reste des parties communes.",
+        ],
+      },
+    ],
     faq: [
       { q: 'Travaillez-vous avec les bailleurs sociaux ?', a: "Oui, nous entretenons les parties communes pour des bailleurs comme pour des syndics privés, avec un suivi documenté de chaque passage." },
       { q: 'Gérez-vous la sortie des poubelles ?', a: "Oui, la sortie et la rentrée des conteneurs ainsi que l’entretien du local poubelles peuvent être inclus dans la prestation, selon le calendrier de collecte." },
@@ -1376,8 +1747,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Meyzieu',
     eyebrow: 'Meyzieu',
     h1: 'Entreprise de nettoyage à Meyzieu',
-    title: 'Nettoyage à Meyzieu — MonCleanerPro | PME, zone industrielle & particuliers',
-    description: "Entreprise de nettoyage à Meyzieu : bureaux et locaux de la zone industrielle, commerces, copropriétés et maisons de particuliers. Interventions hors horaires, équipe formée. Devis gratuit sous 24h.",
+    title: "Nettoyage à Meyzieu — MonCleanerPro",
+    description: "Nettoyage à Meyzieu : locaux de PME et d’artisans, bureaux, commerces et copropriétés. Contrats souples, sans volume minimum. Devis sous 24h.",
     intro:
       "À l’est de la métropole, Meyzieu combine une zone industrielle et artisanale importante avec un tissu pavillonnaire étendu. Le profil des demandes y est particulier : beaucoup de PME et d’artisans qui cherchent un prestataire fiable pour des locaux de taille moyenne, et des particuliers en maison individuelle plutôt qu’en appartement. MonCleanerPro s’adapte à ces deux réalités, avec la desserte facile qu’offre le tramway et la rocade est.",
     highlights: [
@@ -1393,6 +1764,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Nettoyage de vitres, baies vitrées et vérandas',
       'Remise en état après travaux ou avant emménagement',
     ],
+    sections: [
+      {
+        h2: "Les PME et les artisans, mal servis par les gros prestataires",
+        paragraphs: [
+          "La zone d’activité de Meyzieu est faite de petites et moyennes entreprises : ateliers d’artisans, PME industrielles, sociétés de service de quelques dizaines de personnes. Ces structures partagent un problème récurrent avec les grands prestataires de nettoyage — elles sont trop petites pour être intéressantes, et se retrouvent avec un contrat standard mal adapté, des passages écourtés et un interlocuteur qui change tous les six mois.",
+          "Nous assumons l’inverse : un local de deux cents mètres carrés avec deux passages hebdomadaires est un client normal. Cela suppose des contrats souples, sans volume minimum, et une organisation en tournées locales plutôt qu’en gros comptes isolés.",
+        ],
+      },
+      {
+        h2: "Un atelier n’est pas un bureau",
+        paragraphs: [
+          "Beaucoup d’entreprises de Meyzieu ont les deux sous le même toit : une partie bureaux et une partie atelier ou stockage. Ce sont deux prestations distinctes, et les traiter avec le même forfait au mètre carré conduit toujours à négliger la seconde.",
+          "L’atelier accumule des salissures que la serpillière n’enlève pas — poussière métallique, traces de roues, résidus gras autour des postes. Il demande du matériel mécanisé et un produit adapté au revêtement, béton brut ou résine. Les vestiaires et le réfectoire, souvent oubliés dans les contrats, sont pourtant les locaux dont vos équipes parlent le plus.",
+        ],
+      },
+    ],
     faq: [
       { q: 'Intervenez-vous dans la zone industrielle de Meyzieu ?', a: "Oui, nous entretenons bureaux, ateliers et locaux d’activité du secteur, avec des passages calés hors horaires de production." },
       { q: 'Traitez-vous les maisons individuelles ?', a: "Oui, et nous dimensionnons l’équipe en conséquence : une maison représente souvent plus de surface et plus de vitrage qu’un appartement." },
@@ -1405,8 +1792,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Décines-Charpieu',
     eyebrow: 'Décines-Charpieu',
     h1: 'Entreprise de nettoyage à Décines-Charpieu',
-    title: 'Nettoyage à Décines-Charpieu — MonCleanerPro | Hébergement, commerces & particuliers',
-    description: "Entreprise de nettoyage à Décines-Charpieu : hébergements et locations courte durée près du stade, commerces, bureaux, copropriétés et particuliers. Cadence événementielle tenue. Devis gratuit sous 24h.",
+    title: "Nettoyage à Décines-Charpieu — MonCleanerPro",
+    description: "Nettoyage à Décines-Charpieu : commerces et restauration à cadence événementielle, bureaux, copropriétés et logements. Devis sous 24h.",
     intro:
       "Décines-Charpieu vit à un rythme particulier depuis l’installation du Groupama Stadium et du pôle de loisirs qui l’entoure : des pics de fréquentation liés aux matchs et aux concerts, une offre d’hébergement courte durée qui s’est fortement développée, et un secteur résidentiel en croissance. MonCleanerPro y accompagne les hébergeurs, les commerces et les copropriétés, avec la capacité à absorber les rotations serrées des week-ends d’événement.",
     highlights: [
@@ -1422,6 +1809,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Grand ménage et remise en état de logements',
       'Nettoyage de fin de chantier sur les programmes neufs',
     ],
+    sections: [
+      {
+        h2: "Une commune qui vit par à-coups",
+        paragraphs: [
+          "Décines-Charpieu a un rythme que les communes voisines ne connaissent pas. Les soirs de match ou de concert, les commerces, restaurants et hébergements du secteur reçoivent en quelques heures ce qu’ils accueillent habituellement en plusieurs jours. Le lendemain matin, l’état des locaux n’a rien à voir avec celui d’un lundi ordinaire — et le commerce doit pourtant rouvrir normalement.",
+          "Un contrat d’entretien à fréquence fixe ne répond pas à ça : il facture des passages inutiles les semaines creuses et se révèle insuffisant les soirs d’affluence. Nous calons donc les passages renforcés sur le calendrier des événements, connu longtemps à l’avance, plutôt que sur une moyenne hebdomadaire qui ne correspond à aucune réalité.",
+        ],
+      },
+      {
+        h2: "Le lendemain d’affluence, ce qui compte",
+        paragraphs: [
+          "Sur un local qui a reçu une foule, le travail n’est pas le même qu’un entretien courant. Les sanitaires ont été utilisés massivement et demandent une reprise complète, pas un rafraîchissement. Les sols de circulation portent des traces de passage sur toute leur surface. Les points de contact ont été touchés par des centaines de personnes. Les abords extérieurs et la devanture ont souvent souffert.",
+          "L’ordre d’intervention compte autant que le temps passé : sanitaires et points de contact d’abord, parce que ce sont les premiers jugés, sols de circulation ensuite, devanture pour finir. Un passage standard qui commence par le dépoussiérage des surfaces hautes perd son temps là où personne ne regarde.",
+        ],
+      },
+    ],
     faq: [
       { q: 'Pouvez-vous suivre le rythme des week-ends d’événement ?', a: "Oui, c’est un cas d’usage identifié à Décines : nous planifions les rotations en amont des dates de match ou de concert pour que les logements soient prêts entre deux arrivées." },
       { q: 'Travaillez-vous avec les conciergeries du secteur ?', a: "Oui, sur plusieurs logements à la fois, avec des plannings synchronisés sur vos arrivées et départs." },
@@ -1434,8 +1837,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Sainte-Foy-lès-Lyon',
     eyebrow: 'Sainte-Foy-lès-Lyon',
     h1: 'Entreprise de nettoyage à Sainte-Foy-lès-Lyon',
-    title: 'Nettoyage à Sainte-Foy-lès-Lyon — MonCleanerPro | Résidences, maisons & particuliers',
-    description: "Entreprise de nettoyage à Sainte-Foy-lès-Lyon : maisons et résidences de standing, copropriétés soignées, ménage à domicile régulier et grand ménage. Discrétion et finitions. Devis gratuit sous 24h.",
+    title: "Nettoyage à Sainte-Foy-lès-Lyon — MonCleanerPro",
+    description: "Nettoyage à Sainte-Foy-lès-Lyon : ménage régulier de maisons, copropriétés résidentielles et grand ménage. Intervenant attitré. Devis sous 24h.",
     intro:
       "Sur les hauteurs à l’ouest de Lyon, Sainte-Foy-lès-Lyon est avant tout une commune résidentielle : maisons avec jardin, résidences soignées, copropriétés où les parties communes sont un sujet d’attention. Les attentes y portent moins sur le volume que sur le soin du détail et la discrétion des intervenants. MonCleanerPro y propose un entretien régulier à domicile et des prestations ponctuelles, avec le niveau de finition que ce type de bien demande.",
     highlights: [
@@ -1451,6 +1854,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Remise en état avant ou après un déménagement',
       'Nettoyage après travaux de rénovation',
     ],
+    sections: [
+      {
+        h2: "Chez un particulier, la régularité vaut mieux que l’intensité",
+        paragraphs: [
+          "La demande dominante à Sainte-Foy est l’entretien régulier d’une maison habitée — pas le grand ménage exceptionnel. Et sur ce terrain, l’erreur la plus fréquente est de vouloir tout faire à chaque passage. Une maison entretenue toutes les semaines n’a pas besoin qu’on lave les vitres, qu’on fasse les placards et qu’on détartre en profondeur à chaque fois : elle a besoin que les pièces de vie, la cuisine et les salles d’eau soient impeccables en permanence.",
+          "Nous construisons donc un passage courant resserré sur l’essentiel, complété par une rotation des postes de fond — vitres un mois, intérieur des placards le suivant, électroménager après. Le résultat perçu est bien meilleur qu’un passage qui effleure tout, et le temps est le même.",
+        ],
+      },
+      {
+        h2: "Une maison avec jardin salit autrement",
+        paragraphs: [
+          "C’est la différence concrète avec un appartement, et elle est plus importante qu’on ne l’imagine. Une maison avec extérieur fait entrer en permanence de la terre, du pollen, des feuilles et du sable, concentrés sur les entrées, les seuils de baie et les circulations. En présence d’animaux, s’ajoutent les poils, qui s’accrochent aux textiles et aux tapis.",
+          "Ces apports ne se traitent pas par un lavage plus énergique mais par des points d’attention précis : seuils et rails de baie vitrée, paillassons et zones d’entrée, plinthes des circulations, textiles et tapis aspirés en profondeur. C’est une part du travail qui n’existe tout simplement pas en appartement, et qu’il faut avoir prévue dans la durée du passage.",
+        ],
+      },
+    ],
     faq: [
       { q: 'Proposez-vous un entretien régulier à domicile ?', a: "Oui, c’est la demande principale sur la commune : un passage hebdomadaire ou bimensuel avec un intervenant attitré, et un remplacement organisé en cas d’absence." },
       { q: 'Puis-je être absent pendant l’intervention ?', a: "Oui, la plupart de nos clients réguliers nous confient un accès. Nos intervenants sont encadrés et formés à la discrétion." },
@@ -1463,8 +1882,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Saint-Genis-Laval',
     eyebrow: 'Saint-Genis-Laval',
     h1: 'Entreprise de nettoyage à Saint-Genis-Laval',
-    title: 'Nettoyage à Saint-Genis-Laval — MonCleanerPro | Santé, bureaux & résidentiel',
-    description: "Entreprise de nettoyage à Saint-Genis-Laval : cabinets et structures de santé, bureaux, copropriétés, commerces et logements de particuliers. Protocoles rigoureux. Devis gratuit sous 24h.",
+    title: "Nettoyage à Saint-Genis-Laval — MonCleanerPro",
+    description: "Nettoyage à Saint-Genis-Laval : cabinets et locaux de santé, bureaux, laboratoires, copropriétés et commerces. Hors présence. Devis sous 24h.",
     intro:
       "Saint-Genis-Laval est marquée par la présence du pôle hospitalier Lyon Sud et de l’écosystème de santé et de recherche qui l’entoure, doublée d’un secteur résidentiel calme et de commerces de proximité. Cela se traduit par une demande forte sur l’entretien de cabinets et de locaux professionnels, où l’exigence d’hygiène et la discrétion priment. MonCleanerPro y intervient pour ces professionnels comme pour les copropriétés et les particuliers de la commune.",
     highlights: [
@@ -1479,6 +1898,22 @@ export const SEO_PAGES: SeoPage[] = [
       'Parties communes de copropriété',
       'Grand ménage et remise en état de logements',
       'Nettoyage de vitres et de commerces de proximité',
+    ],
+    sections: [
+      {
+        h2: "Autour d’un pôle hospitalier, une demande très spécifique",
+        paragraphs: [
+          "La présence du pôle Lyon Sud structure une part importante du tissu local : cabinets de praticiens, professions paramédicales, laboratoires d’analyses, sociétés de service liées à la santé. Ces locaux partagent une exigence commune — la désinfection y est un acte technique, pas un argument commercial. Un désinfectant essuyé immédiatement après application n’a désinfecté rien du tout : le temps de contact indiqué par le fabricant doit être respecté, faute de quoi l’opération est purement décorative.",
+          "C’est un point de méthode que nous vérifions et que nous formons, parce qu’il distingue un passage sérieux d’un passage rapide. Et c’est aussi ce qui explique qu’un entretien de cabinet ne se compresse pas indéfiniment : en dessous d’une certaine durée, il n’y a plus de désinfection, seulement du nettoyage.",
+        ],
+      },
+      {
+        h2: "Où s’arrête notre périmètre",
+        paragraphs: [
+          "Il faut le poser clairement avant tout devis, et pas après. Nous n’assurons pas l’élimination des déchets d’activités de soins à risques infectieux : les DASRI relèvent d’une filière agréée disposant de sa propre traçabilité réglementaire.",
+          "De même, la désinfection des dispositifs médicaux, la stérilisation des instruments et les protocoles applicables aux zones à environnement maîtrisé relèvent de votre responsabilité professionnelle et de prestataires qualifiés pour cela. Notre périmètre couvre les locaux, les surfaces, le mobilier et les sanitaires. Une entreprise de nettoyage qui vous dit oui à tout sur ces sujets devrait vous inquiéter.",
+        ],
+      },
     ],
     faq: [
       { q: 'Entretenez-vous les cabinets près de Lyon Sud ?', a: "Oui, l’entretien de cabinets médicaux et paramédicaux est une part importante de notre activité sur la commune, avec des protocoles adaptés et des passages hors consultation." },
@@ -1495,8 +1930,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Villeurbanne',
     eyebrow: 'Fin de chantier · Villeurbanne',
     h1: 'Nettoyage de fin de chantier à Villeurbanne',
-    title: 'Nettoyage fin de chantier à Villeurbanne — MonCleanerPro | Après rénovation',
-    description: "Nettoyage de fin de chantier et après travaux à Villeurbanne : appartements rénovés, immeubles anciens, locaux commerciaux. Poussière de plâtre, traces, vitres et finitions. Devis gratuit sous 24h.",
+    title: "Nettoyage fin de chantier à Villeurbanne — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Villeurbanne : appartements rénovés, bâti ancien, locaux commerciaux. Poussière de plâtre, traces, vitres. Devis sous 24h.",
     intro:
       "Villeurbanne rénove beaucoup, et rarement du neuf : appartements des Gratte-Ciel, immeubles d’avant-guerre, copropriétés des années soixante remises au goût du jour pour de la location. Ces chantiers ont une signature — beaucoup de poussière de plâtre, des parquets anciens fragiles, des menuiseries à ne pas abîmer. MonCleanerPro assure le nettoyage de fin de chantier à Villeurbanne avec les gestes que ce bâti demande, pour livrer un logement prêt à louer ou à habiter.",
     highlights: [
@@ -1547,8 +1982,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Vénissieux',
     eyebrow: 'Fin de chantier · Vénissieux',
     h1: 'Nettoyage de fin de chantier à Vénissieux',
-    title: 'Nettoyage fin de chantier à Vénissieux — MonCleanerPro | Logements & locaux',
-    description: "Nettoyage de fin de chantier à Vénissieux : réhabilitation de logements, locaux d’activité, commerces et bureaux réaménagés. Interventions multi-lots, équipe formée. Devis gratuit sous 24h.",
+    title: "Nettoyage fin de chantier à Vénissieux — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Vénissieux : réhabilitation de logements, locaux d’activité, commerces. Interventions multi-lots. Devis sous 24h.",
     intro:
       "À Vénissieux, les chantiers se comptent rarement à l’unité. Réhabilitation d’une cage entière pour un bailleur, réaménagement d’un local d’activité, remise en état de plusieurs logements avant relocation : ce sont des opérations où le nettoyage doit suivre un planning de livraison, lot par lot. MonCleanerPro organise la remise en état de fin de chantier à Vénissieux avec les moyens que ces volumes demandent, sans perdre le niveau de finition attendu sur chaque logement pris séparément.",
     highlights: [
@@ -1600,8 +2035,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Saint-Priest',
     eyebrow: 'Fin de chantier · Saint-Priest',
     h1: 'Nettoyage de fin de chantier à Saint-Priest',
-    title: 'Nettoyage fin de chantier à Saint-Priest — MonCleanerPro | Neuf & tertiaire',
-    description: "Nettoyage de fin de chantier à Saint-Priest : livraisons de programmes neufs, bureaux et locaux d’activité, commerces. Remise en état avant réception. Devis gratuit sous 24h.",
+    title: "Nettoyage fin de chantier à Saint-Priest — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Saint-Priest : programmes neufs, bureaux et locaux d’activité. Remise en état avant réception. Devis sous 24h.",
     intro:
       "Saint-Priest construit et livre : programmes neufs, plateaux de bureaux, locaux d’activité du parc technologique et de la zone logistique. Sur ces chantiers, le nettoyage n’est pas une finition optionnelle — c’est l’étape qui conditionne la réception. Un lot livré avec des étiquettes de vitrage encore en place ou un voile de ciment au sol génère des réserves, et les réserves coûtent du temps à tout le monde. MonCleanerPro assure la remise en état de fin de chantier à Saint-Priest en visant précisément ce qui est regardé le jour de la livraison.",
     highlights: [
@@ -1652,8 +2087,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Villefranche-sur-Saône',
     eyebrow: 'Fin de chantier · Villefranche-sur-Saône',
     h1: 'Nettoyage de fin de chantier à Villefranche-sur-Saône',
-    title: 'Nettoyage fin de chantier à Villefranche-sur-Saône — MonCleanerPro | Beaujolais',
-    description: "Nettoyage de fin de chantier à Villefranche-sur-Saône et dans le Beaujolais : maisons rénovées, bâti ancien en pierre, extensions, commerces. Finitions avant emménagement. Devis gratuit sous 24h.",
+    title: "Fin de chantier à Villefranche-sur-Saône — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Villefranche-sur-Saône et dans le Beaujolais : maisons rénovées, pierre et tomettes, extensions. Devis sous 24h.",
     intro:
       "Autour de Villefranche-sur-Saône, les chantiers ressemblent peu à ceux de la métropole : plus de maisons individuelles que d’appartements, beaucoup de bâti ancien en pierre, des extensions et des rénovations qui s’étalent dans le temps. Le nettoyage de fin de chantier y demande donc de la souplesse sur les dates et une bonne connaissance des matériaux anciens. MonCleanerPro intervient à Villefranche et dans les communes du Beaujolais pour rendre ces biens habitables et présentables une fois les travaux terminés.",
     highlights: [
@@ -1706,8 +2141,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Anse',
     eyebrow: 'Fin de chantier · Anse',
     h1: 'Nettoyage de fin de chantier à Anse',
-    title: 'Nettoyage fin de chantier à Anse (69480) — MonCleanerPro | Neuf & rénovation ancienne',
-    description: "Nettoyage de fin de chantier à Anse et dans les Pierres Dorées : livraisons de logements neufs, rénovations de maisons anciennes, extensions. Poussière, traces et finitions avant remise des clés. Devis sous 24h.",
+    title: "Nettoyage fin de chantier à Anse — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Anse et dans les Pierres Dorées : neuf et rénovation de bâti ancien, poussière, traces et finitions. Devis sous 24h.",
     intro:
       "À Anse, deux types de chantiers cohabitent et ne se ressemblent pas. D’un côté, les programmes récents livrés à des ménages qui viennent s’installer : du neuf, avec ses films de protection, ses étiquettes de vitrage et son voile de ciment. De l’autre, la rénovation de maisons en pierres dorées, de corps de ferme et de bâtis anciens, où la poussière de chaux et de pierre se dépose sur des supports fragiles. MonCleanerPro assure la remise en état de fin de chantier dans les deux cas, avec la méthode que chacun demande.",
     highlights: [
@@ -1775,8 +2210,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage Airbnb Villefranche-sur-Saône',
     eyebrow: 'Airbnb · Villefranche-sur-Saône',
     h1: 'Ménage Airbnb à Villefranche-sur-Saône',
-    title: 'Ménage Airbnb à Villefranche-sur-Saône — MonCleanerPro | Courte durée & Beaujolais',
-    description: "Ménage de location courte durée à Villefranche-sur-Saône : rotations entre voyageurs, gestion du linge, rapport photo. Séjours affaires en semaine, œnotourisme le week-end. Devis gratuit sous 24h.",
+    title: "Ménage Airbnb à Villefranche-sur-Saône — MonCleanerPro",
+    description: "Ménage de location courte durée à Villefranche-sur-Saône : rotations entre voyageurs, linge, rapport photo. Séjours pro et œnotourisme. Devis sous 24h.",
     intro:
       "La location courte durée à Villefranche ne ressemble pas à celle de Lyon. Ici, la semaine appartient aux déplacements professionnels — techniciens, commerciaux, intervenants sur les zones d’activité et l’hôpital — pendant que le week-end se remplit de visiteurs venus pour le vignoble et les Pierres Dorées. Deux clientèles, deux rythmes, et des rotations qui se concentrent sur le vendredi et le dimanche. MonCleanerPro assure le ménage de vos meublés caladois avec une organisation calée sur cette saisonnalité-là.",
     highlights: [
@@ -1841,8 +2276,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage Airbnb Anse',
     eyebrow: 'Airbnb · Anse',
     h1: 'Ménage Airbnb et gîtes à Anse',
-    title: 'Ménage Airbnb à Anse (69480) — MonCleanerPro | Gîtes, meublés & Pierres Dorées',
-    description: "Ménage de location saisonnière à Anse : gîtes, chambres d’hôtes et meublés touristiques du pays des Pierres Dorées. Rotations, linge, remise en route de saison. Devis gratuit sous 24h.",
+    title: "Ménage Airbnb et gîtes à Anse — MonCleanerPro",
+    description: "Ménage de location saisonnière à Anse : gîtes, chambres d’hôtes et meublés des Pierres Dorées. Rotations, linge, remise en route. Devis sous 24h.",
     intro:
       "À Anse, la location saisonnière ne se joue pas sur la nuitée d’affaires mais sur le séjour : un week-end dans le vignoble, quelques jours au bord de la Saône, une base pour visiter les Pierres Dorées à trente minutes de Lyon. Les biens loués sont souvent des maisons de caractère, des gîtes ou des dépendances aménagées — plus grands qu’un studio urbain, avec des matériaux anciens et une saisonnalité très marquée. MonCleanerPro assure leur entretien avec les gestes que ce type de bien demande et une présence calée sur les pics de fréquentation.",
     highlights: [
@@ -1918,8 +2353,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier France',
     eyebrow: 'Gros chantiers · France entière',
     h1: 'Nettoyage de fin de chantier partout en France',
-    title: 'Nettoyage fin de chantier France — MonCleanerPro | Équipe qui se déplace',
-    description: "Entreprise de nettoyage de fin de chantier intervenant sur toute la France : programmes neufs, tertiaire, industriel, multi-sites. Une équipe complète se déplace, un seul interlocuteur. Devis sous 24h.",
+    title: "Nettoyage fin de chantier en France — MonCleanerPro",
+    description: "Nettoyage de fin de chantier partout en France : programmes neufs, tertiaire, industriel, multi-sites. Une équipe complète se déplace. Devis sous 24h.",
     intro:
       "Sur un gros chantier, la remise en état n’est pas une ligne de finition : c’est l’étape qui décide si la réception se passe bien ou si elle génère des réserves en série. Et c’est presque toujours celle qu’on cale en dernier, sur un prestataire local trouvé dans l’urgence, dont personne n’a vérifié la capacité réelle. MonCleanerPro intervient sur l’ensemble du territoire français avec un modèle différent : une équipe complète qui se déplace, encadrée, avec la même méthode d’un chantier à l’autre. Vous ne pilotez pas un prestataire de plus dans chaque ville — vous avez un seul interlocuteur, du devis à la levée des réserves.",
     highlights: [
@@ -2022,8 +2457,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage livraison programme neuf',
     eyebrow: 'Promotion immobilière',
     h1: 'Nettoyage de livraison de programmes neufs',
-    title: 'Nettoyage livraison programme neuf — MonCleanerPro | Promoteurs, lot par lot',
-    description: "Nettoyage de livraison pour promoteurs et maîtres d’ouvrage, partout en France : remise en état lot par lot avant réception, zéro réserve de propreté, planning calé sur les visites. Devis sous 24h.",
+    title: "Nettoyage livraison programme neuf — MonCleanerPro",
+    description: "Nettoyage de livraison pour promoteurs, partout en France : remise en état lot par lot, zéro réserve de propreté, planning calé sur les visites.",
     intro:
       "Sur une livraison de programme neuf, les réserves de propreté sont les plus faciles à éviter et pourtant les plus fréquentes. Elles ne remettent pas en cause la qualité de l’ouvrage, mais elles polluent la visite, mobilisent des équipes en reprise et abîment la relation avec l’acquéreur au moment précis où elle se joue. MonCleanerPro intervient pour les promoteurs et maîtres d’ouvrage sur l’ensemble du territoire, lot par lot, avec un planning construit à l’envers depuis vos dates de visite.",
     highlights: [
@@ -2100,8 +2535,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier bureaux',
     eyebrow: 'Immobilier tertiaire',
     h1: 'Nettoyage de fin de chantier tertiaire et bureaux',
-    title: 'Nettoyage fin de chantier tertiaire — MonCleanerPro | Plateaux de bureaux & sièges',
-    description: "Remise en état de plateaux de bureaux, sièges sociaux et immeubles tertiaires après travaux, partout en France : grandes surfaces, faux plafonds, vitrages, intervention hors exploitation. Devis sous 24h.",
+    title: "Nettoyage fin de chantier tertiaire — MonCleanerPro",
+    description: "Remise en état de plateaux de bureaux et d’immeubles tertiaires après travaux : grandes surfaces, vitrages, intervention hors exploitation.",
     intro:
       "Un plateau de bureaux livré sale ne se rattrape pas discrètement : il est vu le premier jour par des dizaines de collaborateurs, et l’impression qu’il laisse colle au projet d’aménagement tout entier. Sur ce type d’opération, la remise en état finale porte une exigence particulière — grandes surfaces à traiter en délai court, vitrages omniprésents, faux plafonds et sols techniques, et souvent un immeuble encore partiellement occupé. MonCleanerPro intervient sur les chantiers tertiaires dans toute la France, avec les effectifs que ces volumes demandent.",
     highlights: [
@@ -2178,8 +2613,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier industriel',
     eyebrow: 'Industrie & logistique',
     h1: 'Nettoyage de fin de chantier industriel et logistique',
-    title: 'Nettoyage fin de chantier industriel — MonCleanerPro | Entrepôts & sites de production',
-    description: "Remise en état de bâtiments industriels et logistiques après travaux, partout en France : entrepôts, sites de production, locaux d’activité. Grandes surfaces, hors exploitation, équipe dimensionnée. Devis sous 24h.",
+    title: "Nettoyage fin de chantier industriel — MonCleanerPro",
+    description: "Remise en état de bâtiments industriels et logistiques après travaux : entrepôts, sites de production. Lavage mécanisé, équipe dimensionnée.",
     intro:
       "Un bâtiment industriel ou logistique livré après travaux pose un problème d’échelle avant tout : les surfaces se comptent en dizaines de milliers de mètres carrés, les hauteurs interdisent une bonne partie des gestes habituels, et la mise en exploitation est souvent calée à la semaine près parce que des flux en dépendent. MonCleanerPro intervient sur ces chantiers dans toute la France, avec des équipes dimensionnées pour le volume et une organisation calée sur votre date de démarrage.",
     highlights: [
@@ -2266,8 +2701,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier multi-sites',
     eyebrow: 'Réseaux & déploiements',
     h1: 'Nettoyage de fin de chantier multi-sites',
-    title: 'Nettoyage fin de chantier multi-sites — MonCleanerPro | Réseaux & déploiements',
-    description: "Nettoyage de livraison pour déploiements multi-sites partout en France : ouvertures d’enseignes, rénovations de réseau, agences. Même standard sur chaque site, un seul interlocuteur. Devis sous 24h.",
+    title: "Nettoyage fin de chantier multi-sites — MonCleanerPro",
+    description: "Nettoyage de livraison pour déploiements multi-sites en France : ouvertures d’enseignes, rénovations de réseau. Même standard partout. Devis sous 24h.",
     intro:
       "Déployer un concept sur trente points de vente, c’est répéter trente fois la même opération en espérant qu’elle produise trente fois le même résultat. C’est précisément là que le nettoyage de livraison casse le plus souvent : un prestataire différent par ville, un niveau de finition différent par ville, et une ouverture sur deux qui se fait dans un local qui ne ressemble pas à ce qui avait été validé. MonCleanerPro traite les déploiements multi-sites avec une équipe unique qui se déplace, ce qui rend l’homogénéité mécanique plutôt qu’espérée.",
     highlights: [
@@ -2346,8 +2781,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'marché public nettoyage fin de chantier',
     eyebrow: 'Commande publique',
     h1: 'Nettoyage de fin de chantier en marché public',
-    title: 'Marché public nettoyage fin de chantier — MonCleanerPro | Appels d’offres & lots',
-    description: "Nettoyage de fin de chantier en marché public partout en France : groupes scolaires, équipements sportifs et culturels, bâtiments administratifs. Candidature directe, co-traitance ou sous-traitance déclarée.",
+    title: "Marché public nettoyage fin de chantier — MonCleanerPro",
+    description: "Nettoyage de fin de chantier en marché public : groupes scolaires, équipements sportifs et culturels. Candidature directe, co-traitance, sous-traitance.",
     intro:
       "Une opération publique impose au nettoyage de fin de chantier des contraintes que le privé ne connaît pas : un calendrier verrouillé par une date d’ouverture au public qui ne se négocie pas, une réception formalisée avec procès-verbal et réserves opposables, et un dossier administratif qui doit être irréprochable avant même que la première heure soit travaillée. MonCleanerPro répond à ces opérations sur l’ensemble du territoire, en candidature directe comme en co-traitance ou en sous-traitance déclarée d’une entreprise générale.",
     highlights: [
@@ -2433,8 +2868,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier hôtel',
     eyebrow: 'Hôtellerie',
     h1: 'Nettoyage de fin de chantier hôtelier',
-    title: 'Nettoyage fin de chantier hôtel — MonCleanerPro | Réouverture après rénovation',
-    description: "Remise en état d’hôtels après rénovation, partout en France : chambres livrées par étages, parties communes, réouverture en site partiellement exploité. Standard hôtelier tenu. Devis sous 24h.",
+    title: "Nettoyage fin de chantier hôtelier — MonCleanerPro",
+    description: "Remise en état d’hôtels après rénovation, partout en France : chambres livrées par étages, parties communes, site partiellement exploité.",
     intro:
       "Rouvrir un hôtel après rénovation n’a rien de commun avec la livraison d’un bâtiment ordinaire. Le niveau de finition attendu n’est pas celui d’un chantier réussi, c’est celui d’une chambre vendue au prix fort à un client qui inspectera le joint de douche et le dessous du lit. Et la rénovation se fait presque toujours par étages, l’établissement continuant d’accueillir des clients pendant les travaux. MonCleanerPro assure la remise en état de fin de chantier hôtelier dans toute la France — un domaine où notre activité quotidienne en hôtellerie nous sert directement.",
     highlights: [
@@ -2516,8 +2951,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Paris',
     eyebrow: 'Gros chantiers · Paris & Île-de-France',
     h1: 'Nettoyage de fin de chantier à Paris et en Île-de-France',
-    title: 'Nettoyage fin de chantier Paris — MonCleanerPro | Tertiaire & restructuration',
-    description: "Nettoyage de fin de chantier à Paris et en Île-de-France : plateaux de bureaux, restructurations, livraisons tertiaires. Intervention de nuit, logistique maîtrisée, équipe dédiée. Devis sous 24h.",
+    title: "Nettoyage fin de chantier à Paris — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Paris et en Île-de-France : plateaux de bureaux, restructurations. Intervention de nuit, logistique maîtrisée.",
     intro:
       "À Paris, la difficulté d’un chantier de fin de travaux n’est presque jamais le nettoyage lui-même : c’est tout ce qui l’entoure. Faire entrer une équipe et son matériel dans un immeuble haussmannien restructuré en bureaux, avec un monte-charge unique, une autorisation de stationnement à obtenir et des horaires imposés par le règlement de copropriété, demande une préparation qui n’a pas d’équivalent en région. MonCleanerPro intervient sur les livraisons parisiennes et franciliennes avec une équipe complète qui se déplace et une logistique cadrée en amont.",
     highlights: [
@@ -2585,8 +3020,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Marseille',
     eyebrow: 'Gros chantiers · Marseille',
     h1: 'Nettoyage de fin de chantier à Marseille',
-    title: 'Nettoyage fin de chantier Marseille — MonCleanerPro | Tertiaire, réhabilitation & hôtellerie',
-    description: "Nettoyage de fin de chantier à Marseille et dans les Bouches-du-Rhône : livraisons tertiaires, réhabilitation du centre ancien, hôtellerie, logistique portuaire. Équipe dédiée. Devis sous 24h.",
+    title: "Nettoyage fin de chantier à Marseille — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Marseille : livraisons tertiaires, réhabilitation du centre ancien, hôtellerie, logistique. Devis sous 24h.",
     intro:
       "Marseille fait cohabiter deux types de chantiers que peu de villes réunissent à cette échelle : des livraisons tertiaires neuves, portées par les opérations d’aménagement du front de mer et des quartiers d’affaires, et une réhabilitation massive du bâti ancien du centre-ville. Les deux appellent des méthodes opposées — le neuf demande de retirer des protections, l’ancien demande de ne rien abîmer. MonCleanerPro intervient sur les deux, avec une équipe complète qui se déplace.",
     highlights: [
@@ -2654,8 +3089,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Bordeaux',
     eyebrow: 'Gros chantiers · Bordeaux',
     h1: 'Nettoyage de fin de chantier à Bordeaux',
-    title: 'Nettoyage fin de chantier Bordeaux — MonCleanerPro | Programmes neufs & pierre de taille',
-    description: "Nettoyage de fin de chantier à Bordeaux et en Gironde : livraisons de programmes neufs, réhabilitation en pierre de taille, tertiaire. Livraison lot par lot, équipe dédiée. Devis sous 24h.",
+    title: "Nettoyage fin de chantier à Bordeaux — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Bordeaux : livraisons de programmes neufs lot par lot, réhabilitation en pierre de taille. Devis sous 24h.",
     intro:
       "Bordeaux livre beaucoup de logements neufs, et rénove énormément de pierre de taille. Ces deux réalités définissent nos interventions sur la métropole : d’un côté des programmes résidentiels livrés par vagues, où l’enjeu est de ne pas laisser filer la qualité sur les derniers lots ; de l’autre un bâti blond, poreux et fragile, où un produit mal choisi laisse une trace que personne ne rattrapera. MonCleanerPro intervient sur les deux avec une équipe complète qui se déplace depuis Lyon.",
     highlights: [
@@ -2723,8 +3158,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Lille',
     eyebrow: 'Gros chantiers · Lille',
     h1: 'Nettoyage de fin de chantier à Lille',
-    title: 'Nettoyage fin de chantier Lille — MonCleanerPro | Tertiaire, logistique & reconversion',
-    description: "Nettoyage de fin de chantier à Lille et dans les Hauts-de-France : livraisons tertiaires, plateformes logistiques, reconversion de friches industrielles. Équipe dédiée. Devis sous 24h.",
+    title: "Nettoyage fin de chantier à Lille — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Lille : livraisons tertiaires, plateformes logistiques, reconversion de friches industrielles. Devis sous 24h.",
     intro:
       "La métropole lilloise concentre trois types d’opérations que nous traitons régulièrement : des livraisons tertiaires dans les quartiers d’affaires, des plateformes logistiques portées par la position de carrefour européen de la région, et une reconversion continue du patrimoine industriel en bureaux, logements et équipements. Ce dernier point est la vraie spécificité locale — transformer une friche en plateau de bureaux produit un chantier de nettoyage qui ne ressemble à aucun autre. MonCleanerPro y intervient avec une équipe complète qui se déplace.",
     highlights: [
@@ -2792,8 +3227,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Grenoble',
     eyebrow: 'Gros chantiers · Grenoble',
     h1: 'Nettoyage de fin de chantier à Grenoble',
-    title: 'Nettoyage fin de chantier Grenoble — MonCleanerPro | Tertiaire, industrie & montagne',
-    description: "Nettoyage de fin de chantier à Grenoble et en Isère : bâtiments tertiaires et scientifiques, sites industriels, résidences de tourisme en station avant ouverture de saison. Devis sous 24h.",
+    title: "Nettoyage fin de chantier à Grenoble — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Grenoble et en Isère : tertiaire, bâtiments techniques, résidences de tourisme avant ouverture de saison.",
     intro:
       "Grenoble a deux visages pour un chantier de fin de travaux. Dans l’agglomération, un tissu tertiaire, universitaire et industriel dense, avec des bâtiments techniques qui appellent une remise en état soignée avant mise en service. Dans les massifs autour, des résidences de tourisme et des hébergements de station dont la livraison est verrouillée par une seule date : l’ouverture de la saison. MonCleanerPro intervient sur les deux, à moins de deux heures de notre base lyonnaise — ce qui rend la réactivité réelle sur ce secteur.",
     highlights: [
@@ -2860,8 +3295,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage fin de chantier Saint-Étienne',
     eyebrow: 'Gros chantiers · Saint-Étienne',
     h1: 'Nettoyage de fin de chantier à Saint-Étienne',
-    title: 'Nettoyage fin de chantier Saint-Étienne — MonCleanerPro | Réhabilitation & bailleurs',
-    description: "Nettoyage de fin de chantier à Saint-Étienne et dans la Loire : réhabilitation de logements, opérations bailleurs multi-lots, reconversion industrielle, tertiaire. Devis gratuit sous 24h.",
+    title: "Fin de chantier à Saint-Étienne — MonCleanerPro",
+    description: "Nettoyage de fin de chantier à Saint-Étienne : réhabilitation de logements, opérations bailleurs multi-lots, reconversion. Devis sous 24h.",
     intro:
       "À Saint-Étienne, les chantiers se comptent rarement à l’unité. Réhabilitation d’une cage entière pour un bailleur, remise en état de plusieurs dizaines de logements avant relocation, reconversion d’un bâtiment industriel : ce sont des opérations de volume, étalées dans le temps, où le nettoyage doit suivre un calendrier de livraison lot par lot sans que la qualité du dernier logement diffère de celle du premier. À moins d’une heure de Lyon, c’est un secteur sur lequel nous sommes réellement réactifs.",
     highlights: [
