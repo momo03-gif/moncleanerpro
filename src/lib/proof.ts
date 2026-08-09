@@ -18,8 +18,14 @@ export const REVIEWS = {
   // Note moyenne affichée. `null` tant qu'elle n'est pas confirmée : mieux vaut
   // n'afficher que le nombre d'avis qu'une note approximative.
   rating: 5 as number | null,
-  // Lien public vers les avis de la fiche Google Business. Vide = pas de lien.
-  url: '',
+  // Lien affiché sur le site : ouvre la FICHE Google, où les avis se lisent.
+  // Ne PAS mettre ici la variante `/review` : elle ouvre le formulaire de
+  // rédaction d'un avis, ce qui n'a aucun sens pour un prospect qui veut
+  // seulement vérifier la note avant de demander un devis.
+  url: 'https://g.page/r/CSxSeubqgq0zEBM',
+  // Variante « laisser un avis » — à utiliser dans les sollicitations envoyées
+  // aux clients après une intervention (email, SMS), jamais sur la vitrine.
+  askUrl: 'https://g.page/r/CSxSeubqgq0zEBM/review',
 };
 
 // Année de début d'activité, affichée en pied de page. L'ancienneté est un
