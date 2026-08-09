@@ -944,11 +944,30 @@ export const SEO_PAGES: SeoPage[] = [
       'Sanitaires clients et personnel désinfectés',
       'Réserve, arrière-boutique et gestion des corbeilles',
     ],
+    sections: [
+      {
+        h2: "L’entrée concentre l’essentiel de la salissure",
+        paragraphs: [
+          "Dans un commerce, la saleté n’est pas répartie : elle entre par la porte et se dépose sur les premiers mètres. Chaque client apporte sous ses semelles l’eau, la poussière et, l’hiver, le sel de déneigement qui ronge les sols. Résultat, la zone d’entrée est dans un état sans rapport avec le fond du magasin, et c’est précisément celle que tout le monde traverse en premier.",
+          "La conséquence pratique est contre-intuitive : sur un commerce, il vaut souvent mieux traiter intensivement les six premiers mètres à chaque passage que de repasser uniformément partout. C’est aussi pourquoi un bon tapis d’entrée, assez long pour que le client fasse trois pas dessus, est le meilleur investissement de propreté d’un magasin — il retient la salissure avant qu’elle ne s’étale sur toute la surface de vente.",
+        ],
+      },
+      {
+        h2: "Ce qu’un client ne pardonne pas",
+        paragraphs: [
+          "Un client tolère beaucoup de choses dans un commerce, mais pas trois : une odeur, des sanitaires douteux et une cabine d’essayage sale. Ces trois points ne relèvent pas de l’esthétique, ils touchent à l’intime — et ils déclenchent une réaction immédiate, souvent définitive.",
+          "L’odeur est la plus traître, parce que l’équipe qui travaille sur place ne la perçoit plus. Elle vient presque toujours du même endroit : réserve mal ventilée, poubelle non lavée, siphon asséché, textile humide. Un local qui « sent le renfermé » à l’ouverture le matin a un problème identifiable, pas une fatalité. C’est un point que nous signalons systématiquement, parce que personne à l’intérieur ne peut le voir.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous avant l’ouverture du magasin ?', a: "Oui, c’est le cas le plus fréquent. Nous intervenons tôt le matin avant l’arrivée de votre équipe, ou le soir après la fermeture, selon ce qui vous arrange." },
       { q: 'Nettoyez-vous la vitrine extérieure ?', a: "Oui, la vitrine et la devanture accessibles en sécurité sont traitées. C’est souvent la prestation qui a le plus d’impact visible sur la fréquentation." },
       { q: 'Pouvez-vous gérer plusieurs boutiques d’une même enseigne ?', a: "Oui, nous organisons des tournées multi-sites avec un planning coordonné et un interlocuteur unique pour l’ensemble de vos points de vente." },
       { q: 'Quelle fréquence recommandez-vous ?', a: "Cela dépend de votre flux. Un commerce à forte fréquentation gagne à un passage quotidien ; deux à trois passages hebdomadaires suffisent souvent pour une boutique plus calme." },
+      { q: "Faut-il nettoyer toute la surface à chaque passage ?", a: "Rarement, et ce n’est pas le plus efficace. La salissure entre par la porte : traiter intensivement la zone d’entrée à chaque passage et le fond du magasin plus espacé donne un résultat perçu bien meilleur, à temps égal." },
+      { q: "Mon local sent le renfermé, que faire ?", a: "C’est presque toujours identifiable : réserve mal ventilée, poubelle jamais lavée, siphon asséché ou textile humide. L’équipe sur place ne le perçoit plus, c’est pour cela que nous le signalons. Ce n’est pas une fatalité et cela se traite." },
     ],
     related: ['nettoyage-vitres-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-restaurant-lyon'],
   },
@@ -975,11 +994,32 @@ export const SEO_PAGES: SeoPage[] = [
       'Vitrerie intérieure, devanture et terrasse vitrée',
       'Sortie des déchets et entretien du local poubelles',
     ],
+    sections: [
+      {
+        h2: "Nous intervenons en appui de votre plan de maîtrise sanitaire, pas à sa place",
+        paragraphs: [
+          "La distinction est essentielle et nous la posons avant tout devis. Votre plan de maîtrise sanitaire couvre la cuisine, les surfaces de travail, le matériel de production et les protocoles que votre équipe applique en service : cela relève de votre responsabilité d’exploitant et ne peut pas être délégué à un prestataire de nettoyage.",
+          "Notre périmètre est celui qui l’entoure et que l’équipe n’a ni le temps ni les moyens de traiter en fin de service : la salle et son mobilier, les sanitaires accessibles au public, les sols et leurs plinthes, les vitrages et la devanture, les circulations, les abords. C’est ce partage clair qui rend la prestation utile — un prestataire qui prétend absorber votre plan de maîtrise sanitaire vous expose plutôt qu’il ne vous aide.",
+        ],
+      },
+      {
+        h2: "La graisse ne se nettoie pas comme la saleté",
+        paragraphs: [
+          "C’est ce qui distingue un restaurant de tout autre local recevant du public. La cuisson libère un aérosol gras qui ne reste pas en cuisine : il migre en salle et se dépose partout, en couche invisible, sur les luminaires, le haut des murs, les dossiers de chaises, les cadres et les grilles de ventilation. Cette couche capte ensuite la poussière, et c’est ce mélange qui donne au bout de quelques mois cet aspect terne que le lavage des sols ne corrige jamais.",
+          "Elle demande un dégraissant et un temps de pose, pas un passage rapide au chiffon — et un dosage adapté au support, une peinture mate et un inox n’acceptant pas le même produit. Nous distinguons donc, dans le devis, l’entretien courant de la salle et le dégraissage périodique des surfaces hautes, qui se traite quelques fois par an mais change complètement l’aspect général.",
+          "Une limite claire en revanche : le dégraissage des conduits et des systèmes d’extraction relève d’entreprises certifiées pour cette intervention, avec l’attestation qui l’accompagne. Ce n’est pas notre métier et nous ne le proposons pas.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous la nuit ou tôt le matin ?', a: "Oui, la restauration impose des créneaux décalés : nous intervenons après la fermeture ou très tôt le matin, selon votre organisation de service." },
       { q: 'Remplacez-vous le nettoyage fait par la brigade ?', a: "Non. L’entretien courant des équipements de production et le respect de votre plan de maîtrise sanitaire restent de votre responsabilité. Nous intervenons en complément, sur la salle, les sanitaires et le dégraissage en profondeur." },
       { q: 'Nettoyez-vous les hottes et conduits d’extraction ?', a: "Le dégraissage des conduits d’extraction relève d’une entreprise spécialisée et certifiée pour cette prestation. Nous traitons les surfaces accessibles et vous orientons pour le reste." },
       { q: 'Pouvez-vous intervenir avant une ouverture ou une réouverture ?', a: "Oui, la remise en état complète avant une ouverture, une reprise de fonds ou une réouverture après travaux fait partie de nos prestations." },
+      { q: "Nettoyez-vous la cuisine ?", a: "La cuisine, les surfaces de travail et le matériel de production relèvent de votre plan de maîtrise sanitaire et de votre responsabilité d’exploitant. Nous intervenons sur ce qui l’entoure : salle, sanitaires, sols, vitrages, circulations et abords." },
+      { q: "Prenez-vous en charge les conduits d’extraction ?", a: "Non. Le dégraissage des conduits et systèmes d’extraction relève d’entreprises certifiées, avec l’attestation correspondante. Nous le disons au devis plutôt que de vous laisser le découvrir." },
+      { q: "Pourquoi ma salle paraît terne malgré un nettoyage quotidien ?", a: "Parce que l’aérosol gras de cuisson se dépose en couche invisible sur les luminaires, le haut des murs et les dossiers de chaises, puis capte la poussière. Un lavage des sols n’y change rien : il faut un dégraissage périodique des surfaces hautes, quelques fois par an." },
     ],
     related: ['nettoyage-commerce-lyon', 'nettoyage-vitres-lyon', 'nettoyage-fin-de-chantier-lyon'],
   },
@@ -1006,11 +1046,31 @@ export const SEO_PAGES: SeoPage[] = [
       'Sanitaires désinfectés et réapprovisionnés',
       'Gestion des corbeilles et des déchets non médicaux',
     ],
+    sections: [
+      {
+        h2: "La salle d’attente est la pièce la plus observée de votre cabinet",
+        paragraphs: [
+          "C’est le seul endroit d’un établissement de santé où quelqu’un reste assis vingt minutes sans rien faire d’autre que regarder autour de lui. Un patient en salle d’attente examine ce que personne d’autre ne remarque jamais : le dessous des sièges, les plinthes, les traces sur les murs à hauteur d’épaule, la poussière sur le plafonnier, l’état des jouets s’il y en a.",
+          "C’est aussi là que se forme son jugement sur l’hygiène de tout le cabinet — y compris sur la salle de soins qu’il n’a pas encore vue. Une salle d’attente négligée jette un doute rétrospectif sur l’ensemble, et ce doute est difficile à rattraper ensuite. Nous la traitons donc avec le même niveau d’exigence que les salles de soins, alors que beaucoup de contrats la considèrent comme un simple espace de circulation.",
+        ],
+      },
+      {
+        h2: "Un plan de nettoyage écrit, et sa traçabilité",
+        paragraphs: [
+          "Dans un cabinet, « c’est propre » ne suffit pas : il faut pouvoir dire ce qui a été fait, où et quand. C’est utile en cas de contrôle, dans une démarche qualité, et tout simplement pour que le praticien sache ce sur quoi il peut compter sans avoir à vérifier lui-même.",
+          "Nous travaillons donc à partir d’un plan écrit, local par local : ce qui est traité à chaque passage, ce qui l’est périodiquement, avec quel produit et à quelle fréquence. Chaque intervention est tracée. C’est ce document qui permet aussi de trancher les zones grises — qui nettoie le fauteuil entre deux patients, qui traite le petit matériel — plutôt que de laisser chacun supposer que l’autre s’en charge.",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Prenez-vous en charge les déchets de soins (DASRI) ?', a: "Non. Les déchets d’activités de soins à risques infectieux relèvent d’une filière réglementée et d’un prestataire agréé. Nous gérons uniquement les déchets non médicaux, et nos intervenants sont formés à ne jamais manipuler les contenants dédiés." },
       { q: 'Intervenez-vous en dehors des consultations ?', a: "Oui, systématiquement : tôt le matin avant l’ouverture ou en soirée après le dernier patient, selon vos horaires." },
       { q: 'Utilisez-vous du matériel distinct par zone ?', a: "Oui. Le matériel est différencié entre salle de soins, sanitaires et espaces communs, et nous respectons un ordre d’intervention du plus propre vers le plus sale." },
       { q: 'Vos intervenants sont-ils sensibilisés à la confidentialité ?', a: "Oui. Ils sont encadrés et formés à la discrétion propre à ces lieux : aucun document n’est déplacé ni consulté, et rien de ce qui est vu sur place n’est commenté à l’extérieur." },
+      { q: "Traitez-vous la salle d’attente comme une simple circulation ?", a: "Non, avec le même niveau d’exigence que les salles de soins. C’est le seul endroit où un patient reste assis vingt minutes à tout observer — dessous des sièges, plinthes, plafonnier — et où se forme son jugement sur l’hygiène de l’ensemble du cabinet." },
+      { q: "Fournissez-vous un plan de nettoyage écrit ?", a: "Oui, local par local : ce qui est traité à chaque passage, ce qui l’est périodiquement, avec quel produit et à quelle fréquence, et une traçabilité des interventions. C’est ce qui permet aussi de clarifier les zones grises entre votre équipe et la nôtre." },
+      { q: "Prenez-vous en charge les DASRI ?", a: "Non. Les déchets d’activités de soins à risques infectieux relèvent d’une filière agréée disposant de sa propre traçabilité réglementaire. Notre périmètre couvre les locaux, les surfaces, le mobilier et les sanitaires." },
     ],
     related: ['nettoyage-ehpad-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-copropriete-lyon'],
   },
@@ -1038,12 +1098,38 @@ export const SEO_PAGES: SeoPage[] = [
       'Repassage possible selon la formule retenue',
       'Fréquence hebdomadaire, bimensuelle ou sur mesure',
     ],
+    sections: [
+      {
+        h2: "Faire appel à une entreprise plutôt qu’à un arrangement informel",
+        paragraphs: [
+          "Beaucoup de foyers lyonnais fonctionnent avec un arrangement de gré à gré, souvent trouvé par bouche-à-oreille. Cela marche parfaitement — jusqu’au jour où quelque chose se passe mal. Un accident domestique pendant l’intervention, un objet de valeur cassé, un dégât des eaux causé par une machine mal refermée : sans cadre, la question de la responsabilité se pose à un moment où personne n’a envie de l’aborder.",
+          "Passer par une entreprise déplace ces risques : les intervenants sont déclarés, l’activité est couverte par une responsabilité civile professionnelle, et la casse éventuelle relève de l’assurance et non d’une conversation gênante. Il y a aussi un aspect plus prosaïque mais qui compte davantage au quotidien : quand votre intervenant est malade ou part en congés, quelqu’un le remplace. Dans un arrangement informel, votre maison n’est simplement pas faite.",
+        ],
+      },
+      {
+        h2: "Bien préparer le premier passage",
+        paragraphs: [
+          "La première intervention est toujours plus longue que les suivantes, et c’est normal : l’intervenant découvre les lieux, cherche les rangements, et traite un état de départ qui n’a pas encore été remis à niveau. Ce qui compte, c’est qu’elle serve à caler les choses pour la suite.",
+        ],
+        list: [
+          "Faire le tour du logement ensemble, si vous êtes présent, pour indiquer les priorités réelles",
+          "Dire ce qu’on ne touche pas : une pièce, un bureau, des papiers, une collection, un animal craintif",
+          "Convenir de l’accès pour les fois suivantes — clés, code, boîte à clés — pour ne plus avoir à être là",
+          "Montrer où se trouvent les produits et le matériel, et signaler un sol ou un support fragile",
+          "Convenir de la fréquence après ce premier passage, quand la durée réelle est connue",
+        ],
+      },
+    ],
+    updatedAt: '2026-08-09',
     faq: [
       { q: 'Quelle différence avec le grand ménage ?', a: "Le grand ménage est une remise à neuf ponctuelle et en profondeur, souvent avant ou après un événement. Le ménage à domicile est un entretien régulier qui maintient le logement en état dans la durée. Beaucoup de clients commencent par un grand ménage, puis passent au régulier." },
       { q: 'Aurai-je toujours la même personne ?', a: "Oui, c’est le principe : un intervenant attitré qui connaît votre logement. En cas d’absence ou de congés, nous organisons un remplacement pour que la prestation soit assurée." },
       { q: 'Dois-je être présent pendant l’intervention ?', a: "Non. La plupart de nos clients réguliers nous confient un accès. Vous pouvez évidemment être présent si vous le préférez." },
       { q: 'Fournissez-vous les produits et le matériel ?', a: "Cela se décide avec vous. Certains clients préfèrent que nous utilisions leurs produits, notamment pour des surfaces spécifiques ou par choix personnel. Nous cadrons ce point avant la première intervention." },
       { q: 'Puis-je modifier la fréquence en cours de route ?', a: "Oui. La fréquence s’ajuste selon vos besoins, et une prestation ponctuelle supplémentaire reste toujours possible en plus du passage régulier." },
+      { q: "Pourquoi passer par une entreprise ?", a: "Pour le cadre : intervenants déclarés, activité couverte par une responsabilité civile professionnelle, et surtout continuité — en cas de maladie ou de congés, un remplacement est organisé. Dans un arrangement informel, votre logement n’est simplement pas fait." },
+      { q: "Le premier passage est-il plus long ?", a: "Oui, presque toujours. L’intervenant découvre les lieux et traite un état de départ qui n’a pas encore été remis à niveau. C’est aussi le moment où l’on cale les priorités, l’accès et la fréquence pour la suite." },
+      { q: "Dois-je être présent ?", a: "Pour le premier passage, c’est utile : cela permet d’indiquer vos priorités et ce qu’on ne touche pas. Ensuite, la plupart de nos clients nous confient un accès et ne sont pas là — un compte rendu vous informe de ce qui a été fait." },
     ],
     related: ['grand-menage-lyon', 'nettoyage-vitres-lyon', 'menage-airbnb-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
