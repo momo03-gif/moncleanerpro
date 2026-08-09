@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import Motion from '../accueil/Motion';
 import { SEO_PAGES, SEO_SLUGS, getSeoPage, getCityGeo } from '@/lib/seoPages';
 import { getBlogPost } from '@/lib/blogPosts';
+import TrustBar from '@/components/TrustBar';
+import QuickQuote from '@/components/QuickQuote';
+import FloatingContact from '@/components/FloatingContact';
 
 // Pages d'atterrissage SEO (service × Lyon) — rendu 100 % statique.
 // dynamicParams=false : seuls les slugs connus existent, tout le reste → 404
@@ -229,6 +232,18 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
         </div>
       </section>
 
+      {/* Réassurance + engagement de reprise. Placé après la FAQ : le visiteur a
+          eu ses réponses, c'est le moment où l'objection restante est la confiance. */}
+      <TrustBar />
+
+      {/* Formulaire court, au pic de conviction — juste après la réassurance et
+          AVANT le maillage interne, qui invite par nature à quitter la page. */}
+      <section className="max-w-5xl mx-auto px-5 py-14 md:py-16">
+        <div data-reveal className="max-w-2xl mx-auto">
+          <QuickQuote service={p.keyword} slug={p.slug} />
+        </div>
+      </section>
+
       {/* Maillage interne : pages liées (curatées) */}
       <section className="max-w-5xl mx-auto px-5 pb-16 md:pb-20">
         <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
@@ -286,6 +301,8 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
           </div>
         </div>
       </footer>
+
+      <FloatingContact />
     </main>
   );
 }
