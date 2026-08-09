@@ -26,7 +26,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: p.title,
     description: p.description,
-    keywords: [p.keyword, `${p.keyword} pas cher`, `société ${p.keyword}`, 'nettoyage Lyon', 'devis nettoyage Lyon'],
+    // Les mots-clés d'appui suivent la portée de la page : accoler « nettoyage
+    // Lyon » à une page qui vise les chantiers nationaux brouille son sujet.
+    keywords: p.scope === 'national'
+      ? [p.keyword, `entreprise ${p.keyword}`, `société ${p.keyword}`, 'nettoyage fin de chantier France', 'nettoyage gros chantier', 'devis nettoyage chantier']
+      : [p.keyword, `${p.keyword} pas cher`, `société ${p.keyword}`, 'nettoyage Lyon', 'devis nettoyage Lyon'],
     alternates: { canonical: url },
     openGraph: {
       type: 'website', locale: 'fr_FR', url, siteName: 'MonCleanerPro',
@@ -84,14 +88,20 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
 
   // Zone desservie : la commune réelle de la page (+ coordonnées) pour un signal
   // géo précis ; « Lyon » par défaut pour les pages de service.
+  // Les pages `scope: 'national'` (gros chantiers) desservent la France entière :
+  // sans ce cas, une page « fin de chantier à Lille » serait balisée comme
+  // desservie depuis le Rhône, ce qui est faux et affaiblit la page.
   const geo = getCityGeo(p.slug);
+  const national = p.scope === 'national';
   const areaServed = geo
     ? {
         '@type': 'City', name: geo.city,
-        ...(geo.postalCode ? { address: { '@type': 'PostalAddress', addressLocality: geo.city, postalCode: geo.postalCode, addressRegion: 'Rhône', addressCountry: 'FR' } } : {}),
+        ...(geo.postalCode ? { address: { '@type': 'PostalAddress', addressLocality: geo.city, postalCode: geo.postalCode, addressRegion: geo.region ?? 'Rhône', addressCountry: 'FR' } } : {}),
         geo: { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng },
       }
-    : { '@type': 'City', name: 'Lyon' };
+    : national
+      ? { '@type': 'Country', name: 'France' }
+      : { '@type': 'City', name: 'Lyon' };
 
   const jsonLd = [
     {
@@ -101,7 +111,12 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
       provider: {
         '@type': 'CleaningService', name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
         telephone: '+33783431700', email: EMAIL,
-        ...(geo ? { areaServed: { '@type': 'City', name: geo.city } } : {}),
+        // Le prestataire, lui, intervient nationalement sur les gros chantiers :
+        // on le déclare au niveau `provider`, pendant que `areaServed` ci-dessus
+        // garde le grain fin de la ville visée par la page.
+        ...(national
+          ? { areaServed: { '@type': 'Country', name: 'France' } }
+          : geo ? { areaServed: { '@type': 'City', name: geo.city } } : {}),
       },
     },
     {

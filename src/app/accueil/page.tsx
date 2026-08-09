@@ -463,7 +463,7 @@ export default function VitrinePage() {
       <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-7xl mx-auto px-5 py-12">
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Zones desservies</p>
-          <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon et dans la métropole</h2>
+          <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon, dans la métropole et le Beaujolais</h2>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
             {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e'].join(' · ')}
           </p>
@@ -478,7 +478,7 @@ export default function VitrinePage() {
                 {i < arr.length - 1 ? ' · ' : ''}
               </span>
             ))}
-            {' '}— et l’ensemble du Rhône-Alpes.
+            {' '}— ainsi que les communes du Beaujolais et des Pierres Dorées, et l’ensemble du Rhône-Alpes.
           </p>
         </div>
       </section>
@@ -493,7 +493,7 @@ export default function VitrinePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos prestations à Lyon</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {SEO_PAGES.filter(p => !getCityGeo(p.slug)).map(p => (
+              {SEO_PAGES.filter(p => !getCityGeo(p.slug) && p.scope !== 'national').map(p => (
                 <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
               ))}
             </div>
@@ -501,10 +501,22 @@ export default function VitrinePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos interventions par commune</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {SEO_PAGES.filter(p => getCityGeo(p.slug)).map(p => (
+              {SEO_PAGES.filter(p => getCityGeo(p.slug) && p.scope !== 'national').map(p => (
                 <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Bloc distinct pour l'activité « gros chantiers » nationale : la mélanger
+            aux prestations lyonnaises brouillerait les deux signaux — le local
+            porte le récurrent, le national porte les grosses opérations. */}
+        <div className="max-w-7xl mx-auto px-5 pt-8 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Gros chantiers — France entière</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {SEO_PAGES.filter(p => p.scope === 'national').map(p => (
+              <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+            ))}
           </div>
         </div>
 
