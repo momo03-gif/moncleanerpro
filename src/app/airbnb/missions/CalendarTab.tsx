@@ -9,14 +9,24 @@
 // (à assigner / en cours / fait) et le départ sans ménage prévu est signalé en
 // creux — c'est le trou qui coûte cher à une conciergerie.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildCalendar, daySummary, departuresWithoutCleaning } from '@/lib/partnerCalendar';
 import type { Apartment, Mission, Reservation } from '@/lib/types';
 import { EmptyState, Button, Card } from '@/components/ui';
 import Icon from '@/components/Icon';
 
-const DAYS_SHOWN = 14;
+// Nombre de jours affichés. Sur un téléphone, 14 jours tiennent déjà tout juste
+// (défilement horizontal) ; sur un ordinateur, s'en tenir à 14 laisserait des
+// colonnes énormes et une moitié d'écran vide. On mesure APRÈS le montage pour
+// ne pas provoquer d'écart entre le rendu serveur et le rendu client.
+const DAYS_MOBILE = 14;
+function daysForWidth(width: number): number {
+  if (width >= 1400) return 35;
+  if (width >= 1100) return 28;
+  if (width >= 800) return 21;
+  return DAYS_MOBILE;
+}
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
 const shift = (day: string, delta: number) => {
@@ -41,6 +51,16 @@ export default function CalendarTab({ apartments, reservations, missions }: {
 }) {
   const router = useRouter();
   const [start, setStart] = useState(todayStr);
+  const [daysShown, setDaysShown] = useState(DAYS_MOBILE);
+
+  // Suit les redimensionnements : passer d'un écran partagé au plein écran doit
+  // élargir la période affichée, pas laisser des colonnes étirées.
+  useEffect(() => {
+    const apply = () => setDaysShown(daysForWidth(window.innerWidth));
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, []);
 
   if (apartments.length === 0) {
     return (
@@ -51,7 +71,7 @@ export default function CalendarTab({ apartments, reservations, missions }: {
     );
   }
 
-  const rows = buildCalendar(apartments, reservations, missions, start, DAYS_SHOWN);
+  const rows = buildCalendar(apartments, reservations, missions, start, daysShown);
   const days = rows[0].cells.map(c => c.day);
   const t = todayStr();
   const summary = daySummary(rows, t);
@@ -115,17 +135,20 @@ export default function CalendarTab({ apartments, reservations, missions }: {
       )}
 
       {/* Grille : la colonne des logements reste fixe, les jours défilent. */}
-      <div className="overflow-x-auto -mx-5 px-5">
-        <div className="inline-block min-w-full">
+      {/* Le tableau déborde volontairement de la colonne de lecture : sur un
+          ordinateur, il occupe la largeur de la fenêtre au lieu de rester coincé
+          au milieu. Sur mobile, rien ne change (défilement horizontal). */}
+      <div className="overflow-x-auto -mx-5 px-5 lg:mx-[calc(50%-48vw)] lg:px-8">
+        <div className="min-w-full">
           {/* En-tête des jours */}
           <div className="flex">
-            <div className="w-[108px] shrink-0" />
+            <div className="w-[108px] lg:w-44 shrink-0" />
             {days.map(day => {
               const d = new Date(day + 'T00:00:00');
               const isToday = day === t;
               const weekend = d.getDay() === 0 || d.getDay() === 6;
               return (
-                <div key={day} className={`w-11 shrink-0 text-center pb-1.5 ${isToday ? 'text-gold-ink' : weekend ? 'text-faint' : 'text-muted'}`}>
+                <div key={day} className={`w-11 shrink-0 lg:w-auto lg:flex-1 lg:min-w-[38px] text-center pb-1.5 ${isToday ? 'text-gold-ink' : weekend ? 'text-faint' : 'text-muted'}`}>
                   <p className="text-[9px] uppercase">{d.toLocaleDateString('fr-FR', { weekday: 'narrow' })}</p>
                   <p className={`text-xs ${isToday ? 'font-bold' : 'font-medium'}`}>{d.getDate()}</p>
                 </div>
@@ -137,7 +160,7 @@ export default function CalendarTab({ apartments, reservations, missions }: {
           {rows.map(row => (
             <div key={row.apartmentId} className="flex items-stretch border-t border-hairline">
               <button onClick={() => router.push(`/airbnb/logement/${row.apartmentId}`)}
-                className="w-[108px] shrink-0 pr-2 py-2 text-left">
+                className="w-[108px] lg:w-44 shrink-0 pr-2 py-2 text-left">
                 <span className="block text-[11px] font-semibold leading-tight truncate text-ink">{row.apartmentName}</span>
               </button>
               {row.cells.map(cell => {
@@ -152,7 +175,7 @@ export default function CalendarTab({ apartments, reservations, missions }: {
                       else if (cell.departure) router.push('/airbnb/missions?tab=create');
                     }}
                     aria-label={`${row.apartmentName} — ${cell.day}${cell.turnover ? ' turnover' : cell.departure ? ' départ' : cell.arrival ? ' arrivée' : ''}`}
-                    className={`w-11 shrink-0 py-2 flex flex-col items-center justify-center gap-1 border-l border-hairline
+                    className={`w-11 shrink-0 lg:w-auto lg:flex-1 lg:min-w-[38px] py-2 lg:py-2.5 flex flex-col items-center justify-center gap-1 border-l border-hairline
                       ${cell.occupied ? 'bg-gold-soft' : 'bg-card'}
                       ${isToday ? 'ring-1 ring-inset ring-gold' : ''}
                       ${clickable ? 'active:scale-95 transition-transform' : ''}`}

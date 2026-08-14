@@ -22,8 +22,13 @@ export default function AirbnbLayout({ children }: { children: React.ReactNode }
       <AirbnbNav />
       {/* Réserve la hauteur de la barre du bas *plus* la zone sûre (barre
           d'accueil iPhone) : le `pb-24` fixe laissait le dernier élément de
-          liste sous la barre sur les écrans à encoche. */}
-      <main className="max-w-lg mx-auto pb-[calc(6rem+env(safe-area-inset-bottom))]">
+          liste sous la barre sur les écrans à encoche.
+
+          Largeur : l'espace est pensé pour le mobile, mais beaucoup de
+          conciergeries travaillent sur ordinateur. À 512 px fixes, la page
+          formait une bande étroite au milieu d'un écran vide. On laisse
+          respirer à partir de `lg` sans casser la lecture en colonne. */}
+      <main className="max-w-lg lg:max-w-3xl mx-auto pb-[calc(6rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
     </div>
