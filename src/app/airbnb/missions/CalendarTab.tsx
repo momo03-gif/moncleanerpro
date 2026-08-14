@@ -9,24 +9,20 @@
 // (à assigner / en cours / fait) et le départ sans ménage prévu est signalé en
 // creux — c'est le trou qui coûte cher à une conciergerie.
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildCalendar, daySummary, departuresWithoutCleaning } from '@/lib/partnerCalendar';
 import type { Apartment, Mission, Reservation } from '@/lib/types';
+import { formatHour } from '@/lib/format';
 import { EmptyState, Button, Card } from '@/components/ui';
 import Icon from '@/components/Icon';
 
-// Nombre de jours affichés. Sur un téléphone, 14 jours tiennent déjà tout juste
-// (défilement horizontal) ; sur un ordinateur, s'en tenir à 14 laisserait des
-// colonnes énormes et une moitié d'écran vide. On mesure APRÈS le montage pour
-// ne pas provoquer d'écart entre le rendu serveur et le rendu client.
-const DAYS_MOBILE = 14;
-function daysForWidth(width: number): number {
-  if (width >= 1400) return 35;
-  if (width >= 1100) return 28;
-  if (width >= 800) return 21;
-  return DAYS_MOBILE;
-}
+// Deux semaines, quelle que soit la taille de l'écran. Étaler sur quatre ou cinq
+// semaines remplissait la largeur de cases vides : au-delà de quinze jours, une
+// conciergerie ne planifie plus, elle consulte. La place gagnée sur grand écran
+// sert donc à REMPLIR les cases (heures, intervenant, état) plutôt qu'à en
+// ajouter — voir le rendu détaillé plus bas.
+const DAYS_SHOWN = 14;
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
 const shift = (day: string, delta: number) => {
@@ -44,6 +40,20 @@ const MISSION_DOT: Record<string, string> = {
   completed: 'bg-success',
 };
 
+// Version pleine de la même information, sur grand écran : la couleur reste la
+// même, elle porte juste du texte.
+const CELL_MISSION_STYLE: Record<string, string> = {
+  pending: 'bg-warn-soft text-warn',
+  accepted: 'bg-gold-soft text-gold-ink',
+  in_progress: 'bg-gold-soft text-gold-ink',
+  completed: 'bg-success-soft text-success',
+};
+
+/** Prénom seul : dans une case de calendrier, « Fatima » suffit et tient. */
+function firstName(full: string): string {
+  return full.trim().split(/\s+/)[0];
+}
+
 export default function CalendarTab({ apartments, reservations, missions }: {
   apartments: Apartment[];
   reservations: Reservation[];
@@ -51,16 +61,6 @@ export default function CalendarTab({ apartments, reservations, missions }: {
 }) {
   const router = useRouter();
   const [start, setStart] = useState(todayStr);
-  const [daysShown, setDaysShown] = useState(DAYS_MOBILE);
-
-  // Suit les redimensionnements : passer d'un écran partagé au plein écran doit
-  // élargir la période affichée, pas laisser des colonnes étirées.
-  useEffect(() => {
-    const apply = () => setDaysShown(daysForWidth(window.innerWidth));
-    apply();
-    window.addEventListener('resize', apply);
-    return () => window.removeEventListener('resize', apply);
-  }, []);
 
   if (apartments.length === 0) {
     return (
@@ -71,7 +71,7 @@ export default function CalendarTab({ apartments, reservations, missions }: {
     );
   }
 
-  const rows = buildCalendar(apartments, reservations, missions, start, daysShown);
+  const rows = buildCalendar(apartments, reservations, missions, start, DAYS_SHOWN);
   const days = rows[0].cells.map(c => c.day);
   const t = todayStr();
   const summary = daySummary(rows, t);
@@ -175,22 +175,55 @@ export default function CalendarTab({ apartments, reservations, missions }: {
                       else if (cell.departure) router.push('/airbnb/missions?tab=create');
                     }}
                     aria-label={`${row.apartmentName} — ${cell.day}${cell.turnover ? ' turnover' : cell.departure ? ' départ' : cell.arrival ? ' arrivée' : ''}`}
-                    className={`w-11 shrink-0 lg:w-auto lg:flex-1 lg:min-w-[38px] py-2 lg:py-2.5 flex flex-col items-center justify-center gap-1 border-l border-hairline
+                    className={`w-11 shrink-0 lg:w-auto lg:flex-1 lg:min-w-[76px] py-2 lg:py-1.5 lg:px-1 flex flex-col items-center lg:items-stretch justify-center gap-1 lg:gap-0.5 border-l border-hairline
                       ${cell.occupied ? 'bg-gold-soft' : 'bg-card'}
                       ${isToday ? 'ring-1 ring-inset ring-gold' : ''}
                       ${clickable ? 'active:scale-95 transition-transform' : ''}`}
                   >
-                    {/* Mouvements du jour */}
-                    <span className="h-3 flex items-center gap-0.5">
+                    {/* ── Écran étroit : deux repères, rien de plus ────────── */}
+                    <span className="h-3 flex items-center gap-0.5 lg:hidden">
                       {cell.departure && <span className="text-warn"><Icon name="arrowDown" size={11} /></span>}
                       {cell.arrival && <span className="text-success"><Icon name="arrowUp" size={11} /></span>}
                       {!cell.departure && !cell.arrival && cell.occupied && <span className="w-3 h-px bg-gold-line" />}
                     </span>
-                    {/* État du ménage — un départ sans pastille = ménage manquant */}
-                    <span className={`w-2 h-2 rounded-full ${
+                    <span className={`lg:hidden w-2 h-2 rounded-full ${
                       cell.missionId ? (MISSION_DOT[cell.missionStatus ?? 'pending'] ?? 'bg-warn')
                         : cell.departure ? 'border border-dashed border-danger' : 'bg-transparent'
                     }`} />
+
+                    {/* ── Grand écran : la place gagnée sert à renseigner ──── */}
+                    <span className="hidden lg:flex flex-col gap-0.5 w-full text-left">
+                      {/* Mouvements, avec leur heure quand la plateforme la donne */}
+                      {cell.departure && (
+                        <span className="flex items-center gap-0.5 text-[10px] leading-tight text-warn">
+                          <Icon name="arrowDown" size={10} />
+                          <span className="font-semibold">{cell.departureTime ? formatHour(cell.departureTime) : 'départ'}</span>
+                        </span>
+                      )}
+                      {cell.arrival && (
+                        <span className="flex items-center gap-0.5 text-[10px] leading-tight text-success">
+                          <Icon name="arrowUp" size={10} />
+                          <span className="font-semibold">{cell.arrivalTime ? formatHour(cell.arrivalTime) : 'arrivée'}</span>
+                        </span>
+                      )}
+                      {/* Ménage : son état, son heure, et qui s'en occupe */}
+                      {cell.missionId ? (
+                        <span className={`text-[10px] leading-tight px-1 py-0.5 rounded ${CELL_MISSION_STYLE[cell.missionStatus ?? 'pending'] ?? CELL_MISSION_STYLE.pending}`}>
+                          <span className="block font-semibold truncate">
+                            {cell.missionTime ? formatHour(cell.missionTime) : 'ménage'}
+                          </span>
+                          <span className="block truncate">
+                            {cell.cleanerName ? firstName(cell.cleanerName) : 'à assigner'}
+                          </span>
+                        </span>
+                      ) : cell.departure ? (
+                        <span className="text-[10px] leading-tight px-1 py-0.5 rounded border border-dashed border-danger text-danger font-semibold">
+                          ménage manquant
+                        </span>
+                      ) : !cell.arrival && cell.occupied ? (
+                        <span className="text-[10px] leading-tight text-faint">occupé</span>
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}

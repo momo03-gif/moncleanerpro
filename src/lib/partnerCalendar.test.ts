@@ -49,6 +49,31 @@ describe('buildCalendar — grille logements × jours', () => {
     expect(rows[1].cells[1].missionStatus).toBe('completed');
   });
 
+  it('remonte de quoi renseigner la case : heures, intervenant', () => {
+    const rows = buildCalendar(
+      apartments,
+      [
+        stay('a1', '2026-08-12', '2026-08-15', { checkOutTime: '11:00' }),
+        stay('a1', '2026-08-15', '2026-08-18', { checkInTime: '15:00' }),
+      ],
+      [{ ...cleaning('a1', '2026-08-15'), time: '11:30', cleanerName: 'Fatima Diallo' } as Mission],
+      '2026-08-15', 1,
+    );
+    expect(rows[0].cells[0]).toMatchObject({
+      departureTime: '11:00',
+      arrivalTime: '15:00',
+      missionTime: '11:30',
+      cleanerName: 'Fatima Diallo',
+      turnover: true,
+    });
+  });
+
+  it('laisse l’intervenant vide tant que le ménage n’est pas assigné', () => {
+    const rows = buildCalendar(apartments, [], [cleaning('a1', '2026-08-14')], '2026-08-14', 1);
+    expect(rows[0].cells[0].missionId).toBeTruthy();
+    expect(rows[0].cells[0].cleanerName).toBeUndefined();
+  });
+
   it('ignore les réservations annulées', () => {
     const rows = buildCalendar(apartments, [stay('a1', '2026-08-14', '2026-08-16', { status: 'cancelled' })], [], '2026-08-14', 3);
     expect(rows[0].cells.every(c => !c.occupied)).toBe(true);
