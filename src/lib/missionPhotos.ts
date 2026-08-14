@@ -39,6 +39,28 @@ export async function getMissionPhotosDB(missionId: string): Promise<MissionPhot
   return (data ?? []).map(rowToPhoto);
 }
 
+/**
+ * Photos de plusieurs missions en une requête — sert au relevé du propriétaire,
+ * qui rassemble un mois de ménages. Renvoyé indexé par mission.
+ * Rappel : les photos sont purgées après PHOTO_RETENTION_DAYS jours, un relevé
+ * ancien peut donc légitimement n'en contenir aucune.
+ */
+export async function getMissionPhotosForMissionsDB(missionIds: string[]): Promise<Map<string, MissionPhoto[]>> {
+  if (missionIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('mission_photos')
+    .select('*')
+    .in('mission_id', missionIds)
+    .order('created_at', { ascending: true });
+  if (error) { console.error('getMissionPhotosForMissionsDB:', error.message); return new Map(); }
+  const byMission = new Map<string, MissionPhoto[]>();
+  for (const photo of (data ?? []).map(rowToPhoto)) {
+    const list = byMission.get(photo.missionId);
+    if (list) list.push(photo); else byMission.set(photo.missionId, [photo]);
+  }
+  return byMission;
+}
+
 // Nombre de photos d'une mission (pour appliquer la limite avant upload).
 export async function countMissionPhotosDB(missionId: string): Promise<number> {
   const { count } = await supabase

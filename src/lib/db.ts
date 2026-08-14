@@ -154,6 +154,9 @@ function rowToMission(row: any): Mission {
     extraTimeReason: row.extra_time_reason ?? undefined,
     extraTimeStatus: row.extra_time_status ?? undefined,
     extraTimeRequestedAt: row.extra_time_requested_at ?? undefined,
+    partnerRating: row.partner_rating != null ? Number(row.partner_rating) : undefined,
+    partnerRatingComment: row.partner_rating_comment ?? undefined,
+    partnerRatedAt: row.partner_rated_at ?? undefined,
     startedAt: row.started_at ?? undefined,
     endedAt: row.ended_at ?? undefined,
     actualDurationMinutes: row.actual_duration_minutes != null ? Number(row.actual_duration_minutes) : undefined,
@@ -229,6 +232,11 @@ export async function getMissionsForPartnerDB(userId: string): Promise<Mission[]
 
 // Retire d'une mission les champs réservés à l'usage interne (admin/cleaner) avant
 // de l'exposer à un partenaire (hôte). Voir getMissionsForPartnerDB.
+//
+// Le pointage horaire (début, fin, durée réelle, GPS) ne sort JAMAIS d'ici : le
+// temps de travail est une affaire entre l'entreprise et ses intervenants, elle
+// pilote la paie. Le partenaire suit l'AVANCEMENT (statut + points de la
+// checklist cochés), pas le chronomètre.
 function stripInternalForPartner(m: Mission): Mission {
   return {
     ...m,
@@ -240,6 +248,24 @@ function stripInternalForPartner(m: Mission): Mission {
     startedAt: undefined, endedAt: undefined,
     startLat: undefined, startLng: undefined, endLat: undefined, endLng: undefined,
   };
+}
+
+/**
+ * Note d'un ménage par la conciergerie (1-5) + mot libre facultatif.
+ * On vérifie `partner_id` côté requête : un partenaire ne peut noter que SES
+ * ménages, même en forgeant un identifiant de mission.
+ */
+export async function rateMissionDB(
+  missionId: string, partnerId: string, rating: number, comment?: string,
+): Promise<{ error: string | null }> {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { error: 'Note attendue entre 1 et 5.' };
+  const { error } = await supabase.from('missions').update({
+    partner_rating: rating,
+    partner_rating_comment: comment?.trim() || null,
+    partner_rated_at: new Date().toISOString(),
+  }).eq('id', missionId).eq('partner_id', partnerId);
+  if (error) console.error('rateMissionDB:', error.code, error.message);
+  return { error: error?.message ?? null };
 }
 
 // Missions ouvertes aux cleaners. On exclut celles DÉJÀ demandées par quelqu'un :

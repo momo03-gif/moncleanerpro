@@ -22,6 +22,7 @@ import Icon from '@/components/Icon';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
+import ChecklistPanel from '@/components/ChecklistPanel';
 import RepairsPanel from '@/components/RepairsPanel';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { getMissionIncidentsDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncidentType, type RhIncident } from '@/lib/rhApi';
@@ -695,9 +696,31 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
           <p className="text-xs inline-flex items-center gap-1.5" style={{ color: '#A8A09A' }}><Icon name="timer" size={13} /> Demande de temps refusée.</p>
         )}
 
+        {/* Évaluation donnée par le client (conciergerie) — suivi qualité. */}
+        {mission.partnerRating != null && (
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: '#EBD9A8', backgroundColor: '#FCF6E8' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A6A1E' }}>
+              Note du client
+            </p>
+            <div className="flex items-center gap-1" style={{ color: '#8A6A1E' }}>
+              {[1, 2, 3, 4, 5].map(n => (
+                <Icon key={n} name="star" size={14} filled={n <= mission.partnerRating!} />
+              ))}
+              <span className="text-xs font-bold ml-1">{mission.partnerRating}/5</span>
+            </div>
+            {mission.partnerRatingComment && (
+              <p className="text-sm mt-1.5" style={{ color: '#4A443D' }}>{mission.partnerRatingComment}</p>
+            )}
+          </div>
+        )}
+
         {/* Photos avant/après (consultation, zoom, téléchargement) */}
         <MissionPhotos missionId={mission.id} mode="viewer" />
         <MissionReport missionId={mission.id} mode="viewer" />
+        {/* Conformité au standard du logement : ce que le partenaire verra de son côté. */}
+        {mission.airbnbId && (
+          <ChecklistPanel airbnbId={mission.airbnbId} missionId={mission.id} mode="viewer" showTimes />
+        )}
         {/* Réparations du logement : l'admin peut en ajouter une depuis la mission
             et la clôturer. Elle reste ouverte tant que le propriétaire n'a pas réparé. */}
         {mission.airbnbId && (

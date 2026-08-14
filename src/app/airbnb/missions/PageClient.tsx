@@ -11,6 +11,8 @@ import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { MISSION_STATUS_CFG } from '@/lib/labels';
+import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
+import CalendarTab from './CalendarTab';
 import Icon from '@/components/Icon';
 import MissionReport from '@/components/MissionReport';
 import Loading from '@/components/Loading';
@@ -53,6 +55,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
   const { confirm, toast } = useFeedback();
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const locked = isMissionLocked(mission.status);
+  const readiness = missionReadiness(mission);
   const [editOpen, setEditOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -125,16 +128,18 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
           <span>{formatDate(mission.date)}</span>
           {mission.time && <span>Départ {formatHour(mission.time)}</span>}
         </div>
-        {mission.nextArrival && (
-          mission.nextArrival === mission.date ? (
-            <p className="mt-2 px-3 py-2 rounded-lg text-xs font-bold bg-danger-soft text-danger">
-              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-muted">
-              Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
-            </p>
-          )
+        {/* Préparation du logement : remplace l'ancien bandeau « arrivée le jour
+            même » — il dit en plus si c'est prêt, et avec quelle marge. */}
+        {readiness && (
+          <p className={`mt-2 px-3 py-2 rounded-lg text-xs border ${READINESS_STYLE[readiness.tone].box} ${READINESS_STYLE[readiness.tone].text}`}>
+            <span className="font-bold">{readiness.label}</span>
+            {readiness.detail ? ` · ${readiness.detail}` : ''}
+          </p>
+        )}
+        {mission.nextArrival && mission.nextArrival !== mission.date && (
+          <p className="mt-2 text-xs text-muted">
+            Prochaine arrivée : {formatDate(mission.nextArrival)}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
+          </p>
         )}
         {mission.cleanerName && (
           <p className="text-xs mt-2 text-muted">Cleaner : <span className="font-semibold text-gold-ink">{mission.cleanerName}</span></p>
@@ -227,7 +232,7 @@ export default function AirbnbMissionsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'reservations' | 'track' | 'create'>('reservations');
+  const [tab, setTab] = useState<'calendar' | 'reservations' | 'track' | 'create'>('calendar');
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
 
   const [airbnbId, setAirbnbId] = useState('');
@@ -267,7 +272,7 @@ export default function AirbnbMissionsPage() {
   // « ménages en attente » → track). Lu côté client pour éviter Suspense.
   useEffect(() => {
     const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam === 'create' || tabParam === 'track' || tabParam === 'reservations') setTab(tabParam);
+    if (tabParam === 'create' || tabParam === 'track' || tabParam === 'reservations' || tabParam === 'calendar') setTab(tabParam);
   }, []);
 
   function resetForm() {
@@ -327,11 +332,17 @@ export default function AirbnbMissionsPage() {
         onChange={setTab}
         className="mb-6"
         options={[
-          ['reservations', 'Réservations'],
+          ['calendar', 'Calendrier'],
+          ['reservations', 'Mouvements'],
           ['track', 'Ménages'],
           ['create', 'Créer'],
         ] as const}
       />
+
+      {/* ── MULTI-CALENDRIER (logements × jours) ─────────────────────────── */}
+      {tab === 'calendar' && (
+        <CalendarTab apartments={apartments} reservations={reservations} missions={missions} />
+      )}
 
       {/* ── PLANNING RÉSERVATIONS (arrivées + départs, 14 jours) ────────── */}
       {tab === 'reservations' && (() => {

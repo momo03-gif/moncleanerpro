@@ -12,7 +12,7 @@ export type IconName =
   | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play'
   | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking' | 'wrench'
   | 'clock' | 'timer' | 'pin' | 'chevronDown' | 'chevronRight' | 'camera' | 'phone' | 'arrowUp' | 'arrowDown'
-  | 'search' | 'lock';
+  | 'search' | 'lock' | 'star';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -101,6 +101,11 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <circle cx="12" cy="9" r="6" />
     <path d="M8.5 13.5 7 21l5-3 5 3-1.5-7.5" />
   </>),
+  // Étoile de notation. Se remplit via `fill="currentColor"` sur l'appelant
+  // (note donnée) ou reste en trait seul (note à donner).
+  star: (
+    <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />
+  ),
   book: (<>
     <path d="M4 4.5A2 2 0 0 1 6 2.5h12a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z" />
     <path d="M4 18.5a2 2 0 0 1 2-1.5h13" />
@@ -184,15 +189,17 @@ interface IconProps {
   size?: number;
   strokeWidth?: number;
   className?: string;
+  /** Remplit la forme (étoile de notation sélectionnée, par ex.). */
+  filled?: boolean;
 }
 
-export default function Icon({ name, size = 20, strokeWidth = 1.75, className }: IconProps) {
+export default function Icon({ name, size = 20, strokeWidth = 1.75, className, filled }: IconProps) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth={strokeWidth}
       strokeLinecap="round"
