@@ -3,6 +3,8 @@ import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { listSmoobuApartments } from '@/lib/pms/smoobu';
 import { listHostawayListings } from '@/lib/pms/hostaway';
+import { listBeds24Properties } from '@/lib/pms/beds24';
+import { listLodgifyProperties } from '@/lib/pms/lodgify';
 import { findPms, supportsApi } from '@/lib/pms/registry';
 
 export const runtime = 'nodejs';
@@ -10,9 +12,11 @@ export const runtime = 'nodejs';
 // Un « lister » par logiciel : il rend les logements du compte pour que la
 // conciergerie désigne celui qui correspond au nôtre. Ajouter un éditeur =
 // une ligne ici, une dans PMS_FETCHERS (reservationSync) et une dans le registre.
-const PMS_LISTERS: Record<string, (c: { apiKey: string; apiSecret: string }) => Promise<{ id: number; name: string }[]>> = {
+const PMS_LISTERS: Record<string, (c: { apiKey: string; apiSecret?: string }) => Promise<{ id: number; name: string }[]>> = {
   smoobu: listSmoobuApartments,
   hostaway: listHostawayListings,
+  beds24: listBeds24Properties,
+  lodgify: listLodgifyProperties,
 };
 
 // Connexion d'un logement à l'API du PMS de la conciergerie.
@@ -55,8 +59,12 @@ export async function POST(req: NextRequest) {
       error: `Pas encore de connexion directe pour ${name}. Utilisez le lien iCal : il fonctionne avec tous les logiciels.`,
     }, { status: 400 });
   }
-  if (!apiKey || !apiSecret) {
-    return NextResponse.json({ error: 'Clé et secret requis.' }, { status: 400 });
+  // Chaque éditeur n'exige pas les mêmes champs : Smoobu veut une clé ET un
+  // secret, Beds24 et Lodgify une clé seule. Le registre fait foi.
+  const required = (findPms(platform)!.api as { fields: { name: string }[] }).fields.map(f => f.name);
+  if (!apiKey) return NextResponse.json({ error: 'Clé requise.' }, { status: 400 });
+  if (required.includes('apiSecret') && !apiSecret) {
+    return NextResponse.json({ error: 'Secret requis.' }, { status: 400 });
   }
 
   // ── Test : on liste les logements du compte ────────────────────────────────
@@ -90,7 +98,7 @@ export async function POST(req: NextRequest) {
     platform,
     connection_kind: 'api',
     api_key: apiKey,
-    api_secret: apiSecret,
+    api_secret: apiSecret || null,
     external_property_id: String(body.externalPropertyId),
     ical_url: null,
   });

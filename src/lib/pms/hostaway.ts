@@ -19,8 +19,9 @@ const BASE = 'https://api.hostaway.com/v1';
 export interface HostawayCredentials {
   /** Identifiant de compte Hostaway (client_id). */
   apiKey: string;
-  /** Clé secrète générée dans le tableau de bord (client_secret). */
-  apiSecret: string;
+  /** Clé secrète générée dans le tableau de bord (client_secret). Optionnelle
+   *  dans la signature commune aux connecteurs, mais requise ici. */
+  apiSecret?: string;
 }
 
 // Le jeton Hostaway vit très longtemps (24 mois). On le garde en mémoire le
@@ -29,6 +30,7 @@ export interface HostawayCredentials {
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 async function getAccessToken(creds: HostawayCredentials): Promise<string> {
+  if (!creds.apiSecret) throw new Error('Clé secrète Hostaway requise.');
   const cached = tokenCache.get(creds.apiKey);
   if (cached && cached.expiresAt > Date.now()) return cached.token;
 

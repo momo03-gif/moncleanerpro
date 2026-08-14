@@ -18,7 +18,9 @@ const BASE = 'https://login.smoobu.com';
 
 export interface SmoobuCredentials {
   apiKey: string;
-  apiSecret: string;
+  /** Optionnel dans la signature commune aux connecteurs, mais requis ici :
+   *  sans secret, impossible de signer une requête. Vérifié à l'appel. */
+  apiSecret?: string;
 }
 
 /** Requête signée (HMAC) vers l'API Smoobu. */
@@ -27,6 +29,7 @@ async function smoobuGet<T>(
   path: string,
   params: Record<string, string | number | undefined> = {},
 ): Promise<T> {
+  if (!creds.apiSecret) throw new Error('Secret Smoobu requis pour signer la requête.');
   const query = canonicalQuery(params);
   const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   const nonce = randomUUID();

@@ -18,10 +18,12 @@ describe('Registre des logiciels de gestion', () => {
     // dans la route) : toute entrée `api` ici doit avoir son pendant là-bas.
     expect(supportsApi('smoobu')).toBe(true);
     expect(supportsApi('hostaway')).toBe(true);
-    // Documentation non publique : l'iCal reste la voie pour eux.
-    expect(supportsApi('beds24')).toBe(false);
+    expect(supportsApi('beds24')).toBe(true);
+    expect(supportsApi('lodgify')).toBe(true);
+    // Aucune documentation publique : l'iCal reste la seule voie honnête.
     expect(supportsApi('hostify')).toBe(false);
     expect(supportsApi('superhote')).toBe(false);
+    expect(supportsApi('guesty')).toBe(false);
   });
 
   it('refuse un logiciel inconnu', () => {

@@ -15,6 +15,8 @@ import { getSupabaseAdmin } from './supabaseAdmin';
 import { parseICal, type ICalEvent } from './ical';
 import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
+import { fetchBeds24Reservations } from './pms/beds24';
+import { fetchLodgifyReservations } from './pms/lodgify';
 import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
@@ -129,14 +131,16 @@ async function fetchFromPms(
   feed: { platform: string; api_key?: string | null; api_secret?: string | null; external_property_id?: string | null },
   today: string,
 ): Promise<ICalEvent[]> {
-  if (!feed.api_key || !feed.api_secret || !feed.external_property_id) {
-    throw new Error('Connexion API incomplète (clé, secret ou logement manquant).');
+  // Le secret est facultatif : Beds24 et Lodgify n'en ont pas. Chaque connecteur
+  // vérifie lui-même ce dont il a besoin.
+  if (!feed.api_key || !feed.external_property_id) {
+    throw new Error('Connexion API incomplète (clé ou logement manquant).');
   }
   const fetcher = PMS_FETCHERS[feed.platform];
   if (!fetcher) throw new Error(`Connexion API non prise en charge pour ${feed.platform}.`);
 
   return fetcher(
-    { apiKey: feed.api_key, apiSecret: feed.api_secret },
+    { apiKey: feed.api_key, apiSecret: feed.api_secret ?? undefined },
     feed.external_property_id,
     { from: today, to: addDays(today, HORIZON_DAYS) },
   );
@@ -145,7 +149,7 @@ async function fetchFromPms(
 // Un connecteur par logiciel. Tous rendent la même forme d'évènements, ce qui
 // laisse le reste du moteur intact. Ajouter un éditeur = une ligne ici.
 type PmsFetcher = (
-  creds: { apiKey: string; apiSecret: string },
+  creds: { apiKey: string; apiSecret?: string },
   propertyId: string,
   range: { from: string; to: string },
 ) => Promise<ICalEvent[]>;
@@ -153,6 +157,8 @@ type PmsFetcher = (
 const PMS_FETCHERS: Record<string, PmsFetcher> = {
   smoobu: fetchSmoobuReservations,
   hostaway: fetchHostawayReservations,
+  beds24: fetchBeds24Reservations,
+  lodgify: fetchLodgifyReservations,
 };
 
 export interface FeedSyncResult {
