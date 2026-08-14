@@ -17,8 +17,11 @@ export interface CalendarCell {
   departure: boolean;      // un voyageur part ce jour
   turnover: boolean;       // départ ET arrivée le même jour
   arrivalTime?: string;    // HH:MM quand la plateforme le fournit
+  departureTime?: string;  // HH:MM du départ
   missionId?: string;
   missionStatus?: string;
+  missionTime?: string;    // heure prévue du ménage
+  cleanerName?: string;    // intervenant assigné (vide = pas encore assigné)
 }
 
 export interface CalendarRow {
@@ -59,18 +62,21 @@ export function buildCalendar(
 
     const cells = days.map<CalendarCell>(day => {
       const arrivalStay = stays.find(r => r.checkIn === day);
-      const departure = stays.some(r => r.checkOut === day);
+      const departureStay = stays.find(r => r.checkOut === day);
       const occupied = stays.some(r => r.checkIn <= day && r.checkOut > day);
       const mission = aptMissions.find(m => m.date === day);
       return {
         day,
         occupied,
         arrival: !!arrivalStay,
-        departure,
-        turnover: !!arrivalStay && departure,
+        departure: !!departureStay,
+        turnover: !!arrivalStay && !!departureStay,
         arrivalTime: arrivalStay?.checkInTime || undefined,
+        departureTime: departureStay?.checkOutTime || undefined,
         missionId: mission?.id,
         missionStatus: mission?.status,
+        missionTime: mission?.time || undefined,
+        cleanerName: mission?.cleanerName || undefined,
       };
     });
 
