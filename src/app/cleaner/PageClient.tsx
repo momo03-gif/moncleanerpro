@@ -21,6 +21,7 @@ import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
+import ChecklistPanel from '@/components/ChecklistPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
 import { getSiteVideosMap } from '@/lib/siteVideos';
 import Icon from '@/components/Icon';
@@ -379,6 +380,14 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
           rendez-vous (pas de logement à photographier / rapporter). */}
       {mission.status !== 'cancelled' && !isAppointment && (
         <div className="px-5 pb-4 space-y-3">
+          {/* Checklist du logement : le standard demandé par la conciergerie, à
+              cocher au fur et à mesure. Ouverte par défaut sur une mission en
+              cours — c'est le fil conducteur du ménage. */}
+          {mission.airbnbId && hasCleaning && (
+            <ChecklistPanel airbnbId={mission.airbnbId} missionId={mission.id} mode="run"
+              authorName={mission.cleanerName} readOnly={mission.status === 'completed'}
+              showTimes defaultOpen={mission.status === 'in_progress'} />
+          )}
           <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
           <MissionReport missionId={mission.id} mode="cleaner" userId={userId} units={mission.coveredUnitNames} />
           {/* Réparations du logement : ce que le cleaner signale ici reste ouvert

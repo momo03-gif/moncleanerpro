@@ -11,6 +11,8 @@ import Icon from '@/components/Icon';
 import MapsModal from '@/components/MapsModal';
 import RepairsPanel from '@/components/RepairsPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
+import ChecklistPanel from '@/components/ChecklistPanel';
+import SuppliesPanel from '@/components/SuppliesPanel';
 import Loading from "@/components/Loading";
 import { useFeedback } from '@/contexts/FeedbackContext';
 
@@ -576,6 +578,14 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
           {/* Vidéo d'accès du site : ajout / remplacement / suppression. Le cleaner
               la voit sur sa mission (chargée à la demande). */}
           <SiteAccessVideo airbnbId={apt.id} videoUrl={apt.accessVideoUrl} mode="manage" />
+
+          {/* Standard de ménage du site : ce que le cleaner devra cocher. L'admin
+              le renseigne pour les sites sans compte partenaire (hôtels, clients
+              sans espace) ; une conciergerie le gère elle-même depuis son espace. */}
+          <ChecklistPanel airbnbId={apt.id} mode="edit" authorName="Admin" />
+
+          {/* Consommables signalés manquants et pas encore rachetés. */}
+          <SuppliesPanel airbnbId={apt.id} authorName="Admin" />
 
           {/* Réparations du site : l'admin en ajoute et les clôture. Elles restent
               ouvertes tant que le propriétaire n'a pas fait réparer. */}

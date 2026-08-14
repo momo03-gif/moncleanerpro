@@ -10,14 +10,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { getMissionsForPartnerDB } from '@/lib/db';
+import { getMissionsForPartnerDB, rateMissionDB } from '@/lib/db';
 import Icon from '@/components/Icon';
 import { getMissionReportDB, reportHasContent } from '@/lib/missionReports';
 import type { Mission, MissionReport } from '@/lib/types';
 import { missionStatusCfg, missionStatusLabel, missionTypeLabel } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import { formatHour } from '@/lib/format';
+import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import MissionPhotos from '@/components/MissionPhotos';
+import ChecklistPanel from '@/components/ChecklistPanel';
 import Loading from '@/components/Loading';
 import { Badge, Card, SectionTitle } from '@/components/ui';
 
@@ -102,6 +104,7 @@ export default function PartnerMissionDetailClient() {
   const isDelivery = serviceParts(mission.service).delivery;
   const hasReport = reportHasContent(report);
   const isDone = mission.status === 'completed';
+  const readiness = missionReadiness(mission);
 
   return (
     <div className="p-5 mcp-in">
@@ -143,16 +146,33 @@ export default function PartnerMissionDetailClient() {
         </div>
       </Card>
 
-      {/* Confirmation « terminé » — le compte-rendu fait office de preuve de prestation. */}
-      {isDone && (
-        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3 border bg-success-soft border-success-line">
-          <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-success text-white">
-            <Icon name="check" size={18} />
+      {/* Préparation du logement : la vraie question de la conciergerie — le
+          logement est-il prêt, et l'a-t-il été à temps pour le voyageur ? */}
+      {readiness && (
+        <div className={`rounded-2xl p-4 mb-4 flex items-center gap-3 border ${READINESS_STYLE[readiness.tone].box}`}>
+          <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white ${READINESS_STYLE[readiness.tone].dot}`}>
+            <Icon name={readiness.tone === 'ready' ? 'check' : readiness.tone === 'progress' ? 'sync' : 'clock'} size={18} />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-success">Ménage terminé</p>
-            <p className="text-xs text-success">Photos et compte-rendu ci-dessous.</p>
+            <p className={`text-sm font-semibold ${READINESS_STYLE[readiness.tone].text}`}>{readiness.label}</p>
+            <p className={`text-xs ${READINESS_STYLE[readiness.tone].text}`}>
+              {readiness.detail ?? (isDone ? 'Photos et compte-rendu ci-dessous.' : 'Vous serez prévenu dès que le ménage sera terminé.')}
+            </p>
           </div>
+        </div>
+      )}
+
+      {/* Notation du ménage — le retour qualité, donné par le client lui-même. */}
+      {isDone && user && (
+        <div className="mb-5">
+          <RatingCard mission={mission} partnerId={user.id} onRated={load} />
+        </div>
+      )}
+
+      {/* Checklist : la preuve, point par point, que votre standard a été suivi. */}
+      {mission.airbnbId && (
+        <div className="mb-5">
+          <ChecklistPanel airbnbId={mission.airbnbId} missionId={mission.id} mode="viewer" defaultOpen={isDone} />
         </div>
       )}
 
@@ -199,6 +219,72 @@ export default function PartnerMissionDetailClient() {
       <SectionTitle>Photos</SectionTitle>
       <MissionPhotos missionId={mission.id} mode="viewer" defaultOpen />
     </div>
+  );
+}
+
+// Ce que veut dire chaque note — un chiffre seul se lit mal d'un client à l'autre.
+const RATING_LABELS: Record<number, string> = {
+  1: 'À refaire', 2: 'Insuffisant', 3: 'Correct', 4: 'Très bien', 5: 'Impeccable',
+};
+
+// ── Notation du ménage ────────────────────────────────────────────────────────
+// Une note de 1 à 5 et un mot, donnés par la conciergerie sur un ménage terminé.
+// Modifiable : un avis peut changer une fois le logement revisité.
+function RatingCard({ mission, partnerId, onRated }: {
+  mission: Mission; partnerId: string; onRated: () => void;
+}) {
+  const { toast } = useFeedback();
+  const [rating, setRating] = useState(mission.partnerRating ?? 0);
+  const [comment, setComment] = useState(mission.partnerRatingComment ?? '');
+  const [editing, setEditing] = useState(!mission.partnerRating);
+  const [busy, setBusy] = useState(false);
+
+  async function save(value: number) {
+    setBusy(true);
+    const res = await rateMissionDB(mission.id, partnerId, value, comment);
+    setBusy(false);
+    if (res.error) { toast('Enregistrement de la note impossible.', 'error'); return; }
+    setEditing(false);
+    toast('Merci — votre retour est transmis à l’équipe.', 'success');
+    onRated();
+  }
+
+  return (
+    <Card className="p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 text-muted">
+        {mission.partnerRating ? 'Votre évaluation' : 'Ce ménage vous convient ?'}
+      </p>
+
+      <div className="flex items-center gap-1.5 mb-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} type="button" disabled={busy || !editing}
+            onClick={() => setRating(n)}
+            aria-label={`${n} étoile${n > 1 ? 's' : ''} sur 5`}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center ${n <= rating ? 'text-gold-ink bg-gold-soft' : 'text-faint bg-surface'} ${editing ? 'active:scale-90 transition-transform' : ''}`}>
+            <Icon name="star" size={17} filled={n <= rating} />
+          </button>
+        ))}
+        {mission.partnerRating != null && !editing && (
+          <button onClick={() => setEditing(true)} className="ml-auto text-[11px] font-medium text-gold-ink">Modifier</button>
+        )}
+      </div>
+      {/* Le mot vaut mieux que le chiffre : on dit ce que la note signifie. */}
+      <p className="text-[11px] mb-2 h-4 text-muted">{RATING_LABELS[rating] ?? 'Touchez une étoile pour noter'}</p>
+
+      {editing ? (
+        <>
+          <textarea value={comment} onChange={e => setComment(e.target.value)} rows={2}
+            placeholder="Un mot pour l’équipe (facultatif)"
+            className="w-full px-3 py-2 rounded-lg text-sm border border-line bg-card text-ink resize-none" />
+          <button onClick={() => save(rating)} disabled={busy || rating === 0}
+            className="mt-2 w-full py-2.5 rounded-xl text-xs font-semibold bg-gold text-ink disabled:opacity-50">
+            {busy ? '…' : 'Envoyer mon évaluation'}
+          </button>
+        </>
+      ) : (
+        mission.partnerRatingComment && <p className="text-sm text-ink">{mission.partnerRatingComment}</p>
+      )}
+    </Card>
   );
 }
 

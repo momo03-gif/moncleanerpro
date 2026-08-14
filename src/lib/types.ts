@@ -103,6 +103,11 @@ export interface Mission {
   extraTimeReason?: string;
   extraTimeStatus?: ExtraTimeStatus;
   extraTimeRequestedAt?: string;
+  // Note donnée par la conciergerie sur un ménage terminé (1-5) + mot libre.
+  // Facultative : un ménage non noté reste un ménage terminé normal.
+  partnerRating?: number;
+  partnerRatingComment?: string;
+  partnerRatedAt?: string;
   // Pointage automatique (admin uniquement). Le cleaner ne voit jamais ces champs.
   startedAt?: string;
   endedAt?: string;
@@ -168,6 +173,38 @@ export interface Repair {
   // Dénormalisé depuis le site joint (affichage).
   propertyName?: string;
   propertyAddress?: string;
+}
+
+// ── Checklist de ménage (standard du logement + exécution sur une mission) ─────
+// Le MODÈLE vit sur le logement et sert à chaque ménage ; l'EXÉCUTION vit sur la
+// mission. Voir supabase/migration_checklists.sql et lib/checklists.ts.
+export interface ChecklistItem {
+  id: string;
+  airbnbId: string;
+  label: string;
+  room?: string;        // pièce/zone, libre (« Cuisine », « Salle de bain »)
+  position: number;
+  required: boolean;    // un point non requis ne pénalise pas la conformité
+  // Photo « voilà à quoi ça doit ressembler », montrée à l'intervenant.
+  referencePhotoUrl?: string;
+  createdBy?: string;
+  createdAt?: string;
+  archivedAt?: string;  // retiré du standard, mais conservé pour l'historique
+}
+
+// Un point coché pendant un ménage. L'absence de ligne = point non coché.
+export interface ChecklistCheck {
+  missionId: string;
+  itemId: string;
+  labelSnapshot: string;
+  checkedAt: string;
+  checkedBy?: string;
+}
+
+// Vue « checklist d'une mission » : le modèle du logement + ce qui est coché.
+export interface MissionChecklistLine {
+  item: ChecklistItem;
+  check?: ChecklistCheck;
 }
 
 // Consommables proposés en cases à cocher (liste fermée, ordre stable).

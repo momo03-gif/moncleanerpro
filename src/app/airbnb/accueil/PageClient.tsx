@@ -13,9 +13,12 @@ import {
   getAirbnbsForPartner, getReservationsForPartner, getMissionsForPartnerDB,
   getReservationFeedsForPartner,
 } from '@/lib/db';
-import type { Apartment, Reservation, Mission, ReservationFeed } from '@/lib/types';
+import { getRepairsForPartnerDB } from '@/lib/repairs';
+import { apartmentStats, totalStats } from '@/lib/partnerStats';
+import type { Apartment, Reservation, Mission, ReservationFeed, Repair } from '@/lib/types';
 import { missionStatusCfg, missionStatusLabel } from '@/lib/labels';
 import { formatHour } from '@/lib/format';
+import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import Icon, { type IconName } from '@/components/Icon';
 import Loading from '@/components/Loading';
 import { AlertRow, Badge, Card, PageTitle, SectionTitle, Tile } from '@/components/ui';
@@ -37,6 +40,7 @@ export default function PartnerHomeClient() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [feeds, setFeeds] = useState<ReservationFeed[]>([]);
+  const [repairs, setRepairs] = useState<Repair[]>([]);
   const [loading, setLoading] = useState(true);
 
   const autoSynced = useRef(false);
@@ -45,13 +49,14 @@ export default function PartnerHomeClient() {
   // après une synchro, sans auto-référence.
   const refetch = useCallback(async () => {
     if (!user) return null;
-    const [a, r, m, f] = await Promise.all([
+    const [a, r, m, f, rep] = await Promise.all([
       getAirbnbsForPartner(user.id),
       getReservationsForPartner(user.id),
       getMissionsForPartnerDB(user.id),
       getReservationFeedsForPartner(user.id),
+      getRepairsForPartnerDB(user.id),
     ]);
-    setApartments(a); setReservations(r); setMissions(m); setFeeds(f);
+    setApartments(a); setReservations(r); setMissions(m); setFeeds(f); setRepairs(rep);
     setLoading(false);
     return f;
   }, [user]);
@@ -97,6 +102,13 @@ export default function PartnerHomeClient() {
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   const doneToday = missionsToday.filter(m => m.status === 'completed').length;
 
+  // Préparation des logements : ménages du jour dont le voyageur arrive et qui
+  // ne sont pas encore terminés (ou l'ont été trop tard). C'est l'alerte la plus
+  // opérationnelle de la journée pour une conciergerie.
+  const atRisk = missionsToday
+    .map(m => ({ mission: m, r: missionReadiness(m) }))
+    .filter(x => x.r && (x.r.tone === 'urgent' || x.r.tone === 'late'));
+
   // ── Alertes actionnables ──────────────────────────────────────────────
   const turnoversTodayTomorrow = confirmed
     .filter(r => (r.checkOut === t || r.checkOut === tomorrow) && isTurnover(r.checkOut))
@@ -120,6 +132,12 @@ export default function PartnerHomeClient() {
   const weekMissions = missions.filter(m => m.status !== 'cancelled' && m.date >= t && m.date < in7);
   const weekCost = Math.round(weekMissions.reduce((s, m) => s + (m.price || 0), 0));
   const weekDone = weekMissions.filter(m => m.status === 'completed').length;
+
+  // Performance du mois en cours, par logement (ménages, coût, ponctualité, note).
+  const month = t.slice(0, 7);
+  const monthName = new Date().toLocaleDateString('fr-FR', { month: 'long' });
+  const statsRows = apartmentStats(apartments, missions, repairs, month);
+  const monthTotals = totalStats(statsRows);
 
   // Prochain départ à venir (après aujourd'hui) — visibilité sur le mouvement suivant.
   const nextDeparture = confirmed
@@ -154,17 +172,21 @@ export default function PartnerHomeClient() {
           <p className="text-sm font-bold mb-1 text-ink">Bien démarrer</p>
           <p className="text-xs mb-4 text-muted">Une fois configuré, vos ménages se créeront automatiquement à chaque départ.</p>
           <div className="space-y-3">
-            <SetupStep n={1} done={apartments.length > 0}
-              title="Ajouter un logement"
-              desc={apartments.length > 0 ? `${apartments.length} logement${apartments.length > 1 ? 's' : ''} ajouté${apartments.length > 1 ? 's' : ''}` : 'Créez votre premier logement (adresse, codes, prix)'}
-              actionLabel="Ajouter" onAction={() => router.push('/airbnb')} showAction={apartments.length === 0} />
-            <SetupStep n={2} done={feeds.length > 0}
-              title="Connecter un calendrier"
-              desc={feeds.length > 0 ? `${feeds.length} calendrier${feeds.length > 1 ? 's' : ''} connecté${feeds.length > 1 ? 's' : ''}` : 'Airbnb, Booking, Smoobu… via lien iCal'}
-              actionLabel="Connecter" onAction={() => router.push('/airbnb/sync')} showAction={apartments.length > 0 && feeds.length === 0} />
-            <SetupStep n={3} done={false} info
+            {/* Un seul geste : le logement et son calendrier se connectent dans le
+                même parcours (le logement se crée à la volée si besoin). */}
+            <SetupStep n={1} done={apartments.length > 0 && feeds.length > 0}
+              title="Connecter un logement"
+              desc={feeds.length > 0
+                ? `${feeds.length} calendrier${feeds.length > 1 ? 's' : ''} connecté${feeds.length > 1 ? 's' : ''}`
+                : 'Collez le lien de votre calendrier Airbnb, Booking, Smoobu…'}
+              actionLabel="Connecter" onAction={() => router.push('/airbnb/sync?connect=1')}
+              showAction={feeds.length === 0} />
+            <SetupStep n={2} done={false} info
               title="C'est automatique"
               desc="À chaque départ synchronisé, un ménage est créé et suivi ici." />
+            <SetupStep n={3} done={false} info
+              title="Votre standard de ménage"
+              desc="Sur la fiche d'un logement, définissez ce que l'intervenant devra cocher à chaque ménage." />
           </div>
         </div>
       </div>
@@ -180,6 +202,12 @@ export default function PartnerHomeClient() {
 
       {/* ── Alertes ─────────────────────────────────────────────────────── */}
       <div className="space-y-2.5 mb-6">
+        {/* Logement pas prêt alors que le voyageur arrive : l'urgence du jour. */}
+        {atRisk.map(({ mission, r }) => (
+          <AlertRow key={mission.id} tone={r!.tone === 'late' ? 'danger' : 'warn'}
+            onClick={() => router.push(`/airbnb/mission/${mission.id}`)}
+            text={`${mission.property || 'Logement'} — ${r!.label}${r!.detail ? ` · ${r!.detail}` : ''}.`} />
+        ))}
         {syncError && (
           <AlertRow tone="danger" onClick={() => router.push('/airbnb/sync')}
             text="Un calendrier ne se synchronise plus — des ménages risquent de ne plus se créer." />
@@ -192,7 +220,7 @@ export default function PartnerHomeClient() {
           <AlertRow tone="warn" onClick={() => router.push('/airbnb/sync')}
             text={`${departuresNoMission.length} départ${departuresNoMission.length > 1 ? 's' : ''} sans ménage prévu (aujourd'hui/demain) — à vérifier.`} />
         )}
-        {!syncError && turnoversTodayTomorrow.length === 0 && departuresNoMission.length === 0 && (
+        {!syncError && atRisk.length === 0 && turnoversTodayTomorrow.length === 0 && departuresNoMission.length === 0 && (
           <AlertRow tone="success" text="Tout est sous contrôle — aucune alerte." />
         )}
       </div>
@@ -250,6 +278,7 @@ export default function PartnerHomeClient() {
           {missionsToday.map(m => {
             const cfg = missionStatusCfg(m.status);
             const turnover = m.nextArrival === m.date;
+            const r = missionReadiness(m);
             return (
               <button key={m.id} onClick={() => router.push(`/airbnb/mission/${m.id}`)}
                 className={`w-full text-left rounded-2xl border bg-card px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-transform ${turnover ? 'border-danger-line' : 'border-line'}`}>
@@ -259,6 +288,12 @@ export default function PartnerHomeClient() {
                     {m.time ? formatHour(m.time) : '—'}{m.cleanerName ? ` · ${m.cleanerName}` : ' · non assigné'}
                     {turnover && <span className="font-semibold text-danger"> · turnover</span>}
                   </p>
+                  {/* Préparation du logement : « Prêt à 12h35 », « 2h avant l'arrivée ». */}
+                  {r && (
+                    <p className={`text-[11px] mt-1 font-semibold ${READINESS_STYLE[r.tone].text}`}>
+                      {r.label}{r.detail ? <span className="font-normal"> · {r.detail}</span> : null}
+                    </p>
+                  )}
                 </div>
                 <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>
                   {missionStatusLabel(m.status, m.service)}
@@ -296,6 +331,40 @@ export default function PartnerHomeClient() {
         })}
       </div>
 
+      {/* ── Performance du mois par logement ────────────────────────────── */}
+      <SectionTitle aside={<span className="text-xs capitalize text-muted">{monthName}</span>}>
+        Vos logements ce mois
+      </SectionTitle>
+      <Card className="p-4 mb-3">
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          <Figure label="Ménages" value={String(monthTotals.cleanings)} />
+          <Figure label="Coût" value={`${monthTotals.cost}€`} />
+          <Figure label="Turnovers" value={String(monthTotals.turnovers)} />
+          <Figure label="Note" value={monthTotals.avgRating !== null ? `${monthTotals.avgRating}/5` : '—'} />
+        </div>
+        <div className="space-y-1.5">
+          {statsRows.filter(r => r.cleanings > 0 || r.openRepairs > 0).map(r => (
+            <button key={r.apartmentId} onClick={() => router.push(`/airbnb/logement/${r.apartmentId}`)}
+              className="w-full text-left flex items-center justify-between gap-3 border-b border-hairline pb-1.5 last:border-0">
+              <span className="text-sm truncate text-ink">{r.apartmentName}</span>
+              <span className="text-[11px] shrink-0 flex items-center gap-2 text-muted">
+                <span>{r.cleanings} ménage{r.cleanings > 1 ? 's' : ''}</span>
+                {r.avgRating !== null && <span className="font-semibold text-gold-ink">{r.avgRating}/5</span>}
+                {r.openRepairs > 0 && <span className="font-semibold text-danger">{r.openRepairs} réparation{r.openRepairs > 1 ? 's' : ''}</span>}
+              </span>
+            </button>
+          ))}
+          {statsRows.every(r => r.cleanings === 0 && r.openRepairs === 0) && (
+            <p className="text-xs text-muted">Aucun ménage terminé ce mois-ci pour l&apos;instant.</p>
+          )}
+        </div>
+        {monthTotals.turnovers > 0 && (
+          <p className="text-[11px] mt-2 text-faint">
+            « Turnovers » = ménages faits un jour où un voyageur arrivait — les journées les plus tendues.
+          </p>
+        )}
+      </Card>
+
       {/* ── Ménages à venir ─────────────────────────────────────────────── */}
       {upcomingMissions.length > 0 && (
         <>
@@ -321,6 +390,16 @@ export default function PartnerHomeClient() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Chiffre clé compact de la vue performance.
+function Figure({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface-2 px-2 py-2 text-center">
+      <p className="text-base font-bold text-ink">{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-muted">{label}</p>
     </div>
   );
 }

@@ -15,6 +15,8 @@ import { serviceParts } from '@/lib/service';
 import { formatHour } from '@/lib/format';
 import Icon from '@/components/Icon';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
+import ChecklistPanel from '@/components/ChecklistPanel';
+import SuppliesPanel from '@/components/SuppliesPanel';
 import Loading from '@/components/Loading';
 import { Badge, Card, SectionTitle } from '@/components/ui';
 
@@ -178,6 +180,18 @@ export default function LogementDetailClient() {
             onChange={url => setApt(a => (a ? { ...a, accessVideoUrl: url ?? undefined } : a))} />
         </div>
 
+        {/* Standard de ménage : ce que vous exigez dans CE logement. L'intervenant
+            le coche à chaque ménage, et vous en avez la preuve sur la fiche du ménage. */}
+        <div className="mt-3">
+          <ChecklistPanel airbnbId={apt.id} mode="edit" authorName={user?.name} />
+        </div>
+
+        {/* Liste de courses : ce que les intervenants ont signalé manquant et que
+            personne n'a encore racheté. */}
+        <div className="mt-3">
+          <SuppliesPanel airbnbId={apt.id} authorName={user?.name} />
+        </div>
+
         <div className="mt-4 flex items-center gap-4 flex-wrap">
           <button onClick={() => router.push(`/airbnb?edit=${apt.id}`)} className="text-xs font-medium min-h-[44px] text-gold-ink">
             Modifier les informations →
@@ -187,8 +201,13 @@ export default function LogementDetailClient() {
           <button onClick={() => router.push(`/airbnb/devis?logement=${apt.id}`)} className="text-xs font-medium min-h-[44px] text-gold-ink">
             Demander un devis →
           </button>
+          {/* Le relevé complet (PDF + photos + incidents) a sa propre page ; le
+              partage texte rapide reste ici pour un envoi en deux secondes. */}
+          <button onClick={() => router.push(`/airbnb/logement/${apt.id}/rapport`)} className="text-xs font-medium min-h-[44px] text-gold-ink">
+            Relevé pour le propriétaire →
+          </button>
           <button onClick={shareMonthlyReport} className="text-xs font-medium min-h-[44px] inline-flex items-center gap-1 text-muted">
-            {shared ? <><Icon name="check" size={13} /> Copié</> : 'Partager le relevé du mois'}
+            {shared ? <><Icon name="check" size={13} /> Copié</> : 'Partage rapide'}
           </button>
         </div>
       </Card>

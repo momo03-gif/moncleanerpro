@@ -5,13 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import {
   getAirbnbsForPartner, getReservationFeedsForPartner, getReservationsForPartner,
-  createReservationFeed, updateReservationFeed, deleteReservationFeed,
+  updateReservationFeed, deleteReservationFeed,
 } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, ReservationFeed, Reservation, ReservationPlatform } from '@/lib/types';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
-import { Badge, Button, Card, EmptyState, FIELD_SM, Label, PageTitle, Segmented } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, PageTitle, Segmented } from '@/components/ui';
+import ConnectWizard from './ConnectWizard';
 
 // Plateformes supportées + aide « où trouver l'URL iCal ». Toutes exposent un
 // export iCal par logement (l'API native pourra être ajoutée par plateforme).
@@ -59,14 +60,13 @@ export default function AirbnbSyncPage() {
   // un import raté ressemblait à un import réussi.
   const [syncFailed, setSyncFailed] = useState(false);
 
-  // Formulaire de connexion
+  // Parcours de connexion guidé (logement + calendrier en une fois).
+  // ?connect=1 l'ouvre directement — c'est le lien de première prise en main
+  // depuis le tableau de bord.
   const [showForm, setShowForm] = useState(false);
-  const [fAirbnb, setFAirbnb] = useState('');
-  const [fPlatform, setFPlatform] = useState<ReservationPlatform>('airbnb');
-  const [fUrl, setFUrl] = useState('');
-  const [fLabel, setFLabel] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('connect')) setShowForm(true);
+  }, []);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -88,23 +88,6 @@ export default function AirbnbSyncPage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load, user]);
-
-  async function addFeed(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    if (!fAirbnb) { setFormError('Sélectionnez un appartement.'); return; }
-    if (!fUrl.trim()) { setFormError('Collez l\'URL iCal de la plateforme.'); return; }
-    setSaving(true); setFormError('');
-    const res = await createReservationFeed({
-      airbnbId: fAirbnb, partnerId: user.id, platform: fPlatform, icalUrl: fUrl, label: fLabel || undefined,
-    });
-    setSaving(false);
-    if (res.error) { setFormError(res.error); return; }
-    setShowForm(false); setFAirbnb(''); setFPlatform('airbnb'); setFUrl(''); setFLabel('');
-    await load();
-    // Première synchro immédiate du flux ajouté.
-    syncNow();
-  }
 
   async function syncNow() {
     if (!user) return;
@@ -142,8 +125,6 @@ export default function AirbnbSyncPage() {
   }
 
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
-
-  const hint = PLATFORMS.find(p => p.value === fPlatform)?.hint;
 
   return (
     <div className="p-5 mcp-in">
@@ -191,54 +172,30 @@ export default function AirbnbSyncPage() {
       {tab === 'feeds' && (
         <>
           {!showForm && (
-            <button onClick={() => { setShowForm(true); setFormError(''); }}
+            <button onClick={() => setShowForm(true)}
               className="w-full mb-4 min-h-[48px] py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border border-gold text-ink active:scale-95 transition-transform">
-              <Icon name="plus" size={16} /> Connecter un calendrier
+              <Icon name="plus" size={16} /> Connecter un logement
             </button>
           )}
 
-          {showForm && (
-            <Card as="section" className="mb-5 p-4">
-              <form onSubmit={addFeed} className="space-y-3">
-                <div>
-                  <Label htmlFor="feed-apt">Appartement</Label>
-                  <select id="feed-apt" value={fAirbnb} onChange={e => setFAirbnb(e.target.value)}
-                    className={`${FIELD_SM} appearance-none`}>
-                    <option value="">Sélectionner</option>
-                    {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="feed-platform">Plateforme</Label>
-                  <select id="feed-platform" value={fPlatform}
-                    onChange={e => setFPlatform(e.target.value as ReservationPlatform)}
-                    className={`${FIELD_SM} appearance-none`}>
-                    {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                  </select>
-                  {hint && <p className="text-[11px] mt-1.5 text-muted">{hint}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="feed-url">URL iCal</Label>
-                  <input id="feed-url" type="url" value={fUrl} onChange={e => setFUrl(e.target.value)}
-                    placeholder="https://...ics" className={FIELD_SM} />
-                </div>
-                <div>
-                  <Label htmlFor="feed-label">Libellé — optionnel</Label>
-                  <input id="feed-label" type="text" value={fLabel} onChange={e => setFLabel(e.target.value)}
-                    placeholder="Ex : Annonce Airbnb T2" className={FIELD_SM} />
-                </div>
-                {formError && <p role="alert" className="text-xs px-3 py-2 rounded-lg bg-danger-soft text-danger">{formError}</p>}
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saving} className="flex-1">{saving ? '...' : 'Connecter'}</Button>
-                  <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Annuler</Button>
-                </div>
-              </form>
-            </Card>
+          {showForm && user && (
+            <ConnectWizard
+              apartments={apartments}
+              partnerId={user.id}
+              partnerName={user.name}
+              onCancel={() => setShowForm(false)}
+              onDone={async () => {
+                setShowForm(false);
+                await load();
+                toast('Logement connecté — première synchronisation en cours.', 'success');
+                syncNow();
+              }}
+            />
           )}
 
-          {feeds.length === 0 ? (
+          {feeds.length === 0 && !showForm ? (
             <EmptyState icon="link" title="Aucun calendrier connecté" hint="Connectez Airbnb, Booking, Smoobu…" />
-          ) : (
+          ) : feeds.length === 0 ? null : (
             <div className="space-y-3">
               {feeds.map(f => (
                 <Card key={f.id} className="p-4">
