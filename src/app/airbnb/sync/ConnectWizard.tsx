@@ -44,6 +44,8 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
 
+  // Lien iCal (universel, dates seules) ou clé API du PMS (dates + horaires).
+  const [source, setSource] = useState<'ical' | 'api'>('ical');
   const [url, setUrl] = useState('');
   const [checking, setChecking] = useState(false);
   const [check, setCheck] = useState<CheckResult | null>(null);
@@ -133,9 +135,28 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
         )}
       </div>
 
-      {/* ── 2. Le lien du calendrier ─────────────────────────────────────── */}
+      {/* ── 2. La source des réservations ────────────────────────────────── */}
       <div>
-        <Step n={2} title="Collez le lien de votre calendrier" />
+        <Step n={2} title="D’où viennent vos réservations ?" />
+        <div className="flex gap-2 mb-3">
+          <SourceChoice active={source === 'ical'} onClick={() => setSource('ical')}
+            title="Lien de calendrier" desc="Airbnb, Booking… — les dates" />
+          <SourceChoice active={source === 'api'} onClick={() => setSource('api')}
+            title="Clé de mon logiciel" desc="Smoobu — dates + horaires" />
+        </div>
+
+        {source === 'api' && (
+          <PmsConnect
+            airbnbId={creatingApt ? null : aptId}
+            onNeedApartment={() => setError('Choisissez d’abord un logement existant (la clé se rattache à un logement).')}
+            onDone={onDone}
+          />
+        )}
+      </div>
+
+      {source === 'ical' && (
+      <div>
+        <Step n={3} title="Collez le lien de votre calendrier" />
         <input value={url} onChange={e => { setUrl(e.target.value); setCheck(null); }}
           placeholder="https://…​.ics" inputMode="url" className={FIELD_SM} />
 
@@ -180,22 +201,128 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
           </div>
         )}
       </div>
+      )}
 
-      {/* ── 3. Connexion ─────────────────────────────────────────────────── */}
+      {/* ── 4. Connexion ─────────────────────────────────────────────────── */}
       <div>
-        <Step n={3} title="C’est tout" />
+        <Step n={4} title="C’est tout" />
         <p className="text-[11px] mb-2 text-muted">
           La synchronisation tourne ensuite automatiquement 2×/jour. Vous pouvez la forcer à tout moment.
         </p>
         {error && <p role="alert" className="text-xs px-3 py-2 rounded-lg mb-2 bg-danger-soft text-danger">{error}</p>}
         <div className="flex gap-2">
-          <Button onClick={connect} disabled={!canConnect} className="flex-1">
-            {saving ? '…' : 'Connecter le logement'}
+          {source === 'ical' && (
+            <Button onClick={connect} disabled={!canConnect} className="flex-1">
+              {saving ? '…' : 'Connecter le logement'}
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onCancel} className={source === 'api' ? 'flex-1' : undefined}>
+            {source === 'api' ? 'Fermer' : 'Annuler'}
           </Button>
-          <Button variant="ghost" onClick={onCancel}>Annuler</Button>
         </div>
       </div>
     </Card>
+  );
+}
+
+function SourceChoice({ active, onClick, title, desc }: {
+  active: boolean; onClick: () => void; title: string; desc: string;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex-1 text-left rounded-xl border px-3 py-2.5 ${active ? 'border-gold bg-gold-soft' : 'border-line bg-card'}`}>
+      <span className={`block text-xs font-semibold ${active ? 'text-gold-ink' : 'text-ink'}`}>{title}</span>
+      <span className="block text-[10px] text-muted">{desc}</span>
+    </button>
+  );
+}
+
+// ── Connexion par clé API (Smoobu) ────────────────────────────────────────────
+// En deux temps volontairement : on teste la clé et on affiche LES LOGEMENTS du
+// compte, puis la conciergerie désigne celui qui correspond. Coller une clé sans
+// savoir si elle marche, c'est exactement ce qu'on reproche aux autres.
+function PmsConnect({ airbnbId, onNeedApartment, onDone }: {
+  airbnbId: string | null;
+  onNeedApartment: () => void;
+  onDone: () => void;
+}) {
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+  const [apartments, setApartments] = useState<{ id: number; name: string }[] | null>(null);
+  const [chosen, setChosen] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function test() {
+    setBusy(true); setErr(''); setApartments(null);
+    const res = await fetch('/api/reservations/pms', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'test', platform: 'smoobu', apiKey, apiSecret }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!data.ok) { setErr(data.error ?? 'Connexion refusée.'); return; }
+    setApartments(data.apartments ?? []);
+    if ((data.apartments ?? []).length === 1) setChosen(String(data.apartments[0].id));
+  }
+
+  async function connect() {
+    if (!airbnbId) { onNeedApartment(); return; }
+    setBusy(true); setErr('');
+    const res = await fetch('/api/reservations/pms', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'connect', platform: 'smoobu', apiKey, apiSecret, airbnbId, externalPropertyId: chosen }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok || !data.ok) { setErr(data.error ?? 'Enregistrement impossible.'); return; }
+    onDone();
+  }
+
+  return (
+    <div className="rounded-xl p-3 space-y-2.5 bg-surface-2">
+      <p className="text-[11px] text-muted">
+        Dans Smoobu : Paramètres → API. Générez une clé, copiez la clé <em>et</em> le secret.
+        L&apos;API apporte en plus les heures d&apos;arrivée et de départ — donc les départs tardifs.
+      </p>
+      <input value={apiKey} onChange={e => { setApiKey(e.target.value); setApartments(null); }}
+        placeholder="Clé API (usr_live_…)" className={FIELD_SM} />
+      <input value={apiSecret} onChange={e => { setApiSecret(e.target.value); setApartments(null); }}
+        type="password" placeholder="Secret" className={FIELD_SM} />
+
+      {!apartments && (
+        <button type="button" onClick={test} disabled={busy || !apiKey.trim() || !apiSecret.trim()}
+          className="w-full py-2.5 rounded-xl text-xs font-semibold border border-line text-muted disabled:opacity-50">
+          {busy ? 'Vérification…' : 'Vérifier la clé'}
+        </button>
+      )}
+
+      {apartments && (
+        apartments.length === 0 ? (
+          <p className="text-[11px] text-warn">Aucun logement dans ce compte Smoobu.</p>
+        ) : (
+          <>
+            <p className="text-[11px] flex items-center gap-1.5 text-success">
+              <Icon name="check" size={12} /> Clé valide — {apartments.length} logement{apartments.length > 1 ? 's' : ''} trouvé{apartments.length > 1 ? 's' : ''}
+            </p>
+            <div>
+              <Label htmlFor="pms-apt">Lequel correspond à ce logement ?</Label>
+              <select id="pms-apt" value={chosen} onChange={e => setChosen(e.target.value)}
+                className={`${FIELD_SM} appearance-none`}>
+                <option value="">Sélectionner</option>
+                {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+            <button type="button" onClick={connect} disabled={busy || !chosen}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-gold text-ink disabled:opacity-50">
+              {busy ? '…' : 'Connecter ce logement'}
+            </button>
+          </>
+        )
+      )}
+
+      {err && <p role="alert" className="text-[11px] text-danger">{err}</p>}
+    </div>
   );
 }
 

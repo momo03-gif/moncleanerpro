@@ -205,6 +205,10 @@ export default function AirbnbSyncPage() {
                         {f.apartmentName ?? 'Appartement'} <span className="font-normal text-muted">· {platformLabel(f.platform)}</span>
                       </p>
                       {f.label && <p className="text-xs truncate text-muted">{f.label}</p>}
+                      {/* Une connexion API apporte les horaires ; un lien iCal non. */}
+                      {f.connectionKind === 'api' && (
+                        <p className="text-[11px] text-success">Connexion API — horaires d&apos;arrivée et de départ inclus</p>
+                      )}
                     </div>
                     <Badge tone={f.active ? 'success' : 'neutral'}>{f.active ? 'Actif' : 'En pause'}</Badge>
                   </div>
