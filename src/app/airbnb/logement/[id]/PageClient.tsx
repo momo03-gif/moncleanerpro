@@ -54,6 +54,19 @@ export default function LogementDetailClient() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ?panel=checklist|video|supplies — les pastilles de la liste des logements
+  // mènent ici. Sans ça, on atterrissait sur la fiche sans voir ce qu'on venait
+  // configurer : le panneau replié passait inaperçu.
+  const [openPanel, setOpenPanel] = useState<string | null>(null);
+  useEffect(() => {
+    setOpenPanel(new URLSearchParams(window.location.search).get('panel'));
+  }, []);
+  useEffect(() => {
+    if (loading || !openPanel) return;
+    const el = document.getElementById(`panel-${openPanel}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [loading, openPanel]);
+
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
   if (!apt) {
@@ -175,21 +188,23 @@ export default function LogementDetailClient() {
 
         {/* Vidéo d'accès (facultative) : le propriétaire peut expliquer comment
             s'y rendre / trouver la clé. Le cleaner la verra sur sa mission. */}
-        <div className="mt-4">
+        <div id="panel-video" className={`mt-4 rounded-xl ${openPanel === 'video' ? 'ring-2 ring-gold' : ''}`}>
           <SiteAccessVideo airbnbId={apt.id} videoUrl={apt.accessVideoUrl} mode="manage"
             onChange={url => setApt(a => (a ? { ...a, accessVideoUrl: url ?? undefined } : a))} />
         </div>
 
         {/* Standard de ménage : ce que vous exigez dans CE logement. L'intervenant
             le coche à chaque ménage, et vous en avez la preuve sur la fiche du ménage. */}
-        <div className="mt-3">
-          <ChecklistPanel airbnbId={apt.id} mode="edit" authorName={user?.name} />
+        <div id="panel-checklist" className={`mt-3 rounded-xl ${openPanel === 'checklist' ? 'ring-2 ring-gold' : ''}`}>
+          <ChecklistPanel airbnbId={apt.id} mode="edit" authorName={user?.name}
+            defaultOpen={openPanel === 'checklist'} />
         </div>
 
         {/* Liste de courses : ce que les intervenants ont signalé manquant et que
             personne n'a encore racheté. */}
-        <div className="mt-3">
-          <SuppliesPanel airbnbId={apt.id} authorName={user?.name} />
+        <div id="panel-supplies" className={`mt-3 rounded-xl ${openPanel === 'supplies' ? 'ring-2 ring-gold' : ''}`}>
+          <SuppliesPanel airbnbId={apt.id} authorName={user?.name}
+            defaultOpen={openPanel === 'supplies'} />
         </div>
 
         <div className="mt-4 flex items-center gap-4 flex-wrap">
