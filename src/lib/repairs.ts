@@ -125,6 +125,18 @@ export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | n
   }).select(SELECT).single();
 
   if (error) { console.error('createRepairDB:', error.message); return { repair: null, error: error.message }; }
+
+  // Alerte WhatsApp au propriétaire du compte, si (et seulement si) il l'a
+  // activée. Volontairement « best-effort » et non attendue : un dégât est
+  // enregistré même si Meta est indisponible, et le destinataire est résolu
+  // côté serveur à partir du logement — jamais depuis le navigateur.
+  if (typeof window !== 'undefined') {
+    fetch('/api/whatsapp/repair', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ airbnbId: r.airbnbId, description, reportedBy: r.createdBy }),
+    }).catch(() => { /* silencieux : la réparation est déjà créée */ });
+  }
+
   return { repair: rowToRepair(data), error: null };
 }
 

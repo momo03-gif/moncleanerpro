@@ -14,6 +14,7 @@ import type { Repair } from '@/lib/types';
 import { RepairRow } from '@/components/RepairsPanel';
 import Loading from '@/components/Loading';
 import { Card, PageTitle, Segmented } from '@/components/ui';
+import WhatsAppAlerts from '@/components/WhatsAppAlerts';
 
 export default function PartnerRepairsClient() {
   const { user } = useAuth();
@@ -68,6 +69,10 @@ export default function PartnerRepairsClient() {
         title="Réparations"
         subtitle="Ce qui est à réparer dans vos logements, signalé lors des ménages"
       />
+
+      {/* Un dégât doit sortir de l'application : proposé ici, là où vivent les
+          signalements, plutôt que dans un écran de réglages jamais ouvert. */}
+      <WhatsAppAlerts />
 
       <Segmented
         value={tab}
