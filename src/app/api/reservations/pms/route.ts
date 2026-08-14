@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { listSmoobuApartments } from '@/lib/pms/smoobu';
+import { findPms, supportsApi } from '@/lib/pms/registry';
 
 export const runtime = 'nodejs';
 
@@ -36,8 +37,14 @@ export async function POST(req: NextRequest) {
   const apiKey = body.apiKey?.trim();
   const apiSecret = body.apiSecret?.trim();
 
-  if (platform !== 'smoobu') {
-    return NextResponse.json({ error: 'Seul Smoobu est pris en charge par API pour le moment.' }, { status: 400 });
+  // La liste des logiciels réellement branchés vit dans le registre : on refuse
+  // proprement plutôt que d'enregistrer une connexion que la synchro ne saurait
+  // pas lire (la conciergerie se retrouverait avec un flux mort).
+  if (!supportsApi(platform)) {
+    const name = findPms(platform)?.label ?? platform;
+    return NextResponse.json({
+      error: `Pas encore de connexion directe pour ${name}. Utilisez le lien iCal : il fonctionne avec tous les logiciels.`,
+    }, { status: 400 });
   }
   if (!apiKey || !apiSecret) {
     return NextResponse.json({ error: 'Clé et secret requis.' }, { status: 400 });
