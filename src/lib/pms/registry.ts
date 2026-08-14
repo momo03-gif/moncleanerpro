@@ -49,6 +49,18 @@ export const PMS_LIST: PmsDefinition[] = [
       help: 'Smoobu → Paramètres → API. Générez une clé, copiez la clé et le secret.',
     },
   },
+  {
+    id: 'hostaway',
+    label: 'Hostaway',
+    icalHelp: 'Hostaway → Listing → Channel Manager → iCal export.',
+    api: {
+      fields: [
+        { name: 'apiKey', label: 'Account ID' },
+        { name: 'apiSecret', label: 'API key (secret)', secret: true },
+      ],
+      help: 'Hostaway → Settings → Hostaway API. Copiez l’Account ID et la clé secrète.',
+    },
+  },
   // Les suivants ont une API, mais leur documentation n'est pas publique : il
   // faut un compte (ou une clé de test) pour écrire le connecteur sans deviner.
   // En attendant, l'iCal fonctionne parfaitement avec eux.
@@ -56,12 +68,6 @@ export const PMS_LIST: PmsDefinition[] = [
     id: 'beds24',
     label: 'Beds24',
     icalHelp: 'Beds24 → Settings → Sync → Export calendar (iCal).',
-    api: false,
-  },
-  {
-    id: 'hostaway',
-    label: 'Hostaway',
-    icalHelp: 'Hostaway → Listing → Channel Manager → iCal export.',
     api: false,
   },
   {

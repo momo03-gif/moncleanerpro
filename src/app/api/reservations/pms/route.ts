@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { listSmoobuApartments } from '@/lib/pms/smoobu';
+import { listHostawayListings } from '@/lib/pms/hostaway';
 import { findPms, supportsApi } from '@/lib/pms/registry';
 
 export const runtime = 'nodejs';
+
+// Un « lister » par logiciel : il rend les logements du compte pour que la
+// conciergerie désigne celui qui correspond au nôtre. Ajouter un éditeur =
+// une ligne ici, une dans PMS_FETCHERS (reservationSync) et une dans le registre.
+const PMS_LISTERS: Record<string, (c: { apiKey: string; apiSecret: string }) => Promise<{ id: number; name: string }[]>> = {
+  smoobu: listSmoobuApartments,
+  hostaway: listHostawayListings,
+};
 
 // Connexion d'un logement à l'API du PMS de la conciergerie.
 //
@@ -53,7 +62,7 @@ export async function POST(req: NextRequest) {
   // ── Test : on liste les logements du compte ────────────────────────────────
   if (body.action === 'test') {
     try {
-      const apartments = await listSmoobuApartments({ apiKey, apiSecret });
+      const apartments = await PMS_LISTERS[platform]({ apiKey, apiSecret });
       return NextResponse.json({ ok: true, apartments });
     } catch (e) {
       return NextResponse.json({ ok: false, error: (e as Error)?.message ?? 'Connexion refusée.' });
