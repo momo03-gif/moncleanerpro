@@ -8,7 +8,24 @@ import { getAirbnbsForPartner, getReservationsForPartner, createAirbnb, updateAi
 import type { Apartment, Reservation } from '@/lib/types';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
+import { getChecklistCountsForApartmentsDB } from '@/lib/checklists';
 import { Badge, Button, Card, EmptyState, FIELD, IconButton, Label, PageTitle } from '@/components/ui';
+
+// Pastille d'état de configuration. Doré = fait, gris pointillé = à faire.
+// L'intérêt n'est pas décoratif : c'est ce qui fait découvrir qu'un standard de
+// ménage ou une vidéo d'accès existent.
+function SetupChip({ done, label, onClick }: { done: boolean; label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick}
+      className={`text-[11px] px-2.5 py-1 rounded-full border inline-flex items-center gap-1 transition-colors ${
+        done ? 'border-gold-line bg-gold-soft text-gold-ink font-medium' : 'border-dashed border-line text-muted'
+      }`}>
+      {done && <Icon name="check" size={11} />}
+      {!done && <Icon name="plus" size={11} />}
+      {label}
+    </button>
+  );
+}
 
 const emptyForm = {
   name: '', address: '', portalCode: '', keyboxCode: '',
@@ -56,6 +73,7 @@ export default function AirbnbApartmentsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [search, setSearch] = useState('');
+  const [checklistCounts, setChecklistCounts] = useState<Map<string, number>>(new Map());
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -66,6 +84,9 @@ export default function AirbnbApartmentsPage() {
     setApartments(a);
     setReservations(r);
     setLoading(false);
+    // Nombre de points du standard de ménage, par logement : sert à montrer sur
+    // chaque carte si le standard existe déjà. Chargé après l'essentiel.
+    setChecklistCounts(await getChecklistCountsForApartmentsDB(a.map(x => x.id)));
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
@@ -245,52 +266,74 @@ export default function AirbnbApartmentsPage() {
         <div className="space-y-3">
           {visible.map(apt => {
             const { occupied, nextDep } = statusFor(apt.id);
+            const points = checklistCounts.get(apt.id) ?? 0;
+            // Récapitulatif d'une ligne : ce qui décrit le logement, pas ses réglages.
+            const meta = [
+              apt.bedrooms != null ? `${apt.bedrooms} ch.` : null,
+              apt.beds != null ? `${apt.beds} lit${apt.beds > 1 ? 's' : ''}` : null,
+              apt.sofaBeds != null ? `${apt.sofaBeds} canapé-lit${apt.sofaBeds > 1 ? 's' : ''}` : null,
+            ].filter(Boolean).join(' · ');
+
             return (
               <Card key={apt.id} className="overflow-hidden">
-                <div className="px-5 py-4 border-b border-hairline">
-                  <div className="flex items-start justify-between gap-2">
-                    <button onClick={() => router.push(`/airbnb/logement/${apt.id}`)} className="min-w-0 text-left flex-1">
-                      <h3 className="font-semibold truncate flex items-center gap-1 text-ink">
-                        {apt.name}
-                        <span className="shrink-0 text-gold-ink" aria-hidden="true"><Icon name="chevronRight" size={14} /></span>
-                      </h3>
+                {/* En-tête cliquable : tout le bloc mène à la fiche. */}
+                <button onClick={() => router.push(`/airbnb/logement/${apt.id}`)}
+                  className="w-full text-left px-5 pt-4 pb-3 active:bg-surface transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold truncate text-ink">{apt.name}</h3>
                       <p className="text-xs mt-0.5 flex items-center gap-1.5 text-muted">
-                        <Icon name="pin" size={12} className="shrink-0" /> {apt.address}
+                        <Icon name="pin" size={12} className="shrink-0" />
+                        <span className="truncate">{apt.address}</span>
                       </p>
-                    </button>
-                    <div className="flex gap-1.5 shrink-0">
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(apt)}>Modifier</Button>
-                      {/* Le « ✕ » n'avait aucun nom accessible : un lecteur d'écran
-                          annonçait « bouton » sans dire ce qu'il supprimait. */}
-                      <IconButton icon="close" tone="danger" label={`Supprimer ${apt.name}`} onClick={() => handleDelete(apt.id)} />
                     </div>
-                  </div>
-                </div>
-                <div className="px-5 py-3 space-y-1.5 text-sm text-muted">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
                     <Badge tone={occupied ? 'success' : 'neutral'}>{occupied ? 'Occupé' : 'Libre'}</Badge>
-                    {nextDep && (
-                      <span className="text-[11px] text-muted">
-                        Prochain départ : {new Date(nextDep.checkOut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                      </span>
-                    )}
                   </div>
-                  {apt.clientPrice != null && (
-                    <p className="text-xs font-semibold text-success">{apt.clientPrice}€ / ménage</p>
-                  )}
-                  {(apt.bedrooms != null || apt.beds != null || apt.sofaBeds != null) && (
-                    <p className="text-xs">
-                      {apt.bedrooms != null && <>{apt.bedrooms} chambre{apt.bedrooms > 1 ? 's' : ''}</>}
-                      {apt.bedrooms != null && (apt.beds != null || apt.sofaBeds != null) && ' · '}
-                      {apt.beds != null && <>{apt.beds} lit{apt.beds > 1 ? 's' : ''}</>}
-                      {apt.beds != null && apt.sofaBeds != null && ' · '}
-                      {apt.sofaBeds != null && <>{apt.sofaBeds} canapé-lit{apt.sofaBeds > 1 ? 's' : ''}</>}
+
+                  <p className="text-xs mt-2 text-muted">
+                    {meta}
+                    {meta && apt.clientPrice != null && ' · '}
+                    {apt.clientPrice != null && <span className="font-semibold text-ink">{apt.clientPrice}€ / ménage</span>}
+                  </p>
+                  {nextDep && (
+                    <p className="text-[11px] mt-0.5 text-muted">
+                      Prochain départ le {new Date(nextDep.checkOut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
                     </p>
                   )}
-                  {apt.portalCode && <p className="text-xs"><span className="text-muted">Portail : </span><span className="font-mono font-semibold text-ink">{apt.portalCode}</span></p>}
-                  {apt.keyboxCode && <p className="text-xs"><span className="text-muted">Clé : </span><span className="font-mono font-semibold text-ink">{apt.keyboxCode}</span></p>}
-                  {apt.entryDirectives && <p className="text-xs">{apt.entryDirectives}</p>}
-                  {apt.notes && <p className="text-xs px-3 py-2 rounded-xl mt-1 bg-surface-2">{apt.notes}</p>}
+                </button>
+
+                {/* Ce qui est configuré — et surtout ce qui ne l'est pas. Chaque
+                    pastille ouvre directement le bon panneau de la fiche : c'est
+                    ici qu'on découvre qu'un standard de ménage existe. */}
+                <div className="px-5 pb-3 flex flex-wrap gap-1.5">
+                  <SetupChip
+                    done={points > 0}
+                    label={points > 0 ? `Checklist · ${points} pts` : 'Checklist à définir'}
+                    onClick={() => router.push(`/airbnb/logement/${apt.id}?panel=checklist`)}
+                  />
+                  <SetupChip
+                    done={!!apt.accessVideoUrl}
+                    label={apt.accessVideoUrl ? 'Vidéo d’accès' : 'Vidéo d’accès à ajouter'}
+                    onClick={() => router.push(`/airbnb/logement/${apt.id}?panel=video`)}
+                  />
+                  <SetupChip
+                    done={!!(apt.portalCode || apt.keyboxCode || apt.entryDirectives)}
+                    label={apt.portalCode || apt.keyboxCode || apt.entryDirectives ? 'Accès renseigné' : 'Accès à renseigner'}
+                    onClick={() => openEdit(apt)}
+                  />
+                </div>
+
+                <div className="px-5 py-2.5 flex items-center justify-between gap-2 border-t border-hairline bg-surface-2">
+                  <button onClick={() => router.push(`/airbnb/logement/${apt.id}`)}
+                    className="text-xs font-semibold inline-flex items-center gap-1 text-gold-ink">
+                    Ouvrir la fiche <Icon name="chevronRight" size={13} />
+                  </button>
+                  <div className="flex gap-1.5 shrink-0">
+                    <Button variant="secondary" size="sm" onClick={() => openEdit(apt)}>Modifier</Button>
+                    {/* Le « ✕ » n'avait aucun nom accessible : un lecteur d'écran
+                        annonçait « bouton » sans dire ce qu'il supprimait. */}
+                    <IconButton icon="close" tone="danger" label={`Supprimer ${apt.name}`} onClick={() => handleDelete(apt.id)} />
+                  </div>
                 </div>
               </Card>
             );

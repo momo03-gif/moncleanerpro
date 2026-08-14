@@ -172,6 +172,26 @@ export async function uncheckChecklistItemDB(missionId: string, itemId: string):
   return { error: error?.message ?? null };
 }
 
+/**
+ * Nombre de points actifs par logement — sert à montrer, sur la liste des
+ * logements, lesquels ont déjà un standard de ménage et lesquels n'en ont pas.
+ * Une seule requête pour toute la liste.
+ */
+export async function getChecklistCountsForApartmentsDB(airbnbIds: string[]): Promise<Map<string, number>> {
+  if (airbnbIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('checklist_items').select('airbnb_id')
+    .in('airbnb_id', airbnbIds)
+    .is('archived_at', null);
+  if (error) { console.error('getChecklistCountsForApartmentsDB:', error.message); return new Map(); }
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    const id = row.airbnb_id as string;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** Conformité de plusieurs missions d'un coup (listes, statistiques). */
 export async function getChecklistCountsForMissionsDB(missionIds: string[]): Promise<Map<string, number>> {
   if (missionIds.length === 0) return new Map();
