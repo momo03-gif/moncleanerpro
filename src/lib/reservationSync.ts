@@ -14,6 +14,7 @@ import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { parseICal, type ICalEvent } from './ical';
 import { fetchSmoobuReservations } from './pms/smoobu';
+import { fetchHostawayReservations } from './pms/hostaway';
 import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
@@ -131,15 +132,28 @@ async function fetchFromPms(
   if (!feed.api_key || !feed.api_secret || !feed.external_property_id) {
     throw new Error('Connexion API incomplète (clé, secret ou logement manquant).');
   }
-  if (feed.platform !== 'smoobu') {
-    throw new Error(`Connexion API non prise en charge pour ${feed.platform}.`);
-  }
-  return fetchSmoobuReservations(
+  const fetcher = PMS_FETCHERS[feed.platform];
+  if (!fetcher) throw new Error(`Connexion API non prise en charge pour ${feed.platform}.`);
+
+  return fetcher(
     { apiKey: feed.api_key, apiSecret: feed.api_secret },
     feed.external_property_id,
-    { from: today, to: addDays(today, 90) },
+    { from: today, to: addDays(today, HORIZON_DAYS) },
   );
 }
+
+// Un connecteur par logiciel. Tous rendent la même forme d'évènements, ce qui
+// laisse le reste du moteur intact. Ajouter un éditeur = une ligne ici.
+type PmsFetcher = (
+  creds: { apiKey: string; apiSecret: string },
+  propertyId: string,
+  range: { from: string; to: string },
+) => Promise<ICalEvent[]>;
+
+const PMS_FETCHERS: Record<string, PmsFetcher> = {
+  smoobu: fetchSmoobuReservations,
+  hostaway: fetchHostawayReservations,
+};
 
 export interface FeedSyncResult {
   feedId: string;

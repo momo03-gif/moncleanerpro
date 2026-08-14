@@ -14,9 +14,14 @@ describe('Registre des logiciels de gestion', () => {
   });
 
   it('n’annonce une API que pour les logiciels réellement branchés', () => {
+    // Connecteurs écrits (cf. PMS_FETCHERS dans reservationSync et PMS_LISTERS
+    // dans la route) : toute entrée `api` ici doit avoir son pendant là-bas.
     expect(supportsApi('smoobu')).toBe(true);
+    expect(supportsApi('hostaway')).toBe(true);
+    // Documentation non publique : l'iCal reste la voie pour eux.
     expect(supportsApi('beds24')).toBe(false);
     expect(supportsApi('hostify')).toBe(false);
+    expect(supportsApi('superhote')).toBe(false);
   });
 
   it('refuse un logiciel inconnu', () => {
