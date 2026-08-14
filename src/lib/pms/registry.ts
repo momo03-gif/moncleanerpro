@@ -61,15 +61,27 @@ export const PMS_LIST: PmsDefinition[] = [
       help: 'Hostaway → Settings → Hostaway API. Copiez l’Account ID et la clé secrète.',
     },
   },
-  // Les suivants ont une API, mais leur documentation n'est pas publique : il
-  // faut un compte (ou une clé de test) pour écrire le connecteur sans deviner.
-  // En attendant, l'iCal fonctionne parfaitement avec eux.
   {
     id: 'beds24',
     label: 'Beds24',
     icalHelp: 'Beds24 → Settings → Sync → Export calendar (iCal).',
-    api: false,
+    api: {
+      fields: [{ name: 'apiKey', label: 'Invite code ou refresh token' }],
+      help: 'Beds24 → Settings → Account → Access. Créez un « invite code » avec les permissions lecture.',
+    },
   },
+  {
+    id: 'lodgify',
+    label: 'Lodgify',
+    icalHelp: 'Lodgify → Calendar → Import/Export → Export calendar (.ics).',
+    api: {
+      fields: [{ name: 'apiKey', label: 'Clé API' }],
+      help: 'Lodgify → Paramètres → Public API. Copiez la clé.',
+    },
+  },
+  // Les suivants ont une API, mais leur documentation n'est pas publique : il
+  // faut un compte (ou une clé de test) pour écrire le connecteur sans deviner.
+  // En attendant, l'iCal fonctionne parfaitement avec eux.
   {
     id: 'hostify',
     label: 'Hostify',
@@ -80,12 +92,6 @@ export const PMS_LIST: PmsDefinition[] = [
     id: 'superhote',
     label: 'Superhote',
     icalHelp: 'Superhote → Logement → Synchronisation → lien iCal.',
-    api: false,
-  },
-  {
-    id: 'lodgify',
-    label: 'Lodgify',
-    icalHelp: 'Lodgify → Calendar → Import/Export → Export calendar (.ics).',
     api: false,
   },
   {

@@ -285,6 +285,8 @@ function PmsConnect({ airbnbId, onNeedApartment, onFallbackToIcal, onDone }: {
 
   const pms = findPms(pmsId);
   const apiReady = pms?.api !== false && !!pms;
+  const fields = pms && pms.api !== false ? pms.api.fields : [];
+  const canTest = fields.every(f => (f.name === 'apiKey' ? apiKey : apiSecret).trim().length > 0);
 
   return (
     <div className="rounded-xl p-3 space-y-2.5 bg-surface-2">
@@ -317,13 +319,22 @@ function PmsConnect({ airbnbId, onNeedApartment, onFallbackToIcal, onDone }: {
         {pms!.api !== false && pms!.api.help} L&apos;API apporte en plus les heures d&apos;arrivée
         et de départ — donc les départs tardifs.
       </p>
-      <input value={apiKey} onChange={e => { setApiKey(e.target.value); setApartments(null); }}
-        placeholder={(pms!.api !== false && pms!.api.fields[0]?.label) || 'Clé API'} className={FIELD_SM} />
-      <input value={apiSecret} onChange={e => { setApiSecret(e.target.value); setApartments(null); }}
-        type="password" placeholder={(pms!.api !== false && pms!.api.fields[1]?.label) || 'Secret'} className={FIELD_SM} />
+      {/* Chaque éditeur demande ce qui lui est propre : Smoobu une clé et un
+          secret, Beds24 et Lodgify une clé seule. On n'affiche que le nécessaire. */}
+      {fields.map((f, i) => (
+        <input key={f.name}
+          value={f.name === 'apiKey' ? apiKey : apiSecret}
+          onChange={e => {
+            if (f.name === 'apiKey') setApiKey(e.target.value); else setApiSecret(e.target.value);
+            setApartments(null);
+          }}
+          type={f.secret ? 'password' : 'text'}
+          autoFocus={i === 0}
+          placeholder={f.label} className={FIELD_SM} />
+      ))}
 
       {!apartments && (
-        <button type="button" onClick={test} disabled={busy || !apiKey.trim() || !apiSecret.trim()}
+        <button type="button" onClick={test} disabled={busy || !canTest}
           className="w-full py-2.5 rounded-xl text-xs font-semibold border border-line text-muted disabled:opacity-50">
           {busy ? 'Vérification…' : 'Vérifier la clé'}
         </button>
