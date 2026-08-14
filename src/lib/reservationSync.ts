@@ -13,6 +13,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { parseICal, type ICalEvent } from './ical';
+import { fetchSmoobuReservations } from './pms/smoobu';
 import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
@@ -102,6 +103,44 @@ async function isInPropertyGroup(airbnbId: string): Promise<boolean> {
   return (await loadPropertyGroups()).has(airbnbId);
 }
 
+// ── Sources d'un flux ─────────────────────────────────────────────────────────
+
+/** Lien iCal public : la voie universelle, mais des DATES seulement. */
+async function fetchFromIcal(icalUrl: string | null): Promise<ICalEvent[]> {
+  if (!icalUrl) throw new Error('Aucun lien iCal sur ce flux.');
+  const url = icalUrl.replace(/^webcal:\/\//i, 'https://');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'MonCleanerPro/1.0' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return parseICal(await res.text());
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * API du PMS de la conciergerie. Horizon identique à l'iCal (90 jours) : au-delà,
+ * les réservations bougent trop pour qu'un ménage planifié ait du sens.
+ */
+async function fetchFromPms(
+  feed: { platform: string; api_key?: string | null; api_secret?: string | null; external_property_id?: string | null },
+  today: string,
+): Promise<ICalEvent[]> {
+  if (!feed.api_key || !feed.api_secret || !feed.external_property_id) {
+    throw new Error('Connexion API incomplète (clé, secret ou logement manquant).');
+  }
+  if (feed.platform !== 'smoobu') {
+    throw new Error(`Connexion API non prise en charge pour ${feed.platform}.`);
+  }
+  return fetchSmoobuReservations(
+    { apiKey: feed.api_key, apiSecret: feed.api_secret },
+    feed.external_property_id,
+    { from: today, to: addDays(today, 90) },
+  );
+}
+
 export interface FeedSyncResult {
   feedId: string;
   ok: boolean;
@@ -113,25 +152,21 @@ export interface FeedSyncResult {
 // ── ÉTAPE 1 : importer un flux ────────────────────────────────────────────────
 export async function syncFeed(feed: {
   id: string; airbnb_id: string; partner_id: string | null;
-  platform: string; ical_url: string; last_sync_status?: string | null;
+  platform: string; ical_url: string | null; last_sync_status?: string | null;
+  connection_kind?: string | null;
+  api_key?: string | null; api_secret?: string | null; external_property_id?: string | null;
 }): Promise<FeedSyncResult> {
   const db = getSupabaseAdmin();
   const today = parisToday();
 
   try {
-    const url = feed.ical_url.replace(/^webcal:\/\//i, 'https://');
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-    let text: string;
-    try {
-      const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'MonCleanerPro/1.0' } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      text = await res.text();
-    } finally {
-      clearTimeout(timer);
-    }
-
-    const events = parseICal(text);
+    // Deux sources possibles, une seule suite : le connecteur PMS renvoie la même
+    // forme d'évènements que le parseur iCal, donc rien d'autre ne change ici.
+    // L'API apporte en plus les heures d'arrivée/départ (départ tardif, arrivée
+    // anticipée) et le nombre de voyageurs, que l'iCal ne transporte pas.
+    const events = feed.connection_kind === 'api'
+      ? await fetchFromPms(feed, today)
+      : await fetchFromIcal(feed.ical_url);
     const seenUids = new Set<string>();
     let imported = 0;
 
@@ -487,8 +522,11 @@ export async function runReservationSync(feedFilter?: { partnerId?: string; feed
 }> {
   const db = getSupabaseAdmin();
   groupCache = null;   // relit les rattachements à chaque exécution
+  // Les identifiants API ne sont lus QUE côté serveur (service_role), ici et
+  // nulle part ailleurs — cf. FEED_SELECT dans db/reservations.ts pour le client.
   let query = db.from('reservation_feeds')
-    .select('id, airbnb_id, partner_id, platform, ical_url, last_sync_status')
+    .select('id, airbnb_id, partner_id, platform, ical_url, last_sync_status, '
+      + 'connection_kind, api_key, api_secret, external_property_id')
     .eq('active', true);
   if (feedFilter?.feedId) query = query.eq('id', feedFilter.feedId);
   else if (feedFilter?.partnerId) query = query.eq('partner_id', feedFilter.partnerId);
@@ -496,7 +534,7 @@ export async function runReservationSync(feedFilter?: { partnerId?: string; feed
   const { data: feeds } = await query;
   const results: FeedSyncResult[] = [];
   for (const f of feeds ?? []) {
-    results.push(await syncFeed(f as Parameters<typeof syncFeed>[0]));
+    results.push(await syncFeed(f as unknown as Parameters<typeof syncFeed>[0]));
   }
 
   // La matérialisation balaie toutes les réservations en attente (idempotente).

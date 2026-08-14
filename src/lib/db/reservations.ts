@@ -13,7 +13,11 @@ function rowToFeed(r: any): ReservationFeed {
     apartmentName: r.airbnbs?.name ?? undefined,
     partnerId: r.partner_id ?? undefined,
     platform: r.platform,
-    icalUrl: r.ical_url,
+    icalUrl: r.ical_url ?? '',
+    // Comment ce flux est alimenté. Les identifiants API eux-mêmes ne quittent
+    // jamais le serveur : seul le fait qu'une connexion existe est exposé.
+    connectionKind: r.connection_kind === 'api' ? 'api' : 'ical',
+    externalPropertyId: r.external_property_id ?? undefined,
     label: r.label ?? undefined,
     active: r.active ?? true,
     lastSyncAt: r.last_sync_at ?? undefined,
@@ -44,7 +48,14 @@ function rowToReservation(r: any): Reservation {
   };
 }
 
-const FEED_SELECT = '*, airbnbs(name)';
+// ⚠️ Colonnes EXPLICITES, pas d'étoile : depuis la connexion par API, cette table
+// contient `api_key` et `api_secret`. Un `select *` les enverrait au navigateur.
+// `connection_kind` et `external_property_id` sont sûrs (ils ne servent qu'à
+// afficher « connecté par API ») ; les identifiants eux-mêmes ne sortent jamais
+// du serveur. Ne pas remettre d'étoile ici.
+const FEED_SELECT = 'id, airbnb_id, partner_id, platform, ical_url, label, active, '
+  + 'last_sync_at, last_sync_status, last_error, created_at, '
+  + 'connection_kind, external_property_id, airbnbs(name)';
 const RESERVATION_SELECT = '*, airbnbs(name)';
 
 // Flux d'un partenaire (ou tous, pour l'admin).

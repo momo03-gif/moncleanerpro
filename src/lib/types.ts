@@ -455,6 +455,11 @@ export interface ReservationFeed {
   partnerId?: string;
   platform: ReservationPlatform;
   icalUrl: string;
+  // Comment le flux est alimenté : lien iCal public, ou API du PMS de la
+  // conciergerie (qui apporte en plus les heures d'arrivée/départ et le nombre
+  // de voyageurs). Les identifiants API ne sont JAMAIS exposés au navigateur.
+  connectionKind?: 'ical' | 'api';
+  externalPropertyId?: string;   // identifiant du logement chez le PMS
   label?: string;
   active: boolean;
   lastSyncAt?: string;
