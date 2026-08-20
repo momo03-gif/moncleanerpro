@@ -17,6 +17,8 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/carte', label: 'Carte', icon: 'map' },
   { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
   { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
+  // Ce qui pilote le simulateur public : zones et communes, paliers, options.
+  { href: '/admin/tarification', label: 'Tarification', icon: 'wallet' },
   { href: '/admin/rendez-vous', label: 'Rendez-vous', icon: 'today' },
   { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
   { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
