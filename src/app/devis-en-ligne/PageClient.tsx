@@ -194,7 +194,10 @@ export default function DevisEnLignePage() {
             </div>
             {aiMsg && <p className="dv-ai-msg">{aiMsg}</p>}
 
-            <div className="dv-grid">
+            {/* Le simulateur gère lui-même ses deux colonnes (réglages à gauche,
+                estimation à droite) : la grille de la page lui laisse toute la
+                largeur, sinon la colonne réservée au ticket resterait vide. */}
+            <div className={'dv-grid' + (macro?.id === 'airbnb' && simConfig ? ' dv-grid-full' : '')}>
               <div>
                 {view === 'home' ? (
                   <div className="dv-cats">
@@ -433,6 +436,7 @@ const CSS = `
 .dv-ai-msg{font-size:12.5px;color:var(--green-d);margin:2px 2px 0;}
 /* Grid */
 .dv-grid{display:grid;grid-template-columns:1fr 330px;gap:24px;align-items:start;padding-top:14px;padding-bottom:60px;}
+.dv-grid-full{grid-template-columns:1fr;padding-bottom:40px;}
 @media(max-width:840px){.dv-grid{grid-template-columns:1fr;padding-bottom:0;}}
 /* Cartes catégories */
 .dv-cats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}

@@ -72,7 +72,8 @@ export default function AirbnbSimulator({ config, onContinue }: {
   }
 
   return (
-    <div className="sim">
+    <div className="sim-layout">
+      <div className="sim">
       {/* ── 1. Le logement ──────────────────────────────────────────────── */}
       <div className="sim-block">
         <div className="sim-head">
@@ -155,7 +156,10 @@ export default function AirbnbSimulator({ config, onContinue }: {
         </div>
       )}
 
-      {/* ── L'estimation, qui se construit sous les yeux ────────────────── */}
+      </div>
+
+      {/* ── L'estimation, à droite, qui se construit sous les yeux ──────── */}
+      <div className="sim-recap-col">
       <div className="sim-recap">
         <div className="sim-recap-head">
           <span>{quote.tier?.label ?? 'Votre logement'}</span>
@@ -191,6 +195,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
           Continuer ma demande
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -215,7 +220,13 @@ function Stepper({ label, hint, value, min, max, onChange }: {
 // Styles propres au simulateur — mêmes variables que la page de devis, donc
 // même charte beige/doré. Injectés par le parent avec le reste du CSS.
 export const SIMULATOR_CSS = `
-.sim{max-width:640px;}
+/* Les réglages à gauche, l'estimation à droite, qui suit le défilement : on voit
+   le prix bouger pendant qu'on configure, sans avoir à faire l'aller-retour. */
+.sim-layout{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:start;}
+@media(max-width:900px){.sim-layout{grid-template-columns:1fr;gap:8px;}}
+.sim{min-width:0;}
+.sim-recap-col{position:sticky;top:16px;min-width:0;}
+@media(max-width:900px){.sim-recap-col{position:static;}}
 .sim-block{padding:20px 0;border-bottom:1px solid var(--line);}
 .sim-block:first-child{padding-top:4px;}
 .sim-head{display:flex;align-items:baseline;gap:9px;margin-bottom:14px;}
@@ -246,7 +257,8 @@ export const SIMULATOR_CSS = `
 .sim-switch{position:relative;width:38px;height:22px;border-radius:99px;background:var(--line2);flex-shrink:0;transition:background .18s;}
 .sim-switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s;}
 .sim-toggle.on .sim-switch{background:var(--gold);} .sim-toggle.on .sim-switch::after{transform:translateX(16px);}
-.sim-recap{margin-top:22px;background:var(--sf);border:1px solid var(--line);border-radius:18px;padding:20px;}
+.sim-recap{background:var(--sf);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 1px 2px rgba(26,26,26,.06);}
+@media(max-width:900px){.sim-recap{margin-top:18px;}}
 .sim-recap-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1.5px dashed var(--line2);}
 .sim-recap-head span:first-child{font-size:17px;font-weight:700;}
 .sim-recap-meta{font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums;}
