@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computeQuote, tierFor, bathroomFee, optionFee, initialState, zoneForCommune,
+  computeQuote, tierFor, bathroomFee, optionFee, initialState, zoneForCommune, extraGuests,
   type SimulatorConfig, type SimulatorState,
 } from './devisSimulator';
 
 const CONFIG: SimulatorConfig = {
   tiers: [
-    { maxM2: 30, label: 'Studio', capText: '1–2 pers.', basePrice: 25, priceMax: 30 },
-    { maxM2: 45, label: 'T2', capText: '2–4 pers.', basePrice: 30, priceMax: 35 },
-    { maxM2: 90, label: 'T3', capText: '4–6 pers.', basePrice: 40, priceMax: 50 },
+    { maxM2: 30, label: 'Studio', capText: '2 pers.', basePrice: 25, priceMax: 30, capacityIncluded: 2 },
+    { maxM2: 45, label: 'T2', capText: '2 à 4 pers.', basePrice: 30, priceMax: 35, capacityIncluded: 4 },
+    { maxM2: 90, label: 'T3', capText: '4 à 6 pers.', basePrice: 40, priceMax: 50, capacityIncluded: 6 },
     { maxM2: 9999, label: 'Sur mesure', basePrice: null, priceMax: null },
   ],
   zones: [
@@ -19,7 +19,7 @@ const CONFIG: SimulatorConfig = {
     { key: 'linen', label: 'Linge fourni & lavé', fee: 0, perCapacity: true, tiers: [{ max: 2, fee: 12 }, { max: 4, fee: 20 }], defaultOn: true },
     { key: 'windows', label: 'Vitres accessibles', fee: 25, perCapacity: false, defaultOn: false },
   ],
-  capacitySurcharge: [{ max: 2, fee: 0 }, { max: 4, fee: 5 }, { max: 6, fee: 10 }],
+  extraGuestFee: 5,
   bathroomSurcharge: [{ from: 2, fee: 10 }, { from: 3, fee: 20 }],
   urgency: [{ id: 'standard', label: 'Standard', fee: 0 }, { id: 'h24', label: 'Sous 24 h', fee: 15 }],
   minM2: 12,
@@ -62,6 +62,19 @@ describe('bathroomFee — la première est comprise', () => {
   });
 });
 
+describe('extraGuests — qui dépasse la capacité comprise', () => {
+  const t2 = { capacityIncluded: 4 };
+  it('rien tant qu’on est dans la capacité', () => {
+    expect(extraGuests(t2, 2)).toBe(0);
+    expect(extraGuests(t2, 4)).toBe(0);
+  });
+  it('compte les voyageurs en trop', () => expect(extraGuests(t2, 7)).toBe(3));
+  it('sans capacité annoncée, personne n’est « en trop »', () => {
+    expect(extraGuests({ capacityIncluded: null }, 12)).toBe(0);
+    expect(extraGuests({}, 12)).toBe(0);
+  });
+});
+
 describe('optionFee', () => {
   it('rend le forfait d’une option simple', () => {
     expect(optionFee(CONFIG.options[1], 8)).toBe(25);
@@ -91,12 +104,12 @@ describe('computeQuote — l’estimation ligne par ligne', () => {
       surface: 40, travelers: 4, bathrooms: 2, zoneId: 'z2',
       options: ['linen', 'windows'], urgencyId: 'h24',
     });
-    // Les suppléments sont fermes : ils décalent les DEUX bornes de 80 €.
-    // Bas : 30 + 80 = 110. Haut : 35 + 80 = 115.
-    expect(q.total).toBe(110);
-    expect(q.totalMax).toBe(115);
+    // 4 voyageurs sont COMPRIS dans un T2 : aucun supplément de capacité.
+    // Suppléments fermes : 10 sdb + 5 zone + 20 linge + 25 vitres + 15 urgence = 75.
+    expect(q.total).toBe(105);
+    expect(q.totalMax).toBe(110);
     expect(q.lines.map(l => l.label)).toEqual([
-      'Ménage T2', 'Capacité 4 voyageurs', '2 salles de bain',
+      'Ménage T2', '2 salles de bain',
       'Zone — Proche périphérie', 'Linge fourni & lavé', 'Vitres accessibles', 'Délai — sous 24 h',
     ]);
   });
@@ -114,10 +127,28 @@ describe('computeQuote — l’estimation ligne par ligne', () => {
     expect(q.reason).toMatch(/surface/i);
   });
 
-  it('bascule en « sur devis » au-delà du barème de capacité', () => {
-    const q = computeQuote(CONFIG, { ...base, travelers: 12 });
-    expect(q.onRequest).toBe(true);
-    expect(q.reason).toMatch(/capacité/i);
+  it('ne facture rien tant que le groupe tient dans la capacité comprise', () => {
+    const q = computeQuote(CONFIG, { ...base, travelers: 4 });   // T2 comprend 4
+    expect(q.lines.map(l => l.label)).toEqual(['Ménage T2']);
+    expect(q.total).toBe(30);
+  });
+
+  it('facture chaque voyageur AU-DELÀ de la capacité comprise', () => {
+    const q = computeQuote(CONFIG, { ...base, travelers: 6 });   // 2 de trop × 5 €
+    expect(q.lines.map(l => l.label)).toEqual(['Ménage T2', '2 voyageurs en plus']);
+    expect(q.total).toBe(40);
+    expect(q.totalMax).toBe(45);
+  });
+
+  it('accorde le singulier à un seul voyageur en plus', () => {
+    const q = computeQuote(CONFIG, { ...base, travelers: 5 });
+    expect(q.lines[1].label).toBe('1 voyageur en plus');
+  });
+
+  it('ne facture aucun supplément quand le palier n’annonce pas de capacité', () => {
+    const sansCap: SimulatorConfig = { ...CONFIG, tiers: [{ maxM2: 45, label: 'T2', basePrice: 30 }] };
+    const q = computeQuote(sansCap, { ...base, travelers: 12 });
+    expect(q.lines.map(l => l.label)).toEqual(['Ménage T2']);
   });
 
   it('bascule en « sur devis » plutôt que d’ignorer une option non chiffrable', () => {

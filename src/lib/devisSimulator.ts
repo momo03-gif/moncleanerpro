@@ -24,6 +24,12 @@ export interface SurfaceTier {
    * valeur obligerait à choisir entre paraître cher et devoir se dédire.
    */
   priceMax?: number | null;
+  /**
+   * Voyageurs COMPRIS dans le prix de ce palier. Au-delà, et seulement au-delà,
+   * chaque voyageur supplémentaire est facturé (cf. `extraGuestFee`).
+   * null = aucune limite, donc aucun supplément.
+   */
+  capacityIncluded?: number | null;
 }
 
 export interface CapacityStep { max: number; fee: number }
@@ -54,7 +60,8 @@ export interface SimulatorConfig {
   tiers: SurfaceTier[];
   zones: QuoteZone[];
   options: QuoteOption[];
-  capacitySurcharge: CapacityStep[];
+  /** Montant par voyageur au-delà de la capacité comprise dans le palier. */
+  extraGuestFee: number;
   bathroomSurcharge: BathroomStep[];
   urgency: UrgencyLevel[];
   minM2: number;
@@ -120,6 +127,16 @@ export function bathroomFee(steps: BathroomStep[], count: number): number {
   return last.fee + (count - last.from) * stepValue;
 }
 
+/**
+ * Voyageurs au-delà de ce que le palier comprend. 0 quand le logement accueille
+ * le groupe sans dépassement — ou quand le palier n'annonce aucune capacité.
+ */
+export function extraGuests(tier: Pick<SurfaceTier, 'capacityIncluded'>, travelers: number): number {
+  const included = tier.capacityIncluded;
+  if (included == null || included <= 0) return 0;
+  return Math.max(0, travelers - included);
+}
+
 /** Coût d'une option, selon qu'elle est forfaitaire ou indexée sur la capacité. */
 export function optionFee(option: QuoteOption, travelers: number): number | null {
   if (!option.perCapacity) return option.fee;
@@ -139,11 +156,6 @@ export function computeQuote(config: SimulatorConfig, state: SimulatorState): Qu
     return { tier, lines: [], total: 0, totalMax: 0, onRequest: true, reason: 'Surface hors grille standard' };
   }
 
-  const capStep = stepFor(config.capacitySurcharge, state.travelers);
-  if (!capStep) {
-    return { tier, lines: [], total: 0, totalMax: 0, onRequest: true, reason: 'Capacité hors grille standard' };
-  }
-
   // Seul le ménage de base est une fourchette ; les suppléments sont fermes.
   // Ils décalent donc les deux bornes de la même valeur.
   const haut = tier.priceMax ?? tier.basePrice;
@@ -155,9 +167,13 @@ export function computeQuote(config: SimulatorConfig, state: SimulatorState): Qu
   let total = tier.basePrice;
   let totalMax = haut;
 
-  if (capStep.fee > 0) {
-    lines.push({ label: `Capacité ${state.travelers} voyageurs`, amount: capStep.fee });
-    total += capStep.fee; totalMax += capStep.fee;
+  // Le supplément ne se déclenche QUE si le logement est occupé au-delà de ce
+  // que son prix comprend. En dessous, rien : c'est déjà payé.
+  const extra = extraGuests(tier, state.travelers);
+  if (extra > 0 && config.extraGuestFee > 0) {
+    const fee = extra * config.extraGuestFee;
+    lines.push({ label: `${extra} voyageur${extra > 1 ? 's' : ''} en plus`, amount: fee });
+    total += fee; totalMax += fee;
   }
 
   const bath = bathroomFee(config.bathroomSurcharge, state.bathrooms);

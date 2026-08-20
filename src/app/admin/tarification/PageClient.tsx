@@ -210,12 +210,20 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
   const [rows, setRows] = useState(() => config.tiers.map(t => ({ ...t })));
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(emptyTierDraft());
+  const [extraFee, setExtraFee] = useState(String(config.extraGuestFee ?? 0));
   useEffect(() => { setRows(config.tiers.map(t => ({ ...t }))); }, [config.tiers]);
+  useEffect(() => { setExtraFee(String(config.extraGuestFee ?? 0)); }, [config.extraGuestFee]);
+
+  async function saveExtraFee() {
+    setBusy(true);
+    await send({ action: 'settings.save', settings: { extraGuestFee: parseFloat(extraFee.replace(',', '.')) || 0 } });
+    setBusy(false);
+  }
 
   async function saveRow(i: number) {
     const t = rows[i];
     setBusy(true);
-    await send({ action: 'tier.save', tier: { id: config.tiers[i]?.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice, priceMax: t.priceMax ?? null } });
+    await send({ action: 'tier.save', tier: { id: config.tiers[i]?.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice, priceMax: t.priceMax ?? null, capacityIncluded: t.capacityIncluded ?? null } });
     setBusy(false);
   }
 
@@ -241,7 +249,8 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       tier: {
         maxM2: parseInt(draft.maxM2, 10) || 0,
         label: draft.label,
-        capText: draft.capText || null,
+        capText: null,
+        capacityIncluded: draft.capText === '' ? null : parseInt(draft.capText, 10) || null,
         basePrice: draft.basePrice === '' ? null : parseFloat(draft.basePrice.replace(',', '.')) || 0,
         priceMax: draft.priceMax === '' ? null : parseFloat(draft.priceMax.replace(',', '.')) || 0,
       },
@@ -255,7 +264,7 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       <div className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide border-b border-hairline text-muted">
         <span className="col-span-2">Jusqu&apos;à</span>
         <span className="col-span-2">Libellé</span>
-        <span className="col-span-3">Capacité affichée</span>
+        <span className="col-span-3">Voyageurs compris</span>
         <span className="col-span-2">Prix de</span>
         <span className="col-span-2">à</span>
         <span className="col-span-1" />
@@ -266,8 +275,8 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, maxM2: parseInt(e.target.value, 10) || 0 } : x))} />
           <input className={`${FIELD} col-span-2`} value={t.label}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
-          <input className={`${FIELD} col-span-3`} value={t.capText ?? ''}
-            onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, capText: e.target.value } : x))} />
+          <input className={`${FIELD} col-span-3`} value={t.capacityIncluded ?? ''} inputMode="numeric" placeholder="illimité"
+            onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, capacityIncluded: e.target.value === '' ? null : parseInt(e.target.value, 10) || 0 } : x))} />
           <input className={`${FIELD} col-span-2`} value={t.basePrice ?? ''} placeholder="sur devis"
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, basePrice: e.target.value === '' ? null : parseFloat(e.target.value.replace(',', '.')) || 0 } : x))} />
           <input className={`${FIELD} col-span-2`} value={t.priceMax ?? ''} placeholder="prix ferme"
@@ -287,7 +296,7 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
           onChange={e => setDraft(d => ({ ...d, maxM2: e.target.value }))} />
         <input className={`${FIELD} col-span-2`} value={draft.label} placeholder="T6, Loft…"
           onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
-        <input className={`${FIELD} col-span-3`} value={draft.capText} placeholder="12–14 pers."
+        <input className={`${FIELD} col-span-3`} value={draft.capText} inputMode="numeric" placeholder="voyageurs"
           onChange={e => setDraft(d => ({ ...d, capText: e.target.value }))} />
         <input className={`${FIELD} col-span-2`} value={draft.basePrice} inputMode="decimal" placeholder="sur devis"
           onChange={e => setDraft(d => ({ ...d, basePrice: e.target.value }))} />
@@ -298,8 +307,22 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
           className="col-span-1 text-xs font-semibold text-gold-ink disabled:opacity-40">Ajouter</button>
       </div>
 
+      <div className="px-4 py-3 border-t border-hairline flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-semibold text-ink">Voyageur supplémentaire</span>
+        <input className={`${FIELD} w-24`} value={extraFee} inputMode="decimal"
+          onChange={e => setExtraFee(e.target.value)} />
+        <span className="text-xs text-muted">€ par voyageur au-delà de la capacité comprise</span>
+        <button onClick={saveExtraFee} disabled={busy}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gold text-ink disabled:opacity-50">
+          Enregistrer
+        </button>
+      </div>
+
       <p className="px-4 py-3 text-[11px] text-faint">
         Les paliers se classent tout seuls par surface : peu importe l&apos;ordre de saisie.
+        « Voyageurs compris » est le nombre de personnes déjà couvert par le prix du
+        palier : au-delà seulement, le supplément ci-dessus s&apos;applique. Laisser vide
+        signifie aucune limite, donc jamais de supplément.
         Le prix s&apos;annonce en fourchette : « de 30 à 35 € ». Laisser la borne haute vide
         donne un prix ferme. Laisser les deux vides signifie « sur devis » — au-delà de ce
         palier, le simulateur cesse de chiffrer et invite le visiteur à vous contacter,

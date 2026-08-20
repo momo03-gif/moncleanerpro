@@ -11,6 +11,7 @@ import { supabase } from './supabase';
 import type {
   SimulatorConfig, SurfaceTier, QuoteZone, QuoteOption, CapacityStep, BathroomStep, UrgencyLevel,
 } from './devisSimulator';
+// CapacityStep sert encore aux paliers d'options indexées sur le nombre de voyageurs.
 
 export type {
   SimulatorConfig, SurfaceTier, QuoteZone, QuoteOption, CapacityStep, BathroomStep, UrgencyLevel,
@@ -24,6 +25,7 @@ function rowToTier(r: Record<string, unknown>): SurfaceTier {
     capText: (r.cap_text as string) ?? undefined,
     basePrice: r.base_price == null ? null : Number(r.base_price),
     priceMax: r.price_max == null ? null : Number(r.price_max),
+    capacityIncluded: r.capacity_included == null ? null : Number(r.capacity_included),
   };
 }
 
@@ -71,7 +73,7 @@ export async function getSimulatorConfigDB(): Promise<SimulatorConfig | null> {
     tiers,
     zones: (zonesRes.data ?? []).map(rowToZone),
     options: (optionsRes.data ?? []).map(rowToOption),
-    capacitySurcharge: Array.isArray(s?.capacity_surcharge) ? (s!.capacity_surcharge as CapacityStep[]) : [],
+    extraGuestFee: Number(s?.extra_guest_fee ?? 0),
     bathroomSurcharge: Array.isArray(s?.bathroom_surcharge) ? (s!.bathroom_surcharge as BathroomStep[]) : [],
     urgency: Array.isArray(s?.urgency) ? (s!.urgency as UrgencyLevel[]) : [],
     minM2: Number(s?.min_m2 ?? 12),
