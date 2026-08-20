@@ -99,6 +99,19 @@ export async function updateReservationFeed(id: string, fields: {
   return { error: error?.message ?? null };
 }
 
+/**
+ * Réservations qui disparaîtront avec ce flux. Les réservations sont une
+ * PROJECTION du calendrier externe : sans le flux, elles ne seraient plus jamais
+ * mises à jour. On les supprime donc avec lui (ON DELETE CASCADE), et on
+ * annonce le nombre avant d'agir — c'est la seule chose honnête à faire.
+ */
+export async function countReservationsForFeed(feedId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('reservations').select('id', { count: 'exact', head: true }).eq('feed_id', feedId);
+  if (error) { console.error('countReservationsForFeed:', error.message); return 0; }
+  return count ?? 0;
+}
+
 export async function deleteReservationFeed(id: string): Promise<{ error: string | null }> {
   const { error } = await supabase.from('reservation_feeds').delete().eq('id', id);
   if (error) console.error('deleteReservationFeed:', error.code, error.message);
