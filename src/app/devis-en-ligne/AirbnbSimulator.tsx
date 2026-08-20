@@ -42,6 +42,16 @@ export default function AirbnbSimulator({ config, onContinue }: {
   const quote = useMemo(() => computeQuote(config, state), [config, state]);
   const zone = config.zones.find(z => z.id === state.zoneId);
 
+  // Ce que le prix du palier comprend déjà : le visiteur doit le savoir AVANT de
+  // voir un supplément apparaître, sinon il le vit comme une mauvaise surprise.
+  const included = quote.tier?.capacityIncluded ?? null;
+  const over = included == null ? 0 : Math.max(0, state.travelers - included);
+  const capacityHint = included == null
+    ? 'capacité maximale annoncée'
+    : over > 0
+      ? `${included} compris — ${over} en plus`
+      : `${included} compris dans ce logement`;
+
   const set = <K extends keyof SimulatorState>(k: K, v: SimulatorState[K]) =>
     setState(s => ({ ...s, [k]: v }));
 
@@ -105,7 +115,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
       {/* ── 2. Voyageurs & salles de bain ───────────────────────────────── */}
       <div className="sim-block">
         <div className="sim-head"><span className="sim-step">2</span><span className="sim-title">Voyageurs et salles de bain</span></div>
-        <Stepper label="Voyageurs" hint="capacité maximale annoncée" value={state.travelers}
+        <Stepper label="Voyageurs" hint={capacityHint} value={state.travelers}
           min={1} max={16} onChange={v => set('travelers', v)} />
         <Stepper label="Salles de bain / WC" hint="douche, baignoire ou WC séparé" value={state.bathrooms}
           min={1} max={6} onChange={v => set('bathrooms', v)} />

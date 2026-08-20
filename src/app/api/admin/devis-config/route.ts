@@ -22,9 +22,9 @@ export async function POST(req: NextRequest) {
   let body: {
     action?: string;
     zone?: { id?: string; name?: string; fee?: number; communes?: string[]; color?: string | null; position?: number; active?: boolean };
-    tier?: { id?: string; maxM2?: number; label?: string; capText?: string | null; basePrice?: number | null; priceMax?: number | null; active?: boolean };
+    tier?: { id?: string; maxM2?: number; label?: string; capText?: string | null; basePrice?: number | null; priceMax?: number | null; capacityIncluded?: number | null; active?: boolean };
     option?: { id?: string; key?: string; label?: string; fee?: number; perCapacity?: boolean; tiers?: unknown; defaultOn?: boolean; active?: boolean };
-    settings?: { capacitySurcharge?: unknown; bathroomSurcharge?: unknown; urgency?: unknown; minM2?: number; maxM2?: number };
+    settings?: { extraGuestFee?: number; bathroomSurcharge?: unknown; urgency?: unknown; minM2?: number; maxM2?: number };
     id?: string;
   } = {};
   try { body = await req.json(); } catch { /* corps vide → refusé plus bas */ }
@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
           base_price: t.basePrice == null ? null : Number(t.basePrice),
           // Borne haute de la fourchette. Vide = prix ferme.
           price_max: t.priceMax == null ? null : Number(t.priceMax),
+          // Voyageurs compris dans ce prix. Vide = pas de supplément.
+          capacity_included: t.capacityIncluded == null ? null : Number(t.capacityIncluded),
           active: t.active !== false,
         };
         const { error } = t.id
@@ -130,7 +132,7 @@ export async function POST(req: NextRequest) {
       case 'settings.save': {
         const s = body.settings ?? {};
         const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-        if (s.capacitySurcharge !== undefined) patch.capacity_surcharge = s.capacitySurcharge;
+        if (s.extraGuestFee !== undefined) patch.extra_guest_fee = Number(s.extraGuestFee);
         if (s.bathroomSurcharge !== undefined) patch.bathroom_surcharge = s.bathroomSurcharge;
         if (s.urgency !== undefined) patch.urgency = s.urgency;
         if (s.minM2 !== undefined) patch.min_m2 = Number(s.minM2);
