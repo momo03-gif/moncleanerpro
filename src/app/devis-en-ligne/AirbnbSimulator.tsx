@@ -17,10 +17,16 @@ import { useState, useMemo } from 'react';
 import { computeQuote, initialState, zoneForCommune, type SimulatorConfig, type SimulatorState } from '@/lib/devisSimulator';
 
 const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
+// Une fourchette s'écrit « 30 – 35 € » ; quand les deux bornes se rejoignent,
+// afficher « 30 – 30 € » ferait douter du sérieux du chiffrage.
+const range = (min: number, max: number) => (max > min ? `${money(min)} – ${money(max)}` : money(min));
 
 export interface SimulatorSubmission {
   lines: { nom: string; quantite: number; prix_unitaire: number; total: number }[];
+  /** Bas de la fourchette — c'est lui qui sert de montant au devis enregistré. */
   total: number;
+  /** Haut de la fourchette, repris dans le récapitulatif et la description. */
+  totalMax: number;
   summary: string;
   onRequest: boolean;
 }
@@ -64,8 +70,12 @@ export default function AirbnbSimulator({ config, onContinue }: {
     ].filter(Boolean).join(' · ');
 
     onContinue({
-      lines: quote.lines.map(l => ({ nom: l.label, quantite: 1, prix_unitaire: l.amount, total: l.amount })),
+      lines: quote.lines.map(l => ({
+        nom: l.label + (l.amountMax && l.amountMax > l.amount ? ` (${money(l.amount)} à ${money(l.amountMax)})` : ''),
+        quantite: 1, prix_unitaire: l.amount, total: l.amount,
+      })),
       total: quote.total,
+      totalMax: quote.totalMax,
       summary,
       onRequest: quote.onRequest,
     });
@@ -176,7 +186,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
           <div className="sim-lines">
             {quote.lines.map(l => (
               <div key={l.label} className="sim-line">
-                <span>{l.label}</span><span className="sim-dots" /><strong>{money(l.amount)}</strong>
+                <span>{l.label}</span><span className="sim-dots" /><strong>{range(l.amount, l.amountMax ?? l.amount)}</strong>
               </div>
             ))}
           </div>
@@ -184,7 +194,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
 
         <div className="sim-total">
           <span>Estimation</span>
-          <strong>{quote.onRequest ? 'Sur devis' : money(quote.total)}</strong>
+          <strong>{quote.onRequest ? 'Sur devis' : range(quote.total, quote.totalMax)}</strong>
         </div>
 
         <p className="sim-disc">

@@ -23,6 +23,7 @@ function rowToTier(r: Record<string, unknown>): SurfaceTier {
     label: (r.label as string) ?? '',
     capText: (r.cap_text as string) ?? undefined,
     basePrice: r.base_price == null ? null : Number(r.base_price),
+    priceMax: r.price_max == null ? null : Number(r.price_max),
   };
 }
 
