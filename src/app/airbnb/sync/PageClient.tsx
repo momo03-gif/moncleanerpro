@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import {
   getAirbnbsForPartner, getReservationFeedsForPartner, getReservationsForPartner,
-  updateReservationFeed, deleteReservationFeed,
+  updateReservationFeed, deleteReservationFeed, countReservationsForFeed,
 } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, ReservationFeed, Reservation, ReservationPlatform } from '@/lib/types';
@@ -117,7 +117,21 @@ export default function AirbnbSyncPage() {
     load();
   }
   async function removeFeed(f: ReservationFeed) {
-    const ok = await confirm({ title: 'Déconnecter ce calendrier ?', message: 'Les réservations déjà importées sont conservées.', confirmLabel: 'Déconnecter', danger: true });
+    // Le message annonçait « les réservations déjà importées sont conservées ».
+    // C'était faux : elles partent avec le flux. On dit désormais la vérité, avec
+    // le nombre exact, et on rappelle que « Mettre en pause » ne détruit rien.
+    const n = await countReservationsForFeed(f.id);
+    const ok = await confirm({
+      title: 'Déconnecter ce calendrier ?',
+      message: [
+        n > 0
+          ? `${n} réservation${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''} ${n > 1 ? 'seront supprimées' : 'sera supprimée'} : sans le calendrier, ${n > 1 ? 'elles ne seraient' : 'elle ne serait'} plus jamais mise${n > 1 ? 's' : ''} à jour.`
+          : 'Aucune réservation importée pour ce calendrier.',
+        'Les ménages déjà créés sont conservés.',
+        'Pour arrêter la synchronisation sans rien perdre, utilisez « Mettre en pause ».',
+      ].join('\n\n'),
+      confirmLabel: 'Déconnecter', danger: true,
+    });
     if (!ok) return;
     await deleteReservationFeed(f.id);
     load();
