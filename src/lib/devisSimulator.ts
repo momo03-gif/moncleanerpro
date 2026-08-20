@@ -60,7 +60,11 @@ export interface SimulatorConfig {
   tiers: SurfaceTier[];
   zones: QuoteZone[];
   options: QuoteOption[];
-  /** Montant par voyageur au-delà de la capacité comprise dans le palier. */
+  /**
+   * Montant par TRANCHE DE DEUX voyageurs au-delà de la capacité comprise.
+   * Une personne seule en plus coûte donc autant que deux : c'est la tranche
+   * qui se facture, pas la tête.
+   */
   extraGuestFee: number;
   bathroomSurcharge: BathroomStep[];
   urgency: UrgencyLevel[];
@@ -127,6 +131,17 @@ export function bathroomFee(steps: BathroomStep[], count: number): number {
   return last.fee + (count - last.from) * stepValue;
 }
 
+/** Voyageurs par tranche facturée : une personne en plus coûte comme deux. */
+export const EXTRA_GUEST_GROUP = 2;
+
+/**
+ * Tranches facturées pour `extra` voyageurs en trop. Toute tranche entamée est
+ * due : 1 ou 2 personnes en plus = 1 tranche, 3 ou 4 = 2 tranches.
+ */
+export function extraGuestGroups(extra: number): number {
+  return extra <= 0 ? 0 : Math.ceil(extra / EXTRA_GUEST_GROUP);
+}
+
 /**
  * Voyageurs au-delà de ce que le palier comprend. 0 quand le logement accueille
  * le groupe sans dépassement — ou quand le palier n'annonce aucune capacité.
@@ -171,7 +186,7 @@ export function computeQuote(config: SimulatorConfig, state: SimulatorState): Qu
   // que son prix comprend. En dessous, rien : c'est déjà payé.
   const extra = extraGuests(tier, state.travelers);
   if (extra > 0 && config.extraGuestFee > 0) {
-    const fee = extra * config.extraGuestFee;
+    const fee = extraGuestGroups(extra) * config.extraGuestFee;
     lines.push({ label: `${extra} voyageur${extra > 1 ? 's' : ''} en plus`, amount: fee });
     total += fee; totalMax += fee;
   }

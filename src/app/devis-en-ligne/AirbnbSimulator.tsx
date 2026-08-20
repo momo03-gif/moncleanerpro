@@ -49,7 +49,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
   const capacityHint = included == null
     ? 'capacité maximale annoncée'
     : over > 0
-      ? `${included} compris — ${over} en plus`
+      ? `${included} compris — ${over} en plus, facturés par deux`
       : `${included} compris dans ce logement`;
 
   const set = <K extends keyof SimulatorState>(k: K, v: SimulatorState[K]) =>

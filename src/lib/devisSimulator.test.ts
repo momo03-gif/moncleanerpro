@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computeQuote, tierFor, bathroomFee, optionFee, initialState, zoneForCommune, extraGuests,
+  computeQuote, tierFor, bathroomFee, optionFee, initialState, zoneForCommune, extraGuests, extraGuestGroups,
   type SimulatorConfig, type SimulatorState,
 } from './devisSimulator';
 
@@ -60,6 +60,19 @@ describe('bathroomFee — la première est comprise', () => {
   it('ne facture rien si le barème est vide', () => {
     expect(bathroomFee([], 4)).toBe(0);
   });
+});
+
+describe('extraGuestGroups — la tranche entamée est due', () => {
+  it('aucune tranche sans dépassement', () => expect(extraGuestGroups(0)).toBe(0));
+  it('une ou deux personnes en plus : une seule tranche', () => {
+    expect(extraGuestGroups(1)).toBe(1);
+    expect(extraGuestGroups(2)).toBe(1);
+  });
+  it('trois ou quatre : deux tranches', () => {
+    expect(extraGuestGroups(3)).toBe(2);
+    expect(extraGuestGroups(4)).toBe(2);
+  });
+  it('cinq : trois tranches', () => expect(extraGuestGroups(5)).toBe(3));
 });
 
 describe('extraGuests — qui dépasse la capacité comprise', () => {
@@ -133,16 +146,21 @@ describe('computeQuote — l’estimation ligne par ligne', () => {
     expect(q.total).toBe(30);
   });
 
-  it('facture chaque voyageur AU-DELÀ de la capacité comprise', () => {
-    const q = computeQuote(CONFIG, { ...base, travelers: 6 });   // 2 de trop × 5 €
-    expect(q.lines.map(l => l.label)).toEqual(['Ménage T2', '2 voyageurs en plus']);
-    expect(q.total).toBe(40);
-    expect(q.totalMax).toBe(45);
+  it('facture les voyageurs en trop PAR TRANCHE DE DEUX', () => {
+    // T2 comprend 4 voyageurs, la tranche vaut 5 €.
+    const total = (n: number) => computeQuote(CONFIG, { ...base, travelers: n }).total;
+    expect(total(4)).toBe(30);        // rien en trop
+    expect(total(5)).toBe(35);        // 1 en trop  → 1 tranche
+    expect(total(6)).toBe(35);        // 2 en trop  → 1 tranche, même prix
+    expect(total(7)).toBe(40);        // 3 en trop  → 2 tranches
+    expect(total(8)).toBe(40);        // 4 en trop  → 2 tranches, même prix
+    expect(total(9)).toBe(45);        // 5 en trop  → 3 tranches
   });
 
-  it('accorde le singulier à un seul voyageur en plus', () => {
+  it('nomme la ligne d’après les voyageurs, pas les tranches', () => {
     const q = computeQuote(CONFIG, { ...base, travelers: 5 });
     expect(q.lines[1].label).toBe('1 voyageur en plus');
+    expect(q.lines[1].amount).toBe(5);
   });
 
   it('ne facture aucun supplément quand le palier n’annonce pas de capacité', () => {
