@@ -75,7 +75,24 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
 
       {sub === 'new' && <NewDevis company={company} tarifs={tarifs.filter(t => t.actif)} editing={editing} onSaved={() => { setEditing(null); load(); }} onCancelEdit={() => setEditing(null)} />}
       {sub === 'history' && <DevisHistory company={company} list={devisList} onChanged={load} onEdit={startEdit} />}
-      {sub === 'tarifs' && <TarifsManager tarifs={tarifs} onChanged={load} />}
+      {/* La grille a déménagé dans Tarification, rangée par carte de la page de
+          devis. On garde l'import CSV ici — il sert au même endroit que la
+          création de devis — mais l'édition ligne à ligne se fait là-bas :
+          deux éditeurs finiraient par diverger. */}
+      {sub === 'tarifs' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FCF6E8', borderColor: '#EBD9A8' }}>
+            <p className="text-sm font-semibold" style={{ color: '#8A6A1E' }}>La grille se gère dans « Tarification »</p>
+            <p className="text-xs mt-1" style={{ color: '#7A7068' }}>
+              Les {tarifs.length} prestations y sont rangées par carte de la page de devis,
+              avec le barème du simulateur Airbnb.
+            </p>
+            <a href="/admin/tarification" className="inline-block mt-3 text-xs font-semibold px-3 py-2 rounded-lg"
+              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Ouvrir Tarification →</a>
+          </div>
+          <TarifsManager tarifs={tarifs} onChanged={load} />
+        </div>
+      )}
     </div>
   );
 }
