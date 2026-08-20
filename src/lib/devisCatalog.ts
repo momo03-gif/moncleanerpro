@@ -12,7 +12,17 @@ import type { Tarif } from './devis';
 
 export type Mode = 'forfait' | 'm2' | 'unit' | 'quote';
 export interface Item { tarif: Tarif; name: string; detail: string | null; unitLabel: string | null; mode: Mode; min: number | null; max: number | null; }
-export interface Section { title: string; single: boolean; items: Item[]; }
+export interface Section {
+  title: string;
+  single: boolean;
+  items: Item[];
+  /**
+   * Section dont les items forment une progression de taille de logement
+   * (Studio → T1 → … → Maison). L'écran la présente en carrousel : on fait
+   * défiler du plus petit au plus grand, ce qu'une liste verticale ne montre pas.
+   */
+  typology?: boolean;
+}
 export interface Macro { id: string; title: string; tagline: string; sections: Section[] }
 
 // ── Macro-catégories (ordre + libellés) ────────────────────────────────────────
@@ -131,6 +141,29 @@ export function displayName(t: Tarif): string {
   return t.nom.replace(/^Entretien classique\s*-\s*/i, '').replace(/^Coliving\s*-\s*/i, '');
 }
 
+/**
+ * Rang d'une typologie de logement, du plus petit au plus grand.
+ * null quand le libellé n'en est pas une — la section n'est alors pas un
+ * carrousel et garde son ordre d'origine.
+ */
+export function typologyRank(name: string): number | null {
+  const n = norm(name).trim();
+  if (/^studio/.test(n)) return 0;
+  const t = /^t\s?(\d+)/.exec(n);
+  if (t) return Number(t[1]);
+  if (/^(maison|villa)/.test(n)) return 90;
+  return null;
+}
+
+/**
+ * La section décrit-elle une progression de tailles de logement ?
+ * On exige au moins trois items TOUS reconnus : deux entrées ne font pas une
+ * progression, et un seul intrus rendrait le tri arbitraire.
+ */
+export function isTypologySection(items: Item[]): boolean {
+  return items.length >= 3 && items.every(i => typologyRank(i.name) !== null);
+}
+
 export function toItem(t: Tarif): Item {
   return { tarif: t, name: displayName(t), detail: DETAILS[t.nom] ?? null, unitLabel: unitLabelFor(t), mode: modeFor(t), min: t.prixMin ?? (t.prix > 0 ? t.prix : null), max: t.prixMax ?? (t.prix > 0 ? t.prix : null) };
 }
@@ -155,7 +188,15 @@ export function buildCatalog(tarifs: Tarif[]): Macro[] {
     if (!secMap) continue;
     const order = SECTION_ORDER[m.id] ?? [...secMap.keys()];
     const titles = [...order.filter(tt => secMap.has(tt)), ...[...secMap.keys()].filter(tt => !order.includes(tt))];
-    const sections: Section[] = titles.map(title => ({ title, single: SINGLE_SECTIONS.has(title), items: secMap.get(title)! }));
+    const sections: Section[] = titles.map(title => {
+      const items = secMap.get(title)!;
+      // Une progression de tailles arrive de la base dans l'ordre de création
+      // (T4, Studio, T1, Maison…) : on la remet dans l'ordre, sinon le carrousel
+      // ne raconte rien.
+      const typology = isTypologySection(items);
+      if (typology) items.sort((a, b) => typologyRank(a.name)! - typologyRank(b.name)!);
+      return { title, single: SINGLE_SECTIONS.has(title), items, typology };
+    });
     if (sections.length) out.push({ id: m.id, title: m.title, tagline: m.tagline, sections });
   }
   return out;

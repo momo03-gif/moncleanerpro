@@ -50,6 +50,38 @@ describe('Le résidentiel garde ce qui lui revient', () => {
   });
 });
 
+describe('Progression de tailles — le carrousel Studio → Maison', () => {
+  const typologies = ['Entretien classique - T4', 'Entretien classique - Studio', 'Entretien classique - T1',
+    'Entretien classique - Maison', 'Entretien classique - T2', 'Entretien classique - T3'].map(t);
+
+  it('remet les tailles dans l’ordre, quel que soit l’ordre en base', () => {
+    const section = buildCatalog(typologies)
+      .find(c => c.id === 'residentiel')!.sections
+      .find(s => s.title === 'Entretien classique du logement')!;
+    expect(section.items.map(i => i.name)).toEqual(['Studio', 'T1', 'T2', 'T3', 'T4', 'Maison']);
+  });
+
+  it('marque la section comme une progression, pour l’afficher en carrousel', () => {
+    const section = buildCatalog(typologies)
+      .find(c => c.id === 'residentiel')!.sections
+      .find(s => s.title === 'Entretien classique du logement')!;
+    expect(section.typology).toBe(true);
+  });
+
+  it('ne réordonne pas une section qui n’est pas une progression', () => {
+    const catalog = buildCatalog([t('Nettoyage vitres'), t('Nettoyage véranda'), t('Nettoyage baie vitrée')]);
+    const vitrerie = catalog.find(c => c.id === 'vst')!.sections.find(s => s.title === 'Vitrerie')!;
+    expect(vitrerie.typology).toBeFalsy();
+    expect(vitrerie.items.map(i => i.name)).toEqual(['Nettoyage vitres', 'Nettoyage véranda', 'Nettoyage baie vitrée']);
+  });
+
+  it('exige au moins trois tailles : deux ne font pas une progression', () => {
+    const section = buildCatalog([t('Entretien classique - Studio'), t('Entretien classique - T2')])
+      .find(c => c.id === 'residentiel')!.sections[0];
+    expect(section.typology).toBeFalsy();
+  });
+});
+
 describe('buildCatalog — ce que le visiteur voit', () => {
   it('produit deux cartes distinctes quand les deux existent', () => {
     const catalog = buildCatalog([t('Entretien classique T2'), t('Nettoyage Hébergement'), t('Gestion du linge')]);
