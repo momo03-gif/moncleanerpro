@@ -75,7 +75,7 @@ export default function TarificationClient() {
       </div>
 
       {tab === 'zones' && <ZonesTab config={config} send={send} confirm={confirm} />}
-      {tab === 'tiers' && <TiersTab config={config} send={send} />}
+      {tab === 'tiers' && <TiersTab config={config} send={send} confirm={confirm} />}
       {tab === 'options' && <OptionsTab config={config} send={send} confirm={confirm} />}
     </div>
   );
@@ -206,9 +206,10 @@ function ZoneForm({ draft, setDraft, busy, onSave, onCancel }: {
 }
 
 // ── Paliers de surface ────────────────────────────────────────────────────────
-function TiersTab({ config, send }: { config: SimulatorConfig; send: Send }) {
+function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Send; confirm: Confirm }) {
   const [rows, setRows] = useState(() => config.tiers.map(t => ({ ...t })));
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState(emptyTierDraft());
   useEffect(() => { setRows(config.tiers.map(t => ({ ...t }))); }, [config.tiers]);
 
   async function saveRow(i: number) {
@@ -216,6 +217,36 @@ function TiersTab({ config, send }: { config: SimulatorConfig; send: Send }) {
     setBusy(true);
     await send({ action: 'tier.save', tier: { id: config.tiers[i]?.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice } });
     setBusy(false);
+  }
+
+  async function removeRow(i: number) {
+    const t = rows[i];
+    const id = config.tiers[i]?.id;
+    if (!id) return;
+    const ok = await confirm({
+      title: 'Supprimer ce palier ?',
+      message: `« ${t.label} » disparaîtra du simulateur. Les logements de cette taille seront chiffrés par le palier supérieur.`,
+      confirmLabel: 'Supprimer', danger: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    await send({ action: 'tier.delete', id });
+    setBusy(false);
+  }
+
+  async function addRow() {
+    setBusy(true);
+    const ok = await send({
+      action: 'tier.save',
+      tier: {
+        maxM2: parseInt(draft.maxM2, 10) || 0,
+        label: draft.label,
+        capText: draft.capText || null,
+        basePrice: draft.basePrice === '' ? null : parseFloat(draft.basePrice.replace(',', '.')) || 0,
+      },
+    });
+    setBusy(false);
+    if (ok) setDraft(emptyTierDraft());
   }
 
   return (
@@ -237,18 +268,42 @@ function TiersTab({ config, send }: { config: SimulatorConfig; send: Send }) {
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, capText: e.target.value } : x))} />
           <input className={`${FIELD} col-span-2`} value={t.basePrice ?? ''} placeholder="sur devis"
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, basePrice: e.target.value === '' ? null : parseFloat(e.target.value.replace(',', '.')) || 0 } : x))} />
-          <button onClick={() => saveRow(i)} disabled={busy} aria-label="Enregistrer ce palier"
-            className="col-span-1 text-gold-ink flex justify-center"><Icon name="check" size={16} /></button>
+          <div className="col-span-1 flex justify-end gap-1">
+            <button onClick={() => saveRow(i)} disabled={busy} aria-label={`Enregistrer le palier ${t.label}`}
+              className="text-gold-ink px-1"><Icon name="check" size={16} /></button>
+            <button onClick={() => removeRow(i)} disabled={busy} aria-label={`Supprimer le palier ${t.label}`}
+              className="text-danger px-1"><Icon name="close" size={15} /></button>
+          </div>
         </div>
       ))}
+
+      {/* Nouveau palier — mêmes colonnes que la grille, pour qu'on voie où il ira. */}
+      <div className="grid grid-cols-12 gap-2 items-center px-4 py-2 border-t border-hairline bg-surface-2">
+        <input className={`${FIELD} col-span-2`} value={draft.maxM2} inputMode="numeric" placeholder="m²"
+          onChange={e => setDraft(d => ({ ...d, maxM2: e.target.value }))} />
+        <input className={`${FIELD} col-span-4`} value={draft.label} placeholder="T6, Loft…"
+          onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
+        <input className={`${FIELD} col-span-3`} value={draft.capText} placeholder="12–14 pers."
+          onChange={e => setDraft(d => ({ ...d, capText: e.target.value }))} />
+        <input className={`${FIELD} col-span-2`} value={draft.basePrice} inputMode="decimal" placeholder="sur devis"
+          onChange={e => setDraft(d => ({ ...d, basePrice: e.target.value }))} />
+        <button onClick={addRow} disabled={busy || !draft.label.trim() || !draft.maxM2}
+          aria-label="Ajouter ce palier"
+          className="col-span-1 text-xs font-semibold text-gold-ink disabled:opacity-40">Ajouter</button>
+      </div>
+
       <p className="px-4 py-3 text-[11px] text-faint">
-        Un prix vide signifie « sur devis » : au-delà de ce palier, le simulateur cesse de
-        chiffrer et invite le visiteur à vous contacter. Laisser un dernier palier sans prix
-        évite d&apos;annoncer un montant sur un logement hors norme.
+        Les paliers se classent tout seuls par surface : peu importe l&apos;ordre de saisie.
+        Un prix vide signifie « sur devis » — au-delà de ce palier, le simulateur cesse de
+        chiffrer et invite le visiteur à vous contacter, ce qui évite d&apos;annoncer un
+        montant sur un logement hors norme.
       </p>
     </div>
   );
 }
+
+interface TierDraft2 { maxM2: string; label: string; capText: string; basePrice: string }
+const emptyTierDraft = (): TierDraft2 => ({ maxM2: '', label: '', capText: '', basePrice: '' });
 
 // ── Options ───────────────────────────────────────────────────────────────────
 function OptionsTab({ config, send, confirm }: { config: SimulatorConfig; send: Send; confirm: Confirm }) {
