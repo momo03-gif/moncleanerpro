@@ -15,9 +15,13 @@ export interface Item { tarif: Tarif; name: string; detail: string | null; unitL
 export interface Section { title: string; single: boolean; items: Item[]; }
 export interface Macro { id: string; title: string; tagline: string; sections: Section[] }
 
-// ── 5 macro-catégories (ordre + libellés) ──────────────────────────────────────
+// ── Macro-catégories (ordre + libellés) ────────────────────────────────────────
+// Airbnb a sa propre carte : une conciergerie et un particulier ne cherchent pas
+// la même chose et ne se reconnaissent pas dans le même intitulé. Les mélanger
+// obligeait la conciergerie à entrer dans « Résidentiel » pour se trouver.
 export const MACRO_DEF: { id: string; title: string; tagline: string }[] = [
-  { id: 'residentiel', title: 'Résidentiel & Airbnb', tagline: 'Ménage régulier, grand nettoyage, locations courte durée, colocation' },
+  { id: 'residentiel', title: 'Résidentiel', tagline: 'Ménage régulier, grand nettoyage, colocation' },
+  { id: 'airbnb', title: 'Airbnb & Conciergerie', tagline: 'Ménage entre deux voyageurs, linge, consommables' },
   { id: 'pro', title: 'Locaux professionnels', tagline: 'Bureaux, commerces, santé, éducation et copropriétés' },
   { id: 'remise', title: 'Remise en état & Chantier', tagline: 'Fin de chantier, sinistres, états des lieux' },
   { id: 'vst', title: 'Vitres · Sols · Textiles', tagline: 'Vitrerie, traitement des sols et textiles d’ameublement' },
@@ -25,9 +29,10 @@ export const MACRO_DEF: { id: string; title: string; tagline: string }[] = [
 ];
 // Ordre des sections dans chaque macro-catégorie.
 export const SECTION_ORDER: Record<string, string[]> = {
-  residentiel: ['Entretien classique du logement', 'Nettoyage ponctuel', 'Airbnb & Conciergerie', 'Coliving / Colocation'],
+  residentiel: ['Entretien classique du logement', 'Nettoyage ponctuel', 'États des lieux', 'Coliving / Colocation'],
+  airbnb: ['Ménage entre deux voyageurs', 'Linge & consommables'],
   pro: ['Bureaux, commerces & industrie', 'Santé, petite enfance & éducation', 'Autres établissements'],
-  remise: ['Fin de chantier', 'États des lieux', 'Remise en état & sinistres'],
+  remise: ['Fin de chantier', 'Remise en état & sinistres'],
   vst: ['Vitrerie', 'Sols', 'Textile'],
   ext: ['Extérieurs & façades', 'Cuisine, sanitaires & désinfection', 'Situations spécifiques', 'Espaces communs & techniques', 'Traitement de l’air & odeurs', 'Finitions & détails'],
 };
@@ -42,14 +47,24 @@ export function classify(t: Tarif): { macro: string; section: string } {
   if (/entretien classique/.test(n)) return { macro: 'residentiel', section: 'Entretien classique du logement' };
   if (/ponctuel|grand menage|grand nettoyage/.test(n)) return { macro: 'residentiel', section: 'Nettoyage ponctuel' };
   if (/coliving|colocation/.test(n)) return { macro: 'residentiel', section: 'Coliving / Colocation' };
-  if (/hebergement|airbnb|linge|consommable|\bkit\b/.test(n)) return { macro: 'residentiel', section: 'Airbnb & Conciergerie' };
+  // Airbnb & conciergerie : carte à part. Le linge et les consommables sont
+  // séparés du ménage lui-même — ce sont deux décisions distinctes pour une
+  // conciergerie (elle peut fournir son propre linge).
+  if (/linge|consommable|\bkit\b/.test(n)) return { macro: 'airbnb', section: 'Linge & consommables' };
+  if (/hebergement|airbnb|courte duree|location saisonniere|conciergerie|voyageur/.test(n)) {
+    return { macro: 'airbnb', section: 'Ménage entre deux voyageurs' };
+  }
   // Vitres · Sols · Textiles (avant "pro" pour capter vitrine/vitrerie)
   if (/canape|fauteuil|matelas|moquette|chaise|tapis|tete de lit/.test(n)) return { macro: 'vst', section: 'Textile' };
   if (/tous.*sols|traitement.*sol|\bsols?\b|parquet|prestations techniques|decapage|lustrage|cristallisation|monobrosse/.test(n)) return { macro: 'vst', section: 'Sols' };
   if (/fenetre|baie|velux|vitrine|veranda|vitre|vitrage|carreau/.test(n)) return { macro: 'vst', section: 'Vitrerie' };
   // Remise en état & chantier
   if (/fin de chantier/.test(n)) return { macro: 'remise', section: 'Fin de chantier' };
-  if (/etat des lieux/.test(n)) return { macro: 'remise', section: 'États des lieux' };
+  // L'état des lieux est un moment de la vie d'un LOGEMENT (entrée, sortie de
+  // location), pas un chantier : le particulier le cherche dans « Résidentiel ».
+  // La règle reste ici, après « fin de chantier », pour qu'un état des lieux de
+  // fin de chantier parte bien du côté chantier.
+  if (/etat des lieux/.test(n)) return { macro: 'residentiel', section: 'États des lieux' };
   if (/remise en etat|apres squat|apres sinistre|apres travaux|insalubre|succession/.test(n)) return { macro: 'remise', section: 'Remise en état & sinistres' };
   // Locaux professionnels
   if (/bureau|boutique|commerce|entrepot|hangar|usine|industrie|atelier/.test(n)) return { macro: 'pro', section: 'Bureaux, commerces & industrie' };

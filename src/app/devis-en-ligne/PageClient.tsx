@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getTarifsDB, estimateFromDescription, type Tarif } from '@/lib/devis';
 import { buildCatalog, displayName, modeFor, type Item, type Mode } from '@/lib/devisCatalog';
+import { getSimulatorConfigDB, type SimulatorConfig } from '@/lib/devisConfig';
+import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './AirbnbSimulator';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Page publique « Demander un devis » — sélecteur structuré (catégories →
@@ -22,6 +24,8 @@ const num = (n: number) => n.toLocaleString('fr-FR');
 const S = (p: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ICON: Record<string, string> = {
   residentiel: S('<path d="M4 11.5L12 4.5L20 11.5"/><path d="M6.5 9.5V19c0 .55.45 1 1 1h9c.55 0 1-.45 1-1V9.5"/><path d="M10 20v-5c0-.55.45-1 1-1h2c.55 0 1 .45 1 1v5"/>'),
+  // Airbnb & conciergerie : un lit + une clé, ce que voit une conciergerie.
+  airbnb: S('<path d="M3 18v-5.5c0-.8.7-1.5 1.5-1.5h9c.8 0 1.5.7 1.5 1.5V18"/><path d="M3 18h12"/><path d="M5.5 11V8.5c0-.6.4-1 1-1h5c.6 0 1 .4 1 1V11"/><circle cx="19" cy="8" r="2.2"/><path d="M19 10.2V15"/><path d="M19 12.6h1.8"/>'),
   pro: S('<rect x="5" y="3" width="14" height="18" rx="1"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="19" y2="15"/>'),
   remise: S('<rect x="4" y="5" width="13" height="5" rx="1.4"/><line x1="10.5" y1="10" x2="10.5" y2="13.5"/><path d="M10.5 13.5H15c.83 0 1.5.67 1.5 1.5v3.7"/>'),
   vst: S('<rect x="4" y="4" width="12" height="13" rx="1"/><line x1="10" y1="4" x2="10" y2="17"/><line x1="4" y1="10.5" x2="16" y2="10.5"/><path d="M19.3 12.8c1.3 1.6 1.5 2.5 1.5 3.1a1.5 1.5 0 0 1-3 0c0-.6.2-1.5 1.5-3.1z"/>'),
@@ -36,6 +40,9 @@ type Sel = Record<string, { qty: number }>;
 
 export default function DevisEnLignePage() {
   const [tarifs, setTarifs] = useState<Tarif[]>([]);
+  const [simConfig, setSimConfig] = useState<SimulatorConfig | null>(null);
+  // Devis produit par le simulateur : il court-circuite la sélection par cases.
+  const [simQuote, setSimQuote] = useState<SimulatorSubmission | null>(null);
   const [view, setView] = useState<'home' | 'category' | 'recap'>('home');
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [sel, setSel] = useState<Sel>({});
@@ -50,6 +57,10 @@ export default function DevisEnLignePage() {
   const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { getTarifsDB(true).then(setTarifs).catch(() => setTarifs([])); }, []);
+  // Configuration du simulateur Airbnb (paliers, zones, options) : éditée dans
+  // l'admin, jamais en dur ici. Absente → la carte Airbnb retombe sur la liste
+  // de prestations classique, plutôt que d'afficher un simulateur vide.
+  useEffect(() => { getSimulatorConfigDB().then(setSimConfig).catch(() => setSimConfig(null)); }, []);
   const catalog = useMemo(() => buildCatalog(tarifs), [tarifs]);
   const byName = useMemo(() => new Map(tarifs.map(t => [t.nom, t])), [tarifs]);
 
@@ -102,12 +113,14 @@ export default function DevisEnLignePage() {
   async function submit() {
     setErr('');
     if (!form.nom.trim() || !form.email.trim() || !form.tel.trim()) { setErr('Renseignez votre nom, téléphone et email.'); return; }
-    const lines = Object.keys(sel).map(nom => {
+    // Le simulateur produit déjà ses lignes chiffrées : on ne repasse pas par la
+    // sélection par cases, qui est vide dans ce parcours.
+    const lines = simQuote ? simQuote.lines : Object.keys(sel).map(nom => {
       const t = byName.get(nom)!; const m = modeFor(t); const q = sel[nom].qty || (m === 'm2' ? 0 : 1);
       const pu = t.prix > 0 ? t.prix : 0;
       return { nom: displayName(t) + (m === 'm2' && q > 0 ? ` (${num(q)} m²)` : ''), quantite: Math.max(1, q || 1), prix_unitaire: pu, total: Math.round(pu * (q || 1) * 100) / 100 };
     });
-    const total = lines.reduce((s, l) => s + l.total, 0);
+    const total = simQuote ? simQuote.total : lines.reduce((s, l) => s + l.total, 0);
     setBusy(true);
     try {
       const res = await fetch('/api/devis-request', {
@@ -115,7 +128,14 @@ export default function DevisEnLignePage() {
         body: JSON.stringify({
           clientName: form.nom, clientEmail: form.email,
           clientAddress: [form.adresse, form.tel && `Tél : ${form.tel}`].filter(Boolean).join(' — '),
-          description: [desc, form.message, `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`].filter(Boolean).join(' — '),
+          description: [
+            desc, form.message,
+            // Le simulateur décrit le logement (surface, voyageurs, zone) : c'est
+            // ce dont l'équipe a besoin pour confirmer, pas une fourchette de cases.
+            simQuote
+              ? `${simQuote.summary} — ${simQuote.onRequest ? 'sur devis' : `estimation ${money(simQuote.total)}`}`
+              : `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`,
+          ].filter(Boolean).join(' — '),
           lines, total,
         }),
       });
@@ -134,7 +154,7 @@ export default function DevisEnLignePage() {
       ...(form.email ? { email: form.email } : {}),
     }).toString();
     return (
-      <div className="dv-root"><style>{CSS}</style>
+      <div className="dv-root"><style>{CSS + SIMULATOR_CSS}</style>
         <div className="dv-done">
           <div className="dv-done-ic" dangerouslySetInnerHTML={{ __html: ICON.check }} />
           <h1>Devis enregistré{sentNumber ? ` · ${sentNumber}` : ''}</h1>
@@ -148,7 +168,7 @@ export default function DevisEnLignePage() {
   const macro = activeCat ? catalog.find(c => c.id === activeCat) : null;
 
   return (
-    <div className="dv-root" ref={topRef}><style>{CSS}</style>
+    <div className="dv-root" ref={topRef}><style>{CSS + SIMULATOR_CSS}</style>
       <div className="dv-site">
         <header className="dv-head">
           <div className="dv-mark">MC</div>
@@ -156,7 +176,7 @@ export default function DevisEnLignePage() {
         </header>
 
         {view === 'recap' ? (
-          <Recap totals={totals} sel={sel} byName={byName} form={form} setForm={setForm} onBack={() => setView('category')} onHome={() => { setView('home'); setActiveCat(null); }} submit={submit} busy={busy} err={err} />
+          <Recap totals={totals} sel={sel} byName={byName} simQuote={simQuote} form={form} setForm={setForm} onBack={() => setView('category')} onHome={() => { setView('home'); setActiveCat(null); setSimQuote(null); }} submit={submit} busy={busy} err={err} />
         ) : (
           <>
             <button className="dv-crumb" onClick={() => { if (view === 'category') { setView('home'); setActiveCat(null); } }} style={{ visibility: view === 'category' ? 'visible' : 'hidden' }}>
@@ -187,6 +207,14 @@ export default function DevisEnLignePage() {
                       </button>
                     ))}
                   </div>
+                ) : macro?.id === 'airbnb' && simConfig ? (
+                  // Un propriétaire de location courte durée ne raisonne pas en
+                  // « prestations » mais en logement : surface, voyageurs, zone.
+                  // D'où un simulateur plutôt qu'une liste de cases.
+                  <div>
+                    <div className="dv-cat-head"><h2>{macro.title}</h2><p>{macro.tagline}</p></div>
+                    <AirbnbSimulator config={simConfig} onContinue={s => { setSimQuote(s); setView('recap'); }} />
+                  </div>
                 ) : macro ? (
                   <div>
                     <div className="dv-cat-head"><h2>{macro.title}</h2><p>{macro.tagline}</p></div>
@@ -204,7 +232,11 @@ export default function DevisEnLignePage() {
                 ) : null}
               </div>
 
-              <Ticket totals={totals} sel={sel} byName={byName} expanded={expanded} setExpanded={setExpanded} onRecap={() => setView('recap')} onRemove={remove} />
+              {/* Le simulateur porte sa propre estimation : afficher en plus le
+                  ticket « votre sélection · vide » n'apporterait que de la confusion. */}
+              {!(macro?.id === 'airbnb' && simConfig) && (
+                <Ticket totals={totals} sel={sel} byName={byName} expanded={expanded} setExpanded={setExpanded} onRecap={() => setView('recap')} onRemove={remove} />
+              )}
             </div>
           </>
         )}
@@ -310,7 +342,7 @@ function TicketLines({ sel, byName, onRemove, showPrice = false }: { sel: Sel; b
 }
 
 // ── Vue récap + formulaire ──
-function Recap({ totals, sel, byName, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number }; sel: Sel; byName: Map<string, Tarif>; form: { nom: string; tel: string; email: string; adresse: string; message: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
+function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number }; sel: Sel; byName: Map<string, Tarif>; simQuote: SimulatorSubmission | null; form: { nom: string; tel: string; email: string; adresse: string; message: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
   const set = (k: string, v: string) => setForm((f: any) => ({ ...f, [k]: v }));
   return (
     <>
@@ -318,14 +350,39 @@ function Recap({ totals, sel, byName, form, setForm, onBack, onHome, submit, bus
       <div className="dv-recap">
         <h2>Votre demande de devis</h2>
         <p className="dv-recap-sub">Vérifiez votre sélection, complétez vos coordonnées, puis envoyez.</p>
+        {/* Deux parcours mènent ici : le simulateur Airbnb, qui arrive avec un
+            chiffrage ferme, ou la sélection par cases, qui donne une fourchette. */}
         <div className="dv-ticket dv-recap-ticket">
-          <div className="dv-ticket-head" style={{ cursor: 'default' }}><h3>Récapitulatif</h3><span className="dv-ticket-count">{totals.count} prestation{totals.count > 1 ? 's' : ''}</span></div>
-          <div className="dv-ticket-body" style={{ display: 'block' }}>
-            {totals.count ? <TicketLines sel={sel} byName={byName} onRemove={() => {}} showPrice /> : <div className="dv-ticket-empty">Aucune prestation. <button className="dv-link" onClick={onHome}>Choisir des prestations</button></div>}
-          </div>
-          {totals.count > 0 && (
-            <div className="dv-ticket-total"><div className="dv-tt-row"><span>Estimation indicative</span><strong>{money(totals.min)} – {money(totals.max)}</strong></div>
-              {totals.quote.length > 0 && <div className="dv-tt-note">+ {totals.quote.length} sur devis</div>}</div>
+          {simQuote ? (
+            <>
+              <div className="dv-ticket-head" style={{ cursor: 'default' }}><h3>Récapitulatif</h3></div>
+              <div className="dv-ticket-body" style={{ display: 'block' }}>
+                <p className="dv-tl-meta" style={{ padding: '10px 0 4px' }}>{simQuote.summary}</p>
+                {simQuote.lines.map(l => (
+                  <div key={l.nom} className="dv-tl">
+                    <div className="dv-tl-main"><div className="dv-tl-name">{l.nom}</div></div>
+                    <div className="dv-tl-right"><span className="dv-tl-price">{money(l.total)}</span></div>
+                  </div>
+                ))}
+              </div>
+              <div className="dv-ticket-total">
+                <div className="dv-tt-row">
+                  <span>{simQuote.onRequest ? 'Devis sur mesure' : 'Estimation'}</span>
+                  <strong>{simQuote.onRequest ? 'Sur devis' : money(simQuote.total)}</strong>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="dv-ticket-head" style={{ cursor: 'default' }}><h3>Récapitulatif</h3><span className="dv-ticket-count">{totals.count} prestation{totals.count > 1 ? 's' : ''}</span></div>
+              <div className="dv-ticket-body" style={{ display: 'block' }}>
+                {totals.count ? <TicketLines sel={sel} byName={byName} onRemove={() => {}} showPrice /> : <div className="dv-ticket-empty">Aucune prestation. <button className="dv-link" onClick={onHome}>Choisir des prestations</button></div>}
+              </div>
+              {totals.count > 0 && (
+                <div className="dv-ticket-total"><div className="dv-tt-row"><span>Estimation indicative</span><strong>{money(totals.min)} – {money(totals.max)}</strong></div>
+                  {totals.quote.length > 0 && <div className="dv-tt-note">+ {totals.quote.length} sur devis</div>}</div>
+              )}
+            </>
           )}
         </div>
         <div className="dv-disc">Cette estimation est <strong>indicative</strong> et peut varier selon l’état des lieux, l’accessibilité et vos besoins constatés sur place. Le devis définitif vous sera confirmé avant intervention.</div>
