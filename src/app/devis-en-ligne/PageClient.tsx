@@ -223,12 +223,29 @@ export default function DevisEnLignePage() {
                     <div className="dv-cat-head"><h2>{macro.title}</h2><p>{macro.tagline}</p></div>
                     {macro.sections.map((s, i) => (
                       <div key={i} className="dv-sec">
-                        <div className="dv-sec-title">{s.title}{s.single && <span className="dv-sec-hint"> — un seul choix</span>}</div>
-                        <div className="dv-items">
-                          {s.items.map(it => (
-                            <ItemRow key={it.tarif.nom} it={it} single={s.single} siblings={s.items.map(x => x.tarif.nom)} sel={sel} toggle={toggle} setQty={setQty} />
-                          ))}
+                        <div className="dv-sec-title">
+                          {s.title}
+                          {s.typology
+                            ? <span className="dv-sec-hint"> — faites défiler du studio à la maison</span>
+                            : s.single && <span className="dv-sec-hint"> — un seul choix</span>}
                         </div>
+                        {/* Une progression de tailles se lit mieux à l'horizontale :
+                            on voit d'un coup où se situe son logement. */}
+                        {s.typology ? (
+                          <div className="dv-carousel">
+                            {s.items.map(it => (
+                              <TypologyCard key={it.tarif.nom} it={it}
+                                on={!!sel[it.tarif.nom]}
+                                onPick={() => toggle(it.tarif.nom, s.single, s.items.map(x => x.tarif.nom))} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="dv-items">
+                            {s.items.map(it => (
+                              <ItemRow key={it.tarif.nom} it={it} single={s.single} siblings={s.items.map(x => x.tarif.nom)} sel={sel} toggle={toggle} setQty={setQty} />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -289,6 +306,20 @@ function ItemRow({ it, single, siblings, sel, toggle, setQty }: { it: Item; sing
         </div>
       )}
     </div>
+  );
+}
+
+// ── Carte de typologie (carrousel Studio → Maison) ──
+// Volontairement sans prix ni compteur : à ce stade le visiteur désigne SON
+// logement, il ne compose pas une commande. Le chiffrage vient après.
+function TypologyCard({ it, on, onPick }: { it: Item; on: boolean; onPick: () => void }) {
+  return (
+    <button className={'dv-typo' + (on ? ' on' : '')} onClick={onPick} aria-pressed={on}>
+      <span className="dv-typo-ind" dangerouslySetInnerHTML={{ __html: ICON.check }} />
+      <span className="dv-typo-name">{it.name}</span>
+      {it.detail && <span className="dv-typo-det">{it.detail}</span>}
+      {it.mode === 'quote' && <span className="dv-typo-quote">Sur devis</span>}
+    </button>
   );
 }
 
@@ -451,6 +482,22 @@ const CSS = `
 .dv-cat-head{margin:6px 0 18px;} .dv-cat-head h2{margin:0;font-size:23px;letter-spacing:-.01em;} .dv-cat-head p{margin:5px 0 0;color:var(--soft);font-size:14px;}
 .dv-sec{margin-bottom:22px;} .dv-sec-title{font-size:14px;font-weight:600;margin-bottom:9px;} .dv-sec-hint{color:var(--faint);font-weight:500;font-size:12.5px;}
 .dv-items{display:flex;flex-direction:column;gap:7px;}
+/* Carrousel de typologies — défilement horizontal avec accroche, du plus petit
+   logement au plus grand. Les barres de défilement sont masquées : on fait
+   glisser au doigt sur mobile, à la molette ou au clavier sur ordinateur. */
+.dv-carousel{display:flex;gap:9px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 10px;margin:0 -2px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.dv-carousel::-webkit-scrollbar{height:6px;}
+.dv-carousel::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px;}
+.dv-typo{flex:0 0 128px;scroll-snap-align:start;background:var(--sf);border:1.4px solid var(--line);border-radius:14px;padding:14px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;font:inherit;color:inherit;transition:border-color .12s,background .12s,transform .12s;}
+.dv-typo:hover{border-color:var(--line2);transform:translateY(-2px);}
+.dv-typo.on{border-color:var(--gold);background:var(--gold-s);}
+.dv-typo-ind{width:19px;height:19px;border-radius:50%;border:1.6px solid var(--line2);display:flex;align-items:center;justify-content:center;background:var(--sf);flex-shrink:0;}
+.dv-typo.on .dv-typo-ind{background:var(--gold);border-color:var(--gold);}
+.dv-typo-ind svg{width:11px;height:11px;stroke:#fff;stroke-width:3;opacity:0;transition:opacity .12s;}
+.dv-typo.on .dv-typo-ind svg{opacity:1;}
+.dv-typo-name{font-weight:700;font-size:15.5px;}
+.dv-typo-det{font-size:11.5px;color:var(--soft);line-height:1.35;}
+.dv-typo-quote{font-size:11px;color:var(--gold-d);font-weight:600;}
 .dv-item{background:var(--sf);border:1.4px solid var(--line);border-radius:13px;padding:2px;transition:border-color .12s,background .12s;}
 .dv-item.on{border-color:var(--gold);background:var(--gold-s);}
 .dv-item-btn{display:flex;align-items:flex-start;gap:11px;width:100%;background:none;border:none;padding:10px 11px;cursor:pointer;text-align:left;font:inherit;color:inherit;border-radius:11px;}

@@ -16,6 +16,9 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/reservations', label: 'Réservations', icon: 'sync' },
   { href: '/admin/carte', label: 'Carte', icon: 'map' },
   { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
+  // Demandes entrantes et relances — avant la facturation : on suit le prospect
+  // d'abord, on facture ensuite.
+  { href: '/admin/prospects', label: 'Prospects', icon: 'request' },
   { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
   // Ce qui pilote le simulateur public : zones et communes, paliers, options.
   { href: '/admin/tarification', label: 'Tarification', icon: 'wallet' },
