@@ -11,7 +11,7 @@
 // qui vérifie la session.
 
 import { useState, useEffect, useCallback } from 'react';
-import { getSimulatorConfigDB, type SimulatorConfig } from '@/lib/devisConfig';
+import { getSimulatorConfigDB, type SimulatorConfig, type QuoteOption } from '@/lib/devisConfig';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
@@ -76,7 +76,7 @@ export default function TarificationClient() {
 
       {tab === 'zones' && <ZonesTab config={config} send={send} confirm={confirm} />}
       {tab === 'tiers' && <TiersTab config={config} send={send} />}
-      {tab === 'options' && <OptionsTab config={config} send={send} />}
+      {tab === 'options' && <OptionsTab config={config} send={send} confirm={confirm} />}
     </div>
   );
 }
@@ -251,39 +251,188 @@ function TiersTab({ config, send }: { config: SimulatorConfig; send: Send }) {
 }
 
 // ── Options ───────────────────────────────────────────────────────────────────
-function OptionsTab({ config, send }: { config: SimulatorConfig; send: Send }) {
+function OptionsTab({ config, send, confirm }: { config: SimulatorConfig; send: Send; confirm: Confirm }) {
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);   // id d'option, ou 'new'
+  const [draft, setDraft] = useState(emptyOptionDraft());
 
-  async function toggleDefault(key: string, current: boolean) {
-    const o = config.options.find(x => x.key === key);
-    if (!o) return;
+  function open(o?: QuoteOption) {
+    setDraft(o ? {
+      label: o.label,
+      perCapacity: o.perCapacity,
+      fee: String(o.fee ?? 0),
+      tiers: (o.tiers ?? []).map(t => ({ max: String(t.max), fee: String(t.fee) })),
+      defaultOn: o.defaultOn,
+    } : emptyOptionDraft());
+    setEditing(o?.id ?? 'new');
+  }
+
+  async function save() {
+    if (!draft.label.trim()) return;
     setBusy(true);
-    await send({ action: 'option.save', option: { id: o.id, key: o.key, label: o.label, fee: o.fee, perCapacity: o.perCapacity, tiers: o.tiers, defaultOn: !current } });
+    const ok = await send({
+      action: 'option.save',
+      option: {
+        id: editing === 'new' ? undefined : editing,
+        label: draft.label,
+        fee: draft.perCapacity ? 0 : num(draft.fee),
+        perCapacity: draft.perCapacity,
+        // Paliers triés : le calcul prend le premier dont le plafond couvre la
+        // capacité, un ordre de saisie approximatif fausserait le prix.
+        tiers: draft.perCapacity
+          ? draft.tiers
+              .filter(t => t.max !== '')
+              .map(t => ({ max: num(t.max), fee: num(t.fee) }))
+              .sort((a, b) => a.max - b.max)
+          : null,
+        defaultOn: draft.defaultOn,
+      },
+    });
+    setBusy(false);
+    if (ok) setEditing(null);
+  }
+
+  async function remove(o: QuoteOption) {
+    const ok = await confirm({
+      title: 'Supprimer cette option ?',
+      message: `« ${o.label} » disparaîtra du simulateur. Les devis déjà envoyés ne changent pas.`,
+      confirmLabel: 'Supprimer', danger: true,
+    });
+    if (ok) await send({ action: 'option.delete', id: o.id });
+  }
+
+  async function toggleDefault(o: QuoteOption) {
+    setBusy(true);
+    await send({
+      action: 'option.save',
+      option: { id: o.id, label: o.label, fee: o.fee, perCapacity: o.perCapacity, tiers: o.tiers, defaultOn: !o.defaultOn },
+    });
     setBusy(false);
   }
 
   return (
     <div className="space-y-3">
       {config.options.map(o => (
-        <div key={o.key} className="rounded-2xl border border-line bg-card p-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-semibold text-ink">{o.label}</p>
-            <p className="text-xs mt-0.5 text-muted">
-              {o.perCapacity
-                ? `Indexé sur le nombre de voyageurs — ${(o.tiers ?? []).map(t => `≤${t.max} : ${t.fee} €`).join(' · ')}`
-                : `Forfait ${o.fee} €`}
-            </p>
-          </div>
-          <button onClick={() => toggleDefault(o.key, o.defaultOn)} disabled={busy}
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border ${o.defaultOn ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
-            {o.defaultOn ? 'Cochée d’avance' : 'Décochée'}
-          </button>
+        <div key={o.key} className="rounded-2xl border border-line bg-card p-4">
+          {editing === o.id ? (
+            <OptionForm draft={draft} setDraft={setDraft} busy={busy} onSave={save} onCancel={() => setEditing(null)} />
+          ) : (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">{o.label}</p>
+                <p className="text-xs mt-0.5 text-muted">
+                  {o.perCapacity
+                    ? `Selon le nombre de voyageurs — ${(o.tiers ?? []).map(t => `≤${t.max} : ${t.fee} €`).join(' · ') || 'aucun palier défini'}`
+                    : `Forfait ${o.fee} €`}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => toggleDefault(o)} disabled={busy}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ${o.defaultOn ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
+                  {o.defaultOn ? 'Cochée d’avance' : 'Décochée'}
+                </button>
+                <button onClick={() => open(o)} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-line text-muted">Modifier</button>
+                <button onClick={() => remove(o)} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-danger-line text-danger">Supprimer</button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
-      <p className="text-[11px] text-faint">
-        Les paliers d&apos;une option indexée sur la capacité se règlent pour l&apos;instant
-        directement en base. Dites-moi si vous voulez les éditer ici aussi.
-      </p>
+
+      {editing === 'new' ? (
+        <div className="rounded-2xl border border-gold bg-gold-soft p-4">
+          <OptionForm draft={draft} setDraft={setDraft} busy={busy} onSave={save} onCancel={() => setEditing(null)} />
+        </div>
+      ) : (
+        <button onClick={() => open()} className="w-full py-3 rounded-xl text-sm font-semibold border border-dashed border-line text-muted">
+          + Ajouter une option
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Formulaire d'option ───────────────────────────────────────────────────────
+interface TierDraft { max: string; fee: string }
+interface OptionDraft { label: string; perCapacity: boolean; fee: string; tiers: TierDraft[]; defaultOn: boolean }
+
+const emptyOptionDraft = (): OptionDraft => ({ label: '', perCapacity: false, fee: '0', tiers: [], defaultOn: false });
+const num = (s: string) => parseFloat(String(s).replace(',', '.')) || 0;
+
+function OptionForm({ draft, setDraft, busy, onSave, onCancel }: {
+  draft: OptionDraft;
+  setDraft: (f: (d: OptionDraft) => OptionDraft) => void;
+  busy: boolean; onSave: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-xs font-semibold mb-1 text-muted">Nom de l&apos;option</label>
+        <input value={draft.label} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))}
+          placeholder="Linge fourni & lavé" className={FIELD} autoFocus />
+      </div>
+
+      {/* Le mode change la nature du prix : forfait unique, ou barème par capacité. */}
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setDraft(d => ({ ...d, perCapacity: false }))}
+          className={`flex-1 text-xs font-semibold px-3 py-2 rounded-xl border ${!draft.perCapacity ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
+          Prix fixe
+        </button>
+        <button type="button" onClick={() => setDraft(d => ({ ...d, perCapacity: true, tiers: d.tiers.length ? d.tiers : [{ max: '2', fee: '' }] }))}
+          className={`flex-1 text-xs font-semibold px-3 py-2 rounded-xl border ${draft.perCapacity ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
+          Selon le nombre de voyageurs
+        </button>
+      </div>
+
+      {draft.perCapacity ? (
+        <div>
+          <label className="block text-xs font-semibold mb-1 text-muted">Paliers</label>
+          <div className="space-y-2">
+            {draft.tiers.map((t, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-xs shrink-0 text-muted">jusqu&apos;à</span>
+                <input value={t.max} inputMode="numeric" className={`${FIELD} w-20`}
+                  onChange={e => setDraft(d => ({ ...d, tiers: d.tiers.map((x, j) => j === i ? { ...x, max: e.target.value } : x) }))} />
+                <span className="text-xs shrink-0 text-muted">voyageurs :</span>
+                <input value={t.fee} inputMode="decimal" className={`${FIELD} w-24`} placeholder="€"
+                  onChange={e => setDraft(d => ({ ...d, tiers: d.tiers.map((x, j) => j === i ? { ...x, fee: e.target.value } : x) }))} />
+                <button type="button" aria-label="Retirer ce palier" className="text-danger px-1"
+                  onClick={() => setDraft(d => ({ ...d, tiers: d.tiers.filter((_, j) => j !== i) }))}>
+                  <Icon name="close" size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => setDraft(d => ({ ...d, tiers: [...d.tiers, { max: '', fee: '' }] }))}
+            className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg border border-line text-muted">
+            + Ajouter un palier
+          </button>
+          <p className="text-[11px] mt-2 text-faint">
+            Au-delà du dernier palier, le simulateur cesse de chiffrer et bascule en
+            « sur devis » plutôt que d&apos;inventer un prix.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <label className="block text-xs font-semibold mb-1 text-muted">Montant (€)</label>
+          <input value={draft.fee} inputMode="decimal" className={`${FIELD} w-32`}
+            onChange={e => setDraft(d => ({ ...d, fee: e.target.value }))} />
+        </div>
+      )}
+
+      <label className="flex items-center gap-2 text-xs text-muted">
+        <input type="checkbox" checked={draft.defaultOn}
+          onChange={e => setDraft(d => ({ ...d, defaultOn: e.target.checked }))} />
+        Cochée d&apos;avance dans le simulateur
+      </label>
+
+      <div className="flex gap-2">
+        <button onClick={onSave} disabled={busy || !draft.label.trim()}
+          className="px-4 py-2 rounded-xl text-sm font-semibold bg-gold text-ink disabled:opacity-50">
+          {busy ? '…' : 'Enregistrer'}
+        </button>
+        <button onClick={onCancel} disabled={busy} className="px-4 py-2 rounded-xl text-sm border border-line text-muted">Annuler</button>
+      </div>
     </div>
   );
 }

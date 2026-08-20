@@ -97,10 +97,24 @@ export async function POST(req: NextRequest) {
           default_on: o.defaultOn === true,
           active: o.active !== false,
         };
-        const { error } = o.id
-          ? await db.from('devis_options').update(row).eq('id', o.id)
-          : await db.from('devis_options').insert({ ...row, key: (o.key || o.label).trim().toLowerCase().replace(/\s+/g, '_') });
-        if (error) throw error;
+        if (o.id) {
+          const { error } = await db.from('devis_options').update(row).eq('id', o.id);
+          if (error) throw error;
+        } else {
+          // La clé est dérivée du libellé et doit rester unique. Deux options du
+          // même nom lèveraient une violation de contrainte incompréhensible pour
+          // l'utilisateur : on le lui dit dans ses mots.
+          const key = (o.key || o.label).trim().toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'option';
+          const { error } = await db.from('devis_options').insert({ ...row, key });
+          if (error) {
+            if (error.code === '23505') {
+              return NextResponse.json({ error: 'Une option porte déjà ce nom.' }, { status: 400 });
+            }
+            throw error;
+          }
+        }
         break;
       }
       case 'option.delete': {
