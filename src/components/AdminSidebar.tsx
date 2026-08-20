@@ -8,26 +8,60 @@ import NotificationBell from '@/components/NotificationBell';
 import Icon, { type IconName } from '@/components/Icon';
 import Logo from '@/components/Logo';
 
-const navItems: { href: string; label: string; icon: IconName }[] = [
-  { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
-  { href: '/admin/missions', label: 'Missions', icon: 'missions' },
-  { href: '/admin/cleaners', label: 'Cleaners', icon: 'cleaners' },
-  { href: '/admin/airbnb', label: 'Sites', icon: 'building' },
-  { href: '/admin/reservations', label: 'Réservations', icon: 'sync' },
-  { href: '/admin/carte', label: 'Carte', icon: 'map' },
-  { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
-  // Demandes entrantes et relances — avant la facturation : on suit le prospect
-  // d'abord, on facture ensuite.
-  { href: '/admin/prospects', label: 'Prospects', icon: 'request' },
-  { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
-  // Ce qui pilote le simulateur public : zones et communes, paliers, options.
-  { href: '/admin/tarification', label: 'Tarification', icon: 'wallet' },
-  { href: '/admin/rendez-vous', label: 'Rendez-vous', icon: 'today' },
-  { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
-  { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
-  { href: '/admin/parking', label: 'Parking', icon: 'parking' },
-  { href: '/admin/rh', label: 'Règles RH', icon: 'award' },
-  { href: '/admin/formation', label: 'Formation', icon: 'book' },
+// ── Navigation groupée par MOMENT D'USAGE ─────────────────────────────────────
+//
+// Seize entrées à plat, on ne trouvait plus rien. Le classement suit ce qu'on
+// vient faire, pas la parenté technique des écrans :
+//
+//   Au quotidien — ce qu'on ouvre chaque matin
+//   Clients      — le cycle complet, du prospect au logement entretenu
+//   Équipe       — les intervenants et ce qui les encadre
+//   Gestion      — l'argent et les chiffres, consultés par périodes
+//
+// Ajouter un écran : le placer dans le groupe correspondant à SON MOMENT, pas
+// à sa proximité de code.
+interface NavItem { href: string; label: string; icon: IconName }
+interface NavGroup { title: string; items: NavItem[] }
+
+const navGroups: NavGroup[] = [
+  {
+    title: 'Au quotidien',
+    items: [
+      { href: '/admin', label: 'Tableau de bord', icon: 'dashboard' },
+      { href: '/admin/missions', label: 'Missions', icon: 'missions' },
+      { href: '/admin/rendez-vous', label: 'Rendez-vous', icon: 'today' },
+      { href: '/admin/carte', label: 'Carte des tournées', icon: 'map' },
+    ],
+  },
+  {
+    // L'ordre suit le cycle de vie : on est prospect avant d'être partenaire,
+    // partenaire avant d'avoir des sites, et les réservations arrivent ensuite.
+    title: 'Clients',
+    items: [
+      { href: '/admin/prospects', label: 'Prospects', icon: 'request' },
+      { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
+      { href: '/admin/airbnb', label: 'Sites', icon: 'building' },
+      { href: '/admin/reservations', label: 'Réservations', icon: 'sync' },
+    ],
+  },
+  {
+    title: 'Équipe',
+    items: [
+      { href: '/admin/cleaners', label: 'Cleaners', icon: 'cleaners' },
+      { href: '/admin/rh', label: 'Règles RH', icon: 'award' },
+      { href: '/admin/formation', label: 'Formation', icon: 'book' },
+    ],
+  },
+  {
+    title: 'Gestion',
+    items: [
+      { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
+      { href: '/admin/tarification', label: 'Tarification', icon: 'invoice' },
+      { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
+      { href: '/admin/parking', label: 'Parking', icon: 'parking' },
+      { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
+    ],
+  },
 ];
 
 export default function AdminSidebar() {
@@ -50,7 +84,7 @@ export default function AdminSidebar() {
     router.push('/login');
   }
 
-  const NavLink = ({ item }: { item: typeof navItems[0] }) => {
+  const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = pathname === item.href;
     return (
       <Link
@@ -79,8 +113,17 @@ export default function AdminSidebar() {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {navItems.map(item => <NavLink key={item.href} item={item} />)}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          {navGroups.map((group, i) => (
+            <div key={group.title} className={i > 0 ? 'mt-5' : ''}>
+              <p className="px-4 mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#A8A09A' }}>
+                {group.title}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map(item => <NavLink key={item.href} item={item} />)}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 py-4 border-t" style={{ borderColor: '#E8E4DC' }}>
@@ -134,8 +177,17 @@ export default function AdminSidebar() {
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-              {navItems.map(item => <NavLink key={item.href} item={item} />)}
+            <nav className="flex-1 px-3 py-3 overflow-y-auto">
+              {navGroups.map((group, i) => (
+                <div key={group.title} className={i > 0 ? 'mt-5' : ''}>
+                  <p className="px-4 mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#A8A09A' }}>
+                    {group.title}
+                  </p>
+                  <div className="space-y-0.5">
+                    {group.items.map(item => <NavLink key={item.href} item={item} />)}
+                  </div>
+                </div>
+              ))}
             </nav>
 
             {/* Logout */}
