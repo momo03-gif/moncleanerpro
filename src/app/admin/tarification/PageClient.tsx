@@ -12,6 +12,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getSimulatorConfigDB, type SimulatorConfig, type QuoteOption } from '@/lib/devisConfig';
+import { getTarifsDB, type Tarif } from '@/lib/devis';
+import PrestationsTab from './PrestationsTab';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
@@ -22,10 +24,12 @@ export default function TarificationClient() {
   const { toast, confirm } = useFeedback();
   const [config, setConfig] = useState<SimulatorConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'zones' | 'tiers' | 'options'>('zones');
+  const [tab, setTab] = useState<'prestations' | 'zones' | 'tiers' | 'options'>('prestations');
+  const [tarifs, setTarifs] = useState<Tarif[]>([]);
 
   const load = useCallback(async () => {
-    setConfig(await getSimulatorConfigDB());
+    const [cfg, t] = await Promise.all([getSimulatorConfigDB(), getTarifsDB()]);
+    setConfig(cfg); setTarifs(t);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -43,30 +47,18 @@ export default function TarificationClient() {
 
   if (loading) return <Loading className="p-6 text-sm" />;
 
-  if (!config) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-ink">Tarification du simulateur</h1>
-        <div className="mt-4 rounded-2xl border border-warn-line bg-warn-soft p-5">
-          <p className="text-sm text-warn">
-            Aucune grille trouvée. Exécutez <code>supabase/migration_devis_simulateur.sql</code>
-            {' '}dans Supabase : il crée les tables et une grille de départ, modifiable ici ensuite.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 max-w-4xl">
-      <h1 className="text-xl font-bold text-ink">Tarification du simulateur</h1>
+      <h1 className="text-xl font-bold text-ink">Tarification</h1>
       <p className="text-sm mt-1 text-muted">
-        Ce que voit un visiteur dans le simulateur Airbnb de la page de devis. Toute
-        modification est visible immédiatement sur le site.
+        Tous les prix du site en un seul endroit : les prestations de chaque carte de la
+        page de devis, et le barème du simulateur Airbnb. Toute modification est visible
+        immédiatement sur le site.
       </p>
 
-      <div className="flex gap-2 mt-5 mb-5">
-        {([['zones', 'Zones & communes'], ['tiers', 'Paliers de surface'], ['options', 'Options']] as const).map(([id, label]) => (
+      <div className="flex gap-2 mt-5 mb-5 flex-wrap">
+        {([['prestations', 'Prestations'], ['zones', 'Zones & communes'],
+           ['tiers', 'Paliers de surface'], ['options', 'Options']] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`text-sm font-semibold px-4 py-2 rounded-xl border ${tab === id ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
             {label}
@@ -74,9 +66,23 @@ export default function TarificationClient() {
         ))}
       </div>
 
-      {tab === 'zones' && <ZonesTab config={config} send={send} confirm={confirm} />}
-      {tab === 'tiers' && <TiersTab config={config} send={send} confirm={confirm} />}
-      {tab === 'options' && <OptionsTab config={config} send={send} confirm={confirm} />}
+      {tab === 'prestations' && <PrestationsTab tarifs={tarifs} onChanged={load} />}
+
+      {/* Les trois onglets du simulateur Airbnb ont besoin de sa configuration. */}
+      {tab !== 'prestations' && !config ? (
+        <div className="rounded-2xl border border-warn-line bg-warn-soft p-5">
+          <p className="text-sm text-warn">
+            Le barème du simulateur n&apos;est pas encore en base. Exécutez{' '}
+            <code>supabase/migration_devis_simulateur.sql</code> dans Supabase.
+          </p>
+        </div>
+      ) : config && (
+        <>
+          {tab === 'zones' && <ZonesTab config={config} send={send} confirm={confirm} />}
+          {tab === 'tiers' && <TiersTab config={config} send={send} confirm={confirm} />}
+          {tab === 'options' && <OptionsTab config={config} send={send} confirm={confirm} />}
+        </>
+      )}
     </div>
   );
 }
