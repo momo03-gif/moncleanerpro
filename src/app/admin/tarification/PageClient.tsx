@@ -308,10 +308,10 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       </div>
 
       <div className="px-4 py-3 border-t border-hairline flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-semibold text-ink">Voyageur supplémentaire</span>
+        <span className="text-sm font-semibold text-ink">Voyageurs supplémentaires</span>
         <input className={`${FIELD} w-24`} value={extraFee} inputMode="decimal"
           onChange={e => setExtraFee(e.target.value)} />
-        <span className="text-xs text-muted">€ par voyageur au-delà de la capacité comprise</span>
+        <span className="text-xs text-muted">€ par tranche de 2 voyageurs au-delà de la capacité comprise</span>
         <button onClick={saveExtraFee} disabled={busy}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gold text-ink disabled:opacity-50">
           Enregistrer
@@ -321,8 +321,9 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       <p className="px-4 py-3 text-[11px] text-faint">
         Les paliers se classent tout seuls par surface : peu importe l&apos;ordre de saisie.
         « Voyageurs compris » est le nombre de personnes déjà couvert par le prix du
-        palier : au-delà seulement, le supplément ci-dessus s&apos;applique. Laisser vide
-        signifie aucune limite, donc jamais de supplément.
+        palier : au-delà seulement, le supplément ci-dessus s&apos;applique, et il se compte
+        par tranche de deux — une personne en plus coûte autant que deux, trois autant que
+        quatre. Laisser vide signifie aucune limite, donc jamais de supplément.
         Le prix s&apos;annonce en fourchette : « de 30 à 35 € ». Laisser la borne haute vide
         donne un prix ferme. Laisser les deux vides signifie « sur devis » — au-delà de ce
         palier, le simulateur cesse de chiffrer et invite le visiteur à vous contacter,
