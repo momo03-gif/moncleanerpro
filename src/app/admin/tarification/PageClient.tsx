@@ -215,7 +215,7 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
   async function saveRow(i: number) {
     const t = rows[i];
     setBusy(true);
-    await send({ action: 'tier.save', tier: { id: config.tiers[i]?.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice } });
+    await send({ action: 'tier.save', tier: { id: config.tiers[i]?.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice, priceMax: t.priceMax ?? null } });
     setBusy(false);
   }
 
@@ -243,6 +243,7 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
         label: draft.label,
         capText: draft.capText || null,
         basePrice: draft.basePrice === '' ? null : parseFloat(draft.basePrice.replace(',', '.')) || 0,
+        priceMax: draft.priceMax === '' ? null : parseFloat(draft.priceMax.replace(',', '.')) || 0,
       },
     });
     setBusy(false);
@@ -253,21 +254,24 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
     <div className="rounded-2xl border border-line bg-card overflow-hidden">
       <div className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide border-b border-hairline text-muted">
         <span className="col-span-2">Jusqu&apos;à</span>
-        <span className="col-span-4">Libellé</span>
+        <span className="col-span-2">Libellé</span>
         <span className="col-span-3">Capacité affichée</span>
-        <span className="col-span-2">Prix</span>
+        <span className="col-span-2">Prix de</span>
+        <span className="col-span-2">à</span>
         <span className="col-span-1" />
       </div>
       {rows.map((t, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-center px-4 py-2 border-b last:border-0 border-hairline">
           <input className={`${FIELD} col-span-2`} value={t.maxM2}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, maxM2: parseInt(e.target.value, 10) || 0 } : x))} />
-          <input className={`${FIELD} col-span-4`} value={t.label}
+          <input className={`${FIELD} col-span-2`} value={t.label}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
           <input className={`${FIELD} col-span-3`} value={t.capText ?? ''}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, capText: e.target.value } : x))} />
           <input className={`${FIELD} col-span-2`} value={t.basePrice ?? ''} placeholder="sur devis"
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, basePrice: e.target.value === '' ? null : parseFloat(e.target.value.replace(',', '.')) || 0 } : x))} />
+          <input className={`${FIELD} col-span-2`} value={t.priceMax ?? ''} placeholder="prix ferme"
+            onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, priceMax: e.target.value === '' ? null : parseFloat(e.target.value.replace(',', '.')) || 0 } : x))} />
           <div className="col-span-1 flex justify-end gap-1">
             <button onClick={() => saveRow(i)} disabled={busy} aria-label={`Enregistrer le palier ${t.label}`}
               className="text-gold-ink px-1"><Icon name="check" size={16} /></button>
@@ -281,12 +285,14 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       <div className="grid grid-cols-12 gap-2 items-center px-4 py-2 border-t border-hairline bg-surface-2">
         <input className={`${FIELD} col-span-2`} value={draft.maxM2} inputMode="numeric" placeholder="m²"
           onChange={e => setDraft(d => ({ ...d, maxM2: e.target.value }))} />
-        <input className={`${FIELD} col-span-4`} value={draft.label} placeholder="T6, Loft…"
+        <input className={`${FIELD} col-span-2`} value={draft.label} placeholder="T6, Loft…"
           onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
         <input className={`${FIELD} col-span-3`} value={draft.capText} placeholder="12–14 pers."
           onChange={e => setDraft(d => ({ ...d, capText: e.target.value }))} />
         <input className={`${FIELD} col-span-2`} value={draft.basePrice} inputMode="decimal" placeholder="sur devis"
           onChange={e => setDraft(d => ({ ...d, basePrice: e.target.value }))} />
+        <input className={`${FIELD} col-span-2`} value={draft.priceMax} inputMode="decimal" placeholder="prix ferme"
+          onChange={e => setDraft(d => ({ ...d, priceMax: e.target.value }))} />
         <button onClick={addRow} disabled={busy || !draft.label.trim() || !draft.maxM2}
           aria-label="Ajouter ce palier"
           className="col-span-1 text-xs font-semibold text-gold-ink disabled:opacity-40">Ajouter</button>
@@ -294,16 +300,17 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
 
       <p className="px-4 py-3 text-[11px] text-faint">
         Les paliers se classent tout seuls par surface : peu importe l&apos;ordre de saisie.
-        Un prix vide signifie « sur devis » — au-delà de ce palier, le simulateur cesse de
-        chiffrer et invite le visiteur à vous contacter, ce qui évite d&apos;annoncer un
-        montant sur un logement hors norme.
+        Le prix s&apos;annonce en fourchette : « de 30 à 35 € ». Laisser la borne haute vide
+        donne un prix ferme. Laisser les deux vides signifie « sur devis » — au-delà de ce
+        palier, le simulateur cesse de chiffrer et invite le visiteur à vous contacter,
+        ce qui évite d&apos;annoncer un montant sur un logement hors norme.
       </p>
     </div>
   );
 }
 
-interface TierDraft2 { maxM2: string; label: string; capText: string; basePrice: string }
-const emptyTierDraft = (): TierDraft2 => ({ maxM2: '', label: '', capText: '', basePrice: '' });
+interface TierDraft2 { maxM2: string; label: string; capText: string; basePrice: string; priceMax: string }
+const emptyTierDraft = (): TierDraft2 => ({ maxM2: '', label: '', capText: '', basePrice: '', priceMax: '' });
 
 // ── Options ───────────────────────────────────────────────────────────────────
 function OptionsTab({ config, send, confirm }: { config: SimulatorConfig; send: Send; confirm: Confirm }) {

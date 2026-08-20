@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   let body: {
     action?: string;
     zone?: { id?: string; name?: string; fee?: number; communes?: string[]; color?: string | null; position?: number; active?: boolean };
-    tier?: { id?: string; maxM2?: number; label?: string; capText?: string | null; basePrice?: number | null; active?: boolean };
+    tier?: { id?: string; maxM2?: number; label?: string; capText?: string | null; basePrice?: number | null; priceMax?: number | null; active?: boolean };
     option?: { id?: string; key?: string; label?: string; fee?: number; perCapacity?: boolean; tiers?: unknown; defaultOn?: boolean; active?: boolean };
     settings?: { capacitySurcharge?: unknown; bathroomSurcharge?: unknown; urgency?: unknown; minM2?: number; maxM2?: number };
     id?: string;
@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
           label: t.label.trim(),
           cap_text: t.capText || null,
           base_price: t.basePrice == null ? null : Number(t.basePrice),
+          // Borne haute de la fourchette. Vide = prix ferme.
+          price_max: t.priceMax == null ? null : Number(t.priceMax),
           active: t.active !== false,
         };
         const { error } = t.id

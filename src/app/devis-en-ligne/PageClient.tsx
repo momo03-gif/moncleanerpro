@@ -133,7 +133,9 @@ export default function DevisEnLignePage() {
             // Le simulateur décrit le logement (surface, voyageurs, zone) : c'est
             // ce dont l'équipe a besoin pour confirmer, pas une fourchette de cases.
             simQuote
-              ? `${simQuote.summary} — ${simQuote.onRequest ? 'sur devis' : `estimation ${money(simQuote.total)}`}`
+              ? `${simQuote.summary} — ${simQuote.onRequest
+                  ? 'sur devis'
+                  : `estimation ${money(simQuote.total)}${simQuote.totalMax > simQuote.total ? ` à ${money(simQuote.totalMax)}` : ''}`}`
               : `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`,
           ].filter(Boolean).join(' — '),
           lines, total,
@@ -402,7 +404,13 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
               <div className="dv-ticket-total">
                 <div className="dv-tt-row">
                   <span>{simQuote.onRequest ? 'Devis sur mesure' : 'Estimation'}</span>
-                  <strong>{simQuote.onRequest ? 'Sur devis' : money(simQuote.total)}</strong>
+                  <strong>
+                    {simQuote.onRequest
+                      ? 'Sur devis'
+                      : simQuote.totalMax > simQuote.total
+                        ? `${money(simQuote.total)} – ${money(simQuote.totalMax)}`
+                        : money(simQuote.total)}
+                  </strong>
                 </div>
               </div>
             </>

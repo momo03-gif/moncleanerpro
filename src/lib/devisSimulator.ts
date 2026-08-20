@@ -16,8 +16,14 @@ export interface SurfaceTier {
   maxM2: number;
   label: string;
   capText?: string;
-  /** null = au-delà de la grille → sur devis. */
+  /** Bas de la fourchette. null = au-delà de la grille → sur devis. */
   basePrice: number | null;
+  /**
+   * Haut de la fourchette. null = prix ferme (les deux bornes sont égales).
+   * L'état réel du logement fait varier le temps passé : annoncer une seule
+   * valeur obligerait à choisir entre paraître cher et devoir se dédire.
+   */
+  priceMax?: number | null;
 }
 
 export interface CapacityStep { max: number; fee: number }
@@ -65,12 +71,21 @@ export interface SimulatorState {
   urgencyId: string | null;
 }
 
-export interface QuoteLine { label: string; amount: number }
+export interface QuoteLine {
+  label: string;
+  /** Bas de la fourchette pour cette ligne. */
+  amount: number;
+  /** Haut, quand la ligne est une fourchette (le ménage de base). */
+  amountMax?: number;
+}
 
 export interface Quote {
   tier: SurfaceTier | null;
   lines: QuoteLine[];
+  /** Bas de la fourchette, tout compris. */
   total: number;
+  /** Haut de la fourchette. Égal à `total` quand tout est ferme. */
+  totalMax: number;
   /** Vrai quand la configuration sort de la grille : on ne chiffre pas. */
   onRequest: boolean;
   /** Pourquoi c'est sur devis — affiché au visiteur, pas un code d'erreur. */
@@ -121,50 +136,58 @@ export function computeQuote(config: SimulatorConfig, state: SimulatorState): Qu
   const tier = tierFor(config.tiers, state.surface) ?? null;
 
   if (!tier || tier.basePrice === null) {
-    return { tier, lines: [], total: 0, onRequest: true, reason: 'Surface hors grille standard' };
+    return { tier, lines: [], total: 0, totalMax: 0, onRequest: true, reason: 'Surface hors grille standard' };
   }
 
   const capStep = stepFor(config.capacitySurcharge, state.travelers);
   if (!capStep) {
-    return { tier, lines: [], total: 0, onRequest: true, reason: 'Capacité hors grille standard' };
+    return { tier, lines: [], total: 0, totalMax: 0, onRequest: true, reason: 'Capacité hors grille standard' };
   }
 
-  const lines: QuoteLine[] = [{ label: `Ménage ${tier.label}`, amount: tier.basePrice }];
+  // Seul le ménage de base est une fourchette ; les suppléments sont fermes.
+  // Ils décalent donc les deux bornes de la même valeur.
+  const haut = tier.priceMax ?? tier.basePrice;
+  const lines: QuoteLine[] = [{
+    label: `Ménage ${tier.label}`,
+    amount: tier.basePrice,
+    ...(haut > tier.basePrice ? { amountMax: haut } : {}),
+  }];
   let total = tier.basePrice;
+  let totalMax = haut;
 
   if (capStep.fee > 0) {
     lines.push({ label: `Capacité ${state.travelers} voyageurs`, amount: capStep.fee });
-    total += capStep.fee;
+    total += capStep.fee; totalMax += capStep.fee;
   }
 
   const bath = bathroomFee(config.bathroomSurcharge, state.bathrooms);
   if (bath > 0) {
     lines.push({ label: `${state.bathrooms} salles de bain`, amount: bath });
-    total += bath;
+    total += bath; totalMax += bath;
   }
 
   const zone = config.zones.find(z => z.id === state.zoneId);
   if (zone && zone.fee > 0) {
     lines.push({ label: `Zone — ${zone.name}`, amount: zone.fee });
-    total += zone.fee;
+    total += zone.fee; totalMax += zone.fee;
   }
 
   for (const option of config.options) {
     if (!state.options.includes(option.key)) continue;
     const fee = optionFee(option, state.travelers);
     if (fee === null) {
-      return { tier, lines: [], total: 0, onRequest: true, reason: `${option.label} : capacité hors barème` };
+      return { tier, lines: [], total: 0, totalMax: 0, onRequest: true, reason: `${option.label} : capacité hors barème` };
     }
-    if (fee > 0) { lines.push({ label: option.label, amount: fee }); total += fee; }
+    if (fee > 0) { lines.push({ label: option.label, amount: fee }); total += fee; totalMax += fee; }
   }
 
   const urgency = config.urgency.find(u => u.id === state.urgencyId);
   if (urgency && urgency.fee > 0) {
     lines.push({ label: `Délai — ${urgency.label.toLowerCase()}`, amount: urgency.fee });
-    total += urgency.fee;
+    total += urgency.fee; totalMax += urgency.fee;
   }
 
-  return { tier, lines, total: Math.round(total), onRequest: false };
+  return { tier, lines, total: Math.round(total), totalMax: Math.round(totalMax), onRequest: false };
 }
 
 /** État de départ cohérent avec la configuration (options cochées d'avance, 1re zone). */

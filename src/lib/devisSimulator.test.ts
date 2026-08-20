@@ -6,10 +6,10 @@ import {
 
 const CONFIG: SimulatorConfig = {
   tiers: [
-    { maxM2: 30, label: 'Studio', capText: '1–2 pers.', basePrice: 50 },
-    { maxM2: 45, label: 'T2', capText: '2–4 pers.', basePrice: 62 },
-    { maxM2: 90, label: 'T3', capText: '4–6 pers.', basePrice: 100 },
-    { maxM2: 9999, label: 'Sur mesure', basePrice: null },
+    { maxM2: 30, label: 'Studio', capText: '1–2 pers.', basePrice: 25, priceMax: 30 },
+    { maxM2: 45, label: 'T2', capText: '2–4 pers.', basePrice: 30, priceMax: 35 },
+    { maxM2: 90, label: 'T3', capText: '4–6 pers.', basePrice: 40, priceMax: 50 },
+    { maxM2: 9999, label: 'Sur mesure', basePrice: null, priceMax: null },
   ],
   zones: [
     { id: 'z1', name: 'Lyon intramuros', fee: 0, communes: ['Lyon 1er', 'Lyon 7e'] },
@@ -78,11 +78,12 @@ describe('optionFee', () => {
 });
 
 describe('computeQuote — l’estimation ligne par ligne', () => {
-  it('chiffre une configuration simple', () => {
+  it('chiffre une configuration simple, en fourchette', () => {
     const q = computeQuote(CONFIG, base);
     expect(q.onRequest).toBe(false);
-    expect(q.total).toBe(62);
-    expect(q.lines).toEqual([{ label: 'Ménage T2', amount: 62 }]);
+    expect(q.total).toBe(30);
+    expect(q.totalMax).toBe(35);
+    expect(q.lines).toEqual([{ label: 'Ménage T2', amount: 30, amountMax: 35 }]);
   });
 
   it('additionne capacité, salles de bain, zone, options et délai', () => {
@@ -90,8 +91,10 @@ describe('computeQuote — l’estimation ligne par ligne', () => {
       surface: 40, travelers: 4, bathrooms: 2, zoneId: 'z2',
       options: ['linen', 'windows'], urgencyId: 'h24',
     });
-    // 62 base + 5 capacité + 10 sdb + 5 zone + 20 linge + 25 vitres + 15 urgence
-    expect(q.total).toBe(142);
+    // Les suppléments sont fermes : ils décalent les DEUX bornes de 80 €.
+    // Bas : 30 + 80 = 110. Haut : 35 + 80 = 115.
+    expect(q.total).toBe(110);
+    expect(q.totalMax).toBe(115);
     expect(q.lines.map(l => l.label)).toEqual([
       'Ménage T2', 'Capacité 4 voyageurs', '2 salles de bain',
       'Zone — Proche périphérie', 'Linge fourni & lavé', 'Vitres accessibles', 'Délai — sous 24 h',
@@ -107,6 +110,7 @@ describe('computeQuote — l’estimation ligne par ligne', () => {
     const q = computeQuote(CONFIG, { ...base, surface: 500 });
     expect(q.onRequest).toBe(true);
     expect(q.total).toBe(0);
+    expect(q.totalMax).toBe(0);
     expect(q.reason).toMatch(/surface/i);
   });
 
@@ -125,7 +129,15 @@ describe('computeQuote — l’estimation ligne par ligne', () => {
   it('ignore une zone inconnue sans planter', () => {
     const q = computeQuote(CONFIG, { ...base, zoneId: 'inexistante' });
     expect(q.onRequest).toBe(false);
+    expect(q.total).toBe(30);
+  });
+
+  it('rend un prix ferme quand le palier n’a pas de borne haute', () => {
+    const ferme: SimulatorConfig = { ...CONFIG, tiers: [{ maxM2: 45, label: 'T2', basePrice: 62 }] };
+    const q = computeQuote(ferme, base);
     expect(q.total).toBe(62);
+    expect(q.totalMax).toBe(62);
+    expect(q.lines[0].amountMax).toBeUndefined();
   });
 });
 
