@@ -72,6 +72,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
   }
 
   return (
+    <>
     <div className="sim-layout">
       <div className="sim">
       {/* ── 1. Le logement ──────────────────────────────────────────────── */}
@@ -197,6 +198,67 @@ export default function AirbnbSimulator({ config, onContinue }: {
       </div>
       </div>
     </div>
+
+    {/* Le simulateur chiffre UN logement. Une conciergerie en gère dix : il faut
+        lui dire, sinon elle repart avec un prix unitaire qui ne la concerne pas. */}
+    <MultiLogements />
+    </>
+  );
+}
+
+// ── Multi-logements ───────────────────────────────────────────────────────────
+// Aucun montant ici : les conditions de volume se discutent, elles ne
+// s'affichent pas. On annonce les paliers et ce qu'ils changent concrètement.
+const FORMULES: { titre: string; volume: string; points: string[]; phare?: boolean }[] = [
+  {
+    titre: 'Standard',
+    volume: '1 à 4 logements',
+    points: ['Tarif public du simulateur', 'Facturation à l’intervention', 'Réservation en ligne ou par téléphone'],
+  },
+  {
+    titre: 'Pro',
+    volume: '5 à 19 logements',
+    points: ['Tarifs préférentiels sur volume', 'Planning prioritaire et interlocuteur dédié', 'Facturation mensuelle groupée'],
+    phare: true,
+  },
+  {
+    titre: 'Partenaire',
+    volume: '20 logements et plus',
+    points: ['Tarifs sur mesure', 'Accès autonome et planning dédié', 'Conditions étudiées avec votre équipe'],
+  },
+];
+
+function MultiLogements() {
+  return (
+    <section className="sim-multi">
+      <div className="sim-multi-head">
+        <p className="sim-multi-eyebrow">Multi-logements</p>
+        <h3>Vous gérez plusieurs logements ?</h3>
+        <p className="sim-multi-sub">
+          Conciergeries et multi-propriétaires : trois formules pensées pour le volume —
+          planning regroupé, accès autonome et facturation professionnelle.
+        </p>
+      </div>
+
+      <div className="sim-multi-grid">
+        {FORMULES.map(f => (
+          <div key={f.titre} className={'sim-formule' + (f.phare ? ' on' : '')}>
+            {f.phare && <span className="sim-formule-badge">Recommandé</span>}
+            <h4>{f.titre}</h4>
+            <p className="sim-formule-volume">{f.volume}</p>
+            <ul>
+              {f.points.map(p => <li key={p}>{p}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <p className="sim-multi-note">
+        La grille conciergerie détaillée se communique après un premier échange. Indiquez
+        votre nombre de logements dans votre demande, nous revenons vers vous avec des
+        conditions adaptées.
+      </p>
+    </section>
   );
 }
 
@@ -271,4 +333,22 @@ export const SIMULATOR_CSS = `
 .sim-total span{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--faint);}
 .sim-total strong{font-size:28px;color:var(--gold-d);font-variant-numeric:tabular-nums;}
 .sim-disc{font-size:11.5px;color:var(--faint);line-height:1.5;margin:12px 0 16px;}
+/* Multi-logements : bande pleine largeur sous le simulateur. Autre message,
+   autre respiration — on ne le glisse pas entre deux réglages. */
+.sim-multi{margin-top:34px;padding-top:28px;border-top:1px solid var(--line);}
+.sim-multi-head{max-width:560px;margin-bottom:18px;}
+.sim-multi-eyebrow{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-d);margin:0 0 6px;}
+.sim-multi h3{margin:0;font-size:21px;letter-spacing:-.01em;}
+.sim-multi-sub{margin:8px 0 0;font-size:14px;color:var(--soft);line-height:1.55;}
+.sim-multi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:840px){.sim-multi-grid{grid-template-columns:1fr;}}
+.sim-formule{position:relative;background:var(--sf);border:1.4px solid var(--line);border-radius:16px;padding:22px 20px;}
+.sim-formule.on{border-color:var(--gold);box-shadow:0 8px 24px -14px rgba(26,26,26,.3);}
+.sim-formule-badge{position:absolute;top:-11px;left:20px;background:var(--gold);color:#1A1A1A;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:4px 12px;border-radius:99px;}
+.sim-formule h4{margin:0;font-size:17px;font-weight:700;}
+.sim-formule-volume{margin:4px 0 0;font-size:12.5px;font-weight:700;color:var(--gold-d);}
+.sim-formule ul{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-direction:column;gap:9px;}
+.sim-formule li{position:relative;padding-left:20px;font-size:13.5px;color:var(--soft);line-height:1.45;}
+.sim-formule li::before{content:"";position:absolute;left:0;top:6px;width:10px;height:10px;border-radius:50%;background:var(--gold-s);border:1.5px solid var(--gold);}
+.sim-multi-note{margin:18px 0 0;font-size:12.5px;color:var(--faint);line-height:1.55;max-width:640px;}
 `;
