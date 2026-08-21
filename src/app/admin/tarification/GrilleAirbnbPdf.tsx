@@ -11,10 +11,17 @@
 // d'un élément réellement mis en page pour le photographier.
 
 import { useRef, useState } from 'react';
-import { downloadElementPdf } from '@/lib/pdf';
+import { downloadSheetsPdf } from '@/lib/pdf';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import type { SimulatorConfig } from '@/lib/devisConfig';
 import Icon from '@/components/Icon';
+
+// Format commun aux deux feuilles : même largeur, mêmes marges, sinon la
+// seconde page paraît décalée par rapport à la première.
+const SHEET: React.CSSProperties = {
+  width: 780, padding: 32, background: '#FFFFFF',
+  fontFamily: 'ui-sans-serif, system-ui, sans-serif', color: '#1A1A1A',
+};
 
 const euro = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} €`;
 
@@ -25,15 +32,18 @@ function priceCell(min: number | null, max?: number | null): string {
 
 export default function GrilleAirbnbPdf({ config }: { config: SimulatorConfig }) {
   const { toast } = useFeedback();
-  const sheetRef = useRef<HTMLDivElement>(null);
+  // Deux feuilles plutôt qu'un long document : c'est nous qui décidons où la
+  // page se termine, et non le découpeur d'image.
+  const page1 = useRef<HTMLDivElement>(null);
+  const page2 = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
   async function download() {
-    if (!sheetRef.current) return;
+    if (!page1.current || !page2.current) return;
     setBusy(true);
     try {
       const mois = new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: '2-digit' }).replace('/', '-');
-      await downloadElementPdf(sheetRef.current, `grille-airbnb-moncleanerpro-${mois}.pdf`);
+      await downloadSheetsPdf([page1.current, page2.current], `grille-airbnb-moncleanerpro-${mois}.pdf`);
     } catch {
       toast('Export PDF impossible sur cet appareil.', 'error');
     }
@@ -50,7 +60,7 @@ export default function GrilleAirbnbPdf({ config }: { config: SimulatorConfig })
 
       {/* Hors écran, mais bel et bien mis en page. */}
       <div style={{ position: 'fixed', left: -10000, top: 0, width: 780, pointerEvents: 'none' }} aria-hidden="true">
-        <div ref={sheetRef} style={{ width: 780, padding: 32, background: '#FFFFFF', fontFamily: 'ui-sans-serif, system-ui, sans-serif', color: '#1A1A1A' }}>
+        <div ref={page1} style={SHEET}>
 
           <div style={{ borderBottom: '2px solid #C9A84C', paddingBottom: 14, marginBottom: 20 }}>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: '#8A6A1E', fontWeight: 700 }}>
@@ -93,6 +103,17 @@ export default function GrilleAirbnbPdf({ config }: { config: SimulatorConfig })
             Le tarif s&apos;entend pour un logement rendu en état normal. Au-delà de la capacité
             comprise, chaque tranche de deux voyageurs supplémentaires ajoute {euro(config.extraGuestFee)}.
           </Note>
+
+        </div>
+
+        {/* ── Feuille 2 : où l'on intervient, et ce qu'on peut ajouter ───────── */}
+        <div ref={page2} style={SHEET}>
+          <div style={{ borderBottom: '2px solid #C9A84C', paddingBottom: 10, marginBottom: 6 }}>
+            <p style={{ margin: 0, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: '#8A6A1E', fontWeight: 700 }}>
+              MonCleanerPro · Airbnb &amp; Conciergerie
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#7A7068' }}>Zones d&apos;intervention et services en plus</p>
+          </div>
 
           {/* Zones */}
           {config.zones.length > 0 && (
