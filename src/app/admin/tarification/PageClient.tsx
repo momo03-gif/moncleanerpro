@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getSimulatorConfigDB, type SimulatorConfig, type QuoteOption } from '@/lib/devisConfig';
 import { getTarifsDB, type Tarif } from '@/lib/devis';
 import PrestationsTab from './PrestationsTab';
+import GrilleAirbnbPdf from './GrilleAirbnbPdf';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
@@ -56,14 +57,42 @@ export default function TarificationClient() {
         immédiatement sur le site.
       </p>
 
-      <div className="flex gap-2 mt-5 mb-5 flex-wrap">
-        {([['prestations', 'Prestations'], ['zones', 'Zones & communes'],
-           ['tiers', 'Paliers de surface'], ['options', 'Options']] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`text-sm font-semibold px-4 py-2 rounded-xl border ${tab === id ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
-            {label}
+      {/* Deux niveaux distincts : ce qui vaut pour TOUTES les cartes de la page de
+          devis, et ce qui n'appartient qu'à la carte Airbnb & Conciergerie.
+          À plat, on croyait régler des paramètres généraux. */}
+      <div className="mt-5 mb-5 space-y-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 text-faint">
+            Toutes les cartes de la page de devis
+          </p>
+          <button onClick={() => setTab('prestations')}
+            className={`text-sm font-semibold px-4 py-2 rounded-xl border ${tab === 'prestations' ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
+            Prestations
           </button>
-        ))}
+        </div>
+
+        <div className="rounded-2xl border border-line bg-surface-2 p-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">
+                Carte « Airbnb &amp; Conciergerie » uniquement
+              </p>
+              <p className="text-xs mt-0.5 text-muted">
+                Le barème du simulateur : il ne s&apos;applique qu&apos;à cette carte.
+              </p>
+            </div>
+            {config && <GrilleAirbnbPdf config={config} />}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {([['tiers', 'Paliers de surface'], ['zones', 'Zones & communes'],
+               ['options', 'Options']] as const).map(([id, label]) => (
+              <button key={id} onClick={() => setTab(id)}
+                className={`text-sm font-semibold px-4 py-2 rounded-xl border ${tab === id ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line bg-card text-muted'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {tab === 'prestations' && <PrestationsTab tarifs={tarifs} onChanged={load} />}
