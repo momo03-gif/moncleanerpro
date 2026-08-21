@@ -1,4 +1,8 @@
-const CACHE = 'mcp-v20';
+// Version du cache. À INCRÉMENTER dès qu'on soupçonne un navigateur de servir
+// une version périmée : `activate` supprime tout cache dont la clé diffère, donc
+// changer ce numéro purge les anciens fragments chez tous les visiteurs.
+// Symptôme typique : l'app marche sur un appareil et pas sur un autre.
+const CACHE = 'mcp-v21';
 const OFFLINE_URL = '/offline';
 
 // La vitrine ne doit PAS avoir de service worker en cache. Si ce SW se retrouve
