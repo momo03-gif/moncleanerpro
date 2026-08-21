@@ -47,3 +47,46 @@ export async function downloadElementPdf(el: HTMLElement, filename: string): Pro
   }
   pdf.save(filename);
 }
+
+/**
+ * PDF multi-pages où CHAQUE élément occupe sa propre page.
+ *
+ * `downloadElementPdf` découpe une image trop haute à l'aveugle : la coupure
+ * tombe où elle tombe, souvent au milieu d'une ligne de tableau. Ici, c'est
+ * l'auteur du document qui décide où la page se termine — un élément, une page.
+ * Chaque feuille est réduite si besoin pour tenir entière.
+ */
+export async function downloadSheetsPdf(els: HTMLElement[], filename: string): Promise<void> {
+  const sheets = els.filter(Boolean);
+  if (sheets.length === 0) return;
+
+  const [h2cMod, jspdfMod] = await Promise.all([import('html2canvas'), import('jspdf')]);
+  const html2canvas = (h2cMod as unknown as { default: (e: HTMLElement, o?: object) => Promise<HTMLCanvasElement> }).default;
+  const JsPDF = (jspdfMod as unknown as { jsPDF: new (o?: object) => any }).jsPDF;
+
+  const pdf = new JsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const usableW = pageW - margin * 2;
+  const usableH = pageH - margin * 2;
+
+  for (let i = 0; i < sheets.length; i++) {
+    const canvas = await html2canvas(sheets[i], { scale: 2, backgroundColor: '#FFFFFF', useCORS: true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    if (i > 0) pdf.addPage();
+
+    const naturalH = (canvas.height * usableW) / canvas.width;
+    if (naturalH <= usableH) {
+      pdf.addImage(imgData, 'JPEG', margin, margin, usableW, naturalH);
+    } else {
+      // Feuille trop dense : on la réduit pour qu'elle tienne, plutôt que de la
+      // couper. Une grille tarifaire coupée en deux ne se présente pas à un client.
+      const fitH = usableH;
+      const fitW = (canvas.width * fitH) / canvas.height;
+      pdf.addImage(imgData, 'JPEG', (pageW - fitW) / 2, margin, fitW, fitH);
+    }
+  }
+
+  pdf.save(filename);
+}
