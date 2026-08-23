@@ -36,7 +36,10 @@ export default function AirbnbSimulator({ config, onContinue }: {
   /** Passe au récapitulatif + coordonnées, avec le contenu du devis. */
   onContinue: (s: SimulatorSubmission) => void;
 }) {
-  const [state, setState] = useState<SimulatorState>(() => initialState(config));
+  // Le délai n'est plus demandé au visiteur : on ne présélectionne donc aucun
+  // niveau d'urgence, sinon un barème réordonné en base pourrait facturer un
+  // supplément que personne n'a choisi.
+  const [state, setState] = useState<SimulatorState>(() => ({ ...initialState(config), urgencyId: null }));
   const [commune, setCommune] = useState('');
 
   const quote = useMemo(() => computeQuote(config, state), [config, state]);
@@ -156,23 +159,6 @@ export default function AirbnbSimulator({ config, onContinue }: {
                 </button>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* ── 5. Le délai ─────────────────────────────────────────────────── */}
-      {config.urgency.length > 0 && (
-        <div className="sim-block">
-          <div className="sim-head"><span className="sim-step">5</span><span className="sim-title">Sous quel délai ?</span></div>
-          <div className="sim-chips">
-            {config.urgency.map(u => (
-              <button key={u.id} type="button"
-                className={'sim-chip' + (u.id === state.urgencyId ? ' on' : '')}
-                onClick={() => set('urgencyId', u.id)}>
-                {u.label}
-                {u.fee > 0 && <span className="sim-chip-fee">+{u.fee} €</span>}
-              </button>
-            ))}
           </div>
         </div>
       )}
