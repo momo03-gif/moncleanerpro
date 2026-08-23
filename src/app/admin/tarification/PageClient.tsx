@@ -246,7 +246,15 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(emptyTierDraft());
   const [extraFee, setExtraFee] = useState(String(config.extraGuestFee ?? 0));
-  useEffect(() => { setRows(config.tiers.map(t => ({ ...t }))); }, [config.tiers]);
+  const [savedId, setSavedId] = useState<string | null>(null);
+
+  // On ne réaligne les lignes sur la base QUE si la liste change (ajout,
+  // suppression). Se caler sur `config.tiers` à chaque rechargement écrasait les
+  // saisies en cours des AUTRES lignes : on tapait trois prix, on en enregistrait
+  // un, et les deux autres revenaient à leur ancienne valeur.
+  const idsKey = config.tiers.map(t => t.id).join('|');
+  useEffect(() => { setRows(config.tiers.map(t => ({ ...t }))); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
   useEffect(() => { setExtraFee(String(config.extraGuestFee ?? 0)); }, [config.extraGuestFee]);
 
   async function saveExtraFee() {
@@ -255,11 +263,25 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
     setBusy(false);
   }
 
+  /** Une ligne a-t-elle été modifiée depuis ce qui est en base ? */
+  function isDirty(i: number): boolean {
+    const a = rows[i], b = config.tiers.find(t => t.id === rows[i]?.id);
+    if (!a || !b) return false;
+    return a.maxM2 !== b.maxM2 || a.label !== b.label
+      || (a.basePrice ?? null) !== (b.basePrice ?? null)
+      || (a.priceMax ?? null) !== (b.priceMax ?? null)
+      || (a.capacityIncluded ?? null) !== (b.capacityIncluded ?? null);
+  }
+
+  // Enregistrement dès qu'on quitte le champ : la petite coche passait
+  // inaperçue, et les prix tapés disparaissaient au rechargement suivant.
   async function saveRow(i: number) {
     const t = rows[i];
+    if (!t?.id || !isDirty(i)) return;
     setBusy(true);
-    await send({ action: 'tier.save', tier: { id: config.tiers[i]?.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice, priceMax: t.priceMax ?? null, capacityIncluded: t.capacityIncluded ?? null } });
+    const ok = await send({ action: 'tier.save', tier: { id: t.id, maxM2: t.maxM2, label: t.label, capText: t.capText ?? null, basePrice: t.basePrice, priceMax: t.priceMax ?? null, capacityIncluded: t.capacityIncluded ?? null } });
     setBusy(false);
+    if (ok) { setSavedId(t.id); setTimeout(() => setSavedId(x => (x === t.id ? null : x)), 1800); }
   }
 
   async function removeRow(i: number) {
@@ -305,20 +327,24 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
         <span className="col-span-1" />
       </div>
       {rows.map((t, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2 items-center px-4 py-2 border-b last:border-0 border-hairline">
-          <input className={`${FIELD} col-span-2`} value={t.maxM2}
+        <div key={t.id ?? i} className="grid grid-cols-12 gap-2 items-center px-4 py-2 border-b last:border-0 border-hairline">
+          <input className={`${FIELD} col-span-2`} value={t.maxM2} onBlur={() => saveRow(i)}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, maxM2: parseInt(e.target.value, 10) || 0 } : x))} />
-          <input className={`${FIELD} col-span-2`} value={t.label}
+          <input className={`${FIELD} col-span-2`} value={t.label} onBlur={() => saveRow(i)}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
-          <input className={`${FIELD} col-span-3`} value={t.capacityIncluded ?? ''} inputMode="numeric" placeholder="illimité"
+          <input className={`${FIELD} col-span-3`} value={t.capacityIncluded ?? ''} inputMode="numeric" placeholder="illimité" onBlur={() => saveRow(i)}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, capacityIncluded: e.target.value === '' ? null : parseInt(e.target.value, 10) || 0 } : x))} />
-          <input className={`${FIELD} col-span-2`} value={t.basePrice ?? ''} placeholder="sur devis"
+          <input className={`${FIELD} col-span-2`} value={t.basePrice ?? ''} placeholder="sur devis" onBlur={() => saveRow(i)}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, basePrice: e.target.value === '' ? null : parseFloat(e.target.value.replace(',', '.')) || 0 } : x))} />
-          <input className={`${FIELD} col-span-2`} value={t.priceMax ?? ''} placeholder="prix ferme"
+          <input className={`${FIELD} col-span-2`} value={t.priceMax ?? ''} placeholder="prix ferme" onBlur={() => saveRow(i)}
             onChange={e => setRows(r => r.map((x, j) => j === i ? { ...x, priceMax: e.target.value === '' ? null : parseFloat(e.target.value.replace(',', '.')) || 0 } : x))} />
-          <div className="col-span-1 flex justify-end gap-1">
-            <button onClick={() => saveRow(i)} disabled={busy} aria-label={`Enregistrer le palier ${t.label}`}
-              className="text-gold-ink px-1"><Icon name="check" size={16} /></button>
+          <div className="col-span-1 flex justify-end items-center gap-1">
+            {/* Trois états lisibles d'un coup d'œil : modifié, enregistré, au repos. */}
+            {savedId === t.id
+              ? <span className="text-success" title="Enregistré"><Icon name="check" size={15} /></span>
+              : isDirty(i)
+                ? <button onClick={() => saveRow(i)} disabled={busy} className="text-[10px] font-semibold text-gold-ink">Enregistrer</button>
+                : <span className="w-4" />}
             <button onClick={() => removeRow(i)} disabled={busy} aria-label={`Supprimer le palier ${t.label}`}
               className="text-danger px-1"><Icon name="close" size={15} /></button>
           </div>
@@ -354,6 +380,7 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       </div>
 
       <p className="px-4 py-3 text-[11px] text-faint">
+        Chaque modification s&apos;enregistre dès que vous quittez le champ.
         Les paliers se classent tout seuls par surface : peu importe l&apos;ordre de saisie.
         « Voyageurs compris » est le nombre de personnes déjà couvert par le prix du
         palier : au-delà seulement, le supplément ci-dessus s&apos;applique, et il se compte
