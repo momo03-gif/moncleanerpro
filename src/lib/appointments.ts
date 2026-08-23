@@ -1,11 +1,13 @@
-import { supabase } from './supabase';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Rendez-vous — couche d'accès données.
-//  • Lecture des créneaux OCCUPÉS (date + heure, sans PII) : page publique.
-//  • Liste complète + changement de statut : admin (tables RLS désactivée, comme
-//    devis/tarifs). La CRÉATION passe par la route serveur /api/appointment
-//    (service_role) pour éviter les réservations anonymes abusives.
+//  La table porte des données personnelles (nom, email, téléphone) : elle n'est
+//  PAS lisible avec la clé publique. TOUT passe donc par le serveur :
+//   • créneaux occupés (date + heure seulement)  → GET /api/appointment
+//   • liste complète et changement de statut     → /api/admin/appointments
+//   • création d'un rendez-vous                  → POST /api/appointment
+//  Lire directement depuis le navigateur renvoyait zéro ligne SANS erreur :
+//  l'écran admin paraissait vide alors que les rendez-vous étaient enregistrés.
 // ══════════════════════════════════════════════════════════════════════════════
 
 export type AppointmentStatus = 'confirmed' | 'cancelled' | 'done';
@@ -15,22 +17,13 @@ export interface Appointment {
   date: string; time: string; status: AppointmentStatus; createdAt?: string;
 }
 
-const toAppt = (r: any): Appointment => ({
-  id: r.id, refCode: r.ref_code ?? '', devisNumber: r.devis_number ?? undefined,
-  clientName: r.client_name ?? '', clientEmail: r.client_email ?? undefined, clientPhone: r.client_phone ?? undefined,
-  message: r.message ?? undefined, date: r.date, time: r.time, status: r.status ?? 'confirmed', createdAt: r.created_at ?? undefined,
-});
-
 // Créneaux déjà réservés sur une plage (page publique : on grise ces créneaux).
 export async function getBookedSlotsDB(fromISO: string, toISO: string): Promise<{ date: string; time: string }[]> {
-  const { data, error } = await supabase
-    .from('appointments')
-    .select('date, time')
-    .eq('status', 'confirmed')
-    .gte('date', fromISO)
-    .lte('date', toISO);
-  if (error) { console.error('getBookedSlotsDB:', error.code, error.message); return []; }
-  return (data ?? []).map((r: any) => ({ date: r.date, time: r.time }));
+  try {
+    const res = await fetch(`/api/appointment?from=${fromISO}&to=${toISO}`);
+    const data = await res.json();
+    return Array.isArray(data.slots) ? data.slots : [];
+  } catch { return []; }
 }
 
 // Rendez-vous déjà pris pour un devis donné (page publique du devis : on ne
@@ -38,32 +31,31 @@ export async function getBookedSlotsDB(fromISO: string, toISO: string): Promise<
 // même niveau d'exposition que getBookedSlotsDB, aucune donnée personnelle.
 export async function getAppointmentForDevisDB(devisNumber: string): Promise<{ date: string; time: string } | null> {
   if (!devisNumber) return null;
-  const { data, error } = await supabase
-    .from('appointments')
-    .select('date, time')
-    .eq('devis_number', devisNumber)
-    .eq('status', 'confirmed')
-    .order('date', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) return null;
-  return { date: data.date, time: data.time };
+  try {
+    const res = await fetch(`/api/appointment?devis=${encodeURIComponent(devisNumber)}`);
+    const data = await res.json();
+    return data.appointment ?? null;
+  } catch { return null; }
 }
 
 // Liste admin (rendez-vous à venir + récents).
 export async function getAppointmentsDB(): Promise<Appointment[]> {
-  const { data, error } = await supabase
-    .from('appointments')
-    .select('*')
-    .order('date', { ascending: true })
-    .order('time', { ascending: true });
-  if (error) { console.error('getAppointmentsDB:', error.code, error.message); return []; }
-  return (data ?? []).map(toAppt);
+  try {
+    const res = await fetch('/api/admin/appointments');
+    const data = await res.json();
+    return Array.isArray(data.appointments) ? data.appointments : [];
+  } catch { return []; }
 }
 
 export async function setAppointmentStatusDB(id: string, status: AppointmentStatus): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
-  return { error: error?.message ?? null };
+  try {
+    const res = await fetch('/api/admin/appointments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    const data = await res.json();
+    return { error: res.ok && data.ok ? null : (data.error ?? 'Enregistrement impossible.') };
+  } catch { return { error: 'Enregistrement impossible.' }; }
 }
 
 // ── Configuration des disponibilités (jours + créneaux), éditable en admin ──────
@@ -73,19 +65,27 @@ export const DEFAULT_BOOKING: BookingConfig = {
 };
 
 export async function getBookingConfigDB(): Promise<BookingConfig> {
-  const { data, error } = await supabase.from('booking_config').select('*').eq('id', 1).maybeSingle();
-  if (error || !data) return DEFAULT_BOOKING;
+  let data: Record<string, unknown> | null = null;
+  try {
+    const res = await fetch('/api/appointment?config=1');
+    data = (await res.json()).config ?? null;
+  } catch { data = null; }
+  if (!data) return DEFAULT_BOOKING;
   return {
-    workingDays: Array.isArray(data.working_days) && data.working_days.length ? data.working_days.map(Number) : DEFAULT_BOOKING.workingDays,
-    morning: Array.isArray(data.morning) ? data.morning : DEFAULT_BOOKING.morning,
-    afternoon: Array.isArray(data.afternoon) ? data.afternoon : DEFAULT_BOOKING.afternoon,
+    workingDays: Array.isArray(data.working_days) && data.working_days.length ? (data.working_days as unknown[]).map(Number) : DEFAULT_BOOKING.workingDays,
+    morning: Array.isArray(data.morning) ? (data.morning as string[]) : DEFAULT_BOOKING.morning,
+    afternoon: Array.isArray(data.afternoon) ? (data.afternoon as string[]) : DEFAULT_BOOKING.afternoon,
     slotMin: Number(data.slot_min) || 60,
   };
 }
 
 export async function saveBookingConfigDB(c: BookingConfig): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('booking_config').upsert({
-    id: 1, working_days: c.workingDays, morning: c.morning, afternoon: c.afternoon, slot_min: c.slotMin, updated_at: new Date().toISOString(),
-  });
-  return { error: error?.message ?? null };
+  try {
+    const res = await fetch('/api/admin/appointments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'config', config: c }),
+    });
+    const data = await res.json();
+    return { error: res.ok && data.ok ? null : (data.error ?? 'Enregistrement impossible.') };
+  } catch { return { error: 'Enregistrement impossible.' }; }
 }
