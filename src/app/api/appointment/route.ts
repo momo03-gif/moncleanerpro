@@ -41,6 +41,48 @@ MonCleanerPro`;
 
 export const runtime = 'nodejs';
 
+/**
+ * Créneaux déjà réservés — lecture PUBLIQUE, volontairement limitée à la date et
+ * l'heure. La table contient des données personnelles (nom, email, téléphone) et
+ * n'est plus lisible avec la clé publique ; sans ce point d'entrée, la page de
+ * réservation ne grise plus rien et deux clients peuvent prendre le même horaire.
+ *
+ *   ?from=YYYY-MM-DD&to=YYYY-MM-DD  → [{ date, time }]
+ *   ?devis=DEV-0001                 → { date, time } | null
+ */
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const db = getSupabaseAdmin();
+
+  // Jours ouvrés et créneaux : aucune donnée personnelle, mais la table n'est
+  // plus lisible depuis le navigateur — sans ceci, la page de réservation
+  // retombe sur les horaires par défaut et ignore ce qui est réglé en admin.
+  if (searchParams.get('config')) {
+    const { data } = await db.from('booking_config').select('*').eq('id', 1).maybeSingle();
+    return NextResponse.json({ config: data ?? null });
+  }
+
+  const devis = searchParams.get('devis');
+  if (devis) {
+    const { data } = await db.from('appointments')
+      .select('date, time').eq('devis_number', devis).eq('status', 'confirmed')
+      .order('date', { ascending: true }).limit(1).maybeSingle();
+    return NextResponse.json({ appointment: data ?? null });
+  }
+
+  const from = searchParams.get('from');
+  const to = searchParams.get('to');
+  if (!from || !to) return NextResponse.json({ error: 'Période requise.' }, { status: 400 });
+
+  const { data, error } = await db.from('appointments')
+    .select('date, time').eq('status', 'confirmed').gte('date', from).lte('date', to);
+  if (error) {
+    console.error('appointment GET:', error.message);
+    return NextResponse.json({ slots: [] });
+  }
+  return NextResponse.json({ slots: data ?? [] });
+}
+
 export async function POST(req: Request) {
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 }); }
