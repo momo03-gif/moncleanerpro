@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { senderFor } from '@/lib/mailFrom';
 import { getSessionUser } from '@/lib/session';
 
 // nodemailer nécessite le runtime Node (pas Edge)
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé.' }, { status: 401 });
     }
 
-    const { to, subject, text, html } = await req.json();
+    // `purpose` permet a l appelant de choisir la boite d expedition ;
+    // par defaut, devis et factures partent de devis@.
+    const { to, subject, text, html, purpose } = await req.json();
     if (!to || !subject || (!text && !html)) {
       return NextResponse.json({ error: 'Champs manquants (to, subject, text).' }, { status: 400 });
     }
@@ -27,7 +30,7 @@ export async function POST(req: NextRequest) {
     const port = Number(process.env.SMTP_PORT || 465);
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
-    const from = process.env.SMTP_FROM || user;
+    const from = senderFor(purpose === 'rendezvous' ? 'rendezvous' : 'devis');
 
     if (!user || !pass) {
       return NextResponse.json({ error: "L'envoi d'email n'est pas configuré (SMTP)." }, { status: 500 });
@@ -40,10 +43,10 @@ export async function POST(req: NextRequest) {
       auth: { user, pass },
     });
 
-    await transporter.sendMail({ from, to, subject, text, html });
+    await transporter.sendMail({ from, replyTo: from, to, subject, text, html });
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
+  } catch (e) {
     console.error('send-invoice error:', e);
-    return NextResponse.json({ error: e?.message ?? "Erreur lors de l'envoi." }, { status: 500 });
+    return NextResponse.json({ error: (e as Error)?.message ?? "Erreur lors de l'envoi." }, { status: 500 });
   }
 }

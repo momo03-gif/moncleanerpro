@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { senderFor } from '@/lib/mailFrom';
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const WD = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -16,7 +17,7 @@ async function sendClientConfirmation(to: string, name: string, dateISO: string,
   if (!user || !pass || !to) return;
   const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
   const port = Number(process.env.SMTP_PORT || 465);
-  const from = process.env.SMTP_FROM || user;
+  const from = senderFor('rendezvous');
   const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
   const when = `${frDate(dateISO)} à ${time}`;
   const text = `Bonjour ${name || ''},
@@ -30,7 +31,7 @@ Nous vous recontactons pour confirmer les détails de l'intervention. Pour toute
 
 À bientôt,
 MonCleanerPro`;
-  await transporter.sendMail({ from, to, subject: `Confirmation de votre rendez-vous — ${when}`, text });
+  await transporter.sendMail({ from, replyTo: from, to, subject: `Confirmation de votre rendez-vous — ${when}`, text });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
