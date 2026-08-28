@@ -39,14 +39,14 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
     const besoin = String(f.get('besoin') ?? '').trim();
     const source = String(f.get('source') ?? '').trim();
 
-    if (!nom || !email) { setState('error'); setMessage('Merci d’indiquer votre nom et votre email.'); return; }
+    if (!nom || !email || !tel) { setState('error'); setMessage('Merci d’indiquer votre nom, votre téléphone et votre email.'); return; }
     setState('sending');
 
-    // Tout le contexte part dans `description` : la table `devis` existante suffit,
-    // aucune migration n'est nécessaire pour mettre ce formulaire en service.
+    // Le téléphone part dans sa PROPRE colonne (clientPhone) : noyé dans la
+    // description, il n'était ni appelable ni cherchable. Le reste du contexte
+    // reste du texte libre, c'est bien ce que c'est.
     const description = [
       besoin && `Besoin : ${besoin}`,
-      tel && `Téléphone : ${tel}`,
       commune && `Commune : ${commune}`,
       source && `Nous a connus par : ${source}`,
       `Page d’origine : /${slug} (${service})`,
@@ -57,7 +57,7 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientName: nom, clientEmail: email, clientAddress: commune,
+          clientName: nom, clientEmail: email, clientPhone: tel, clientAddress: commune,
           description, lines: [], total: 0, partnerType: 'devis',
         }),
       });
@@ -108,7 +108,7 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
         </div>
         <div>
           <label style={label} htmlFor="qq-tel">Téléphone</label>
-          <input id="qq-tel" name="tel" type="tel" autoComplete="tel" style={field} placeholder="Facultatif, mais plus rapide" />
+          <input id="qq-tel" name="tel" type="tel" required autoComplete="tel" style={field} placeholder="06 12 34 56 78" />
         </div>
         <div>
           <label style={label} htmlFor="qq-commune">Commune</label>

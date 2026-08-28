@@ -14,8 +14,10 @@ async function requireAdmin() {
   return s && s.role === 'admin' ? s : null;
 }
 
-// Le téléphone est stocké dans l'adresse du devis sous la forme
-// « 12 rue X — Tél : 06 12 34 56 78 » : on le récupère plutôt que de le perdre.
+// Le téléphone a maintenant sa propre colonne (`devis.client_phone`). Mais les
+// demandes reçues AVANT ce changement l'avaient dans l'adresse, sous la forme
+// « 12 rue X — Tél : 06 12 34 56 78 » : on continue de le récupérer là quand la
+// colonne est vide, plutôt que de perdre le numéro d'un ancien prospect.
 function splitAddress(raw: string | null): { adresse: string; telephone: string } {
   if (!raw) return { adresse: '', telephone: '' };
   const m = /T[ée]l\s*:\s*([+\d][\d\s.\-()]{6,})/i.exec(raw);
@@ -45,7 +47,7 @@ function guessNature(text: string): string {
  */
 async function syncFromDevis(db: SupabaseClient): Promise<number> {
   const [{ data: devis }, { data: existing }] = await Promise.all([
-    db.from('devis').select('id, number, client_name, client_email, client_address, description, total, status, created_at')
+    db.from('devis').select('id, number, client_name, client_email, client_phone, client_address, description, total, status, created_at')
       .order('created_at', { ascending: false }).limit(500),
     db.from('prospects').select('devis_id').not('devis_id', 'is', null),
   ]);
@@ -56,12 +58,15 @@ async function syncFromDevis(db: SupabaseClient): Promise<number> {
 
   const rows = missing.map(d => {
     const { adresse, telephone } = splitAddress(d.client_address as string | null);
+    // La colonne fait foi ; l'extraction depuis l'adresse ne sert plus qu'aux
+    // demandes antérieures à la séparation des deux champs.
+    const tel = ((d.client_phone as string | null) ?? '').trim() || telephone;
     const description = (d.description as string) ?? '';
     return {
       nom: (d.client_name as string)?.trim() || 'Demande sans nom',
       entreprise: null,
       email: (d.client_email as string) || null,
-      telephone: telephone || null,
+      telephone: tel || null,
       nature: guessNature(`${description} ${adresse}`),
       // Le statut du devis fait foi au moment de la création de la fiche.
       statut: d.status === 'envoye' ? 'envoye' : d.status === 'accepte' ? 'accepte' : d.status === 'refuse' ? 'refuse' : 'attente',
