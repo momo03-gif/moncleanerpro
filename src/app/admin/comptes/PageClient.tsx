@@ -304,8 +304,10 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
   const [err, setErr] = useState<string | null>(null);
 
   async function submit() {
-    if (!f.name.trim() || !f.email.trim() || f.password.length < 6) {
-      setErr('Nom, email et mot de passe (6 caractères min) requis.'); return;
+    // Téléphone OBLIGATOIRE : une fiche client sans numéro, c'est un client
+    // qu'on ne peut pas rappeler le jour où une intervention pose question.
+    if (!f.name.trim() || !f.email.trim() || !f.phone.trim() || f.password.length < 6) {
+      setErr('Nom, email, téléphone et mot de passe (6 caractères min) requis.'); return;
     }
     setBusy(true);
     const res = isHotel
@@ -322,7 +324,7 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
       <div className="grid gap-2">
         <input value={f.name} onChange={e => setF(s => ({ ...s, name: e.target.value }))} placeholder={isHotel ? 'Nom de l’hôtel' : 'Nom de la conciergerie'} className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.email} onChange={e => setF(s => ({ ...s, email: e.target.value }))} placeholder="Email (identifiant de connexion)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-        <input value={f.phone} onChange={e => setF(s => ({ ...s, phone: e.target.value }))} placeholder="Téléphone" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.phone} onChange={e => setF(s => ({ ...s, phone: e.target.value }))} placeholder="Téléphone (obligatoire)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         {isHotel && (
           <input value={f.address} onChange={e => setF(s => ({ ...s, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         )}
@@ -403,6 +405,8 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
   function flash(text: string) { setMsg(text); setTimeout(() => setMsg(m => (m === text ? null : m)), 1800); }
 
   async function saveEdit() {
+    // Même règle qu'à la création : on n'enregistre pas une fiche sans numéro.
+    if (!form.phone.trim()) { flash('Le téléphone est obligatoire.'); return; }
     setBusy(true);
     const { error } = await updatePartnerInfoDB(account.kind, account.id, form);
     setBusy(false);
@@ -515,7 +519,7 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
         <div className="mt-3 pt-3 border-t grid gap-2" style={{ borderColor: '#F2EFE9' }}>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
           <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-          <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+          <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone (obligatoire)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
           {account.kind === 'hotel' && (
             <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
           )}

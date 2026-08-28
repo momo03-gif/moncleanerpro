@@ -23,6 +23,9 @@ export async function POST(req: Request) {
 
   const clientName = String(body?.clientName ?? '').trim();
   const clientEmail = String(body?.clientEmail ?? '').trim();
+  // Le téléphone a sa propre colonne : c'est le moyen le plus rapide de rappeler
+  // un client, il ne doit pas rester noyé dans le texte de l'adresse.
+  const clientPhone = String(body?.clientPhone ?? '').trim();
   const clientAddress = String(body?.clientAddress ?? '').trim();
   const description = String(body?.description ?? '').trim();
   const lines: Line[] = Array.isArray(body?.lines) ? (body.lines as Line[]) : [];
@@ -49,7 +52,8 @@ export async function POST(req: Request) {
 
   const { error } = await admin.from('devis').insert({
     number, partner_label: partnerLabel || clientName || 'Demande en ligne', partner_type: partnerType,
-    client_name: clientName, client_email: clientEmail, client_address: clientAddress || null,
+    client_name: clientName, client_email: clientEmail,
+    client_phone: clientPhone || null, client_address: clientAddress || null,
     description: description || null, lines, total, status: 'brouillon', source: 'public',
   });
   if (error) { console.error('devis-request insert:', error.message); return NextResponse.json({ error: "Enregistrement impossible, réessayez." }, { status: 200 }); }

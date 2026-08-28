@@ -279,9 +279,21 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
               {d.description && (
                 <p className="text-sm mt-2 line-clamp-3" style={{ color: '#7A7068' }}>{d.description}</p>
               )}
-              {(d.clientEmail || d.clientAddress) && (
-                <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>{[d.clientEmail, d.clientAddress].filter(Boolean).join(' · ')}</p>
+              {/* Une ligne par information. Le téléphone d'abord et en lien
+                  d'appel : sur mobile, traiter une demande commence par appeler. */}
+              {d.clientPhone && (
+                <p className="text-sm mt-2">
+                  <a href={`tel:${d.clientPhone.replace(/\s+/g, '')}`} className="font-semibold hover:underline" style={{ color: '#C9A84C' }}>
+                    {d.clientPhone}
+                  </a>
+                </p>
               )}
+              {d.clientEmail && (
+                <p className="text-xs mt-1">
+                  <a href={`mailto:${d.clientEmail}`} className="hover:underline" style={{ color: '#7A7068' }}>{d.clientEmail}</a>
+                </p>
+              )}
+              {d.clientAddress && <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{d.clientAddress}</p>}
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               <button onClick={() => onTraiter(d)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -305,7 +317,7 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
 
 // ── NOUVEAU DEVIS / MODIFICATION (manuel + IA) ──────────────────────────────────
 function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company: CompanyInfo; tarifs: Tarif[]; editing: Devis | null; onSaved: (resendId?: string) => void; onCancelEdit: () => void }) {
-  const [client, setClient] = useState({ name: '', email: '', address: '' });
+  const [client, setClient] = useState({ name: '', email: '', phone: '', address: '' });
   const [description, setDescription] = useState('');
   const [lines, setLines] = useState<DevisLine[]>([]);
   const [aiMsg, setAiMsg] = useState('');
@@ -324,7 +336,7 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
   // Pré-remplit le formulaire quand on ouvre un devis en modification.
   useEffect(() => {
     if (editing) {
-      setClient({ name: editing.clientName ?? editing.partnerLabel ?? '', email: editing.clientEmail ?? '', address: editing.clientAddress ?? '' });
+      setClient({ name: editing.clientName ?? editing.partnerLabel ?? '', email: editing.clientEmail ?? '', phone: editing.clientPhone ?? '', address: editing.clientAddress ?? '' });
       setDescription(editing.description ?? '');
       setLines(editing.lines ?? []);
       setSavedNumber(''); setNote(''); setSaveErr('');
@@ -377,13 +389,13 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
     if (!note.trim()) { setSaveErr('Explique au client ce qui change (il verra ce message sur son lien).'); return; }
     setSaving(true); setSaveErr('');
     const res = await reviseDevisDB(editing.id, {
-      clientName: client.name, clientEmail: client.email, clientAddress: client.address,
+      clientName: client.name, clientEmail: client.email, clientPhone: client.phone, clientAddress: client.address,
       description, lines, total, validUntil: editing.validUntil, note,
     });
     setSaving(false);
     if (res.error) { setSaveErr(res.error); return; }
     const id = editing.id;
-    setClient({ name: '', email: '', address: '' }); setDescription(''); setLines([]); setNote('');
+    setClient({ name: '', email: '', phone: '', address: '' }); setDescription(''); setLines([]); setNote('');
     onSaved(id);
   }
 
@@ -393,13 +405,13 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
     // MODIFICATION d'un devis existant : on met à jour le MÊME devis (même numéro).
     if (editing) {
       const res = await updateDevisDB(editing.id, {
-        clientName: client.name, clientEmail: client.email, clientAddress: client.address,
+        clientName: client.name, clientEmail: client.email, clientPhone: client.phone, clientAddress: client.address,
         description, lines, total, validUntil: editing.validUntil, status,
       });
       setSaving(false);
       if (!res.error) {
         setSavedNumber(editing.number);
-        setClient({ name: '', email: '', address: '' }); setDescription(''); setLines([]);
+        setClient({ name: '', email: '', phone: '', address: '' }); setDescription(''); setLines([]);
         onSaved();
       }
       return;
@@ -409,13 +421,13 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
     const validUntil = new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-CA');
     const res = await saveDevisDB({
       number, partnerLabel: client.name || 'Client', partnerType: 'devis',
-      clientName: client.name, clientEmail: client.email, clientAddress: client.address,
+      clientName: client.name, clientEmail: client.email, clientPhone: client.phone, clientAddress: client.address,
       description, lines, total, validUntil, status,
     });
     setSaving(false);
     if (!res.error) {
       setSavedNumber(number);
-      setClient({ name: '', email: '', address: '' }); setDescription(''); setLines([]);
+      setClient({ name: '', email: '', phone: '', address: '' }); setDescription(''); setLines([]);
       onSaved();
     }
   }
@@ -441,11 +453,19 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
       {/* Client */}
       <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Client</p>
-        <div className="grid sm:grid-cols-3 gap-3">
+        {/* Téléphone et adresse sont DEUX champs : un numéro rangé dans l'adresse
+            n'est plus qu'un bout de texte — ni cliquable, ni cherchable. */}
+        <div className="grid sm:grid-cols-2 gap-3">
           <input value={client.name} onChange={e => setClient(c => ({ ...c, name: e.target.value }))} placeholder="Nom" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={client.email} onChange={e => setClient(c => ({ ...c, email: e.target.value }))} placeholder="Email" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+          <input value={client.phone} onChange={e => setClient(c => ({ ...c, phone: e.target.value }))} placeholder="Téléphone" type="tel" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={client.address} onChange={e => setClient(c => ({ ...c, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
         </div>
+        {client.phone.trim() && (
+          <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>
+            Appeler : <a href={`tel:${client.phone.replace(/\s+/g, '')}`} className="font-semibold hover:underline" style={{ color: '#C9A84C' }}>{client.phone}</a>
+          </p>
+        )}
       </div>
 
       {/* Modèles rapides : un clic pour pré-remplir un devis type (adaptable ensuite). */}
@@ -781,6 +801,14 @@ function DevisHistory({ company, list, onChanged, onEdit, resendId }: { company:
                 {money(d.total)}{d.source === 'public' ? ' · demande en ligne' : ''}
                 {d.revision > 1 ? ` · corrigé (v${d.revision})` : ''}
               </p>
+              {/* Numéro appelable sans ouvrir le devis : relancer un client tient
+                  en un clic depuis la liste. */}
+              {d.clientPhone && (
+                <p className="text-xs mt-0.5">
+                  <a href={`tel:${d.clientPhone.replace(/\s+/g, '')}`} onClick={e => e.stopPropagation()}
+                    className="font-semibold hover:underline" style={{ color: '#C9A84C' }}>{d.clientPhone}</a>
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: badge.bg, color: badge.color }}>{badge.label}</span>

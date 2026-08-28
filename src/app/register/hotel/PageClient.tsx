@@ -78,7 +78,7 @@ export default function RegisterHotelPage() {
               { label: form.clientType === 'ehpad' ? "Nom de l'établissement" : "Nom de l'hôtel", key: 'name', type: 'text', placeholder: form.clientType === 'ehpad' ? 'EHPAD Les Tilleuls' : 'Hôtel Lumière', required: true },
               { label: 'Adresse', key: 'address', type: 'text', placeholder: '15 Avenue Victor Hugo, Paris', required: true },
               { label: 'Email', key: 'email', type: 'email', placeholder: 'contact@hotel.com', required: true },
-              { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '01 23 45 67 89', required: false },
+              { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '01 23 45 67 89', required: true },
               { label: 'Mot de passe', key: 'password', type: 'password', placeholder: '••••••••', required: true },
               { label: 'Confirmer', key: 'confirm', type: 'password', placeholder: '••••••••', required: true },
             ].map(f => (

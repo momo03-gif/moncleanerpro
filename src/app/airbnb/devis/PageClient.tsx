@@ -148,6 +148,9 @@ export default function PartnerDevisClient() {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           clientName: user.name, clientEmail: user.email,
+          // Le numéro du compte partenaire suit la demande : l'équipe rappelle
+          // depuis l'écran Devis sans aller rechercher la fiche.
+          clientPhone: user.phone ?? '',
           clientAddress: [apt ? `Logement : ${apt.name}` : null, address].filter(Boolean).join(' — '),
           description: [
             apt ? `Logement du parc : ${apt.name}` : 'Adresse hors parc',

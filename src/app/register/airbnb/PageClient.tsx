@@ -60,7 +60,7 @@ export default function RegisterAirbnbPage() {
             {[
               { label: 'Nom du partenaire / conciergerie', key: 'name', type: 'text', placeholder: 'Hosting Services Lyon', required: true },
               { label: 'Email', key: 'email', type: 'email', placeholder: 'contact@conciergerie.com', required: true },
-              { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '06 12 34 56 78', required: false },
+              { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '06 12 34 56 78', required: true },
               { label: 'Mot de passe', key: 'password', type: 'password', placeholder: '••••••••', required: true },
               { label: 'Confirmer', key: 'confirm', type: 'password', placeholder: '••••••••', required: true },
             ].map(f => (

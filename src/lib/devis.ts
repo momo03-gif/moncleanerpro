@@ -22,7 +22,7 @@ export interface DevisLine { nom: string; quantite: number; prix_unitaire: numbe
 export type DevisStatus = 'brouillon' | 'envoye' | 'accepte' | 'refuse';
 export interface Devis {
   id: string; number: string; partnerLabel: string; partnerType?: string;
-  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; status: DevisStatus; validUntil?: string;
   publicToken: string; source: 'admin' | 'public'; invoiceId?: string; createdAt?: string;
   // Corrections d'un devis déjà envoyé : même numéro, même lien, version incrémentée.
@@ -39,7 +39,8 @@ const toTarif = (r: any): Tarif => ({
 });
 const toDevis = (r: any): Devis => ({
   id: r.id, number: r.number ?? '', partnerLabel: r.partner_label ?? '', partnerType: r.partner_type ?? undefined,
-  clientName: r.client_name ?? undefined, clientEmail: r.client_email ?? undefined, clientAddress: r.client_address ?? undefined,
+  clientName: r.client_name ?? undefined, clientEmail: r.client_email ?? undefined,
+  clientPhone: r.client_phone ?? undefined, clientAddress: r.client_address ?? undefined,
   description: r.description ?? undefined, lines: Array.isArray(r.lines) ? r.lines : [], total: Number(r.total) || 0,
   status: r.status ?? 'brouillon', validUntil: r.valid_until ?? undefined, publicToken: r.public_token,
   source: r.source ?? 'admin', invoiceId: r.invoice_id ?? undefined, createdAt: r.created_at ?? undefined,
@@ -147,12 +148,13 @@ export async function nextDevisNumberDB(): Promise<string> {
 
 export async function saveDevisDB(f: {
   number: string; partnerLabel: string; partnerType?: string;
-  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; validUntil?: string; status?: DevisStatus; source?: 'admin' | 'public';
 }): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await supabase.from('devis').insert({
     number: f.number, partner_label: f.partnerLabel, partner_type: f.partnerType || null,
-    client_name: f.clientName || null, client_email: f.clientEmail || null, client_address: f.clientAddress || null,
+    client_name: f.clientName || null, client_email: f.clientEmail || null,
+    client_phone: f.clientPhone || null, client_address: f.clientAddress || null,
     description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
     status: f.status ?? 'brouillon', source: f.source ?? 'admin',
   }).select('id').single();
@@ -163,12 +165,13 @@ export async function saveDevisDB(f: {
 // Met à jour le CONTENU d'un devis existant (rouvrir un brouillon → modifier →
 // ré-enregistrer le MÊME devis, sans en créer un nouveau). Le numéro ne change pas.
 export async function updateDevisDB(id: string, f: {
-  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; validUntil?: string; status?: DevisStatus;
 }): Promise<{ error: string | null }> {
   const patch: Record<string, unknown> = {
     partner_label: f.clientName || 'Client',
-    client_name: f.clientName || null, client_email: f.clientEmail || null, client_address: f.clientAddress || null,
+    client_name: f.clientName || null, client_email: f.clientEmail || null,
+    client_phone: f.clientPhone || null, client_address: f.clientAddress || null,
     description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
   };
   if (f.status) patch.status = f.status;
@@ -185,7 +188,7 @@ export async function updateDevisDB(id: string, f: {
 // le devis repasse en attente, le client doit se prononcer sur la NOUVELLE
 // version. Un devis déjà converti en facture n'est plus corrigeable.
 export async function reviseDevisDB(id: string, f: {
-  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; validUntil?: string; note: string;
 }): Promise<{ error: string | null; revision: number | null }> {
   const note = f.note.trim();
@@ -201,7 +204,8 @@ export async function reviseDevisDB(id: string, f: {
   const revision = (Number(current?.revision) || 1) + 1;
   const { error } = await supabase.from('devis').update({
     partner_label: f.clientName || 'Client',
-    client_name: f.clientName || null, client_email: f.clientEmail || null, client_address: f.clientAddress || null,
+    client_name: f.clientName || null, client_email: f.clientEmail || null,
+    client_phone: f.clientPhone || null, client_address: f.clientAddress || null,
     description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
     status: 'envoye',
     revision, revision_note: note, revised_at: new Date().toISOString(),

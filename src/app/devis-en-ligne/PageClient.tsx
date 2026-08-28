@@ -127,7 +127,11 @@ export default function DevisEnLignePage() {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           clientName: form.nom, clientEmail: form.email,
-          clientAddress: [form.adresse, form.tel && `Tél : ${form.tel}`].filter(Boolean).join(' — '),
+          // Téléphone et adresse partent dans DEUX champs distincts : collés
+          // ensemble, le numéro n'était plus qu'un bout de texte — ni cliquable,
+          // ni cherchable.
+          clientPhone: form.tel,
+          clientAddress: form.adresse,
           description: [
             desc, form.message,
             // Le simulateur décrit le logement (surface, voyageurs, zone) : c'est
