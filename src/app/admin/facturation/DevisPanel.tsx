@@ -5,7 +5,7 @@ import type { CompanyInfo } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import {
   getTarifsDB, createTarifDB, updateTarifDB, deleteTarifDB, importTarifsDB, UNITE_LABEL, type Tarif, type TarifUnite,
-  getDevisListDB, saveDevisDB, updateDevisDB, nextDevisNumberDB, setDevisStatusDB, convertDevisToInvoiceDB,
+  getDevisListDB, saveDevisDB, updateDevisDB, reviseDevisDB, nextDevisNumberDB, setDevisStatusDB, convertDevisToInvoiceDB,
   estimateFromDescription, type Devis, type DevisLine,
 } from '@/lib/devis';
 import { parseTarifsCsv } from '@/lib/tarifsCsv';
@@ -20,6 +20,76 @@ Ménage régulier;heure;25-35;récurrent, entretien, heure;oui
 `;
 
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+
+// Lien public du devis : accepter ET réserver son créneau se font au même endroit.
+// Il ne change JAMAIS, même après correction — le client garde une seule adresse.
+function devisUrl(d: Devis): string {
+  return typeof window !== 'undefined' ? `${window.location.origin}/devis/${d.publicToken}` : `/devis/${d.publicToken}`;
+}
+
+// Email pré-rempli (modifiable ensuite par l'admin). Deux versions : premier envoi,
+// ou renvoi d'un devis CORRIGÉ — dans ce cas le mot d'explication passe en tête,
+// sinon le client relit une proposition qui a changé sans comprendre pourquoi.
+function devisEmailDraft(d: Devis, company: CompanyInfo): { to: string; subject: string; body: string } {
+  const url = devisUrl(d);
+  // « Bonjour Jean » plutôt que le nom complet : plus naturel à l'oral comme à
+  // l'écrit. On retombe sur la formule d'usage si le nom est vide.
+  const prenom = (d.clientName ?? '').trim().split(/\s+/)[0];
+  const nom = prenom || 'Madame, Monsieur';
+  const nbPresta = d.lines.length;
+  const ttc = money(d.total * 1.2);
+  const valid = d.validUntil
+    ? `\nCette proposition reste valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n`
+    : '';
+  const signature = `Cordialement,
+${company.name || 'MonCleanerPro'}
+${[company.phone, company.email].filter(Boolean).join(' · ')}`;
+
+  if (d.revision > 1) {
+    return {
+      to: d.clientEmail ?? '',
+      subject: `Votre devis ${d.number} corrigé — à valider`,
+      body:
+`Bonjour ${nom},
+
+${d.revisionNote ?? ''}
+
+Voici votre devis ${d.number} mis à jour : ${nbPresta} prestation${nbPresta > 1 ? 's' : ''} pour un total de ${ttc} TTC. Il annule et remplace la version précédente.
+
+Tout se passe sur le même lien qu'avant :
+${url}
+
+Vous pourrez y faire deux choses :
+  1. accepter ce devis corrigé en un clic ;
+  2. choisir dans la foulée la date et l'heure de votre intervention.
+${valid}
+Une question, un ajustement ? Répondez simplement à cet email.
+
+${signature}`,
+    };
+  }
+  return {
+    to: d.clientEmail ?? '',
+    subject: `Votre devis ${d.number} — acceptez et réservez votre date`,
+    body:
+`Bonjour ${nom},
+
+Merci pour votre confiance. Voici votre devis ${d.number} : ${nbPresta} prestation${nbPresta > 1 ? 's' : ''} pour un total de ${ttc} TTC.
+
+Tout se passe sur un seul lien :
+${url}
+
+Vous pourrez y faire deux choses :
+  1. accepter le devis en un clic ;
+  2. choisir dans la foulée la date et l'heure de votre intervention.
+
+Nous vous conseillons de réserver votre créneau dès l'acceptation : les disponibilités partent vite, et votre date n'est réservée qu'une fois le rendez-vous confirmé.
+${valid}
+Une question, un ajustement ? Répondez simplement à cet email.
+
+${signature}`,
+  };
+}
 
 const STATUT_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   brouillon: { label: 'Brouillon', color: '#7A7068', bg: '#F5F3EF' },
@@ -47,11 +117,43 @@ const DEVIS_OPTIONS: string[] = [
   'Gestion du linge', 'Fourniture des consommables', 'Ménage approfondi',
 ];
 
+// ── Messages types de CORRECTION d'un devis déjà envoyé ─────────────────────────
+// Cas courant : le client a choisi une prestation qui ne correspond pas à son
+// besoin. On lui renvoie le même devis corrigé avec un mot qui dit ce qui change
+// — sinon il compare deux propositions sans savoir laquelle fait foi.
+// Le texte cite les prestations retenues : le client voit tout de suite « la
+// prestation, c'est celle-là ».
+function listePrestations(lines: DevisLine[]): string {
+  const noms = lines.map(l => l.nom.trim()).filter(Boolean);
+  if (noms.length === 0) return 'la prestation retenue';
+  if (noms.length <= 3) return noms.join(', ');
+  return `${noms.slice(0, 3).join(', ')} et ${noms.length - 3} autre${noms.length - 3 > 1 ? 's' : ''} prestation${noms.length - 3 > 1 ? 's' : ''}`;
+}
+const CORRECTION_MODELES: { label: string; texte: (lines: DevisLine[]) => string }[] = [
+  {
+    label: 'Prestation mal choisie',
+    texte: l => `Après avoir étudié votre demande, la prestation sélectionnée ne correspondait pas à votre besoin. Nous vous proposons celle qui convient : ${listePrestations(l)}. Ce devis remplace le précédent.`,
+  },
+  {
+    label: 'Prestation oubliée',
+    texte: l => `Une prestation manquait à votre demande. Nous avons complété le devis : ${listePrestations(l)}. Ce devis remplace le précédent.`,
+  },
+  {
+    label: 'Tarif ajusté',
+    texte: () => `Nous avons revu le chiffrage de votre devis. Le détail corrigé se trouve ci-dessous ; ce devis remplace le précédent.`,
+  },
+  {
+    label: 'Après échange / visite',
+    texte: l => `Suite à notre échange, nous avons ajusté votre devis pour coller à ce dont vous avez besoin : ${listePrestations(l)}. Ce devis remplace le précédent.`,
+  },
+];
+
 export default function DevisPanel({ company }: { company: CompanyInfo }) {
   const [sub, setSub] = useState<'new' | 'history' | 'tarifs'>('new');
   const [tarifs, setTarifs] = useState<Tarif[]>([]);
   const [devisList, setDevisList] = useState<Devis[]>([]);
-  // Brouillon en cours de modification (null = création d'un nouveau devis).
+  // Devis en cours de modification (null = création d'un nouveau devis).
+  // Brouillon → simple mise à jour ; devis déjà envoyé → correction versionnée.
   const [editing, setEditing] = useState<Devis | null>(null);
 
   const load = useCallback(async () => {
@@ -60,21 +162,32 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // Devis corrigé à renvoyer : on rebascule sur l'historique, fiche ouverte et
+  // email de renvoi prêt — la correction ne sert à rien tant que le client ne l'a pas.
+  const [resendId, setResendId] = useState<string | null>(null);
+
   function startEdit(d: Devis) { setEditing(d); setSub('new'); }
+  async function afterSave(id?: string) {
+    setEditing(null);
+    // On recharge AVANT de basculer : l'historique doit afficher la version
+    // corrigée, pas celle qu'on vient de remplacer.
+    await load();
+    if (id) { setResendId(id); setSub('history'); }
+  }
 
   return (
     <div className="mt-2">
       <div className="flex gap-1 mb-5 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['new', editing ? `Modifier ${editing.number}` : 'Nouveau devis'], ['history', `Historique devis (${devisList.length})`], ['tarifs', 'Tarifs']] as const).map(([v, label]) => (
-          <button key={v} onClick={() => { if (v !== 'new') setEditing(null); setSub(v); }} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        {([['new', editing ? `${editing.status === 'brouillon' ? 'Modifier' : 'Corriger'} ${editing.number}` : 'Nouveau devis'], ['history', `Historique devis (${devisList.length})`], ['tarifs', 'Tarifs']] as const).map(([v, label]) => (
+          <button key={v} onClick={() => { if (v !== 'new') setEditing(null); setResendId(null); setSub(v); }} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
             style={{ backgroundColor: sub === v ? '#FFFFFF' : 'transparent', color: sub === v ? '#1A1A1A' : '#A8A09A', boxShadow: sub === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
             {label}
           </button>
         ))}
       </div>
 
-      {sub === 'new' && <NewDevis company={company} tarifs={tarifs.filter(t => t.actif)} editing={editing} onSaved={() => { setEditing(null); load(); }} onCancelEdit={() => setEditing(null)} />}
-      {sub === 'history' && <DevisHistory company={company} list={devisList} onChanged={load} onEdit={startEdit} />}
+      {sub === 'new' && <NewDevis company={company} tarifs={tarifs.filter(t => t.actif)} editing={editing} onSaved={afterSave} onCancelEdit={() => setEditing(null)} />}
+      {sub === 'history' && <DevisHistory company={company} list={devisList} onChanged={load} onEdit={startEdit} resendId={resendId} />}
       {/* La grille a déménagé dans Tarification, rangée par carte de la page de
           devis. On garde l'import CSV ici — il sert au même endroit que la
           création de devis — mais l'édition ligne à ligne se fait là-bas :
@@ -98,21 +211,30 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
 }
 
 // ── NOUVEAU DEVIS / MODIFICATION (manuel + IA) ──────────────────────────────────
-function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company: CompanyInfo; tarifs: Tarif[]; editing: Devis | null; onSaved: () => void; onCancelEdit: () => void }) {
+function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company: CompanyInfo; tarifs: Tarif[]; editing: Devis | null; onSaved: (resendId?: string) => void; onCancelEdit: () => void }) {
   const [client, setClient] = useState({ name: '', email: '', address: '' });
   const [description, setDescription] = useState('');
   const [lines, setLines] = useState<DevisLine[]>([]);
   const [aiMsg, setAiMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedNumber, setSavedNumber] = useState('');
+  // Mot d'explication de la correction, montré au client sur son lien et repris
+  // dans l'email de renvoi. Obligatoire : un devis qui change sans un mot d'excuse
+  // ni d'explication, c'est un client qui appelle.
+  const [note, setNote] = useState('');
+  const [saveErr, setSaveErr] = useState('');
 
-  // Pré-remplit le formulaire quand on ouvre un brouillon en modification.
+  // Devis déjà parti chez le client : on ne l'écrase pas en silence, on le CORRIGE
+  // (nouvelle version + explication). Un brouillon reste une simple modification.
+  const correcting = !!editing && editing.status !== 'brouillon';
+
+  // Pré-remplit le formulaire quand on ouvre un devis en modification.
   useEffect(() => {
     if (editing) {
       setClient({ name: editing.clientName ?? editing.partnerLabel ?? '', email: editing.clientEmail ?? '', address: editing.clientAddress ?? '' });
       setDescription(editing.description ?? '');
       setLines(editing.lines ?? []);
-      setSavedNumber('');
+      setSavedNumber(''); setNote(''); setSaveErr('');
     }
   }, [editing]);
 
@@ -154,6 +276,24 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
     setAiMsg(`Devis pré-rempli (${found.length} ligne(s)). Vérifie puis valide.`);
   }
 
+  // CORRECTION d'un devis déjà envoyé : même numéro, même lien, version + 1.
+  // On enchaîne directement sur le renvoi au client — corriger sans prévenir
+  // laisserait le client sur l'ancienne proposition.
+  async function saveCorrection() {
+    if (!editing || lines.length === 0) return;
+    if (!note.trim()) { setSaveErr('Explique au client ce qui change (il verra ce message sur son lien).'); return; }
+    setSaving(true); setSaveErr('');
+    const res = await reviseDevisDB(editing.id, {
+      clientName: client.name, clientEmail: client.email, clientAddress: client.address,
+      description, lines, total, validUntil: editing.validUntil, note,
+    });
+    setSaving(false);
+    if (res.error) { setSaveErr(res.error); return; }
+    const id = editing.id;
+    setClient({ name: '', email: '', address: '' }); setDescription(''); setLines([]); setNote('');
+    onSaved(id);
+  }
+
   async function save(status: 'brouillon' | 'envoye') {
     if (lines.length === 0) return;
     setSaving(true);
@@ -191,7 +331,11 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
     <div className="space-y-5">
       {editing && !savedNumber && (
         <div className="rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3" style={{ backgroundColor: '#FBF4E2', color: '#C48A2A' }}>
-          <span>Modification du devis {editing.number}. Enregistre pour mettre à jour ce devis.</span>
+          <span>
+            {correcting
+              ? `Correction du devis ${editing.number} (déjà ${editing.status === 'accepte' ? 'accepté' : editing.status === 'refuse' ? 'refusé' : 'envoyé'}). Il deviendra la version ${editing.revision + 1} : même numéro, même lien, et le client devra se prononcer à nouveau.`
+              : `Modification du devis ${editing.number}. Enregistre pour mettre à jour ce devis.`}
+          </span>
           <button onClick={onCancelEdit} className="text-xs font-semibold underline shrink-0">Annuler</button>
         </div>
       )}
@@ -290,28 +434,64 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => save('brouillon')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-          {editing ? 'Enregistrer les modifications' : 'Enregistrer (brouillon)'}
-        </button>
-        <button onClick={() => save('envoye')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{saving ? '...' : 'Enregistrer & marquer envoyé'}</button>
+      {/* Mot d'explication : ce que le client lira en haut de son devis corrigé. */}
+      {correcting && (
+        <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#7A7068' }}>Message au client</p>
+          <p className="text-[11px] mb-3" style={{ color: '#A8A09A' }}>
+            Affiché en haut de son devis et repris dans l’email de renvoi. Dis-lui simplement ce qui change et pourquoi.
+          </p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {CORRECTION_MODELES.map(m => (
+              <button key={m.label} onClick={() => setNote(m.texte(lines))}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <textarea value={note} onChange={e => { setNote(e.target.value); setSaveErr(''); }} rows={4}
+            placeholder="Ex : la prestation sélectionnée ne correspondait pas à votre logement. Nous l’avons remplacée par un grand ménage de fin de bail, mieux adapté."
+            className="w-full px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 items-center">
+        {correcting ? (
+          <button onClick={saveCorrection} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            {saving ? '...' : `Enregistrer la correction et renvoyer (v${(editing?.revision ?? 1) + 1})`}
+          </button>
+        ) : (
+          <>
+            <button onClick={() => save('brouillon')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              {editing ? 'Enregistrer les modifications' : 'Enregistrer (brouillon)'}
+            </button>
+            <button onClick={() => save('envoye')} disabled={saving || lines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{saving ? '...' : 'Enregistrer & marquer envoyé'}</button>
+          </>
+        )}
         {editing && (
           <button onClick={onCancelEdit} disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50" style={{ color: '#B85A50' }}>Annuler</button>
         )}
+        {saveErr && <span className="text-xs" style={{ color: '#B85A50' }}>{saveErr}</span>}
       </div>
     </div>
   );
 }
 
 // ── HISTORIQUE DEVIS ────────────────────────────────────────────────────────────
-function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyInfo; list: Devis[]; onChanged: () => void; onEdit: (d: Devis) => void }) {
-  const [viewing, setViewing] = useState<Devis | null>(null);
+function DevisHistory({ company, list, onChanged, onEdit, resendId }: { company: CompanyInfo; list: Devis[]; onChanged: () => void; onEdit: (d: Devis) => void; resendId: string | null }) {
+  // Arrivée depuis une correction : la fiche s'ouvre directement, email de renvoi
+  // prêt — une correction que le client ne reçoit pas ne sert à rien. L'état est
+  // calculé au MONTAGE (l'onglet est démonté quand on le quitte), pas dans un effet.
+  const resent = resendId ? list.find(d => d.id === resendId) ?? null : null;
+  const resentDraft = resent ? devisEmailDraft(resent, company) : null;
+
+  const [viewing, setViewing] = useState<Devis | null>(resent);
   const [convertMsg, setConvertMsg] = useState('');
   // Envoi email (message pré-rempli, éditable).
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
+  const [emailOpen, setEmailOpen] = useState(!!resentDraft);
+  const [emailTo, setEmailTo] = useState(resentDraft?.to ?? '');
+  const [emailSubject, setEmailSubject] = useState(resentDraft?.subject ?? '');
+  const [emailBody, setEmailBody] = useState(resentDraft?.body ?? '');
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailMsg, setEmailMsg] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -336,43 +516,9 @@ function DevisHistory({ company, list, onChanged, onEdit }: { company: CompanyIn
     else { setConvertMsg(`Facture ${res.number} créée depuis ${d.number}.`); onChanged(); }
   }
 
-  // Lien public du devis : accepter ET réserver son créneau se font au même endroit.
-  function devisUrl(d: Devis): string {
-    return typeof window !== 'undefined' ? `${window.location.origin}/devis/${d.publicToken}` : `/devis/${d.publicToken}`;
-  }
-
   function openEmail(d: Devis) {
-    const url = devisUrl(d);
-    // « Bonjour Jean » plutôt que le nom complet : plus naturel à l'oral comme à
-    // l'écrit. On retombe sur la formule d'usage si le nom est vide.
-    const prenom = (d.clientName ?? '').trim().split(/\s+/)[0];
-    const nom = prenom || 'Madame, Monsieur';
-    const nbPresta = d.lines.length;
-    const ttc = money(d.total * 1.2);
-    const valid = d.validUntil
-      ? `\nCette proposition reste valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}.\n`
-      : '';
-    setEmailTo(d.clientEmail ?? '');
-    setEmailSubject(`Votre devis ${d.number} — acceptez et réservez votre date`);
-    setEmailBody(
-`Bonjour ${nom},
-
-Merci pour votre confiance. Voici votre devis ${d.number} : ${nbPresta} prestation${nbPresta > 1 ? 's' : ''} pour un total de ${ttc} TTC.
-
-Tout se passe sur un seul lien :
-${url}
-
-Vous pourrez y faire deux choses :
-  1. accepter le devis en un clic ;
-  2. choisir dans la foulée la date et l'heure de votre intervention.
-
-Nous vous conseillons de réserver votre créneau dès l'acceptation : les disponibilités partent vite, et votre date n'est réservée qu'une fois le rendez-vous confirmé.
-${valid}
-Une question, un ajustement ? Répondez simplement à cet email.
-
-Cordialement,
-${company.name || 'MonCleanerPro'}
-${[company.phone, company.email].filter(Boolean).join(' · ')}`);
+    const draft = devisEmailDraft(d, company);
+    setEmailTo(draft.to); setEmailSubject(draft.subject); setEmailBody(draft.body);
     setEmailMsg('');
     setEmailOpen(true);
   }
@@ -399,7 +545,8 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
         <div style="font-size:10px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:#C9A84C;margin-top:5px;margin-left:24px">Nettoyage Professionnel</div>
       </div>
       <div style="padding:28px 30px">
-        <p style="margin:0 0 2px;font-size:20px;font-weight:300;letter-spacing:0.16em;color:#0D0D0D">DEVIS <span style="font-weight:700;font-size:14px;color:#C9A84C">${esc(d.number)}</span></p>
+        <p style="margin:0 0 2px;font-size:20px;font-weight:300;letter-spacing:0.16em;color:#0D0D0D">DEVIS <span style="font-weight:700;font-size:14px;color:#C9A84C">${esc(d.number)}</span>${d.revision > 1 ? `<span style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:#8A6A1E;background:#FBF4E2;border-radius:6px;padding:3px 8px;margin-left:8px;vertical-align:middle">VERSION ${d.revision} — CORRIGÉ</span>` : ''}</p>
+        ${d.revision > 1 ? `<p style="margin:0 0 6px;color:#8A6A1E;font-size:12px">Ce devis annule et remplace la version précédente${d.previousTotal != null ? ` (ancien total : ${money(d.previousTotal * 1.2)} TTC)` : ''}.</p>` : ''}
         ${d.validUntil ? `<p style="margin:0 0 16px;color:#8A8178;font-size:12px">Valable jusqu'au ${new Date(d.validUntil + 'T00:00:00').toLocaleDateString('fr-FR')}</p>` : '<div style="height:12px"></div>'}
         <div style="font-size:14px;color:#4A443D;line-height:1.65;white-space:pre-line">${esc(intro)}</div>
         <table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;margin-top:22px">
@@ -458,13 +605,33 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
     return (
       <div>
         <button onClick={() => setViewing(null)} className="text-sm mb-4" style={{ color: '#C9A84C' }}>← Retour</button>
+        {viewing.revision > 1 && (
+          <div className="rounded-2xl border p-4 mb-4 print-hidden" style={{ backgroundColor: '#FBF4E2', borderColor: '#EBD9A8' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#8A6A1E' }}>
+              Version {viewing.revision} — corrigé{viewing.revisedAt ? ` le ${new Date(viewing.revisedAt).toLocaleDateString('fr-FR')}` : ''}
+            </p>
+            {viewing.revisionNote && <p className="text-sm mt-1.5 whitespace-pre-line" style={{ color: '#7A6538' }}>{viewing.revisionNote}</p>}
+            {viewing.previousTotal != null && (
+              <p className="text-xs mt-2" style={{ color: '#A8945E' }}>
+                Ancien total : {money(viewing.previousTotal)} HT — nouveau : {money(viewing.total)} HT
+              </p>
+            )}
+          </div>
+        )}
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel || viewing.clientName || 'Client'}
           partnerType={viewing.partnerType} status={viewing.status === 'accepte' ? 'paid' : 'pending'}
           from={viewing.createdAt?.slice(0, 10) ?? ''} to={viewing.validUntil ?? ''} lines={invLines} total={viewing.total}
           docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer (TTC)" totalIsHT />
         <div className="flex flex-wrap gap-2 mt-4 print-hidden">
           <button onClick={() => downloadPdf(viewing)} disabled={pdfBusy} className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>{pdfBusy ? 'Génération…' : 'Télécharger le PDF'}</button>
-          <button onClick={() => openEmail(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>Envoyer par email</button>
+          <button onClick={() => openEmail(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>
+            {viewing.revision > 1 ? 'Renvoyer par email' : 'Envoyer par email'}
+          </button>
+          {!viewing.invoiceId && (
+            <button onClick={() => onEdit(viewing)} className="px-4 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#C9A84C', color: '#9A7B22' }}>
+              {viewing.status === 'brouillon' ? 'Modifier' : 'Corriger ce devis'}
+            </button>
+          )}
           {typeof window !== 'undefined' && (
             <button onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/devis/${viewing.publicToken}`)}
               className="px-4 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Copier le lien client</button>
@@ -517,13 +684,19 @@ ${[company.phone, company.email].filter(Boolean).join(' · ')}`);
           <div key={d.id} className={`px-5 py-4 flex items-center justify-between gap-3 ${i < list.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
             <div className="min-w-0">
               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{d.number} — {d.clientName || d.partnerLabel}</p>
-              <p className="text-xs" style={{ color: '#A8A09A' }}>{money(d.total)}{d.source === 'public' ? ' · demande en ligne' : ''}</p>
+              <p className="text-xs" style={{ color: '#A8A09A' }}>
+                {money(d.total)}{d.source === 'public' ? ' · demande en ligne' : ''}
+                {d.revision > 1 ? ` · corrigé (v${d.revision})` : ''}
+              </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: badge.bg, color: badge.color }}>{badge.label}</span>
-              {/* Seuls les brouillons sont modifiables (un devis envoyé/accepté est figé). */}
-              {d.status === 'brouillon' && (
-                <button onClick={() => onEdit(d)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border" style={{ borderColor: '#C9A84C', color: '#9A7B22' }}>Modifier</button>
+              {/* Brouillon → simple modification. Devis déjà chez le client → correction
+                  versionnée avec un mot d'explication. Devis facturé → plus touchable. */}
+              {!d.invoiceId && (
+                <button onClick={() => onEdit(d)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border" style={{ borderColor: '#C9A84C', color: '#9A7B22' }}>
+                  {d.status === 'brouillon' ? 'Modifier' : 'Corriger'}
+                </button>
               )}
               <button onClick={() => setViewing(d)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Ouvrir</button>
             </div>

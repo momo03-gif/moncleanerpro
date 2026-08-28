@@ -40,6 +40,9 @@ export default function PublicDevisPage() {
   async function decide(accept: boolean) {
     await setDevisStatusByTokenDB(token, accept ? 'accepte' : 'refuse');
     setDone(accept ? 'accepte' : 'refuse');
+    // Devis corrigé puis ré-accepté : si un créneau avait déjà été réservé sur la
+    // version précédente, on le rappelle au lieu de faire rebooker pour rien.
+    if (accept && devis?.number) setAppt(await getAppointmentForDevisDB(devis.number).catch(() => null));
   }
 
   // Lien vers la prise de rendez-vous, pré-rempli. Le formulaire attend prénom et
@@ -63,10 +66,30 @@ export default function PublicDevisPage() {
       <div className="max-w-lg mx-auto rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
         <div className="px-6 py-5 border-b" style={{ borderColor: '#F2EFE9' }}>
           <img src="/logo-full.png" alt="MonCleanerPro" style={{ height: 52, width: 'auto', marginBottom: 14 }} />
-          <p className="text-xs uppercase tracking-wider" style={{ color: '#C9A84C' }}>Devis {devis.number}</p>
+          <p className="text-xs uppercase tracking-wider" style={{ color: '#C9A84C' }}>
+            Devis {devis.number}{devis.revision > 1 ? ` · version ${devis.revision}` : ''}
+          </p>
           <h1 className="text-xl font-bold mt-1" style={{ color: '#1A1A1A' }}>{devis.clientName || 'Votre devis'}</h1>
           {devis.validUntil && <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Valable jusqu’au {new Date(devis.validUntil).toLocaleDateString('fr-FR')}</p>}
         </div>
+
+        {/* Devis corrigé : le client doit comprendre AVANT de lire les lignes
+            pourquoi sa proposition a changé, sinon il compare deux devis sans
+            savoir lequel fait foi. */}
+        {devis.revision > 1 && (
+          <div className="px-6 py-4 border-b" style={{ backgroundColor: '#FBF4E2', borderColor: '#EBD9A8' }}>
+            <p className="text-sm font-semibold" style={{ color: '#8A6A1E' }}>
+              Devis mis à jour{devis.revisedAt ? ` le ${new Date(devis.revisedAt).toLocaleDateString('fr-FR')}` : ''}
+            </p>
+            {devis.revisionNote && (
+              <p className="text-sm mt-1.5 whitespace-pre-line" style={{ color: '#7A6538' }}>{devis.revisionNote}</p>
+            )}
+            <p className="text-xs mt-2" style={{ color: '#A8945E' }}>
+              Cette version remplace la précédente
+              {devis.previousTotal != null ? ` (${money(devis.previousTotal * 1.2)} TTC)` : ''}. Seule celle-ci fait foi.
+            </p>
+          </div>
+        )}
         <div className="px-6 py-4 space-y-2">
           {devis.lines.map((l, i) => (
             <div key={i} className="flex items-center justify-between">

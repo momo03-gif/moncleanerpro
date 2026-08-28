@@ -25,6 +25,9 @@ export interface Devis {
   clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; status: DevisStatus; validUntil?: string;
   publicToken: string; source: 'admin' | 'public'; invoiceId?: string; createdAt?: string;
+  // Corrections d'un devis déjà envoyé : même numéro, même lien, version incrémentée.
+  revision: number; revisionNote?: string; revisedAt?: string;
+  previousLines?: DevisLine[]; previousTotal?: number;
 }
 
 const toTarif = (r: any): Tarif => ({
@@ -40,6 +43,9 @@ const toDevis = (r: any): Devis => ({
   description: r.description ?? undefined, lines: Array.isArray(r.lines) ? r.lines : [], total: Number(r.total) || 0,
   status: r.status ?? 'brouillon', validUntil: r.valid_until ?? undefined, publicToken: r.public_token,
   source: r.source ?? 'admin', invoiceId: r.invoice_id ?? undefined, createdAt: r.created_at ?? undefined,
+  revision: Number(r.revision) || 1, revisionNote: r.revision_note ?? undefined, revisedAt: r.revised_at ?? undefined,
+  previousLines: Array.isArray(r.previous_lines) ? r.previous_lines : undefined,
+  previousTotal: r.previous_total != null ? Number(r.previous_total) : undefined,
 });
 
 // ── TARIFS ────────────────────────────────────────────────────────────────────
@@ -157,6 +163,40 @@ export async function updateDevisDB(id: string, f: {
   const { error } = await supabase.from('devis').update(patch).eq('id', id);
   if (error) console.error('updateDevisDB:', error.code, error.message);
   return { error: error?.message ?? null };
+}
+
+// CORRECTION d'un devis DÉJÀ ENVOYÉ (le client s'est trompé de prestation, un
+// élément manquait…). On garde le MÊME devis : même numéro, même lien public —
+// le client n'a qu'une seule adresse à retenir. On incrémente la version, on
+// archive le contenu précédent (pour lui montrer ce qui change) et on enregistre
+// le mot d'explication. Une décision déjà prise (accepté/refusé) est annulée :
+// le devis repasse en attente, le client doit se prononcer sur la NOUVELLE
+// version. Un devis déjà converti en facture n'est plus corrigeable.
+export async function reviseDevisDB(id: string, f: {
+  clientName?: string; clientEmail?: string; clientAddress?: string; description?: string;
+  lines: DevisLine[]; total: number; validUntil?: string; note: string;
+}): Promise<{ error: string | null; revision: number | null }> {
+  const note = f.note.trim();
+  if (!note) return { error: 'Explique au client ce qui change dans ce devis.', revision: null };
+
+  // On relit la ligne pour archiver l'état RÉEL en base (l'écran peut être ouvert
+  // depuis un moment) et pour vérifier qu'elle n'est pas déjà facturée.
+  const { data: current, error: readErr } = await supabase
+    .from('devis').select('lines, total, revision, invoice_id').eq('id', id).single();
+  if (readErr) { console.error('reviseDevisDB(read):', readErr.code, readErr.message); return { error: readErr.message, revision: null }; }
+  if (current?.invoice_id) return { error: 'Ce devis est déjà converti en facture : créez plutôt un avoir ou un nouveau devis.', revision: null };
+
+  const revision = (Number(current?.revision) || 1) + 1;
+  const { error } = await supabase.from('devis').update({
+    partner_label: f.clientName || 'Client',
+    client_name: f.clientName || null, client_email: f.clientEmail || null, client_address: f.clientAddress || null,
+    description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
+    status: 'envoye',
+    revision, revision_note: note, revised_at: new Date().toISOString(),
+    previous_lines: current?.lines ?? [], previous_total: current?.total ?? 0,
+  }).eq('id', id);
+  if (error) { console.error('reviseDevisDB:', error.code, error.message); return { error: error.message, revision: null }; }
+  return { error: null, revision };
 }
 
 export async function setDevisStatusDB(id: string, status: DevisStatus): Promise<{ error: string | null }> {
