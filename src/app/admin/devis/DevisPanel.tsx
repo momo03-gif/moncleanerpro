@@ -718,6 +718,24 @@ function DevisHistory({ company, list, onChanged, onEdit, resendId }: { company:
     return (
       <div>
         <button onClick={() => setViewing(null)} className="text-sm mb-4" style={{ color: '#C9A84C' }}>← Retour</button>
+
+        {/* Coordonnées du client, au-dessus du document. Hors impression : le devis
+            envoyé n'a pas à porter les notes de contact de l'équipe. Le numéro est
+            un lien d'appel — relancer un devis se fait depuis cette fiche. */}
+        {(viewing.clientPhone || viewing.clientEmail || viewing.clientAddress) && (
+          <div className="rounded-2xl border p-4 mb-4 print-hidden flex flex-wrap items-center gap-x-6 gap-y-2" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+            {viewing.clientPhone && (
+              <a href={`tel:${viewing.clientPhone.replace(/\s+/g, '')}`} className="text-sm font-semibold hover:underline" style={{ color: '#C9A84C' }}>
+                {viewing.clientPhone}
+              </a>
+            )}
+            {viewing.clientEmail && (
+              <a href={`mailto:${viewing.clientEmail}`} className="text-sm hover:underline" style={{ color: '#7A7068' }}>{viewing.clientEmail}</a>
+            )}
+            {viewing.clientAddress && <span className="text-sm" style={{ color: '#A8A09A' }}>{viewing.clientAddress}</span>}
+          </div>
+        )}
+
         {viewing.revision > 1 && (
           <div className="rounded-2xl border p-4 mb-4 print-hidden" style={{ backgroundColor: '#FBF4E2', borderColor: '#EBD9A8' }}>
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#8A6A1E' }}>
