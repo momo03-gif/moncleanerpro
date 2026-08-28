@@ -9,7 +9,8 @@ import {
   estimateFromDescription, type Devis, type DevisLine,
 } from '@/lib/devis';
 import { parseTarifsCsv } from '@/lib/tarifsCsv';
-import { InvoiceDoc } from './page';
+import { DEVIS_PENDING_EVENT } from '@/lib/events';
+import { InvoiceDoc } from '@/components/InvoiceDoc';
 
 // Modèle CSV téléchargeable (mêmes colonnes que l'export de la grille MonCleanerPro).
 const CSV_TEMPLATE = `Prestation;Unité;Prix;Mots-clés;Actif
@@ -149,7 +150,7 @@ const CORRECTION_MODELES: { label: string; texte: (lines: DevisLine[]) => string
 ];
 
 export default function DevisPanel({ company }: { company: CompanyInfo }) {
-  const [sub, setSub] = useState<'new' | 'history' | 'tarifs'>('new');
+  const [sub, setSub] = useState<'requests' | 'new' | 'history' | 'tarifs'>('requests');
   const [tarifs, setTarifs] = useState<Tarif[]>([]);
   const [devisList, setDevisList] = useState<Devis[]>([]);
   // Devis en cours de modification (null = création d'un nouveau devis).
@@ -159,6 +160,13 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
   const load = useCallback(async () => {
     const [t, d] = await Promise.all([getTarifsDB(), getDevisListDB()]);
     setTarifs(t); setDevisList(d);
+    // La pastille du menu doit dire la même chose que cet écran : on la met à jour
+    // à chaque rechargement, sans requête supplémentaire. Sans ça elle restait sur
+    // l'ancien compte tant qu'on ne changeait pas de page.
+    if (typeof window !== 'undefined') {
+      const pending = d.filter(x => x.source === 'public' && x.status === 'brouillon').length;
+      window.dispatchEvent(new CustomEvent(DEVIS_PENDING_EVENT, { detail: pending }));
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -175,17 +183,33 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
     if (id) { setResendId(id); setSub('history'); }
   }
 
+  // Demandes de devis reçues et pas encore chiffrées. C'est la file d'attente de
+  // l'écran : elle vaut notification, et remplace la cloche pour ce sujet.
+  const requests = devisList.filter(d => d.source === 'public' && d.status === 'brouillon');
+
   return (
     <div className="mt-2">
-      <div className="flex gap-1 mb-5 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['new', editing ? `${editing.status === 'brouillon' ? 'Modifier' : 'Corriger'} ${editing.number}` : 'Nouveau devis'], ['history', `Historique devis (${devisList.length})`], ['tarifs', 'Tarifs']] as const).map(([v, label]) => (
-          <button key={v} onClick={() => { if (v !== 'new') setEditing(null); setResendId(null); setSub(v); }} className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+      <div className="flex flex-wrap gap-1 mb-5 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
+        {([
+          ['requests', `Demandes à traiter${requests.length ? ` (${requests.length})` : ''}`],
+          ['new', editing ? `${editing.status === 'brouillon' ? 'Modifier' : 'Corriger'} ${editing.number}` : 'Nouveau devis'],
+          ['history', `Historique devis (${devisList.length})`],
+          ['tarifs', 'Tarifs'],
+        ] as const).map(([v, label]) => (
+          <button key={v} onClick={() => { if (v !== 'new') setEditing(null); setResendId(null); setSub(v); }} className="px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
             style={{ backgroundColor: sub === v ? '#FFFFFF' : 'transparent', color: sub === v ? '#1A1A1A' : '#A8A09A', boxShadow: sub === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
             {label}
+            {v === 'requests' && requests.length > 0 && (
+              <span className="min-w-[8px] h-2 w-2 rounded-full" style={{ backgroundColor: '#E5484D' }} aria-label="demandes en attente" />
+            )}
           </button>
         ))}
       </div>
 
+      {sub === 'requests' && (
+        <DevisRequests list={requests} onTraiter={startEdit} onNew={() => setSub('new')}
+          onEcarter={async d => { await setDevisStatusDB(d.id, 'refuse'); await load(); }} />
+      )}
       {sub === 'new' && <NewDevis company={company} tarifs={tarifs.filter(t => t.actif)} editing={editing} onSaved={afterSave} onCancelEdit={() => setEditing(null)} />}
       {sub === 'history' && <DevisHistory company={company} list={devisList} onChanged={load} onEdit={startEdit} resendId={resendId} />}
       {/* La grille a déménagé dans Tarification, rangée par carte de la page de
@@ -206,6 +230,75 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
           <TarifsManager tarifs={tarifs} onChanged={load} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── DEMANDES DE DEVIS REÇUES ────────────────────────────────────────────────────
+// Les demandes n'alertent plus dans la cloche générale : elles s'empilaient au
+// milieu des missions et des rappels, et une demande de devis se traite ici, pas
+// ailleurs. Cet onglet EST la notification — une demande y reste tant qu'elle
+// n'est pas chiffrée, là où une notification lue disparaît qu'on l'ait traitée ou non.
+function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; onTraiter: (d: Devis) => void; onNew: () => void; onEcarter: (d: Devis) => void }) {
+  // Écarter demande une confirmation sur place (2e clic) : la demande porte le
+  // nom et le besoin d'un vrai client, on ne la fait pas disparaître d'un clic.
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  if (list.length === 0) {
+    return (
+      <div className="rounded-2xl border p-10 text-center" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        <p className="text-sm font-medium" style={{ color: '#7A7068' }}>Aucune demande en attente</p>
+        <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>
+          Les demandes envoyées depuis le site ou l’espace partenaire arrivent ici.
+        </p>
+        <button onClick={onNew} className="mt-4 px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          Créer un devis
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2.5">
+      <p className="text-xs px-1" style={{ color: '#A8A09A' }}>
+        Une demande reste ici tant que le devis n’a pas été envoyé au client — l’ouvrir ne la fait pas disparaître.
+      </p>
+      {list.map(d => {
+        const quand = d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        const origine = d.partnerType === 'airbnb' ? 'espace partenaire' : 'site public';
+        return (
+          <div key={d.id} className="rounded-2xl border p-4 flex items-start justify-between gap-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#EBD9A8' }}>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{d.clientName || d.partnerLabel || 'Client'}</p>
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: '#FBF4E2', color: '#C48A2A' }}>À traiter</span>
+              </div>
+              <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>
+                {d.number} · demande reçue {quand ? `le ${quand}` : ''} depuis le {origine}
+                {d.total > 0 ? ` · estimation ${money(d.total)}` : ''}
+              </p>
+              {d.description && (
+                <p className="text-sm mt-2 line-clamp-3" style={{ color: '#7A7068' }}>{d.description}</p>
+              )}
+              {(d.clientEmail || d.clientAddress) && (
+                <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>{[d.clientEmail, d.clientAddress].filter(Boolean).join(' · ')}</p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <button onClick={() => onTraiter(d)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                Chiffrer
+              </button>
+              {confirming === d.id ? (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setConfirming(null); onEcarter(d); }} className="text-xs font-semibold" style={{ color: '#B85A50' }}>Confirmer</button>
+                  <button onClick={() => setConfirming(null)} className="text-xs" style={{ color: '#A8A09A' }}>Annuler</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirming(d.id)} className="text-xs" style={{ color: '#A8A09A' }}>Écarter</button>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

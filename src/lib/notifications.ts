@@ -340,11 +340,23 @@ function rowToNotif(r: Record<string, unknown>): AppNotification {
   };
 }
 
+// Types qui NE passent PAS par la cloche : ils ont un écran dédié où le travail
+// se fait, et la cloche les noyait au milieu des missions et des rappels. Une
+// demande de devis reste visible dans « Devis > Demandes à traiter » tant qu'elle
+// n'est pas chiffrée — une notification, elle, disparaît dès qu'on la lit, traitée
+// ou non. Le push, lui, continue de partir : c'est ce qui prévient hors de l'app.
+// `type` est nullable en base : un simple NOT IN écarterait aussi les lignes sans
+// type (en SQL, NULL NOT IN (...) vaut NULL, donc faux). On garde explicitement
+// les types absents, sinon d'anciennes notifications disparaîtraient de la cloche.
+const BELL_HIDDEN_TYPES = ['devis_request'];
+const HIDDEN_FILTER = `type.is.null,type.not.in.(${BELL_HIDDEN_TYPES.join(',')})`;
+
 export async function getNotificationsDB(userId: string, limit = 40): Promise<AppNotification[]> {
   const { data } = await supabase
     .from('notifications')
     .select('*')
     .eq('user_id', userId)
+    .or(HIDDEN_FILTER)
     .order('created_at', { ascending: false })
     .limit(limit);
   return (data ?? []).map(rowToNotif);
@@ -355,7 +367,8 @@ export async function getUnreadCountDB(userId: string): Promise<number> {
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .eq('read', false);
+    .eq('read', false)
+    .or(HIDDEN_FILTER);
   return count ?? 0;
 }
 

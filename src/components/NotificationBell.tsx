@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import type { AppNotification } from '@/lib/types';
 import Icon, { type IconName } from '@/components/Icon';
+import { alertUser } from '@/lib/alert';
 
 // Perf : la couche données (supabase + fonctions notifications) est importée en
 // DIFFÉRÉ (dynamic import après le montage). La cloche est rendue dans la nav de
@@ -26,10 +27,12 @@ const TYPE_ICON: Record<string, IconName> = {
 };
 
 // Destination d'une notification quand on clique dessus. Le TYPE prime (une
-// demande de devis ouvre la facturation), sinon on route selon le RÔLE du
+// demande de devis ouvre l'écran Devis), sinon on route selon le RÔLE du
 // destinataire. Aligné sur urlForRole() côté serveur (push).
+// Note : les demandes de devis ne s'affichent plus dans cette cloche (voir
+// BELL_HIDDEN_TYPES) ; la règle reste ici pour le push, qui ouvre la même page.
 function hrefForNotif(type: string, role: string): string {
-  if (type === 'devis_request') return '/admin/facturation';
+  if (type === 'devis_request') return '/admin/devis';
   if (type === 'appointment_booked') return '/admin/rendez-vous';
   switch (role) {
     case 'admin': return '/admin/missions';
@@ -68,21 +71,6 @@ function deviceType(): string {
   if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
   if (/Android/.test(ua)) return 'android';
   return 'desktop';
-}
-
-function alertUser() {
-  try { navigator.vibrate?.([120, 60, 120]); } catch { /* ignore */ }
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 880;
-    g.gain.value = 0.04;
-    o.start();
-    o.stop(ctx.currentTime + 0.15);
-  } catch { /* ignore */ }
 }
 
 // `align` = côté d'ouverture du panneau. Par défaut 'right' (cloche en haut à

@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
 import Icon, { type IconName } from '@/components/Icon';
 import Logo from '@/components/Logo';
+import { DEVIS_PENDING_EVENT } from '@/lib/events';
+import { alertUser } from '@/lib/alert';
 
 // ── Navigation groupée par MOMENT D'USAGE ─────────────────────────────────────
 //
@@ -20,7 +22,7 @@ import Logo from '@/components/Logo';
 //
 // Ajouter un écran : le placer dans le groupe correspondant à SON MOMENT, pas
 // à sa proximité de code.
-interface NavItem { href: string; label: string; icon: IconName }
+interface NavItem { href: string; label: string; icon: IconName; badge?: 'devis' }
 interface NavGroup { title: string; items: NavItem[] }
 
 const navGroups: NavGroup[] = [
@@ -55,7 +57,11 @@ const navGroups: NavGroup[] = [
   {
     title: 'Gestion',
     items: [
-      { href: '/admin/facturation', label: 'Facturation & Devis', icon: 'invoice' },
+      // Les devis ont leur propre écran : ils vivent avant la facture (demande →
+      // chiffrage → envoi → acceptation), et leurs demandes entrantes s'affichent
+      // ici en pastille plutôt que dans la cloche générale.
+      { href: '/admin/devis', label: 'Devis', icon: 'request', badge: 'devis' },
+      { href: '/admin/facturation', label: 'Facturation', icon: 'invoice' },
       { href: '/admin/tarification', label: 'Tarification', icon: 'invoice' },
       { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
       { href: '/admin/parking', label: 'Parking', icon: 'parking' },
@@ -69,9 +75,62 @@ export default function AdminSidebar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Demandes de devis en attente → pastille sur l'entrée « Devis ». Chargée en
+  // DIFFÉRÉ (comme la cloche) pour garder supabase hors du chemin critique, et
+  // rafraîchie à chaque changement de page : traiter une demande la fait retomber.
+  const [devisPending, setDevisPending] = useState(0);
 
   // Ferme le menu lors d'un changement de route
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    let alive = true;
+    import('@/lib/devis')
+      .then(({ getDevisPendingCountDB }) => getDevisPendingCountDB())
+      .then(n => { if (alive) setDevisPending(n); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [user?.role, pathname]);
+
+  // L'écran Devis annonce lui-même sa file d'attente : une demande traitée fait
+  // retomber la pastille tout de suite, sans attendre un changement de page.
+  useEffect(() => {
+    const onChange = (e: Event) => setDevisPending(Number((e as CustomEvent).detail) || 0);
+    window.addEventListener(DEVIS_PENDING_EVENT, onChange);
+    return () => window.removeEventListener(DEVIS_PENDING_EVENT, onChange);
+  }, []);
+
+  // TEMPS RÉEL, comme la cloche : une nouvelle demande de devis fait monter le
+  // compteur sur l'entrée du menu sans recharger la page, avec le même signal
+  // sonore. On écoute la table `notifications` (déjà publiée en temps réel) et on
+  // ne réagit qu'aux demandes de devis — inutile de publier une table de plus.
+  useEffect(() => {
+    if (user?.role !== 'admin' || !user.id) return;
+    const userId = user.id;
+    let cleanup = () => {};
+    (async () => {
+      try {
+        const [{ supabase }, { getDevisPendingCountDB }] = await Promise.all([
+          import('@/lib/supabase'), import('@/lib/devis'),
+        ]);
+        const ch = supabase
+          .channel(`devis-pending-${userId}`)
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+            payload => {
+              if ((payload.new as { type?: string })?.type !== 'devis_request') return;
+              alertUser();
+              getDevisPendingCountDB().then(setDevisPending).catch(() => {});
+            })
+          .subscribe();
+        cleanup = () => { try { supabase.removeChannel(ch); } catch { /* ignore */ } };
+      } catch (e) {
+        console.error('devis pending realtime:', e);
+      }
+    })();
+    return () => cleanup();
+  }, [user?.role, user?.id]);
 
   // Empêche le scroll du body quand menu ouvert
   useEffect(() => {
@@ -86,6 +145,7 @@ export default function AdminSidebar() {
 
   const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = pathname === item.href;
+    const count = item.badge === 'devis' ? devisPending : 0;
     return (
       <Link
         href={item.href}
@@ -98,6 +158,12 @@ export default function AdminSidebar() {
       >
         <span className="w-5 flex items-center justify-center shrink-0"><Icon name={item.icon} /></span>
         {item.label}
+        {count > 0 && (
+          <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center"
+            style={{ backgroundColor: isActive ? '#1A1A1A' : '#E5484D', color: '#FFFFFF' }}>
+            {count > 9 ? '9+' : count}
+          </span>
+        )}
       </Link>
     );
   };

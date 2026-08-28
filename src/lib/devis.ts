@@ -117,6 +117,18 @@ export async function getDevisListDB(): Promise<Devis[]> {
   if (error) { console.error('getDevisListDB:', error.code, error.message); return []; }
   return (data ?? []).map(toDevis);
 }
+// Demandes de devis reçues et pas encore chiffrées — la pastille de l'entrée
+// « Devis » du menu. Les demandes ne passent plus par la cloche : ce compteur est
+// ce qui les rend visibles, et il ne retombe que lorsqu'elles sont traitées.
+export async function getDevisPendingCountDB(): Promise<number> {
+  const { count } = await supabase
+    .from('devis')
+    .select('id', { count: 'exact', head: true })
+    .eq('source', 'public')
+    .eq('status', 'brouillon');
+  return count ?? 0;
+}
+
 export async function getDevisByTokenDB(token: string): Promise<Devis | null> {
   const { data } = await supabase.from('devis').select('*').eq('public_token', token).single();
   return data ? toDevis(data) : null;

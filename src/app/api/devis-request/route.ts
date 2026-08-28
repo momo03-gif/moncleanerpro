@@ -73,7 +73,7 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             items: (admins ?? []).map((u: { id: string }) => ({
               userId: u.id, title: 'Nouvelle demande de devis', body: message,
-              url: '/admin/facturation', tag: 'devis_request',
+              url: '/admin/devis', tag: 'devis_request',
             })),
           }),
         }).catch(() => {});
