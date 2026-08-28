@@ -386,6 +386,7 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
   // laisserait le client sur l'ancienne proposition.
   async function saveCorrection() {
     if (!editing || lines.length === 0) return;
+    if (!client.phone.trim()) { setSaveErr('Le téléphone du client est obligatoire.'); return; }
     if (!note.trim()) { setSaveErr('Explique au client ce qui change (il verra ce message sur son lien).'); return; }
     setSaving(true); setSaveErr('');
     const res = await reviseDevisDB(editing.id, {
@@ -401,7 +402,11 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
 
   async function save(status: 'brouillon' | 'envoye') {
     if (lines.length === 0) return;
-    setSaving(true);
+    // Téléphone OBLIGATOIRE : un devis sans numéro, c'est un client qu'on ne peut
+    // pas relancer — et une relance au bon moment fait la différence entre un
+    // devis accepté et un devis oublié.
+    if (!client.phone.trim()) { setSaveErr('Le téléphone du client est obligatoire.'); return; }
+    setSaving(true); setSaveErr('');
     // MODIFICATION d'un devis existant : on met à jour le MÊME devis (même numéro).
     if (editing) {
       const res = await updateDevisDB(editing.id, {
@@ -458,7 +463,7 @@ function NewDevis({ company, tarifs, editing, onSaved, onCancelEdit }: { company
         <div className="grid sm:grid-cols-2 gap-3">
           <input value={client.name} onChange={e => setClient(c => ({ ...c, name: e.target.value }))} placeholder="Nom" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={client.email} onChange={e => setClient(c => ({ ...c, email: e.target.value }))} placeholder="Email" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
-          <input value={client.phone} onChange={e => setClient(c => ({ ...c, phone: e.target.value }))} placeholder="Téléphone" type="tel" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
+          <input value={client.phone} onChange={e => { setClient(c => ({ ...c, phone: e.target.value })); setSaveErr(''); }} placeholder="Téléphone (obligatoire)" type="tel" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
           <input value={client.address} onChange={e => setClient(c => ({ ...c, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2.5 rounded-xl text-sm" style={{ ...inputStyle }} />
         </div>
         {client.phone.trim() && (
