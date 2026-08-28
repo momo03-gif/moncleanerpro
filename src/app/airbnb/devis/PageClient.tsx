@@ -50,6 +50,10 @@ export default function PartnerDevisClient() {
   const [step, setStep] = useState<'build' | 'recap'>('build');
   const [aptId, setAptId] = useState<string>('');       // '' = autre adresse
   const [address, setAddress] = useState('');
+  // Téléphone de rappel. Pré-rempli avec celui du compte, mais MODIFIABLE et
+  // obligatoire : les comptes créés avant la règle n'en ont pas toujours un, et
+  // une demande qu'on ne peut pas rappeler dort jusqu'à ce que le client relance.
+  const [phone, setPhone] = useState('');
   const [desc, setDesc] = useState('');
   const [agentMsg, setAgentMsg] = useState('');
   const [sel, setSel] = useState<Sel>({});
@@ -64,6 +68,7 @@ export default function PartnerDevisClient() {
     Promise.all([getTarifsDB(true), getAirbnbsForPartner(user.id)])
       .then(([t, a]) => {
         setTarifs(t); setApartments(a);
+        setPhone(p => p || user.phone || '');
         // Deep-link ?logement=<id> (depuis la fiche logement) → bien pré-sélectionné.
         const id = new URLSearchParams(window.location.search).get('logement');
         const apt = id ? a.find(x => x.id === id) : undefined;
@@ -131,6 +136,7 @@ export default function PartnerDevisClient() {
   async function submit() {
     if (!user) return;
     setErr('');
+    if (!phone.trim()) { setErr('Indiquez un téléphone : c’est par là que nous revenons vers vous.'); return; }
     const apt = apartments.find(x => x.id === aptId);
     const lines = Object.keys(sel).map(nom => {
       const t = byName.get(nom)!; const m = modeFor(t); const q = sel[nom].qty || (m === 'm2' ? 0 : 1);
@@ -148,9 +154,9 @@ export default function PartnerDevisClient() {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           clientName: user.name, clientEmail: user.email,
-          // Le numéro du compte partenaire suit la demande : l'équipe rappelle
-          // depuis l'écran Devis sans aller rechercher la fiche.
-          clientPhone: user.phone ?? '',
+          // Le numéro suit la demande : l'équipe rappelle depuis l'écran Devis
+          // sans aller rechercher la fiche du compte.
+          clientPhone: phone.trim(),
           clientAddress: [apt ? `Logement : ${apt.name}` : null, address].filter(Boolean).join(' — '),
           description: [
             apt ? `Logement du parc : ${apt.name}` : 'Adresse hors parc',
@@ -280,7 +286,11 @@ export default function PartnerDevisClient() {
             placeholder="12 rue de la Paix, Anse" className={FIELD} />
         </div>
       )}
-      {aptId !== '' && <div className="mb-5" />}
+      <div className="mb-5">
+        <Label htmlFor="devis-tel">Téléphone de rappel</Label>
+        <input id="devis-tel" type="tel" value={phone} onChange={e => { setPhone(e.target.value); setErr(''); }}
+          placeholder="06 12 34 56 78" className={FIELD} />
+      </div>
 
       {/* 2 — Description libre → agent local */}
       <SectionTitle>Décrivez le besoin</SectionTitle>
@@ -345,7 +355,14 @@ export default function PartnerDevisClient() {
           {totals.incomplete.length > 0 && (
             <p className="text-[11px] text-warn mt-3">Précisez la surface pour {totals.incomplete.length} prestation(s).</p>
           )}
-          <Button size="lg" className="w-full mt-4" onClick={() => setStep('recap')}>Voir mon estimation</Button>
+          {/* Le téléphone se vérifie ICI, pas à l'envoi : le champ est sur cet
+              écran, refuser à l'étape suivante renverrait le partenaire en arrière
+              pour comprendre ce qui manque. */}
+          {err && <p className="text-xs text-danger mt-3">{err}</p>}
+          <Button size="lg" className="w-full mt-4"
+            onClick={() => { if (!phone.trim()) { setErr('Indiquez un téléphone : c’est par là que nous revenons vers vous.'); return; } setErr(''); setStep('recap'); }}>
+            Voir mon estimation
+          </Button>
         </Card>
       )}
     </div>
