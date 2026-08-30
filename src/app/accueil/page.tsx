@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Motion from './Motion';
 import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
 import TrustBar from '@/components/TrustBar';
+import QuickQuote from '@/components/QuickQuote';
 import { SINCE } from '@/lib/proof';
 import FloatingContact from '@/components/FloatingContact';
 
@@ -463,6 +464,21 @@ export default function VitrinePage() {
       </section>
 
       <TrustBar />
+
+      {/* ── DEMANDE DE DEVIS, DANS LA PAGE ────────────────────────────────────
+          L'accueil est la page la plus vue, et elle n'avait aucun formulaire :
+          tous ses boutons envoyaient vers /devis-en-ligne, où le visiteur doit
+          recommencer un parcours. Chaque page traversée en perd une partie.
+          Le formulaire est posé APRÈS la réassurance — le visiteur a vu les
+          preuves — et AVANT les zones desservies, qui invitent à cliquer ailleurs.
+          Même formulaire, même table, même écran admin que les pages SEO. */}
+      <section aria-label="Demander un devis" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-5xl mx-auto px-5 py-14 md:py-16">
+          <div data-reveal className="max-w-2xl mx-auto">
+            <QuickQuote service="nettoyage professionnel" slug="accueil" />
+          </div>
+        </div>
+      </section>
 
       {/* ── ZONES DESSERVIES (SEO local longue traîne) ────────────────────── */}
       <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>

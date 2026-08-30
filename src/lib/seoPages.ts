@@ -774,6 +774,7 @@ export const SEO_PAGES: SeoPage[] = [
       },
     ],
     updatedAt: '2026-08-09',
+    related: ['nettoyage-fin-de-bail-lyon', 'menage-domicile-lyon', 'nettoyage-vitres-lyon'],
     faq: [
       { q: 'Le grand ménage est-il ponctuel ou régulier ?', a: "Les deux : nous réalisons des grands ménages ponctuels comme des prestations récurrentes selon vos besoins." },
       { q: 'Puis-je le programmer avant un état des lieux ?', a: "Oui, c’est un cas fréquent : nous intervenons avant un état des lieux, une remise de clés ou une vente." },
@@ -820,6 +821,7 @@ export const SEO_PAGES: SeoPage[] = [
       },
     ],
     updatedAt: '2026-08-09',
+    related: ['prix-nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon'],
     faq: [
       { q: 'Intervenez-vous en dehors des heures de bureau ?', a: "Oui, la plupart de nos prestations en entreprise se font tôt le matin ou en soirée, hors présence des équipes." },
       { q: 'Proposez-vous un contrat régulier ?', a: "Oui, nous mettons en place un planning régulier adapté à vos locaux, avec un interlocuteur dédié et un suivi qualité." },
@@ -1133,6 +1135,208 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     related: ['grand-menage-lyon', 'nettoyage-vitres-lyon', 'menage-airbnb-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
+  },
+  // ── Pilier générique : la requête la plus large du métier ────────────────────
+  // « entreprise de nettoyage Lyon » n'avait aucune page dédiée : les visiteurs
+  // arrivaient sur une page métier (hôtel, bureaux…) qui ne répond pas à quelqu'un
+  // qui cherche d'abord un prestataire, pas une prestation.
+  {
+    slug: 'entreprise-nettoyage-lyon',
+    keyword: 'entreprise de nettoyage Lyon',
+    eyebrow: 'Entreprise de nettoyage',
+    h1: 'Entreprise de nettoyage à Lyon',
+    title: "Entreprise de nettoyage à Lyon — MonCleanerPro",
+    description: "Entreprise de nettoyage à Lyon : hôtels, bureaux, copropriétés, commerces, locations courte durée, fin de chantier. Équipes formées, suivi écrit. Devis sous 24h.",
+    intro:
+      "Chercher une entreprise de nettoyage, c'est rarement chercher un balai : c'est chercher quelqu'un qui passera quand il l'a dit, qui fera ce qui était prévu, et qui vous préviendra quand quelque chose cloche. MonCleanerPro intervient à Lyon et dans la métropole pour des hôtels, des EHPAD, des bureaux, des copropriétés, des commerces, des conciergeries et des particuliers. Cette page ne cherche pas à vous vendre une prestation précise — elle vous explique comment nous travaillons, et surtout comment juger un prestataire avant de signer.",
+    highlights: [
+      { title: 'Un interlocuteur, pas un standard', text: "Vous parlez à la personne qui connaît votre site et votre planning, pas à un service client qui découvre votre dossier à chaque appel." },
+      { title: 'Des équipes salariées et formées', text: "Les mêmes intervenants reviennent chez vous. Un site tenu par des visages qui changent chaque semaine n'est jamais tenu longtemps." },
+      { title: 'Ce qui est fait est écrit', text: "Chaque intervention est tracée dans notre application : heure d'arrivée, prestations réalisées, anomalies constatées, photos si nécessaire." },
+      { title: 'Devis écrit sous 24h', text: "Un devis détaillé, prestation par prestation, sans engagement et sans frais de dossier." },
+    ],
+    includes: [
+      'Une visite ou un échange précis avant tout chiffrage',
+      'Un devis écrit qui détaille le périmètre exact, poste par poste',
+      'Un planning nominatif : vous savez qui vient et quand',
+      "Le compte rendu de chaque passage, consultable en ligne",
+      'Un contrôle qualité régulier et une remontée immédiate des anomalies',
+    ],
+    sections: [
+      {
+        h2: 'Comment juger une entreprise de nettoyage avant de signer',
+        paragraphs: [
+          "Les devis de nettoyage se ressemblent tous. La différence entre deux prestataires n'apparaît qu'au troisième mois, quand la nouveauté est passée. Voici les questions qui font vraiment le tri, et que nous vous encourageons à poser à tous ceux que vous consultez, nous compris.",
+        ],
+        list: [
+          "Qui viendra exactement, et est-ce que ce sera toujours la même personne ? Un site tenu par un roulement permanent perd sa mémoire : personne ne sait plus où est le local, quelle porte coince, quel bureau ne doit pas être touché.",
+          "Que se passe-t-il si l'intervenant habituel est absent ? L'absence de réponse à cette question est la première cause de passage manqué.",
+          "Le périmètre est-il écrit poste par poste, avec les fréquences ? « Nettoyage complet des locaux » ne veut rien dire et se termine toujours en désaccord.",
+          "Comment saurez-vous que le passage a eu lieu, et ce qui a été fait ? Sans trace, vous payez une présence que vous ne pouvez pas vérifier.",
+          "Qui vous prévient quand quelque chose est cassé, manquant ou anormal — et sous quel délai ?",
+          "Le contrat vous engage-t-il sur une durée ? Un prestataire sûr de lui n'a pas besoin de vous retenir par la porte.",
+        ],
+      },
+      {
+        h2: 'Les secteurs que nous couvrons, et ceux que nous ne couvrons pas',
+        paragraphs: [
+          "Nous intervenons sur l'entretien régulier et les remises en état : hôtellerie et hébergement, EHPAD et résidences, bureaux et locaux professionnels, copropriétés et parties communes, commerces et restaurants, cabinets médicaux et paramédicaux, locations courte durée, fin de chantier et après-travaux, ménage à domicile.",
+          "Nous ne faisons pas de désamiantage, pas de nettoyage après sinistre lourd (incendie, décès, insalubrité extrême) et pas de travaux en hauteur sur cordes. Ce sont des métiers réglementés à part entière, avec leurs habilitations propres. Quand une demande relève de l'un d'eux, nous vous le disons tout de suite plutôt que de nous découvrir dépassés sur place.",
+        ],
+      },
+      {
+        h2: 'Ce que change un suivi écrit, concrètement',
+        paragraphs: [
+          "La plupart des litiges dans ce métier ne portent pas sur la qualité mais sur la preuve. Le prestataire affirme être passé, le client affirme que non — et personne n'a d'élément. C'est une discussion sans issue, qui use la relation bien plus vite qu'un sol mal fait.",
+          "Chaque intervention est horodatée dans notre application, avec les prestations réalisées et, quand c'est utile, des photos avant/après. Vous n'avez rien à installer ni à surveiller : vous consultez quand vous voulez, et vous recevez un compte rendu quand une anomalie a été constatée. L'objectif n'est pas de vous fournir un tableau de bord de plus, c'est de supprimer la seule conversation dont personne ne sort gagnant.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'nettoyage-hotel-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-fin-de-chantier-lyon', 'menage-airbnb-lyon', 'nettoyage-ehpad-lyon'],
+    updatedAt: '2026-08-31',
+    faq: [
+      { q: 'Sur quel secteur intervenez-vous ?', a: "Lyon et l'ensemble de la métropole, ainsi que le Beaujolais jusqu'à Villefranche-sur-Saône et Anse. Pour les chantiers importants, nous nous déplaçons sur toute la France." },
+      { q: 'Faut-il signer un engagement de durée ?', a: "Non. Nos contrats d'entretien régulier sont sans durée d'engagement : vous restez parce que le travail est fait, pas parce qu'un préavis vous en empêche." },
+      { q: 'Fournissez-vous les produits et le matériel ?', a: "Oui, produits et matériel sont fournis et inclus dans le devis, sauf si vous préférez que nous utilisions les vôtres pour des raisons de protocole interne." },
+      { q: 'Êtes-vous assurés ?', a: "Oui, nous sommes couverts en responsabilité civile professionnelle. L'attestation vous est transmise avec le devis, sans avoir à la demander." },
+      { q: 'Sous quel délai peut-on démarrer ?', a: "Un devis écrit sous 24h après notre échange. Pour une prestation ponctuelle, l'intervention peut souvent être programmée dans la semaine ; pour un contrat régulier, comptez le temps de constituer l'équipe qui vous sera attribuée." },
+      { q: 'Que se passe-t-il si le travail ne convient pas ?', a: "Vous nous le signalez et nous repassons. Nous préférons refaire un passage que perdre un client sur un désaccord qui se règle en une heure." },
+    ],
+  },
+  // ── Fin de bail : requête très transactionnelle (le locataire cherche à
+  // récupérer son dépôt de garantie, la décision est prise le jour même).
+  {
+    slug: 'nettoyage-fin-de-bail-lyon',
+    keyword: 'nettoyage fin de bail Lyon',
+    eyebrow: 'Fin de bail',
+    h1: 'Nettoyage de fin de bail à Lyon',
+    title: "Nettoyage de fin de bail à Lyon — état des lieux de sortie",
+    description: "Nettoyage de fin de bail à Lyon avant état des lieux de sortie : cuisine, sanitaires, vitres, sols, traces. Intervention rapide, devis sous 24h.",
+    intro:
+      "Un état des lieux de sortie se joue sur des détails que personne ne regarde le reste de l'année : l'intérieur du four, le joint de la douche, les traces au-dessus des radiateurs, la vitre côté rue. Vous avez déménagé, vous rendez les clés dans quelques jours, et le temps qu'il reste ne suffit plus. Nous intervenons à Lyon et dans la métropole pour remettre le logement dans l'état attendu par le bailleur ou l'agence, avant le rendez-vous de sortie.",
+    highlights: [
+      { title: 'Sur le calendrier de l\'état des lieux', text: "Nous nous calons sur votre date de rendez-vous, pas l'inverse. L'intervention a lieu avant, jamais le matin même dans l'urgence." },
+      { title: 'Les points réellement contrôlés', text: "Nous traitons en priorité ce que regarde un état des lieux : cuisine, sanitaires, vitrages, sols, traces et fixations murales." },
+      { title: 'Logement vide ou encore meublé', text: "Nous intervenons dans les deux cas. Un logement entièrement vidé se traite mieux et plus vite — nous vous le disons si ça vaut le coup d'attendre." },
+      { title: 'Devis écrit sous 24h', text: "Un montant ferme avant l'intervention, sans supplément découvert après coup." },
+    ],
+    includes: [
+      "Cuisine complète : four, plaques, hotte, intérieur et extérieur des meubles, évier et robinetterie",
+      "Sanitaires : détartrage, joints, parois de douche, WC, miroirs",
+      "Sols de toutes les pièces, plinthes et angles",
+      "Vitrages intérieurs, encadrements et rebords de fenêtres",
+      "Traces sur les murs, interrupteurs, poignées et portes",
+      "Points hauts : dessus de meubles, luminaires accessibles, grilles de ventilation",
+    ],
+    sections: [
+      {
+        h2: 'Ce que regarde vraiment un état des lieux de sortie',
+        paragraphs: [
+          "Les retenues sur dépôt de garantie portent presque toujours sur les mêmes postes. Ce ne sont pas les plus visibles au quotidien, c'est justement pour ça qu'ils sont oubliés dans un déménagement.",
+        ],
+        list: [
+          "L'intérieur du four et la hotte — le poste numéro un, et le plus long à rattraper.",
+          "Les joints et parois de douche, entartrés ou noircis : un logement peut être impeccable partout ailleurs et se faire retenir là-dessus.",
+          "Les vitres, y compris les encadrements et les rails de fenêtres.",
+          "Les traces derrière les meubles déplacés, et les marques laissées par les fixations murales.",
+          "Les plinthes et les angles de sol, que le passage d'aspirateur ne prend jamais.",
+          "L'intérieur des placards et du réfrigérateur s'il reste en place.",
+        ],
+      },
+      {
+        h2: 'Nettoyage de fin de bail ou remise en état : ce n\'est pas la même chose',
+        paragraphs: [
+          "Un nettoyage de fin de bail rend un logement propre. Il ne répare pas ce qui est abîmé, et c'est une distinction qui compte au moment de comparer des devis.",
+          "Un mur à repeindre, un parquet rayé, une vitre fêlée, un joint de silicone à refaire relèvent de travaux — pas du nettoyage. Nous vous le signalons au moment du devis, avec ce que ça change ou non pour votre état des lieux. Promettre qu'un nettoyage effacera une dégradation, ce serait vous vendre une déception le jour du rendez-vous.",
+        ],
+      },
+      {
+        h2: 'Quand faire intervenir, et avec quel préavis',
+        paragraphs: [
+          "Le bon moment se situe une fois le logement entièrement vidé, et un à trois jours avant l'état des lieux. Trop tôt, la poussière du déménagement retombe ; le matin même, il ne reste aucune marge si un poste demande plus de temps que prévu.",
+          "Prévenez-nous dès que vous connaissez votre date de sortie, même si le déménagement n'est pas encore fait : nous bloquons le créneau. Les fins de mois sont les périodes les plus tendues — c'est là que tous les baux se terminent, et c'est là que les disponibilités partent en premier.",
+        ],
+      },
+    ],
+    related: ['grand-menage-lyon', 'menage-domicile-lyon', 'nettoyage-vitres-lyon', 'nettoyage-apres-travaux-lyon'],
+    updatedAt: '2026-08-31',
+    faq: [
+      { q: "Le nettoyage garantit-il de récupérer mon dépôt de garantie ?", a: "Personne ne peut le garantir : la restitution dépend aussi de l'état du logement lui-même, et un nettoyage ne répare pas une dégradation. Ce que nous garantissons, c'est que la propreté ne sera pas le motif de retenue." },
+      { q: 'Faut-il que le logement soit vide ?', a: "Ce n'est pas obligatoire, mais c'est nettement préférable : un logement vidé permet de traiter les sols, les plinthes et l'arrière des meubles, exactement là où portent les remarques. Si le mobilier reste, nous le signalons sur le devis." },
+      { q: 'Dois-je être présent pendant l\'intervention ?', a: "Non. Beaucoup de nos clients ont déjà quitté Lyon au moment du nettoyage. Nous convenons d'une remise de clés et nous vous envoyons des photos une fois terminé." },
+      { q: 'Combien de temps faut-il prévoir ?', a: "Cela dépend de la surface et de l'état, mais comptez une demi-journée pour un studio ou un T2, une journée pour un T3 ou T4. Le devis annonce la durée prévue et le nombre d'intervenants." },
+      { q: 'Intervenez-vous en urgence ?', a: "Quand nos plannings le permettent, oui — mais les fins de mois sont saturées, tous les baux se terminant aux mêmes dates. Appelez dès que votre date de sortie est connue, même sans certitude sur le déménagement." },
+      { q: 'Travaillez-vous avec les agences immobilières ?', a: "Oui, régulièrement, aussi bien pour le compte du locataire sortant que pour celui du bailleur avant une remise en location." },
+    ],
+  },
+  // ── Requête « prix » sur le B2B : forte intention, même politique que les
+  // autres pages prix — on explique ce qui fait varier, sans grille affichée.
+  {
+    slug: 'prix-nettoyage-bureaux-lyon',
+    keyword: 'prix nettoyage bureaux Lyon',
+    eyebrow: 'Prix & devis',
+    h1: 'Prix du nettoyage de bureaux à Lyon',
+    title: "Prix du nettoyage de bureaux à Lyon — MonCleanerPro",
+    description: "Ce qui fait varier le prix d'un contrat de nettoyage de bureaux à Lyon : surface, fréquence, plage horaire, sanitaires, revêtements. Devis écrit sous 24h.",
+    intro:
+      "Un tarif de nettoyage de bureaux ne se lit pas au mètre carré. Deux plateaux de surface identique peuvent différer du simple au double selon le nombre de sanitaires, la densité d'occupation et la plage horaire d'intervention. Plutôt qu'une grille qui ne correspondrait à personne, voici précisément ce qui compose un devis d'entretien de locaux professionnels, et les leviers sur lesquels vous pouvez agir pour le faire baisser sans dégrader le résultat.",
+    highlights: [
+      { title: 'Un prix par passage, stable', text: "Une fois le périmètre écrit, le montant ne bouge pas d'un mois à l'autre. Aucune régularisation surprise en fin de trimestre." },
+      { title: 'Devis écrit sous 24h', text: "Après une visite ou un échange détaillé, un devis poste par poste, sans engagement de durée." },
+      { title: 'Le périmètre est explicite', text: "Socle traité à chaque passage d'un côté, postes périodiques et leur fréquence de l'autre. Les deux listes figurent au contrat." },
+      { title: 'Les écarts sont annoncés', text: "Une intervention hors périmètre vous est chiffrée avant d'être engagée, jamais ajoutée sur la facture." },
+    ],
+    includes: [
+      'Une visite des locaux avant tout chiffrage',
+      'Un devis détaillé poste par poste, avec les fréquences',
+      'La durée prévue de chaque passage et le nombre d\'intervenants',
+      'Les conditions applicables aux multi-sites',
+      'Un contrat sans durée d\'engagement',
+    ],
+    sections: [
+      {
+        h2: 'Les six facteurs qui composent le prix',
+        paragraphs: [
+          "Un devis d'entretien repose sur une estimation du temps de travail réel par passage, multipliée par la fréquence. Voici ce qui fait varier ce temps.",
+        ],
+        list: [
+          "La surface, mais surtout sa configuration : un plateau ouvert de 300 m² se traite bien plus vite que 300 m² découpés en quinze bureaux fermés avec autant de corbeilles et de poignées.",
+          "Le nombre de sanitaires — le facteur le plus sous-estimé. C'est le poste le plus long, le plus sensible, et il ne dépend pas de la surface des locaux mais du nombre de points d'eau.",
+          "La fréquence : cinq passages par semaine coûtent plus cher au mois qu'un seul, mais nettement moins par passage — un local entretenu quotidiennement ne demande jamais le temps d'un rattrapage.",
+          "La plage horaire : tôt le matin ou en soirée, hors présence des équipes, c'est le tarif normal et le meilleur résultat. Une intervention de nuit profonde ou de week-end se majore.",
+          "Les revêtements : moquette, sol souple, béton ciré, parquet n'appellent ni les mêmes produits ni les mêmes machines, ni la même périodicité de traitement en profondeur.",
+          "La densité d'occupation : trente personnes sur un plateau salissent davantage que dix, à surface égale. C'est le nombre d'utilisateurs qui dicte la fréquence, pas les mètres carrés.",
+        ],
+      },
+      {
+        h2: 'Pourquoi nous n\'affichons pas de grille au mètre carré',
+        paragraphs: [
+          "Un prix au mètre carré affiché en ligne aurait un mérite : vous donner l'impression de comparer. Il a un défaut rédhibitoire : il ne correspond à aucun local réel. Appliqué à des bureaux cloisonnés avec quatre sanitaires, il est sous-évalué — et le prestataire qui l'a annoncé devra rogner quelque part, généralement sur le temps passé. Appliqué à un plateau ouvert avec un point d'eau, il est trop cher.",
+          "Nous préférons regarder vos locaux, écrire ce qui sera fait et à quelle fréquence, puis annoncer un montant qui tient. C'est un peu plus long au départ, et ça évite la renégociation du troisième mois, qui est le vrai coût caché d'un devis trop rapide.",
+        ],
+      },
+      {
+        h2: 'Trois leviers pour faire baisser un devis sans perdre en qualité',
+        paragraphs: [
+          "Il existe de vraies marges d'optimisation sur un contrat d'entretien, et elles ne consistent jamais à réduire le temps de passage.",
+        ],
+        list: [
+          "Distinguer socle et périodique. Tout ne mérite pas d'être traité chaque jour : les vitrages intérieurs, les points hauts et la moquette en profondeur relèvent d'une fréquence espacée. Un contrat qui ne fait pas cette distinction facture du quotidien pour des postes qui n'en relèvent pas.",
+          "Regrouper les sites. Si vous avez plusieurs implantations dans l'agglomération, les traiter dans une même tournée supprime des trajets — et ça se voit sur le devis.",
+          "Choisir la bonne plage horaire. Un nettoyage en journée, en présence des équipes, contourne les postes occupés et saute les bureaux fermés : vous payez un passage complet pour un résultat partiel. Tôt le matin ou en soirée, le coût est identique et le résultat sans commune mesure.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon'],
+    updatedAt: '2026-08-31',
+    faq: [
+      { q: 'Pouvez-vous donner un ordre de prix par téléphone ?', a: "Nous pouvons cadrer un ordre de grandeur à partir de la surface, du nombre de sanitaires et de la fréquence souhaitée. Le devis ferme, lui, suit une visite : c'est ce qui permet de l'annoncer sans réserve." },
+      { q: 'La visite des locaux est-elle payante ?', a: "Non, la visite et le devis sont gratuits et sans engagement." },
+      { q: 'Le prix change-t-il selon la période de l\'année ?', a: "Non. Le montant par passage est fixé au contrat et ne varie pas selon la saison ou la charge de nos plannings." },
+      { q: 'Les produits et consommables sont-ils inclus ?', a: "Les produits et le matériel de nettoyage sont inclus. Les consommables sanitaires — savon, papier — peuvent être inclus ou restés à votre charge : c'est une ligne distincte du devis, pour que vous puissiez arbitrer." },
+      { q: 'Facturez-vous un supplément pour un passage exceptionnel ?', a: "Une intervention hors périmètre est chiffrée et validée par vous avant d'être réalisée. Rien n'apparaît sur une facture sans avoir été accepté au préalable." },
+      { q: 'Y a-t-il un engagement de durée ?', a: "Non. Le contrat court sans durée minimale et se résilie avec un préavis court, précisé au devis." },
+    ],
   },
   {
     slug: 'nettoyage-villefranche-sur-saone',
