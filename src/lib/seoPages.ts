@@ -1146,7 +1146,7 @@ export const SEO_PAGES: SeoPage[] = [
     eyebrow: 'Entreprise de nettoyage',
     h1: 'Entreprise de nettoyage à Lyon',
     title: "Entreprise de nettoyage à Lyon — MonCleanerPro",
-    description: "Entreprise de nettoyage à Lyon : hôtels, bureaux, copropriétés, commerces, locations courte durée, fin de chantier. Équipes formées, suivi écrit. Devis sous 24h.",
+    description: "Entreprise de nettoyage à Lyon : hôtels, bureaux, copropriétés, commerces, courte durée, fin de chantier. Équipes formées, suivi écrit. Devis sous 24h.",
     intro:
       "Chercher une entreprise de nettoyage, c'est rarement chercher un balai : c'est chercher quelqu'un qui passera quand il l'a dit, qui fera ce qui était prévu, et qui vous préviendra quand quelque chose cloche. MonCleanerPro intervient à Lyon et dans la métropole pour des hôtels, des EHPAD, des bureaux, des copropriétés, des commerces, des conciergeries et des particuliers. Cette page ne cherche pas à vous vendre une prestation précise — elle vous explique comment nous travaillons, et surtout comment juger un prestataire avant de signer.",
     highlights: [

@@ -5,7 +5,7 @@ import { BLOG_POSTS } from '@/lib/blogPosts';
 const GOLD = '#C9A84C', INK = '#1A1A1A', VOID = '#0D0D0D', CREAM = '#FAFAF8', MUTED = '#7A7068', BORDER = '#E8E4DC';
 
 export const metadata: Metadata = {
-  title: 'Blog — Conseils nettoyage & entretien | MonCleanerPro Lyon',
+  title: 'Blog — Conseils nettoyage & entretien à Lyon',
   description: "Conseils et guides pratiques sur le nettoyage professionnel à Lyon : ménage Airbnb, fin de chantier, hôtellerie, EHPAD et entretien des locaux.",
   alternates: { canonical: 'https://moncleanerpro.fr/blog' },
   openGraph: {

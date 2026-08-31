@@ -178,7 +178,7 @@ export default function DevisEnLignePage() {
       <div className="dv-site">
         <header className="dv-head">
           <div className="dv-mark">MC</div>
-          <div><div className="dv-brand">Demander un devis</div><div className="dv-tag">Estimation immédiate, sans engagement</div></div>
+          <div><h1 className="dv-brand">Demander un devis de nettoyage à Lyon</h1><div className="dv-tag">Estimation immédiate, sans engagement</div></div>
         </header>
 
         {view === 'recap' ? (
@@ -464,7 +464,7 @@ const CSS = `
 .dv-site{max-width:1120px;margin:0 auto;padding:0 18px 40px;}
 .dv-head{display:flex;align-items:center;gap:13px;padding:22px 0 6px;}
 .dv-mark{width:42px;height:42px;border-radius:11px;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;letter-spacing:.02em;}
-.dv-brand{font-weight:700;font-size:19px;letter-spacing:-.01em;}
+.dv-brand{font-weight:700;font-size:19px;letter-spacing:-.01em;margin:0;line-height:1.25;}
 .dv-tag{color:var(--soft);font-size:13px;margin-top:1px;}
 .dv-crumb{display:inline-flex;align-items:center;gap:5px;background:none;border:none;color:var(--soft);font-size:13.5px;cursor:pointer;padding:12px 0 6px;}
 .dv-crumb:hover{color:var(--gold-d);} .dv-crumb svg{width:15px;height:15px;}

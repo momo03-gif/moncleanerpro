@@ -19,9 +19,9 @@ const PHONE = '07 83 43 17 00';
 const PHONE_HREF = 'tel:+33783431700';
 const EMAIL = 'info@moncleanerpro.fr';
 
-const TITLE = 'MonCleanerPro — Nettoyage professionnel à Lyon & Rhône-Alpes';
+const TITLE = 'Nettoyage professionnel à Lyon — MonCleanerPro';
 const DESC =
-  "Société de nettoyage professionnel à Lyon et dans le Rhône-Alpes : hôtellerie, EHPAD, conciergeries & Airbnb, particuliers et fin de chantier. Équipe formée, contrôle qualité, devis gratuit sous 24h.";
+  "Société de nettoyage à Lyon : hôtellerie, EHPAD, conciergeries et Airbnb, bureaux, fin de chantier. Équipes formées, contrôle qualité, devis sous 24h.";
 
 export const metadata: Metadata = {
   title: TITLE,

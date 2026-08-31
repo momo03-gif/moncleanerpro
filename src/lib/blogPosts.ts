@@ -28,7 +28,7 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'checklist-menage-airbnb-entre-voyageurs',
     title: 'Checklist ménage Airbnb : la remise en état parfaite entre deux voyageurs',
-    metaTitle: 'Checklist ménage Airbnb entre voyageurs (à imprimer) — MonCleanerPro',
+    metaTitle: 'Checklist ménage Airbnb entre voyageurs (à imprimer)',
     description: "La checklist complète du ménage Airbnb entre deux voyageurs : pièces, linge, consommables et finitions pour une note 5 étoiles à Lyon.",
     keyword: 'checklist ménage Airbnb',
     date: '2026-07-08',
@@ -82,7 +82,7 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'etapes-nettoyage-fin-de-chantier',
     title: 'Nettoyage de fin de chantier : les étapes pour un logement impeccable',
-    metaTitle: 'Nettoyage fin de chantier : les étapes clés — MonCleanerPro Lyon',
+    metaTitle: 'Nettoyage fin de chantier : les étapes clés',
     description: "Les étapes d’un nettoyage de fin de chantier réussi : poussières, résidus, vitres et finitions avant livraison ou mise en vente d’un bien à Lyon.",
     keyword: 'étapes nettoyage fin de chantier',
     date: '2026-07-08',
@@ -116,8 +116,8 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'poussiere-de-chantier-eliminer',
     title: 'Poussière de chantier : pourquoi elle revient et comment l’éliminer vraiment',
-    metaTitle: 'Poussière de chantier : pourquoi elle revient — MonCleanerPro Lyon',
-    description: "La poussière de travaux réapparaît quelques jours après le ménage : voici d’où elle vient, les points qu’on oublie systématiquement et la méthode pour s’en débarrasser pour de bon.",
+    metaTitle: 'Poussière de chantier : pourquoi elle revient',
+    description: "La poussière de travaux revient quelques jours après le ménage : d’où elle vient, les points qu’on oublie toujours, et la méthode pour en finir.",
     keyword: 'poussière de chantier',
     date: '2026-07-29',
     readingMinutes: 6,
@@ -170,8 +170,8 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'difference-fin-de-chantier-apres-travaux',
     title: 'Fin de chantier ou après travaux : quelle prestation demander ?',
-    metaTitle: 'Fin de chantier ou après travaux : la différence — MonCleanerPro',
-    description: "Nettoyage de fin de chantier et nettoyage après travaux désignent souvent la même chose — mais pas toujours le même contexte. Comment savoir quoi demander, et ce que ça change au devis.",
+    metaTitle: 'Fin de chantier ou après travaux : la différence',
+    description: "Fin de chantier et après travaux désignent souvent la même chose, pas toujours le même contexte. Quoi demander, et ce que ça change au devis.",
     keyword: 'différence fin de chantier après travaux',
     date: '2026-07-29',
     readingMinutes: 4,
@@ -204,7 +204,7 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'choisir-societe-nettoyage-lyon',
     title: 'Comment choisir une société de nettoyage professionnelle à Lyon',
-    metaTitle: 'Choisir sa société de nettoyage à Lyon : 6 critères — MonCleanerPro',
+    metaTitle: 'Choisir sa société de nettoyage à Lyon : 6 critères',
     description: "Les 6 critères pour bien choisir une société de nettoyage à Lyon : fiabilité, contrôle qualité, réactivité, assurances et transparence des devis.",
     keyword: 'société de nettoyage Lyon',
     date: '2026-07-08',
@@ -229,8 +229,8 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'menage-airbnb-creneau-entre-deux-voyageurs',
     title: 'Départ 11h, arrivée 15h : comment tenir le créneau entre deux voyageurs',
-    metaTitle: 'Ménage Airbnb : tenir le créneau entre deux voyageurs — MonCleanerPro',
-    description: "La fenêtre entre un check-out et un check-in ne dure que trois à quatre heures. Voici pourquoi elle déraille et comment organiser la rotation pour ne jamais faire attendre un voyageur.",
+    metaTitle: 'Ménage Airbnb : tenir le créneau entre deux voyageurs',
+    description: "Entre un check-out et un check-in, il reste trois à quatre heures. Pourquoi ce créneau déraille, et comment organiser la rotation pour le tenir.",
     keyword: 'ménage entre deux voyageurs Airbnb',
     date: '2026-08-08',
     readingMinutes: 6,
@@ -274,7 +274,7 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'linge-location-courte-duree',
     title: 'Le linge en location courte durée : le poste qui fait tout dérailler',
-    metaTitle: 'Gérer le linge en location courte durée — MonCleanerPro Lyon',
+    metaTitle: 'Gérer le linge en location courte durée',
     description: "Combien de parures faut-il, faut-il laver sur place, quand remplacer les serviettes : la gestion du linge en location saisonnière, expliquée sans détour.",
     keyword: 'linge location courte durée',
     date: '2026-08-08',
