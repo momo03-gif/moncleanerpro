@@ -91,6 +91,16 @@ const IconWhatsApp = <><path d="M12 3a8.5 8.5 0 0 0-7.3 12.9L3.5 21l5.3-1.3A8.5 
 const IconMonitor = <><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></>;
 const IconUsers = <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6" /></>;
 
+// Bénéfices du crédit d'impôt listés sur la vitrine. Aucun chiffre de tarif :
+// la règle produit veut que le prix n'apparaisse qu'à l'écran d'estimation.
+const creditPoints = [
+  'Vous ne réglez que la moitié, dès la première intervention',
+  'Valable même si vous n’êtes pas imposable',
+  'Ménage régulier, grand ménage, vitres, sols et textiles chez vous',
+  'Une inscription unique, puis plus aucune démarche',
+  'Attestation fiscale annuelle fournie',
+];
+
 const sectors = [
   { icon: IconHotel, title: 'Hôtellerie', href: '/nettoyage-hotel-lyon', text: "Ménage des chambres et parties communes, remise en état entre les séjours, cadence soutenue et exigences de standing hôtelier." },
   { icon: IconHeart, title: 'EHPAD & résidences', href: '/nettoyage-ehpad-lyon', text: "Entretien rigoureux d'établissements accueillant du public sensible : protocoles d'hygiène stricts, régularité et discrétion." },
@@ -317,6 +327,57 @@ export default function VitrinePage() {
               <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: GOLD }}>En savoir plus <span aria-hidden>→</span></span>
             </a>
           ))}
+        </div>
+      </section>
+
+      {/* ── CRÉDIT D'IMPÔT ────────────────────────────────────────────────────
+          Ne s'adresse QU'aux particuliers chez eux : un meublé touristique et un
+          local professionnel n'ouvrent aucun droit. Le bloc le dit noir sur
+          blanc — une conciergerie qui croit y avoir droit se retourne contre
+          nous, et la nuance ne coûte qu'une ligne.
+          Aucun tarif ici : le chiffrage reste à l'écran d'estimation. */}
+      <section id="credit-impot" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-7xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-2 gap-14 items-center">
+          <div data-reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Particuliers</p>
+            <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>
+              La moitié de votre ménage prise en charge par l’État
+            </h2>
+            <p className="mt-4" style={{ color: MUTED }}>
+              L’entretien de votre domicile ouvre droit au crédit d’impôt services à la personne.
+              Grâce à l’avance immédiate de l’URSSAF, cette moitié n’est pas à avancer : elle est
+              déduite de ce que vous réglez, dès la première intervention. Les foyers non imposables
+              y ont droit aussi — c’est un crédit d’impôt, pas une réduction.
+            </p>
+            <ul className="mt-7 space-y-3">
+              {creditPoints.map(t => (
+                <li key={t} className="flex gap-3 text-sm">
+                  <span className="mt-0.5 flex-shrink-0" style={{ color: GOLD }}><Icon path={IconCheck} size={18} /></span>
+                  <span style={{ color: INK }}>{t}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Btn href="/devis-en-ligne" variant="gold"><Icon path={IconSpark} size={18} /> Estimer avec le crédit d’impôt</Btn>
+              <Btn href="/credit-impot-menage-domicile" variant="outline">Comment ça marche</Btn>
+            </div>
+          </div>
+          <div data-reveal className="rounded-2xl border p-9 md:p-11" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+            <p className="text-6xl md:text-7xl font-bold" style={{ color: GOLD, letterSpacing: '-0.03em' }}>50 %</p>
+            <p className="mt-3 text-lg font-bold" style={{ color: INK }}>pris en charge, déduits immédiatement</p>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+              Dans la limite de 12 000 € de dépenses par an et par foyer fiscal, majorée de 1 500 €
+              par enfant à charge ou par personne de plus de 65 ans au foyer.
+            </p>
+            <div className="mt-7 pt-7 border-t" style={{ borderColor: BORDER }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: MUTED }}>Ce qui n’y ouvre pas droit</p>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+                Le ménage d’une location Airbnb ou d’un meublé touristique, et le nettoyage de locaux
+                professionnels : ce sont des activités, pas un domicile. Ces prestations restent
+                facturées normalement.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 

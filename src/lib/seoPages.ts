@@ -774,7 +774,7 @@ export const SEO_PAGES: SeoPage[] = [
       },
     ],
     updatedAt: '2026-08-09',
-    related: ['nettoyage-fin-de-bail-lyon', 'menage-domicile-lyon', 'nettoyage-vitres-lyon'],
+    related: ['nettoyage-fin-de-bail-lyon', 'menage-domicile-lyon', 'credit-impot-menage-domicile', 'nettoyage-vitres-lyon'],
     faq: [
       { q: 'Le grand ménage est-il ponctuel ou régulier ?', a: "Les deux : nous réalisons des grands ménages ponctuels comme des prestations récurrentes selon vos besoins." },
       { q: 'Puis-je le programmer avant un état des lieux ?', a: "Oui, c’est un cas fréquent : nous intervenons avant un état des lieux, une remise de clés ou une vente." },
@@ -1132,8 +1132,9 @@ export const SEO_PAGES: SeoPage[] = [
       { q: "Pourquoi passer par une entreprise ?", a: "Pour le cadre : intervenants déclarés, activité couverte par une responsabilité civile professionnelle, et surtout continuité — en cas de maladie ou de congés, un remplacement est organisé. Dans un arrangement informel, votre logement n’est simplement pas fait." },
       { q: "Le premier passage est-il plus long ?", a: "Oui, presque toujours. L’intervenant découvre les lieux et traite un état de départ qui n’a pas encore été remis à niveau. C’est aussi le moment où l’on cale les priorités, l’accès et la fréquence pour la suite." },
       { q: "Dois-je être présent ?", a: "Pour le premier passage, c’est utile : cela permet d’indiquer vos priorités et ce qu’on ne touche pas. Ensuite, la plupart de nos clients nous confient un accès et ne sont pas là — un compte rendu vous informe de ce qui a été fait." },
+      { q: 'Le ménage régulier ouvre-t-il droit au crédit d’impôt ?', a: "Oui. L’entretien du domicile relève des services à la personne : 50 % du montant sont pris en charge, et l’avance immédiate les déduit directement de votre règlement — vous n’avancez pas cette moitié. C’est sur une prestation récurrente que l’avantage pèse le plus, puisqu’il s’applique à chaque passage de l’année." },
     ],
-    related: ['grand-menage-lyon', 'nettoyage-vitres-lyon', 'menage-airbnb-lyon'],
+    related: ['credit-impot-menage-domicile', 'aide-menagere-domicile-lyon', 'grand-menage-lyon', 'nettoyage-vitres-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
   },
   // ── Pilier générique : la requête la plus large du métier ────────────────────
@@ -3647,6 +3648,218 @@ export const SEO_PAGES: SeoPage[] = [
     related: ['nettoyage-fin-de-chantier-france', 'nettoyage-livraison-programme-neuf', 'nettoyage-chantier-marche-public', 'nettoyage-fin-de-chantier-grenoble'],
     relatedPosts: ['poussiere-de-chantier-eliminer', 'etapes-nettoyage-fin-de-chantier'],
     updatedAt: '2026-08-08',
+  },
+  // ══════════════════════════════════════════════════════════════════════════
+  //  CLUSTER « crédit d'impôt » — l'avantage fiscal des services à la personne.
+  //  Le particulier qui fait entretenir son domicile ne règle que la moitié
+  //  (avance immédiate URSSAF). C'est l'argument le plus fort du marché
+  //  résidentiel, et personne ne le cherche avec les mots du métier : la requête
+  //  n'est pas « société de nettoyage », c'est « crédit d'impôt ménage ».
+  //
+  //  RÈGLE ABSOLUE DE CE CLUSTER : ces pages ne parlent QU'aux particuliers chez
+  //  eux. Un meublé touristique et un local professionnel n'ouvrent aucun droit.
+  //  On le dit explicitement sur chaque page — une conciergerie qui découvre la
+  //  nuance après coup coûte bien plus cher que le trafic gagné en restant flou.
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    slug: 'credit-impot-menage-domicile',
+    keyword: 'crédit d’impôt ménage à domicile',
+    eyebrow: 'Avantage fiscal',
+    h1: 'Crédit d’impôt ménage à domicile : 50 % pris en charge',
+    title: 'Crédit d’impôt ménage à domicile — 50 % déduits | MonCleanerPro',
+    description: "Ménage à domicile : 50 % du montant pris en charge par l’État, déduits immédiatement de votre règlement. Conditions, plafond, démarches. Estimation gratuite.",
+    intro:
+      "Faire entretenir son logement par une entreprise déclarée ouvre droit à un crédit d’impôt de 50 % au titre des services à la personne. Ce n’est pas une réduction commerciale ni une promotion : c’est l’article 199 sexdecies du code général des impôts, et il s’applique aussi bien aux foyers imposables qu’à ceux qui ne le sont pas. Avec l’avance immédiate mise en place par l’URSSAF, cette moitié n’est même plus à avancer : elle est déduite de ce que vous réglez, au moment où vous le réglez. Cette page explique ce que couvre le dispositif, ce qu’il ne couvre pas, et ce qu’il vous reste à faire pour en bénéficier chez nous.",
+    highlights: [
+      { title: 'La moitié, déduite tout de suite', text: "Grâce à l’avance immédiate de l’URSSAF, vous ne réglez que 50 %. Vous n’avancez rien et n’attendez aucun remboursement l’année suivante." },
+      { title: 'Même sans être imposable', text: "C’est un crédit d’impôt, pas une réduction : les foyers non imposables y ont droit et perçoivent la somme, au lieu de la déduire." },
+      { title: 'Un cadre agréé', text: "L’avantage n’existe que si la prestation passe par un organisme de services à la personne agréé. C’est le cadre dans lequel nous intervenons — sans lui, vous n’auriez droit à rien." },
+      { title: 'Aucune démarche compliquée', text: "Une inscription unique, puis plus rien à faire : le calcul, la déduction et le suivi accompagnent automatiquement chaque prestation." },
+    ],
+    includes: [
+      'Entretien régulier du logement : sols, surfaces, cuisine, sanitaires',
+      'Grand ménage et nettoyage en profondeur ponctuel',
+      'Nettoyage des vitres accessibles depuis l’intérieur',
+      'Traitement des sols et entretien des textiles d’ameublement',
+      'Repassage et gestion du linge selon la formule retenue',
+      'Prestations réalisées à votre résidence principale ou secondaire, en France',
+    ],
+    sections: [
+      {
+        h2: 'Un crédit d’impôt, pas une réduction — la différence compte vraiment',
+        paragraphs: [
+          "Les deux mots sont employés indifféremment dans le langage courant, et c’est dommage, parce qu’ils ne recouvrent pas la même chose. Une réduction d’impôt vient diminuer un impôt que vous devez : si vous n’en devez pas, elle ne sert à rien. Un crédit d’impôt, lui, est un droit à percevoir une somme. Quand il dépasse ce que vous devez au fisc, la différence vous est versée.",
+          "Concrètement, un foyer non imposable qui fait entretenir son logement récupère bien la moitié de sa dépense. C’est une méconnaissance très répandue, et elle prive chaque année des ménages modestes ou des retraités d’un avantage auquel ils ont pleinement droit. Si quelqu’un vous a dit que « ça ne sert à rien quand on ne paie pas d’impôts », c’était faux.",
+        ],
+      },
+      {
+        h2: 'Ce qui ouvre droit au crédit, et ce qui n’y ouvre pas droit',
+        paragraphs: [
+          "La ligne de partage est simple à retenir : le dispositif finance l’entretien de votre lieu de vie, pas votre activité. Il s’applique à votre résidence principale comme à votre résidence secondaire, dès lors qu’elle se situe en France, et il vaut que vous en soyez propriétaire ou locataire.",
+          "En revanche, dès que le logement devient un outil de travail, le droit disparaît. C’est le point qui surprend le plus de monde, et il vaut mieux le savoir avant de signer que de le découvrir en remplissant sa déclaration.",
+        ],
+        list: [
+          'Éligible : le ménage régulier de votre logement, quelle que soit sa fréquence',
+          'Éligible : un grand ménage ponctuel, avant une réception ou après l’hiver',
+          'Éligible : les vitres, les sols et les textiles entretenus chez vous',
+          'Non éligible : le ménage d’un meublé touristique ou d’une location Airbnb — c’est une activité de location, pas votre domicile',
+          'Non éligible : le nettoyage d’un local professionnel, d’un bureau ou d’un commerce',
+          'Non éligible : un chantier ou une remise en état sur un bien inoccupé',
+        ],
+      },
+      {
+        h2: 'Le plafond : ce qu’il faut savoir avant de s’organiser sur l’année',
+        paragraphs: [
+          "L’avantage porte sur 12 000 € de dépenses par an et par foyer fiscal, ce qui représente 6 000 € de crédit d’impôt. Ce plafond est majoré de 1 500 € par enfant à charge et par membre du foyer âgé de plus de 65 ans, sans jamais pouvoir dépasser 15 000 € de dépenses retenues.",
+          "Pour la très grande majorité des foyers, ce plafond ne sera jamais atteint : il faut un entretien très soutenu pour dépenser 1 000 € par mois de services à domicile. Il devient en revanche un vrai sujet quand plusieurs prestations se cumulent dans l’année — un ménage hebdomadaire, de la garde d’enfants et du jardinage relèvent du même plafond commun, pas de trois plafonds séparés. Si vous employez déjà quelqu’un pour autre chose, cela vaut la peine d’en tenir compte.",
+        ],
+      },
+      {
+        h2: 'Pourquoi le prestataire doit être déclaré, et ce que cela change',
+        paragraphs: [
+          "Le crédit d’impôt n’est pas attaché à la prestation, il est attaché à celui qui la réalise. Seules les sommes versées à un organisme de services à la personne déclaré — ou à un salarié que vous employez directement en déclarant ses heures — y ouvrent droit. Une facture émise par une entreprise de nettoyage non déclarée au titre des services à la personne, aussi sérieuse soit-elle, ne vous donnera rien.",
+          "C’est aussi ce qui doit vous faire regarder de près un prix « imbattable » proposé de gré à gré. Une prestation non déclarée, une fois le crédit d’impôt pris en compte, revient presque toujours plus cher qu’une prestation déclarée — sans compter qu’en cas d’accident domestique pendant l’intervention, la responsabilité vous revient entièrement.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Est-ce une remise commerciale de votre part ?', a: "Non, et c’est important : il s’agit d’un dispositif fiscal national, l’article 199 sexdecies du code général des impôts. Nous n’en décidons ni le taux ni les conditions. Notre rôle est d’intervenir dans le cadre agréé des services à la personne et de passer par l’avance immédiate, ce qui vous permet d’en bénéficier sans avancer la somme." },
+      { q: 'Je ne paie pas d’impôt sur le revenu, ai-je quand même droit à quelque chose ?', a: "Oui, pleinement. Un crédit d’impôt se transforme en versement quand il dépasse l’impôt dû. Un foyer non imposable récupère donc bien 50 % de sa dépense. C’est l’idée fausse la plus répandue sur le dispositif." },
+      { q: 'Dois-je avancer l’argent et attendre l’année suivante ?', a: "Non, plus depuis l’avance immédiate. Vous réglez directement la moitié de la prestation, l’URSSAF verse l’autre moitié. Il n’y a ni avance de trésorerie ni attente." },
+      { q: 'Le ménage de mon Airbnb est-il concerné ?', a: "Non. Le crédit d’impôt vise l’entretien de votre domicile, résidence principale ou secondaire. Un logement loué en meublé touristique relève de votre activité de location : les frais de ménage y sont des charges déductibles de vos revenus locatifs, ce qui est un mécanisme différent, à voir avec votre comptable." },
+      { q: 'Et si je fais nettoyer une résidence secondaire ?', a: "Elle est éligible, au même titre que la résidence principale, tant qu’elle se situe en France et qu’elle n’est pas mise en location touristique. Le plafond, lui, reste commun à l’ensemble du foyer fiscal." },
+      { q: 'Le plafond est-il par prestation ou par an ?', a: "Par an et par foyer fiscal : 12 000 € de dépenses retenues, soit 6 000 € d’avantage, majorés de 1 500 € par enfant à charge ou par personne de plus de 65 ans au foyer, dans la limite de 15 000 €. Toutes vos dépenses de services à la personne de l’année s’imputent sur ce même plafond." },
+      { q: 'Que dois-je conserver pour ma déclaration ?', a: "L’attestation fiscale annuelle, qui récapitule les sommes réglées sur l’année civile. Elle vous est transmise en début d’année suivante et se reporte directement dans votre déclaration de revenus. Avec l’avance immédiate, les montants sont en outre déjà connus de l’administration." },
+      { q: 'Faut-il un engagement de durée pour en profiter ?', a: "Non. Une prestation ponctuelle chez vous ouvre le même droit qu’un entretien hebdomadaire. Le dispositif porte sur la nature du service et le lieu où il est rendu, pas sur la durée de la relation." },
+    ],
+    cluster: 'credit-impot',
+    related: ['avance-immediate-credit-impot-menage', 'aide-menagere-domicile-lyon', 'menage-domicile-lyon', 'grand-menage-lyon'],
+    updatedAt: '2026-09-05',
+  },
+  {
+    slug: 'avance-immediate-credit-impot-menage',
+    keyword: 'avance immédiate crédit d’impôt ménage',
+    eyebrow: 'Avance immédiate',
+    h1: 'Avance immédiate : ne réglez que la moitié, tout de suite',
+    title: 'Avance immédiate crédit d’impôt ménage — comment ça marche | MonCleanerPro',
+    description: "L’avance immédiate de l’URSSAF déduit les 50 % du crédit d’impôt de votre règlement, sans attendre l’année suivante. Fonctionnement, inscription, cas particuliers.",
+    intro:
+      "Pendant longtemps, le crédit d’impôt services à la personne avait un défaut de trésorerie : il fallait payer la totalité, puis attendre la déclaration de revenus et le versement du fisc, parfois plus d’un an après. L’avance immédiate a supprimé ce décalage. Vous réglez la moitié de la prestation, l’URSSAF verse l’autre moitié, et il n’y a plus rien à récupérer nulle part. Voici comment le mécanisme fonctionne concrètement, ce qu’on vous demande une seule fois, et les quelques situations où il ne s’applique pas.",
+    highlights: [
+      { title: 'Aucune avance de trésorerie', text: "Vous ne sortez jamais la moitié prise en charge par l’État. Elle est déduite du montant à régler, prestation après prestation." },
+      { title: 'Une inscription unique', text: "Vous validez votre inscription une fois, avec votre numéro fiscal. Ensuite, chaque prestation suit automatiquement." },
+      { title: 'Vous gardez la main', text: "Chaque demande de prélèvement vous est notifiée avant d’être exécutée. Vous pouvez la contester si un montant vous semble faux." },
+      { title: 'Rien à reporter plus tard', text: "Les sommes déjà déduites ne se redemandent pas au moment de la déclaration : l’avantage a déjà été perçu." },
+    ],
+    includes: [
+      'Inscription réalisée une seule fois, avec votre numéro fiscal',
+      'Montant divisé par deux dès la première prestation',
+      'Notification avant chaque prélèvement, avec le détail',
+      'Aucun formulaire à remplir après l’intervention',
+      'Récapitulatif annuel des sommes réglées et prises en charge',
+      'Réservé aux prestations effectuées à votre domicile en France',
+    ],
+    sections: [
+      {
+        h2: 'Ce qui se passe, étape par étape, après une intervention',
+        paragraphs: [
+          "Le fonctionnement est volontairement invisible pour vous, mais il est utile d’en connaître le déroulé pour comprendre ce que vous voyez arriver.",
+        ],
+        list: [
+          'La prestation est réalisée chez vous et son montant est établi',
+          'Ce montant est déclaré à l’URSSAF au titre des services à la personne',
+          'Vous recevez une notification indiquant le montant total et la part restant à votre charge',
+          'Passé un court délai de contestation, seule votre moitié est prélevée',
+          'L’URSSAF verse la seconde moitié au prestataire',
+        ],
+      },
+      {
+        h2: 'Le délai de contestation n’est pas une formalité',
+        paragraphs: [
+          "Entre la notification et le prélèvement, vous disposez d’une fenêtre pour contester un montant. Beaucoup de clients l’ignorent et laissent filer sans regarder, ce qui est dommage : c’est précisément le moment où une erreur se corrige facilement, alors qu’après elle demande un remboursement.",
+          "Prenez l’habitude d’ouvrir la notification et de vérifier deux choses : le montant correspond bien à ce qui a été convenu, et la date correspond à une intervention qui a réellement eu lieu. Cela prend dix secondes et vous garde maître de ce qui est prélevé sur votre compte.",
+        ],
+      },
+      {
+        h2: 'Les situations où l’avance immédiate ne s’applique pas',
+        paragraphs: [
+          "Le dispositif suit exactement le périmètre du crédit d’impôt : si une prestation n’y ouvre pas droit, elle ne peut pas passer par l’avance immédiate non plus. Le nettoyage d’un local professionnel, l’entretien d’un meublé touristique ou une remise en état de chantier sont donc facturés normalement, en totalité.",
+          "Un autre cas mérite d’être signalé, parce qu’il concerne des foyers déjà accompagnés : lorsque vous percevez l’APA ou la PCH, l’articulation avec ces aides suit des règles particulières. Ce n’est pas bloquant, mais cela se vérifie au moment de l’inscription plutôt qu’après la première prestation.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'L’inscription est-elle payante ?', a: "Non, rien ne vous est facturé. L’activation du service et son utilisation sont gratuites pour vous : c’est un dispositif public géré par l’URSSAF, et la moitié prise en charge n’est amputée d’aucun frais de dossier." },
+      { q: 'Que se passe-t-il si je conteste un montant ?', a: "Le prélèvement est suspendu le temps que la situation soit examinée. C’est justement l’intérêt du délai de contestation : rien n’est débité tant que le point n’est pas réglé." },
+      { q: 'Puis-je bénéficier du crédit d’impôt sans l’avance immédiate ?', a: "Oui. Vous réglez alors la totalité, et vous récupérez les 50 % via votre déclaration de revenus l’année suivante, grâce à l’attestation fiscale annuelle. C’est le fonctionnement historique : il reste valable, il demande simplement d’avancer la somme." },
+      { q: 'Dois-je m’inscrire moi-même quelque part ?', a: "Vous recevez une invitation à activer votre compte et vous la validez avec votre numéro fiscal. C’est la seule démarche, et elle n’est faite qu’une fois." },
+      { q: 'Faut-il déclarer ces sommes aux impôts ensuite ?', a: "Les montants déjà pris en charge par l’avance immédiate n’ont pas à être redemandés : l’avantage a été perçu au fil de l’eau. Le récapitulatif annuel vous permet de vérifier la cohérence de votre déclaration préremplie." },
+      { q: 'Est-ce compatible avec un règlement en CESU préfinancé ?', a: "Signalez-le en amont : l’articulation entre des titres CESU préfinancés par un employeur et le crédit d’impôt obéit à des règles propres, et se cadre avant la première intervention plutôt qu’après." },
+      { q: 'Et si une prestation est annulée après notification ?', a: "Le montant est régularisé. C’est aussi la raison pour laquelle il vaut mieux lire les notifications : une annulation tardive se corrige mieux avant le prélèvement qu’après." },
+    ],
+    cluster: 'credit-impot',
+    related: ['credit-impot-menage-domicile', 'menage-domicile-lyon', 'aide-menagere-domicile-lyon'],
+    updatedAt: '2026-09-05',
+  },
+  {
+    slug: 'aide-menagere-domicile-lyon',
+    keyword: 'aide ménagère à domicile Lyon',
+    eyebrow: 'Aide à domicile',
+    h1: 'Aide ménagère à domicile à Lyon',
+    title: 'Aide ménagère à domicile à Lyon — 50 % pris en charge | MonCleanerPro',
+    description: "Aide ménagère à domicile à Lyon : entretien régulier, intervenant attitré, 50 % du montant pris en charge par le crédit d’impôt. Estimation gratuite sous 24h.",
+    intro:
+      "Une aide ménagère, ce n’est pas seulement quelqu’un qui nettoie : c’est quelqu’un qui passe régulièrement chez vous, qui connaît votre logement et sur qui vous devez pouvoir compter. La régularité et la confiance comptent ici davantage que la performance ponctuelle. MonCleanerPro intervient à Lyon et dans la métropole auprès de particuliers, de personnes âgées et de familles, avec un intervenant attitré, un cadre professionnel — et la moitié du montant prise en charge au titre des services à la personne.",
+    highlights: [
+      { title: 'La même personne à chaque passage', text: "Votre intervenant connaît votre logement, vos habitudes et ce à quoi vous tenez. Cela change tout dans une prestation régulière." },
+      { title: 'Une présence qui ne s’interrompt pas', text: "Maladie ou congés : un remplacement est organisé. C’est la différence structurelle avec un arrangement de particulier à particulier." },
+      { title: '50 % pris en charge', text: "Le crédit d’impôt services à la personne s’applique, et l’avance immédiate le déduit directement de votre règlement." },
+      { title: 'Un cadre professionnel', text: "Intervenants déclarés, formés et couverts par une responsabilité civile professionnelle. Rien ne repose sur un accord verbal." },
+    ],
+    includes: [
+      'Entretien des pièces de vie : sols, surfaces, poussière',
+      'Cuisine : plan de travail, évier, extérieur des équipements',
+      'Salle de bains et WC nettoyés et désinfectés',
+      'Chambres : aération, changement des draps sur demande',
+      'Repassage et gestion du linge selon la formule retenue',
+      'Fréquence hebdomadaire, bimensuelle ou adaptée à votre situation',
+    ],
+    sections: [
+      {
+        h2: 'Aide ménagère, auxiliaire de vie, femme de ménage : qui fait quoi',
+        paragraphs: [
+          "Ces trois métiers sont souvent confondus au moment de chercher, et le malentendu se paie ensuite en attentes déçues. L’aide ménagère intervient sur le logement : entretien, linge, remise en ordre. L’auxiliaire de vie intervient sur la personne : lever, toilette, repas, accompagnement. Ce sont deux formations et deux cadres différents, même si les deux se déplacent à domicile.",
+          "Nous intervenons sur le premier périmètre, celui du logement. Si le besoin porte sur l’accompagnement d’une personne dépendante, une structure agréée pour ce type de prestation est le bon interlocuteur — et rien n’empêche les deux de se compléter chez le même bénéficiaire.",
+        ],
+      },
+      {
+        h2: 'Quand l’aide ménagère s’adresse à un parent âgé',
+        paragraphs: [
+          "C’est très souvent un enfant qui organise l’intervention chez son père ou sa mère, parfois à distance. Cette situation a ses exigences propres, et elles n’ont pas grand-chose à voir avec un ménage ordinaire : la personne présente pendant l’intervention doit être en confiance, les horaires doivent être stables, et celui qui organise doit savoir que le passage a bien eu lieu.",
+          "Trois points méritent d’être calés dès le départ : la stabilité de l’intervenant, parce qu’un visage différent chaque semaine met mal à l’aise ; la question de l’accès, quand ouvrir la porte devient difficile ; et l’information de la famille après chaque passage. Un compte rendu d’intervention règle le troisième point sans obliger personne à téléphoner.",
+        ],
+      },
+      {
+        h2: 'Ce que le crédit d’impôt change réellement sur un budget mensuel',
+        paragraphs: [
+          "L’aide ménagère régulière est le cas où le dispositif fiscal pèse le plus lourd, précisément parce qu’il se répète. Sur un entretien hebdomadaire, ce n’est pas une prestation isolée qui est allégée de moitié, c’est l’ensemble de la dépense annuelle — dans la limite des 12 000 € de dépenses retenues par foyer fiscal.",
+          "C’est aussi ce qui rend la comparaison avec un arrangement informel trompeuse. Un tarif horaire non déclaré paraît plus bas, mais il se compare à un tarif déclaré déjà divisé par deux, sans continuité de service ni couverture en cas d’accident. Une fois le calcul fait honnêtement, l’écart s’inverse presque toujours.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Intervenez-vous chez des personnes âgées ?', a: "Oui, c’est une part importante de notre activité résidentielle. Nous intervenons sur l’entretien du logement, avec un intervenant stable et des horaires réguliers. En revanche, nous ne réalisons pas d’aide à la personne au sens de la toilette ou de l’aide au lever, qui relèvent d’un autre métier." },
+      { q: 'La famille est-elle informée des passages ?', a: "Oui. Chaque intervention est tracée et un compte rendu peut être adressé au proche qui organise la prestation. C’est particulièrement utile quand la famille habite loin." },
+      { q: 'Le crédit d’impôt s’applique-t-il à une aide ménagère ?', a: "Oui, pleinement : l’entretien de la maison figure au cœur des services à la personne, sans sous-plafond spécifique. Avec l’avance immédiate, vous ne réglez que la moitié à chaque intervention." },
+      { q: 'Peut-on cumuler avec l’APA ?', a: "Les règles de cumul entre l’APA et le crédit d’impôt sont particulières et dépendent de la situation du bénéficiaire. Signalez-le nous en amont : c’est un point à cadrer avant la première intervention, pas après." },
+      { q: 'Quelle fréquence choisir ?', a: "Un passage hebdomadaire convient à la plupart des logements occupés à plein temps. Un rythme bimensuel suffit souvent pour une personne seule dans un logement de taille modeste. Le premier passage permet d’ajuster : c’est à ce moment-là que la durée réelle se connaît." },
+      { q: 'Faut-il être présent pendant l’intervention ?', a: "Non, et beaucoup de nos clients confient un accès. Chez une personne âgée, la présence est en revanche fréquente et souhaitable : le passage devient aussi un moment de contact régulier." },
+      { q: 'Que se passe-t-il si l’intervenant habituel est absent ?', a: "Nous organisons un remplacement, en transmettant les consignes déjà établies pour le logement. C’est précisément ce qu’un arrangement de gré à gré ne permet pas." },
+    ],
+    cluster: 'credit-impot',
+    related: ['credit-impot-menage-domicile', 'menage-domicile-lyon', 'avance-immediate-credit-impot-menage', 'grand-menage-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-05',
   },
 ];
 

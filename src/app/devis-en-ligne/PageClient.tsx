@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getTarifsDB, estimateFromDescription, type Tarif } from '@/lib/devis';
-import { buildCatalog, displayName, modeFor, type Item, type Mode } from '@/lib/devisCatalog';
+import { buildCatalog, classify, displayName, modeFor, type Item, type Mode } from '@/lib/devisCatalog';
+import { isEligibleSelection, netAfterCredit, CREDIT_CEILING } from '@/lib/creditImpot';
 import { getSimulatorConfigDB, type SimulatorConfig } from '@/lib/devisConfig';
 import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './AirbnbSimulator';
 
@@ -383,6 +384,14 @@ function TicketLines({ sel, byName, onRemove, showPrice = false }: { sel: Sel; b
 
 // ── Vue récap + formulaire ──
 function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number }; sel: Sel; byName: Map<string, Tarif>; simQuote: SimulatorSubmission | null; form: { nom: string; tel: string; email: string; adresse: string; message: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
+  // ── Crédit d'impôt services à la personne ──
+  // Le particulier ne règle que la moitié (avance immédiate URSSAF). On ne
+  // l'annonce QUE si toute la sélection s'y prête : un Airbnb ou un local pro
+  // n'ouvre aucun droit, et une seule ligne non éligible masque le bloc.
+  const creditEligible = useMemo(
+    () => isEligibleSelection(Object.keys(sel).map(nom => { const t = byName.get(nom); return t ? classify(t).macro : ''; })),
+    [sel, byName],
+  );
   const set = (k: string, v: string) => setForm((f: any) => ({ ...f, [k]: v }));
   return (
     <>
@@ -431,6 +440,26 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
             </>
           )}
         </div>
+        {/* Le net après crédit d'impôt : c'est ce que le client sortira vraiment
+            de sa poche, donc l'information qui compte le plus sur cet écran. */}
+        {!simQuote && creditEligible && totals.count > 0 && totals.max > 0 && (
+          <div className="dv-ci">
+            <div className="dv-ci-head">
+              <span className="dv-ci-ic" dangerouslySetInnerHTML={{ __html: ICON.check }} />
+              <span>Crédit d’impôt services à la personne</span>
+            </div>
+            <div className="dv-ci-row">
+              <span>Vous ne réglez que</span>
+              <strong>{money(netAfterCredit(totals.min))} – {money(netAfterCredit(totals.max))}</strong>
+            </div>
+            <p className="dv-ci-note">
+              L’État prend en charge 50 % du montant, déduits directement de votre règlement grâce à
+              l’avance immédiate de l’URSSAF : vous n’avancez pas cette moitié et n’attendez aucun
+              remboursement. Réservé aux prestations réalisées à votre domicile, dans la limite de
+              {' '}{CREDIT_CEILING.toLocaleString('fr-FR')} € de dépenses par an et par foyer fiscal.
+            </p>
+          </div>
+        )}
         <div className="dv-disc">Cette estimation est <strong>indicative</strong> et peut varier selon l’état des lieux, l’accessibilité et vos besoins constatés sur place. Le devis définitif vous sera confirmé avant intervention.</div>
         <h3 className="dv-form-title">Vos coordonnées</h3>
         <div className="dv-form">
@@ -557,6 +586,12 @@ const CSS = `
 /* Recap + form */
 .dv-recap{max-width:720px;padding-bottom:50px;} .dv-recap h2{margin:0;font-size:24px;} .dv-recap-sub{color:var(--soft);font-size:14px;margin:5px 0 0;}
 .dv-recap-ticket{margin-top:18px;}
+.dv-ci{border:1px solid #CFE0D4;background:#F2F8F3;border-radius:12px;padding:13px 15px;margin:14px 0 0;}
+.dv-ci-head{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:650;color:var(--green-d);}
+.dv-ci-ic{width:15px;height:15px;flex-shrink:0;display:block;} .dv-ci-ic svg{width:100%;height:100%;stroke-width:2.6;}
+.dv-ci-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:9px;}
+.dv-ci-row span{font-size:12.5px;color:var(--soft);} .dv-ci-row strong{font-size:19px;color:var(--green-d);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.dv-ci-note{font-size:11px;color:#54705C;line-height:1.5;margin:8px 0 0;}
 .dv-disc{background:var(--warm-s);border:1px solid #EED9A6;border-radius:12px;padding:13px 15px;font-size:13px;color:#6B4E10;line-height:1.5;margin:18px 0;}
 .dv-form-title{font-size:15px;margin:20px 0 12px;}
 .dv-form{display:grid;grid-template-columns:1fr 1fr;gap:13px;} @media(max-width:600px){.dv-form{grid-template-columns:1fr;}}
