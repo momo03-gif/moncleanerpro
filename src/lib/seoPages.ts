@@ -3734,6 +3734,7 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     cluster: 'particuliers',
     related: ['avance-immediate-credit-impot-menage', 'aide-menagere-domicile-lyon', 'menage-domicile-lyon', 'grand-menage-lyon'],
+    relatedPosts: ['credit-impot-menage-erreurs-a-eviter'],
     updatedAt: '2026-09-05',
   },
   {
@@ -3799,6 +3800,7 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     cluster: 'particuliers',
     related: ['credit-impot-menage-domicile', 'menage-domicile-lyon', 'aide-menagere-domicile-lyon'],
+    relatedPosts: ['credit-impot-menage-erreurs-a-eviter'],
     updatedAt: '2026-09-05',
   },
   {
@@ -3932,7 +3934,7 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     cluster: 'particuliers',
     related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'aide-menagere-domicile-lyon', 'prix-menage-domicile-lyon'],
-    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    relatedPosts: ['checklist-menage-maison-hebdomadaire', 'choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-09-06',
   },
   {
@@ -4005,6 +4007,7 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     cluster: 'particuliers',
     related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'femme-de-menage-lyon', 'grand-menage-lyon'],
+    relatedPosts: ['credit-impot-menage-erreurs-a-eviter', 'checklist-menage-maison-hebdomadaire'],
     updatedAt: '2026-09-06',
   },
   {
@@ -4070,6 +4073,7 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     cluster: 'particuliers',
     related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'femme-de-menage-lyon', 'aide-menagere-domicile-lyon'],
+    relatedPosts: ['checklist-menage-maison-hebdomadaire'],
     updatedAt: '2026-09-06',
   },
   {
@@ -4136,6 +4140,7 @@ export const SEO_PAGES: SeoPage[] = [
     ],
     cluster: 'particuliers',
     related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'nettoyage-fin-de-bail-lyon', 'femme-de-menage-lyon'],
+    relatedPosts: ['checklist-menage-maison-hebdomadaire'],
     updatedAt: '2026-09-06',
   },
 ];
