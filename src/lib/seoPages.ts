@@ -3732,7 +3732,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Que dois-je conserver pour ma déclaration ?', a: "L’attestation fiscale annuelle, qui récapitule les sommes réglées sur l’année civile. Elle vous est transmise en début d’année suivante et se reporte directement dans votre déclaration de revenus. Avec l’avance immédiate, les montants sont en outre déjà connus de l’administration." },
       { q: 'Faut-il un engagement de durée pour en profiter ?', a: "Non. Une prestation ponctuelle chez vous ouvre le même droit qu’un entretien hebdomadaire. Le dispositif porte sur la nature du service et le lieu où il est rendu, pas sur la durée de la relation." },
     ],
-    cluster: 'credit-impot',
+    cluster: 'particuliers',
     related: ['avance-immediate-credit-impot-menage', 'aide-menagere-domicile-lyon', 'menage-domicile-lyon', 'grand-menage-lyon'],
     updatedAt: '2026-09-05',
   },
@@ -3797,7 +3797,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Est-ce compatible avec un règlement en CESU préfinancé ?', a: "Signalez-le en amont : l’articulation entre des titres CESU préfinancés par un employeur et le crédit d’impôt obéit à des règles propres, et se cadre avant la première intervention plutôt qu’après." },
       { q: 'Et si une prestation est annulée après notification ?', a: "Le montant est régularisé. C’est aussi la raison pour laquelle il vaut mieux lire les notifications : une annulation tardive se corrige mieux avant le prélèvement qu’après." },
     ],
-    cluster: 'credit-impot',
+    cluster: 'particuliers',
     related: ['credit-impot-menage-domicile', 'menage-domicile-lyon', 'aide-menagere-domicile-lyon'],
     updatedAt: '2026-09-05',
   },
@@ -3856,10 +3856,287 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Faut-il être présent pendant l’intervention ?', a: "Non, et beaucoup de nos clients confient un accès. Chez une personne âgée, la présence est en revanche fréquente et souhaitable : le passage devient aussi un moment de contact régulier." },
       { q: 'Que se passe-t-il si l’intervenant habituel est absent ?', a: "Nous organisons un remplacement, en transmettant les consignes déjà établies pour le logement. C’est précisément ce qu’un arrangement de gré à gré ne permet pas." },
     ],
-    cluster: 'credit-impot',
+    cluster: 'particuliers',
     related: ['credit-impot-menage-domicile', 'menage-domicile-lyon', 'avance-immediate-credit-impot-menage', 'grand-menage-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-09-05',
+  },
+  {
+    slug: 'femme-de-menage-lyon',
+    keyword: 'femme de ménage Lyon',
+    eyebrow: 'Ménage à domicile',
+    h1: 'Femme de ménage à Lyon',
+    title: 'Femme de ménage à Lyon — 50 % pris en charge | MonCleanerPro',
+    description: "Trouver une femme de ménage à Lyon sans risque : intervenant attitré, entreprise déclarée, remplacement assuré, 50 % pris en charge. Estimation gratuite.",
+    intro:
+      "C’est la recherche la plus courante et la plus mal servie : on cherche « une femme de ménage », c’est-à-dire quelqu’un de confiance, régulier, à qui on peut laisser ses clés. Le mot est celui de tout le monde, même si le métier se conjugue aujourd’hui au masculin comme au féminin. Ce qui compte vraiment est ailleurs : comment cette personne a été recrutée, ce qui se passe le jour où elle est malade, et qui répond si quelque chose casse. MonCleanerPro emploie ses intervenants, les forme et organise leur remplacement — et la moitié de ce que vous réglez est prise en charge au titre des services à la personne.",
+    highlights: [
+      { title: 'Quelqu’un que vous connaissez', text: "Un intervenant attitré, présenté au premier passage, qui revient ensuite. Pas un visage différent chaque semaine." },
+      { title: 'Un remplacement organisé', text: "Maladie, congés, imprévu : nous envoyons quelqu’un d’autre avec vos consignes. Votre logement est fait quand même." },
+      { title: 'Employé, pas déniché', text: "Nos intervenants sont recrutés, formés et salariés. Vous n’êtes pas employeur et n’avez aucune déclaration à faire." },
+      { title: 'Couvert en cas de casse', text: "Une responsabilité civile professionnelle couvre l’intervention. Un vase cassé devient un dossier d’assurance, pas une conversation gênante." },
+    ],
+    includes: [
+      'Entretien complet des pièces de vie et des chambres',
+      'Cuisine : plan de travail, évier, extérieur des équipements',
+      'Salle de bains et WC nettoyés et désinfectés',
+      'Changement des draps et gestion du linge sur demande',
+      'Repassage selon la formule retenue',
+      'Passage hebdomadaire, bimensuel ou ponctuel',
+    ],
+    sections: [
+      {
+        h2: 'Les trois questions à poser avant de confier ses clés',
+        paragraphs: [
+          "Le vrai sujet n’est pas le tarif horaire, c’est ce qui se passe quand la relation sort du cas idéal. Trois questions suffisent à séparer une organisation solide d’un arrangement fragile, et elles se posent en deux minutes au téléphone.",
+        ],
+        list: [
+          'Qui vient si la personne prévue est absente — et avec quelles consignes ?',
+          'Qui est l’employeur : vous, ou l’entreprise qui envoie l’intervenant ?',
+          'Que se passe-t-il en cas de casse ou d’accident domestique pendant l’intervention ?',
+          'Comment mes clés ou mon code d’accès sont-ils conservés et par qui ?',
+          'Puis-je changer d’intervenant si le courant ne passe pas, sans tout arrêter ?',
+        ],
+      },
+      {
+        h2: 'La confiance ne se décrète pas, elle s’organise',
+        paragraphs: [
+          "Laisser entrer quelqu’un chez soi en son absence demande un niveau de confiance qu’aucune promesse commerciale ne produit. Ce qui la construit, ce sont des mécanismes ordinaires : un intervenant identifié et présenté, des passages tracés, des consignes écrites plutôt que transmises oralement, et un interlocuteur à qui parler si quelque chose ne va pas — sans avoir à en parler directement à la personne qui vient chez vous.",
+          "Ce dernier point est sous-estimé. Dans un arrangement direct, signaler un problème revient à faire un reproche personnel à quelqu’un qu’on croise chaque semaine, et la plupart des gens préfèrent ne rien dire jusqu’à ce que la situation devienne intenable. Passer par une entreprise donne un endroit où dire les choses tôt, quand elles se règlent encore facilement.",
+        ],
+      },
+      {
+        h2: 'Ce que « moins cher » veut dire une fois le calcul fait',
+        paragraphs: [
+          "Un tarif horaire proposé de la main à la main paraît toujours plus bas. La comparaison honnête demande pourtant de mettre trois choses en face : la moitié prise en charge par le crédit d’impôt, qui ne s’applique qu’à une prestation déclarée ; la continuité, c’est-à-dire les semaines où votre logement est fait malgré une absence ; et la couverture en cas de dommage.",
+          "Une fois ces trois éléments intégrés, l’écart s’inverse presque toujours. Et il reste le point qu’on ne mesure pas tant qu’il n’est pas arrivé : dans un emploi non déclaré, un accident survenu chez vous pendant l’intervention engage votre responsabilité personnelle, sans assurance derrière.",
+        ],
+      },
+      {
+        h2: 'Un mot sur le vocabulaire',
+        paragraphs: [
+          "Nous employons « femme de ménage » sur cette page parce que c’est le mot que tout le monde utilise pour chercher, et il n’y a aucune raison de compliquer votre recherche. Dans les faits, nos équipes comptent des femmes et des hommes, et le métier s’appelle agent d’entretien ou intervenant à domicile.",
+          "Cela n’a rien d’un détail cosmétique : ce que vous recherchez, c’est une compétence et une fiabilité, pas un profil. Le jour où votre intervenant habituel est remplacé, ce qui compte est que le remplaçant connaisse vos consignes.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Suis-je l’employeur de la personne qui vient ?', a: "Non. Nos intervenants sont nos salariés. Vous n’avez ni contrat de travail à établir, ni déclaration à faire, ni congés payés à gérer. C’est la différence de fond avec l’emploi direct, où vous devenez particulier employeur avec les obligations qui vont avec." },
+      { q: 'Aurai-je toujours la même personne ?', a: "Oui, c’est le principe de l’intervenant attitré. En cas d’absence, un remplaçant vient avec les consignes déjà établies pour votre logement, plutôt que de tout redécouvrir." },
+      { q: 'Puis-je demander à changer d’intervenant ?', a: "Oui, et sans avoir à vous justifier longuement. Le courant passe ou ne passe pas, cela n’a rien d’un jugement sur le travail fourni. Nous préférons de loin un changement demandé tôt à une relation qui s’étiole." },
+      { q: 'Comment mes clés sont-elles gérées ?', a: "Selon ce que vous préférez : boîte à clés à votre domicile, code d’accès, ou remise en main propre. Les modalités d’accès sont consignées avec la fiche de votre logement et connues des seules personnes qui interviennent chez vous." },
+      { q: 'Et si quelque chose est cassé pendant l’intervention ?', a: "L’activité est couverte par une responsabilité civile professionnelle. Vous nous le signalez, et cela suit son cours en assurance. C’est précisément ce qu’un arrangement informel ne permet pas." },
+      { q: 'Le crédit d’impôt s’applique-t-il ?', a: "Oui. L’entretien du domicile relève des services à la personne : 50 % du montant sont pris en charge, et l’avance immédiate les déduit de votre règlement. Vous ne réglez que la moitié, sans attendre l’année suivante." },
+      { q: 'Faut-il un engagement minimum ?', a: "Non. Un passage ponctuel est possible, comme un entretien hebdomadaire. La fréquence s’ajuste après le premier passage, quand la durée réelle est connue." },
+      { q: 'Dois-je fournir les produits et le matériel ?', a: "Cela se décide avec vous. Certains clients tiennent à leurs propres produits, pour un sol fragile ou par choix personnel. Le point se cadre avant la première intervention." },
+    ],
+    cluster: 'particuliers',
+    related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'aide-menagere-domicile-lyon', 'prix-menage-domicile-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-06',
+  },
+  {
+    slug: 'prix-menage-domicile-lyon',
+    keyword: 'prix ménage à domicile Lyon',
+    eyebrow: 'Prix & devis',
+    h1: 'Prix d’un ménage à domicile à Lyon',
+    title: 'Prix d’un ménage à domicile à Lyon — ce qui le fait varier | MonCleanerPro',
+    description: "Ce qui fait varier le prix d’un ménage à domicile à Lyon : surface, fréquence, état initial, linge. Et pourquoi la comparaison se fait après crédit d’impôt.",
+    intro:
+      "Un tarif affiché en ligne ne vous apprendrait presque rien : un studio entretenu toutes les semaines et une maison remise à niveau après six mois sans passage n’ont pas le même contenu de prestation, et pas la même durée. Ce qui est utile, c’est de comprendre ce qui fait bouger le devis, ce que vous pouvez actionner pour le réduire, et surtout comment comparer honnêtement deux propositions — parce que la moitié prise en charge par le crédit d’impôt change complètement le classement des offres.",
+    highlights: [
+      { title: 'La durée, pas la surface seule', text: "Deux logements de même taille peuvent demander du simple au double selon l’encombrement, le nombre de salles d’eau et l’état de départ." },
+      { title: 'La fréquence change tout', text: "Un logement entretenu chaque semaine se fait vite. Le même logement laissé un mois demande un rattrapage à chaque passage." },
+      { title: 'Le premier passage est à part', text: "Il remet à niveau et sert à calibrer la suite. Il est plus long, et ce n’est pas le prix de croisière." },
+      { title: 'Comparer après crédit d’impôt', text: "Une offre déclarée se compare à moitié prix. Face à un tarif non déclaré, c’est le seul calcul qui a du sens." },
+    ],
+    includes: [
+      'Surface réelle à entretenir, et non surface du bail',
+      'Nombre de salles d’eau et de WC, postes les plus chronophages',
+      'État de départ : logement suivi ou remise à niveau nécessaire',
+      'Fréquence retenue : hebdomadaire, bimensuelle, ponctuelle',
+      'Linge, draps et repassage inclus ou non',
+      'Accès : étage sans ascenseur, stationnement, remise des clés',
+    ],
+    sections: [
+      {
+        h2: 'Pourquoi personne de sérieux n’affiche un prix ferme en ligne',
+        paragraphs: [
+          "Un prix annoncé sans avoir vu le logement est soit une accroche, soit une moyenne qui ne correspondra à personne. Dans les deux cas, il finit par être révisé après la première intervention, ce qui est la pire façon de commencer une relation. Le poste qui fait réellement varier le devis n’est pas la surface : c’est le temps nécessaire pour atteindre le résultat attendu.",
+          "Or ce temps dépend d’éléments qu’un formulaire capte mal — l’encombrement des surfaces, le nombre de points d’eau, la présence d’animaux, l’état des sols, et le niveau d’exigence de la personne qui vivra dans le logement après le passage. C’est pour cela que nous donnons une fourchette à partir de vos prestations, puis un devis ferme une fois la situation connue.",
+        ],
+      },
+      {
+        h2: 'Les cinq leviers qui font baisser un devis',
+        paragraphs: [
+          "Certains sont évidents, d’autres beaucoup moins, et le troisième est celui auquel personne ne pense.",
+        ],
+        list: [
+          'Augmenter la fréquence : un logement suivi demande moins de temps par passage qu’un logement rattrapé',
+          'Désencombrer les surfaces avant le passage : le temps passé à déplacer des objets est du temps qui ne nettoie pas',
+          'Regrouper avec un voisin ou un proche du même quartier : deux interventions à la suite évitent un déplacement',
+          'Sortir le repassage du forfait si vous le faites vous-même : c’est un poste à part entière',
+          'Confier un accès plutôt qu’imposer un créneau précis : la souplesse d’horaire se planifie mieux, donc coûte moins',
+        ],
+      },
+      {
+        h2: 'La seule comparaison qui a du sens : après crédit d’impôt',
+        paragraphs: [
+          "C’est le point où la plupart des comparaisons dérapent. Un tarif proposé de gré à gré se compare à une offre déclarée dont la moitié est prise en charge par l’État. Mettre les deux montants bruts côte à côte n’a aucun sens : il faut diviser l’offre déclarée par deux avant de comparer.",
+          "Une fois ce calcul fait, un tarif informel qui semblait imbattable se retrouve souvent au-dessus. Et l’écart restant achète des choses réelles : un remplacement quand votre intervenant est absent, une assurance en cas de dommage, et l’absence de responsabilité d’employeur en cas d’accident chez vous.",
+        ],
+      },
+      {
+        h2: 'Comment obtenir votre chiffre',
+        paragraphs: [
+          "Notre estimation en ligne vous demande de sélectionner les prestations qui vous concernent, puis affiche une fourchette et le montant réellement à votre charge après crédit d’impôt. C’est une estimation indicative : elle sert à savoir si l’ordre de grandeur vous convient avant d’aller plus loin.",
+          "Le devis ferme, lui, est établi ensuite, une fois connus l’état réel du logement et la fréquence retenue. Il est confirmé avant toute intervention — vous ne découvrez jamais un montant après coup.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Pourquoi ne pas afficher un tarif horaire ?', a: "Parce qu’un tarif horaire seul ne dit pas combien d’heures sont nécessaires, et c’est là que tout se joue. Deux prestataires au même tarif horaire peuvent aboutir à des factures très différentes. Nous préférons chiffrer la prestation dans son ensemble, à partir de ce que vous voulez faire faire." },
+      { q: 'Le premier passage coûte-t-il plus cher ?', a: "Il est généralement plus long, parce qu’il traite un état de départ qui n’a pas encore été remis à niveau et que l’intervenant découvre les lieux. Ce n’est pas le prix de croisière : les passages suivants sont calibrés sur la durée réelle constatée." },
+      { q: 'Le prix baisse-t-il si je m’engage sur la durée ?', a: "Ce n’est pas l’engagement qui fait baisser le prix, c’est la fréquence. Un logement entretenu chaque semaine reste en état et demande moins de temps par passage qu’un logement vu une fois par mois." },
+      { q: 'Les produits sont-ils compris ?', a: "Cela se décide avec vous. Certains clients préfèrent que nous utilisions leurs produits, pour un sol fragile ou par choix personnel. Le point se cadre avant la première intervention, et il figure au devis." },
+      { q: 'Comment comparer avec une offre non déclarée ?', a: "En divisant l’offre déclarée par deux, puisque la moitié est prise en charge par le crédit d’impôt et déduite immédiatement de votre règlement. C’est la seule comparaison qui reflète ce que vous sortez réellement de votre poche." },
+      { q: 'Le devis peut-il changer après la première intervention ?', a: "Il peut être ajusté si la réalité diffère nettement de ce qui avait été décrit — un logement bien plus encombré que prévu, par exemple. Dans ce cas, le nouvel élément vous est expliqué et validé avant, jamais facturé après coup." },
+      { q: 'Le déplacement est-il facturé en plus ?', a: "Il est intégré au devis, pas ajouté comme une ligne surprise. C’est aussi pourquoi l’adresse est demandée à l’estimation : un logement excentré ne se planifie pas comme un logement du centre." },
+    ],
+    cluster: 'particuliers',
+    related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'femme-de-menage-lyon', 'grand-menage-lyon'],
+    updatedAt: '2026-09-06',
+  },
+  {
+    slug: 'repassage-domicile-lyon',
+    keyword: 'repassage à domicile Lyon',
+    eyebrow: 'Linge & repassage',
+    h1: 'Repassage à domicile à Lyon',
+    title: 'Repassage à domicile à Lyon — 50 % pris en charge | MonCleanerPro',
+    description: "Repassage à domicile à Lyon, seul ou avec le ménage : linge plié ou sur cintre, textiles délicats respectés. 50 % pris en charge. Estimation gratuite.",
+    intro:
+      "Le repassage est la tâche que les gens abandonnent en premier et récupèrent en dernier. Elle s’accumule discrètement, occupe un soir entier une fois par quinzaine, et ne se rattrape jamais vraiment. C’est aussi un vrai savoir-faire : un chemisier en viscose et une chemise en coton ne se traitent ni à la même température ni dans le même ordre. Nous intervenons à Lyon et dans la métropole, en complément d’un ménage régulier ou comme prestation à part entière — avec la moitié du montant prise en charge au titre des services à la personne.",
+    highlights: [
+      { title: 'Chez vous, avec votre matériel', text: "Le linge ne quitte pas votre domicile. Pas de dépôt, pas de retrait, pas de vêtement perdu en route." },
+      { title: 'Plié ou sur cintre', text: "Vous dites comment vous rangez, nous rendons le linge dans cet état. C’est la moitié du travail utile." },
+      { title: 'Les textiles délicats respectés', text: "Soie, viscose, laine, broderies : chaque matière a sa température et son ordre de passage. Un fer trop chaud ne se rattrape pas." },
+      { title: 'Seul ou avec le ménage', text: "Le repassage peut occuper un passage entier ou compléter l’entretien régulier de votre logement." },
+    ],
+    includes: [
+      'Repassage des chemises, chemisiers et hauts',
+      'Pantalons, jupes et robes',
+      'Linge de maison : draps, taies, nappes, serviettes',
+      'Pliage ou mise sur cintre selon votre rangement',
+      'Tri des textiles ne devant pas être repassés',
+      'Prestation seule ou intégrée à un ménage régulier',
+    ],
+    sections: [
+      {
+        h2: 'Pourquoi le repassage se chiffre au temps, pas à la pièce',
+        paragraphs: [
+          "Un panier de linge ne dit rien de la durée. Dix tee-shirts se traitent en quelques minutes ; cinq chemises en lin froissées au fond d’un panier depuis une semaine prennent bien plus longtemps. Le facteur déterminant n’est pas le nombre de pièces, c’est leur nature et l’état dans lequel elles arrivent.",
+          "Deux éléments pèsent particulièrement : le délai entre la sortie de machine et le repassage, parce qu’un linge séché en boule demande un travail que le même linge étendu correctement n’aurait pas demandé ; et la proportion de textiles délicats, qui imposent de changer de réglage et de travailler pièce à pièce.",
+        ],
+      },
+      {
+        h2: 'Ce qui se prépare avant le passage, et qui fait gagner du temps',
+        paragraphs: [
+          "Rien d’indispensable, mais ces habitudes réduisent nettement la durée — donc le montant.",
+        ],
+        list: [
+          'Sortir le linge de la machine sans le laisser en boule : c’est le geste qui change le plus de choses',
+          'Étendre sur cintre ce qui ira sur cintre : certaines pièces n’auront presque plus besoin de fer',
+          'Mettre à part ce qui ne doit pas être repassé, plutôt que de le faire trier sur place',
+          'Signaler les pièces fragiles ou auxquelles vous tenez, avant plutôt qu’après',
+          'Prévoir un point d’eau et une prise à proximité du plan de repassage',
+        ],
+      },
+      {
+        h2: 'Le linge délicat, là où l’expérience se voit',
+        paragraphs: [
+          "C’est sur ces pièces que la différence entre un repassage fait et un repassage réussi apparaît. La viscose lustre au moindre excès de chaleur, la soie marque à la vapeur mal dosée, la laine s’aplatit si on appuie, et une broderie se traite obligatoirement sur l’envers. Ces règles ne s’improvisent pas au moment de poser le fer.",
+          "En pratique, cela veut dire travailler par familles de matières, en commençant par les températures basses, et accepter qu’une pièce délicate prenne trois fois le temps d’une chemise en coton. Un intervenant pressé fera l’inverse — et c’est précisément comme cela qu’un vêtement auquel vous teniez devient inportable.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Le repassage ouvre-t-il droit au crédit d’impôt ?', a: "Oui. Le repassage à domicile fait partie des services à la personne, au même titre que l’entretien de la maison : 50 % du montant sont pris en charge, et l’avance immédiate les déduit de votre règlement." },
+      { q: 'Emportez-vous le linge ?', a: "Non. Tout se fait chez vous, avec votre fer et votre table. C’est ce qui distingue le repassage à domicile d’un pressing : rien ne circule, rien ne se perd, et vous ne vous déplacez pas." },
+      { q: 'Faut-il fournir le matériel ?', a: "Oui, le fer, la table et éventuellement une centrale vapeur sont les vôtres. Si votre matériel est défaillant, dites-le nous : un fer qui crache de l’eau abîme le linge plus qu’il ne le repasse." },
+      { q: 'Peut-on prendre le repassage seul, sans ménage ?', a: "Oui, c’est une prestation à part entière. Beaucoup de clients la prennent seule au départ, puis l’intègrent à un passage régulier qui couvre aussi l’entretien du logement." },
+      { q: 'Comment le linge est-il rendu ?', a: "Comme vous le rangez : plié, sur cintre, ou les deux selon les pièces. Dites-le au premier passage, cela évite d’avoir à tout reprendre derrière." },
+      { q: 'Et si une pièce est abîmée pendant le repassage ?', a: "L’intervention est couverte par une responsabilité civile professionnelle. Signalez-nous les pièces auxquelles vous tenez particulièrement dès le premier passage : la prévention vaut mieux qu’un dossier d’assurance." },
+      { q: 'Combien de temps prévoir ?', a: "Cela dépend beaucoup plus de la nature du linge que de son volume. Le premier passage sert justement à mesurer : ensuite, la durée nécessaire pour votre linge est connue et le rythme se cale dessus." },
+    ],
+    cluster: 'particuliers',
+    related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'femme-de-menage-lyon', 'aide-menagere-domicile-lyon'],
+    updatedAt: '2026-09-06',
+  },
+  {
+    slug: 'menage-colocation-lyon',
+    keyword: 'ménage colocation Lyon',
+    eyebrow: 'Colocation & coliving',
+    h1: 'Ménage en colocation à Lyon',
+    title: 'Ménage en colocation à Lyon — parties communes entretenues | MonCleanerPro',
+    description: "Ménage de colocation et de coliving à Lyon : parties communes, chambres, rotation des locataires. Fin des tours de ménage jamais tenus. Estimation gratuite.",
+    intro:
+      "Dans une colocation, le ménage est le premier sujet de tension et le dernier à être réglé. Le tableau des tours tient trois semaines, puis quelqu’un part en stage, quelqu’un d’autre estime avoir déjà fait sa part, et la cuisine devient un terrain de négociation permanent. Faire intervenir un prestataire ne règle pas seulement la propreté : cela retire un sujet de conflit d’une relation qui n’a pas besoin de ça. MonCleanerPro entretient colocations et coliving à Lyon, en distinguant clairement les parties communes des chambres privatives.",
+    highlights: [
+      { title: 'Communs et chambres séparés', text: "Cuisine, salon, sanitaires et couloirs d’un côté ; les chambres au choix de chacun. Deux périmètres, deux décisions." },
+      { title: 'Une charge qui se partage', text: "Un montant connu à l’avance, réparti entre colocataires — bien plus simple à tenir qu’un tour de ménage." },
+      { title: 'La rotation absorbée', text: "Départ, arrivée, chambre remise en état entre deux occupants : le mouvement d’une colocation est notre quotidien." },
+      { title: 'Interlocuteur unique', text: "Un référent côté colocation suffit. Nous n’avons pas besoin de coordonner cinq emplois du temps." },
+    ],
+    includes: [
+      'Cuisine commune : plan de travail, évier, extérieur des équipements',
+      'Salles de bains et WC partagés, désinfectés',
+      'Salon, couloirs et espaces de vie communs',
+      'Chambres privatives, en option et au choix de chacun',
+      'Remise en état d’une chambre entre deux occupants',
+      'Passage hebdomadaire ou bimensuel selon le nombre d’occupants',
+    ],
+    sections: [
+      {
+        h2: 'Pourquoi le tour de ménage ne tient jamais',
+        paragraphs: [
+          "Ce n’est pas une question de bonne volonté, c’est une question de définition. Personne n’a la même idée de ce qu’est une cuisine propre, ni du délai acceptable avant de faire la vaisselle. Un tableau des tours répartit des créneaux, mais ne définit pas un résultat — et c’est exactement là que naissent les désaccords.",
+          "Un prestataire extérieur règle le problème autrement : il installe un état de référence, atteint à date fixe, que personne n’a à négocier. Ce qui se passe entre deux passages reste à la charge de chacun, mais le point de retour est garanti. En pratique, les colocations qui franchissent ce pas rapportent que les tensions du quotidien tombent avec.",
+        ],
+      },
+      {
+        h2: 'Communs, chambres : qui décide et qui paie quoi',
+        paragraphs: [
+          "La séparation est le point à cadrer dès le départ, parce qu’elle détermine à la fois l’organisation et le partage de la dépense. Les parties communes concernent tout le monde et se financent collectivement. Les chambres sont un choix individuel : certains colocataires en veulent, d’autres non, et rien n’oblige à un traitement uniforme.",
+          "Concrètement, un référent nous transmet le périmètre commun retenu, et chaque colocataire ajoute ou non sa chambre. C’est la formule qui provoque le moins de discussions, parce que personne ne paie pour un service qu’il n’a pas demandé.",
+        ],
+      },
+      {
+        h2: 'La rotation, moment où tout se joue',
+        paragraphs: [
+          "Une colocation lyonnaise se renouvelle vite, surtout autour des campus. Un départ en juin, une arrivée en septembre, et entre les deux une chambre à remettre dans l’état où le nouvel occupant s’attend à la trouver. Ce moment est souvent bâclé, et c’est ensuite au groupe entier de vivre avec.",
+          "Une remise en état de chambre entre deux occupants est une prestation ponctuelle simple à caler, y compris quand le partant est déjà loin. Elle évite aussi la discussion la plus désagréable qui soit entre colocataires : celle où l’on demande à quelqu’un qui a déjà rendu ses clés de revenir nettoyer.",
+        ],
+      },
+      {
+        h2: 'Le crédit d’impôt en colocation : la règle exacte',
+        paragraphs: [
+          "La colocation est la résidence principale de chacun de ses occupants, donc l’entretien du logement ouvre bien droit au crédit d’impôt services à la personne. Mais le crédit s’applique par foyer fiscal et sur les sommes que chacun a personnellement supportées : ce n’est pas une enveloppe collective à partager après coup.",
+          "En pratique, cela suppose que la dépense de chacun soit identifiable. Si un seul colocataire règle la totalité et se fait rembourser par les autres de la main à la main, lui seul dispose d’un justificatif — et les autres n’ont rien à déclarer. Le point mérite d’être réglé au moment de mettre la prestation en place, pas au moment de la déclaration de revenus.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Les chambres sont-elles comprises ?', a: "Non par défaut : la prestation de base porte sur les parties communes, qui concernent tout le monde. Chaque colocataire peut ajouter sa chambre s’il le souhaite, sans que cela engage les autres." },
+      { q: 'Faut-il que tout le monde soit présent ?', a: "Non, et c’est rarement possible. Un accès nous est confié et un référent sert d’interlocuteur. Nous n’avons pas besoin de coordonner les emplois du temps de chacun." },
+      { q: 'Comment se répartit le montant entre colocataires ?', a: "Le montant de la prestation commune est connu à l’avance, ce qui rend le partage simple à organiser entre vous. Pour le crédit d’impôt en revanche, chacun ne peut déclarer que ce qu’il a personnellement réglé : c’est à cadrer en amont." },
+      { q: 'Intervenez-vous dans les coliving gérés ?', a: "Oui, aussi bien pour un opérateur de coliving que pour une colocation classique entre particuliers. Le périmètre et la fréquence sont simplement définis avec le gestionnaire plutôt qu’avec un colocataire référent." },
+      { q: 'Peut-on faire nettoyer une chambre entre deux locataires ?', a: "Oui, c’est une prestation ponctuelle fréquente, notamment l’été. Elle peut être commandée même si l’occupant précédent est déjà parti, dès lors qu’un accès est possible." },
+      { q: 'Quelle fréquence pour une colocation ?', a: "Elle dépend surtout du nombre d’occupants et de l’usage de la cuisine. Une colocation de quatre personnes qui cuisinent tous les jours n’a pas le même rythme qu’une colocation de deux personnes souvent absentes. Le premier passage permet de caler." },
+      { q: 'Le crédit d’impôt s’applique-t-il vraiment en colocation ?', a: "Oui : la colocation est la résidence principale de ses occupants. Il s’applique par foyer fiscal et sur les sommes personnellement supportées, ce qui suppose que la part de chacun soit identifiable plutôt que remboursée de la main à la main." },
+    ],
+    cluster: 'particuliers',
+    related: ['menage-domicile-lyon', 'credit-impot-menage-domicile', 'nettoyage-fin-de-bail-lyon', 'femme-de-menage-lyon'],
+    updatedAt: '2026-09-06',
   },
 ];
 
