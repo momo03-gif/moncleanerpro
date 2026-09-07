@@ -119,6 +119,13 @@ export async function POST(req: Request) {
           user_id: user.id, partner_name: b.name, email, phone: b.phone ?? null, status_account: 'approved',
         });
         if (pErr) return NextResponse.json({ error: pErr.message }, { status: 400 });
+        // Adresse de facturation : écrite à part et sans bloquer. Si la colonne
+        // n'existe pas encore, le compte est créé quand même et l'adresse se
+        // renseigne depuis /airbnb/profil une fois la migration passée.
+        if (b.address) {
+          const { error: aErr } = await db.from('airbnb_partners').update({ address: b.address }).eq('user_id', user.id);
+          if (aErr) console.warn('createAirbnbAccount address:', aErr.message);
+        }
         return NextResponse.json({ ok: true, id: user.id });
       }
 
@@ -131,8 +138,18 @@ export async function POST(req: Request) {
         const nameCol = isAirbnb ? 'partner_name' : 'hotel_name';
         const email = (b.email ?? '').toLowerCase().trim();
         const patch: any = { [nameCol]: b.name, email, phone: b.phone ?? null };
-        if (!isAirbnb && b.address !== undefined) patch.address = b.address ?? null;
-        const { data: row, error } = await db.from(table).update(patch).eq('id', b.id).select('user_id').single();
+        // L'adresse vaut pour les DEUX natures de compte : une facture émise à une
+        // conciergerie doit porter son adresse autant que celle d'un hôtel. Elle
+        // était réservée aux hôtels tant que la colonne manquait côté conciergerie.
+        if (b.address !== undefined) patch.address = b.address ?? null;
+        let { data: row, error } = await db.from(table).update(patch).eq('id', b.id).select('user_id').single();
+        // Tant que migration_partner_billing.sql n'est pas passée, `address`
+        // n'existe pas sur airbnb_partners : on enregistre le reste plutôt que
+        // de faire échouer toute la modification.
+        if (error && /address/.test(error.message)) {
+          delete patch.address;
+          ({ data: row, error } = await db.from(table).update(patch).eq('id', b.id).select('user_id').single());
+        }
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
         const userId = row?.user_id ?? b.userId;
         if (userId) await db.from('users').update({ name: b.name, email, phone: b.phone ?? null }).eq('id', userId);

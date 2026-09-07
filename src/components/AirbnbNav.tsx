@@ -38,7 +38,13 @@ export default function AirbnbNav() {
         <Logo size={28} />
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <span className="text-sm font-medium truncate max-w-24 text-ink">{user?.name}</span>
+          <Link
+            href="/airbnb/profil"
+            aria-label="Mon profil et mes informations de facturation"
+            className={`text-sm font-medium truncate max-w-24 hover:underline ${pathname === '/airbnb/profil' ? 'text-gold-ink' : 'text-ink'}`}
+          >
+            {user?.name}
+          </Link>
           <IconButton icon="logout" label="Déconnexion" onClick={handleLogout} />
         </div>
       </header>

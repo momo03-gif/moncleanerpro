@@ -312,7 +312,7 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
     setBusy(true);
     const res = isHotel
       ? await createHotelAccountDB({ name: f.name, address: f.address, email: f.email, phone: f.phone, password: f.password, rate: Number(f.rate) || 0, clientType: f.clientType })
-      : await createAirbnbAccountDB({ name: f.name, email: f.email, phone: f.phone, password: f.password });
+      : await createAirbnbAccountDB({ name: f.name, email: f.email, phone: f.phone, password: f.password, address: f.address });
     setBusy(false);
     if (res.error) { setErr(res.error); return; }
     onCreated();
@@ -325,9 +325,7 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
         <input value={f.name} onChange={e => setF(s => ({ ...s, name: e.target.value }))} placeholder={isHotel ? 'Nom de l’hôtel' : 'Nom de la conciergerie'} className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.email} onChange={e => setF(s => ({ ...s, email: e.target.value }))} placeholder="Email (identifiant de connexion)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.phone} onChange={e => setF(s => ({ ...s, phone: e.target.value }))} placeholder="Téléphone (obligatoire)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-        {isHotel && (
-          <input value={f.address} onChange={e => setF(s => ({ ...s, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-        )}
+        <input value={f.address} onChange={e => setF(s => ({ ...s, address: e.target.value }))} placeholder="Adresse postale (facturation)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.password} onChange={e => setF(s => ({ ...s, password: e.target.value }))} placeholder="Mot de passe provisoire" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         {isHotel && (
           <div className="flex items-center gap-2">
@@ -520,9 +518,7 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
           <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
           <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone (obligatoire)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-          {account.kind === 'hotel' && (
-            <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Adresse" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-          )}
+          <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Adresse postale (facturation)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
           <div className="flex gap-2 mt-1">
             <button disabled={busy} onClick={saveEdit} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
             <button onClick={() => { setMode('view'); setForm({ name: account.name, email: account.email, phone: account.phone, address: account.address }); }} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>

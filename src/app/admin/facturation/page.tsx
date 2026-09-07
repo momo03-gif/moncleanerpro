@@ -41,6 +41,10 @@ export default function FacturationPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [company, setCompany] = useState<CompanyInfo>({});
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  // Fiches partenaires : elles portent l’adresse et l’e-mail de facturation du
+  // client, mentions attendues sur une facture. La facture ne connaissait
+  // jusqu’ici que le LIBELLÉ du partenaire, déduit des missions.
+  const [accounts, setAccounts] = useState<{ name: string; email: string; address: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<'new' | 'history'>('new');
@@ -61,9 +65,9 @@ export default function FacturationPage() {
   const [savingCompany, setSavingCompany] = useState(false);
 
   async function loadAll() {
-    const { getMissionsDB, getCompanyInfoDB, getInvoicesDB } = await loadDb();
-    const [m, c, inv] = await Promise.all([getMissionsDB(), getCompanyInfoDB(), getInvoicesDB()]);
-    setMissions(m); setCompany(c); setCompanyForm(c); setInvoices(inv);
+    const { getMissionsDB, getCompanyInfoDB, getInvoicesDB, getPartnerAccountsDB } = await loadDb();
+    const [m, c, inv, acc] = await Promise.all([getMissionsDB(), getCompanyInfoDB(), getInvoicesDB(), getPartnerAccountsDB()]);
+    setMissions(m); setCompany(c); setCompanyForm(c); setInvoices(inv); setAccounts(acc);
     setLoading(false);
   }
   useEffect(() => { loadAll(); }, []);
@@ -107,6 +111,12 @@ export default function FacturationPage() {
   }));
   const total = liveLines.reduce((s, l) => s + l.amount, 0);
   const partnerType = selMissions[0]?.source ?? 'airbnb';
+
+  // Le libellé vient des missions, la fiche vient des comptes : on les relie par
+  // le nom, insensible à la casse et aux accents. Sans correspondance, la facture
+  // s’imprime comme avant — sans adresse — plutôt que de refuser de s’afficher.
+  const normName = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const billingFor = (label: string) => accounts.find(a => normName(a.name) === normName(label ?? ''));
 
   const today = new Date();
   const invoiceNo = partner
@@ -367,6 +377,7 @@ export default function FacturationPage() {
       {/* ── Rendu facture ── */}
       {tab === 'new' && partner && liveLines.length > 0 && (
         <InvoiceDoc company={company} number={invoiceNo} partnerLabel={partner} partnerType={partnerType} status="pending"
+          clientAddress={billingFor(partner)?.address} clientEmail={billingFor(partner)?.email}
           from={from} to={to} lines={liveLines} total={total} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
       )}
       {tab === 'new' && (!partner || liveLines.length === 0) && (
@@ -379,6 +390,7 @@ export default function FacturationPage() {
       {tab === 'history' && viewing && (
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel}
           partnerType={viewing.partnerType} status={viewing.status}
+          clientAddress={billingFor(viewing.partnerLabel)?.address} clientEmail={billingFor(viewing.partnerLabel)?.email}
           from={viewing.periodFrom} to={viewing.periodTo} lines={viewing.lines} total={viewing.total} />
       )}
     </div>

@@ -129,7 +129,7 @@ export async function GET(req: Request) {
           .select('id, user_id, hotel_name, address, email, phone, status_account, billing_hourly_rate, client_type, users(email, phone)')
           .in('status_account', ['approved', 'suspended']).order('hotel_name'),
         db.from('airbnb_partners')
-          .select('id, user_id, partner_name, email, phone, status_account, users(email, phone)')
+          .select('*, users(email, phone)')
           .in('status_account', ['approved', 'suspended']).order('partner_name'),
       ]);
       const accounts = [
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
         ...(partners ?? []).map((p: any) => ({
           id: p.id, userId: p.user_id, kind: 'airbnb' as const, name: p.partner_name,
           email: p.email ?? p.users?.email ?? '', phone: p.phone ?? p.users?.phone ?? '',
-          address: '', status: p.status_account,
+          address: p.address ?? '', status: p.status_account,
         })),
       ];
       return NextResponse.json({ accounts });
@@ -166,6 +166,27 @@ export async function GET(req: Request) {
       if (!isAdmin && userId !== session.id) return adminOnly();
       const { data } = await db.from('airbnb_partners').select('*').eq('user_id', userId).single();
       return NextResponse.json({ partner: data ?? null });
+    }
+    // ── Informations de FACTURATION du partenaire connecté ────────────────────
+    // Op SELF : chacun ne lit que sa propre fiche, l'identité vient de la session
+    // signée et jamais de l'URL. L'admin peut viser un compte précis via `userId`
+    // pour corriger une fiche depuis /admin/comptes.
+    case 'billingProfile': {
+      const target = url.searchParams.get('userId') || session.id;
+      if (!isAdmin && target !== session.id) return adminOnly();
+      const kind = url.searchParams.get('kind') || (session.role === 'hotel' ? 'hotel' : 'airbnb');
+      if (kind === 'hotel') {
+        const { data } = await db.from('hotels').select('*').eq('user_id', target).single();
+        return NextResponse.json({ profile: data ? {
+          kind: 'hotel', name: data.hotel_name ?? '', email: data.email ?? '',
+          phone: data.phone ?? '', address: data.address ?? '',
+        } : null });
+      }
+      const { data } = await db.from('airbnb_partners').select('*').eq('user_id', target).single();
+      return NextResponse.json({ profile: data ? {
+        kind: 'airbnb', name: data.partner_name ?? '', email: data.email ?? '',
+        phone: data.phone ?? '', address: data.address ?? '',
+      } : null });
     }
     case 'partnerNames': {
       if (!isAdmin) return adminOnly();
@@ -243,6 +264,42 @@ export async function POST(req: Request) {
         const clientType = b.clientType === 'ehpad' ? 'ehpad' : 'hotel';
         const { error } = await db.from('hotels').update({ client_type: clientType }).eq('id', b.hotelId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ ok: true });
+      }
+      // ── Enregistrement des informations de FACTURATION ──────────────────────
+      // Op SELF : un partenaire ne modifie que SA fiche. L'identité vient de la
+      // session, jamais du corps de requête — sinon n'importe quel partenaire
+      // connecté pourrait réécrire l'adresse de facturation d'un autre.
+      // L'admin, lui, peut viser un compte précis pour corriger une saisie.
+      case 'updateBilling': {
+        const target = (isAdmin && typeof b.userId === 'string' && b.userId) ? b.userId : session.id;
+        const kind = b.kind === 'hotel' ? 'hotel' : b.kind === 'airbnb' ? 'airbnb' : (session.role === 'hotel' ? 'hotel' : 'airbnb');
+
+        const name = String(b.name ?? '').trim();
+        const email = String(b.email ?? '').trim();
+        const phone = String(b.phone ?? '').trim();
+        const address = String(b.address ?? '').trim();
+        // Le nom de la structure est ce qui s'imprime en tête de facture : une
+        // facture adressée à « » n'est pas une facture.
+        if (!name) return NextResponse.json({ error: 'Le nom de la structure est requis.' }, { status: 400 });
+
+        const table = kind === 'hotel' ? 'hotels' : 'airbnb_partners';
+        const patch: Record<string, unknown> = {
+          [kind === 'hotel' ? 'hotel_name' : 'partner_name']: name,
+          email: email || null,
+          phone: phone || null,
+          address: address || null,
+        };
+        let { error } = await db.from(table).update(patch).eq('user_id', target);
+        // Tant que migration_partner_billing.sql n'est pas passée, `address`
+        // n'existe pas sur airbnb_partners : on enregistre le reste plutôt que
+        // de perdre toute la saisie du partenaire.
+        if (error && /address/.test(error.message)) {
+          delete patch.address;
+          ({ error } = await db.from(table).update(patch).eq('user_id', target));
+          if (!error) return NextResponse.json({ ok: true, addressSkipped: true });
+        }
+        if (error) throw error;
         return NextResponse.json({ ok: true });
       }
       case 'refuseAirbnbPartner': {

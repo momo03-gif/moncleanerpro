@@ -112,7 +112,7 @@ export async function createHotelAccountDB(fields: {
 
 // Crée directement un compte conciergerie Airbnb (déjà validé) — onboarding admin.
 export async function createAirbnbAccountDB(fields: {
-  name: string; email: string; phone?: string; password: string;
+  name: string; email: string; phone?: string; password: string; address?: string;
 }): Promise<{ error: string | null }> {
   try { await postServer('/api/admin/users', { action: 'createAirbnbAccount', ...fields }); return { error: null }; }
   catch (e) { return { error: e instanceof Error ? e.message : 'Création impossible.' }; }
@@ -157,4 +157,43 @@ export async function deletePartnerAccountDB(kind: PartnerKind, id: string): Pro
 export async function getPartnerNamesDB(): Promise<string[]> {
   try { const d = await getServer('/api/partners?op=partnerNames'); return d.names ?? []; }
   catch { return []; }
+}
+
+// ── INFOS DE FACTURATION DU PARTENAIRE ────────────────────────────────────────
+// Nom de la structure, email et adresse postale : ce qui s'imprime sur la facture.
+// L'adresse du client est une mention obligatoire (art. L.441-9 du code de
+// commerce) — elle n'était collectée que pour les hôtels, jamais pour les
+// conciergeries. Lecture et écriture passent par la route serveur : l'identité
+// vient de la session, un partenaire ne peut pas toucher la fiche d'un autre.
+
+export interface BillingProfile {
+  kind: 'hotel' | 'airbnb';
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+export async function getBillingProfileDB(userId?: string, kind?: 'hotel' | 'airbnb'): Promise<BillingProfile | null> {
+  const q = new URLSearchParams({ op: 'billingProfile' });
+  if (userId) q.set('userId', userId);
+  if (kind) q.set('kind', kind);
+  try { const d = await getServer(`/api/partners?${q.toString()}`); return d.profile ?? null; }
+  catch { return null; }
+}
+
+/**
+ * `addressSkipped` vaut true tant que migration_partner_billing.sql n'a pas été
+ * exécutée : le reste de la fiche est enregistré, l'adresse non. On le remonte
+ * pour le dire au partenaire plutôt que de lui laisser croire que c'est passé.
+ */
+export async function saveBillingProfileDB(
+  fields: { name: string; email: string; phone: string; address: string; userId?: string; kind?: 'hotel' | 'airbnb' },
+): Promise<{ error: string | null; addressSkipped?: boolean }> {
+  try {
+    const d = await postServer('/api/partners', { op: 'updateBilling', ...fields });
+    return { error: null, addressSkipped: !!d?.addressSkipped };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Enregistrement impossible.' };
+  }
 }
