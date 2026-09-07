@@ -70,10 +70,10 @@ export default function PartnerProfileClient() {
         </p>
         <div className="grid gap-4">
           <div>
-            <label className={LABEL} htmlFor="pf-name">Nom de la structure</label>
+            <label className={LABEL} htmlFor="pf-name">Nom de facturation</label>
             <input id="pf-name" value={f.name} onChange={set('name')} className={FIELD}
-              placeholder="Ex. Hosting Services Lyon" autoComplete="organization" />
-            <p className="mt-1.5 text-xs text-muted">Le nom exact de votre société, tel qu’il doit apparaître sur la facture.</p>
+              placeholder="Ex. Hosting Services Lyon SAS" autoComplete="organization" />
+            <p className="mt-1.5 text-xs text-muted">La raison sociale exacte de votre société — c’est ce nom qui s’imprime en tête de facture. Il peut différer du nom sous lequel on vous connaît.</p>
           </div>
 
           <div>
@@ -94,7 +94,7 @@ export default function PartnerProfileClient() {
             <label className={LABEL} htmlFor="pf-phone">Téléphone</label>
             <input id="pf-phone" value={f.phone} onChange={set('phone')} className={FIELD}
               placeholder="06 12 34 56 78" autoComplete="tel" />
-            <p className="mt-1.5 text-xs text-muted">Pour vous joindre rapidement en cas d’imprévu sur une intervention.</p>
+            <p className="mt-1.5 text-xs text-muted">Il figure sur vos factures et sert à vous joindre, aussi bien pour une question de règlement que pour un imprévu sur une intervention.</p>
           </div>
         </div>
 

@@ -756,7 +756,7 @@ function DevisHistory({ company, list, onChanged, onEdit, resendId }: { company:
         )}
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel || viewing.clientName || 'Client'}
           partnerType={viewing.partnerType} status={viewing.status === 'accepte' ? 'paid' : 'pending'}
-          clientAddress={viewing.clientAddress} clientEmail={viewing.clientEmail}
+          clientAddress={viewing.clientAddress} clientEmail={viewing.clientEmail} clientPhone={viewing.clientPhone}
           from={viewing.createdAt?.slice(0, 10) ?? ''} to={viewing.validUntil ?? ''} lines={invLines} total={viewing.total}
           docLabel="DEVIS" validUntil={viewing.validUntil} totalLabel="Net à payer (TTC)" totalIsHT />
         <div className="flex flex-wrap gap-2 mt-4 print-hidden">

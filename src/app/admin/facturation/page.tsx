@@ -44,7 +44,7 @@ export default function FacturationPage() {
   // Fiches partenaires : elles portent l’adresse et l’e-mail de facturation du
   // client, mentions attendues sur une facture. La facture ne connaissait
   // jusqu’ici que le LIBELLÉ du partenaire, déduit des missions.
-  const [accounts, setAccounts] = useState<{ name: string; email: string; address: string }[]>([]);
+  const [accounts, setAccounts] = useState<{ name: string; email: string; phone: string; address: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<'new' | 'history'>('new');
@@ -378,6 +378,7 @@ export default function FacturationPage() {
       {tab === 'new' && partner && liveLines.length > 0 && (
         <InvoiceDoc company={company} number={invoiceNo} partnerLabel={partner} partnerType={partnerType} status="pending"
           clientAddress={billingFor(partner)?.address} clientEmail={billingFor(partner)?.email}
+          clientPhone={billingFor(partner)?.phone}
           from={from} to={to} lines={liveLines} total={total} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
       )}
       {tab === 'new' && (!partner || liveLines.length === 0) && (
@@ -391,6 +392,7 @@ export default function FacturationPage() {
         <InvoiceDoc company={company} number={viewing.number} partnerLabel={viewing.partnerLabel}
           partnerType={viewing.partnerType} status={viewing.status}
           clientAddress={billingFor(viewing.partnerLabel)?.address} clientEmail={billingFor(viewing.partnerLabel)?.email}
+          clientPhone={billingFor(viewing.partnerLabel)?.phone}
           from={viewing.periodFrom} to={viewing.periodTo} lines={viewing.lines} total={viewing.total} />
       )}
     </div>

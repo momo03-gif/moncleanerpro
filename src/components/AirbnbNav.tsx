@@ -18,6 +18,7 @@ const navItems: { href: string; label: string; icon: IconName; match: (p: string
   { href: '/airbnb/missions', label: 'Planning', icon: 'missions', match: p => p.startsWith('/airbnb/mission') },
   { href: '/airbnb/reparations', label: 'Réparations', icon: 'wrench', match: p => p.startsWith('/airbnb/reparations') },
   { href: '/airbnb/sync', label: 'Synchro', icon: 'sync', match: p => p.startsWith('/airbnb/sync') },
+  { href: '/airbnb/profil', label: 'Profil', icon: 'user', match: p => p.startsWith('/airbnb/profil') },
 ];
 
 export default function AirbnbNav() {

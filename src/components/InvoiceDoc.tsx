@@ -38,13 +38,13 @@ function fmtDateFR(d: string) {
 // ── Document facture premium (imprimable), partagé live / historique ────────────
 // Réutilisé tel quel pour les DEVIS (LOT 8) via docLabel / validUntil — même
 // identité visuelle, aucune duplication du gabarit.
-export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientAddress, clientEmail, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC', totalIsHT = false }: {
+export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientAddress, clientEmail, clientPhone, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC', totalIsHT = false }: {
   company: CompanyInfo;
   number: string; partnerLabel: string; partnerType?: string; status?: string;
   // Adresse du destinataire : mention OBLIGATOIRE sur une facture
   // (art. L.441-9 du code de commerce). Optionnelle ici seulement parce que
   // les comptes anciens ne l ont pas encore renseignee — le bloc s adapte.
-  clientAddress?: string; clientEmail?: string;
+  clientAddress?: string; clientEmail?: string; clientPhone?: string;
   from: string; to: string;
   lines: (InvoiceLine & { id?: string; qty?: number })[];
   total: number;
@@ -159,7 +159,11 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
             {clientAddress && clientAddress.split('\n').map(l => l.trim()).filter(Boolean).map((l, i) => (
               <p key={i} style={{ fontSize: 11.5, color: '#5A5249', margin: '2px 0 0' }}>{l}</p>
             ))}
-            {clientEmail && <p style={{ fontSize: 11.5, color: '#5A5249', margin: '2px 0 0' }}>{clientEmail}</p>}
+            {(clientEmail || clientPhone) && (
+              <p style={{ fontSize: 11.5, color: '#5A5249', margin: '2px 0 0' }}>
+                {[clientEmail, clientPhone].filter(Boolean).join('   ·   ')}
+              </p>
+            )}
             <p style={{ fontSize: 11, color: '#8A8178', margin: '3px 0 0' }}>{clientTypeLabel ? `Client ${clientTypeLabel.toLowerCase()}` : 'Client'}</p>
           </div>
           {clientTypeLabel && (
