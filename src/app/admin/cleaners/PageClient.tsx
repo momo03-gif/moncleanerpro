@@ -7,7 +7,7 @@ import { capabilitiesLabel, serviceParts } from '@/lib/service';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
-import { formatDuration } from '@/lib/format';
+import { formatDuration, money } from '@/lib/format';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -237,12 +237,12 @@ export default function CleanersPage() {
                       <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Tarifs</p>
                       <div className="flex items-center gap-4 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold" style={{ color: cleaner.hourly_rate ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate ? `${cleaner.hourly_rate}€` : '—'}</span>
+                          <span className="text-lg font-bold" style={{ color: cleaner.hourly_rate ? '#1A1A1A' : '#A8A09A' }}>{cleaner.hourly_rate ? money(cleaner.hourly_rate) : '—'}</span>
                           {cleaner.hourly_rate ? <span className="text-xs" style={{ color: '#A8A09A' }}>/ heure</span> : null}
                         </div>
                         {cleaner.can_deliver && (
                           <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold" style={{ color: cleaner.delivery_rate ? '#C48A2A' : '#A8A09A' }}>{cleaner.delivery_rate ? `${cleaner.delivery_rate}€` : '—'}</span>
+                            <span className="text-lg font-bold" style={{ color: cleaner.delivery_rate ? '#C48A2A' : '#A8A09A' }}>{cleaner.delivery_rate ? money(cleaner.delivery_rate) : '—'}</span>
                             <span className="text-xs" style={{ color: '#A8A09A' }}>/ livraison</span>
                           </div>
                         )}
@@ -333,13 +333,13 @@ export default function CleanersPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Déjà payé ce mois</p>
-                    <p className="text-lg font-bold" style={{ color: '#5A8A6A' }}>{paidTotal}€</p>
+                    <p className="text-lg font-bold" style={{ color: '#5A8A6A' }}>{money(paidTotal)}</p>
                   </div>
                 </div>
 
                 <div className="px-4 md:px-6 py-4">
                   <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>
-                    À payer ce mois — <span style={{ color: unpaidTotal > 0 ? '#C48A2A' : '#5A8A6A' }}>{unpaidTotal}€</span>
+                    À payer ce mois — <span style={{ color: unpaidTotal > 0 ? '#C48A2A' : '#5A8A6A' }}>{money(unpaidTotal)}</span>
                   </p>
                   {unpaid.length === 0 ? (
                     <p className="text-sm py-2" style={{ color: '#5A8A6A' }}>✓ Tout est payé ce mois</p>
@@ -352,13 +352,13 @@ export default function CleanersPage() {
                               <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{m.property}</p>
                               <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {formatDuration(m.missionDurationMinutes)} · {m.type}</p>
                             </div>
-                            <span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{m.cleanerGain ?? 0}€</span>
+                            <span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{money(m.cleanerGain ?? 0)}</span>
                           </div>
                         ))}
                       </div>
                       <button onClick={() => handlePay(cleaner.id, cleaner.name, unpaid.map(m => m.id), unpaidTotal)}
                         className="w-full py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                        Marquer comme payé — {unpaidTotal}€
+                        Marquer comme payé — {money(unpaidTotal)}
                       </button>
                     </>
                   )}
@@ -374,7 +374,7 @@ export default function CleanersPage() {
                             <p className="text-sm" style={{ color: '#1A1A1A' }}>{p.month}</p>
                             <p className="text-xs" style={{ color: '#A8A09A' }}>Payé le {p.date} · {p.missionIds.length} mission{p.missionIds.length > 1 ? 's' : ''}</p>
                           </div>
-                          <span className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{p.amount}€</span>
+                          <span className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{money(p.amount)}</span>
                         </div>
                       ))}
                     </div>

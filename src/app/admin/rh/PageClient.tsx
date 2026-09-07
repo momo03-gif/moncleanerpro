@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { money } from '@/lib/format';
 import {
   getRhConfigDB, saveRhConfigDB, RH_CONFIG_META, type RhConfigRow,
   getPrimeTypesDB, createPrimeTypeDB, updatePrimeTypeDB, deletePrimeTypeDB,
@@ -194,7 +195,7 @@ function PrimesPanel({ primes, showForm, setShowForm, onChanged }: {
               <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{p.nom}</span>
               {!p.actif && <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F5F3EF', color: '#A8A09A' }}>inactive</span>}
             </div>
-            <div className="md:col-span-2"><span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{p.montant}€</span></div>
+            <div className="md:col-span-2"><span className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{money(p.montant)}</span></div>
             <div className="md:col-span-4">
               <span className="text-xs" style={{ color: '#7A7068' }}>
                 {PRIME_CONDITION_LABEL[p.conditionType]}{p.conditionValeur != null ? ` (${p.conditionValeur})` : ''}

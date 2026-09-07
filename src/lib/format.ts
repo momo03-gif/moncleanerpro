@@ -36,3 +36,26 @@ export function formatHour(time: string | null | undefined): string {
   const mm = parseInt(m, 10) || 0;
   return mm === 0 ? `${hh}h` : `${hh}h${String(mm).padStart(2, '0')}`;
 }
+
+/**
+ * Montant en euros, prêt à afficher.
+ *
+ * Une somme de prix additionne des flottants : `15999.03 - 9696.81` donne
+ * `6302.220000000001` en JavaScript, et l'écran affichait ce nombre tel quel.
+ * On arrondit au centime, on masque les décimales quand il n'y en a pas
+ * (« 80 € » plutôt que « 80,00 € »), et on groupe les milliers à la française.
+ *
+ * Accepte aussi une chaîne : les champs de formulaire tiennent leur valeur en
+ * texte, et les appelants ne devraient pas avoir à convertir avant d'afficher.
+ *
+ * Les montants sont TOUJOURS passés par ici : un `${x}€` en dur finit
+ * tôt ou tard par afficher douze décimales à un client.
+ */
+export function money(value: number | string | null | undefined): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '0 €';
+  const rounded = Math.round(n * 100) / 100;
+  const digits = Number.isInteger(rounded) ? 0 : 2;
+  const body = rounded.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${body} €`;
+}

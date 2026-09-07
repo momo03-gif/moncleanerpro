@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
 import { computeMissionGain } from '@/lib/pay';
-import { formatDuration, formatHour, DEPARTURE_TIMES } from '@/lib/format';
+import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
 import Icon from '@/components/Icon';
 import MapsModal from '@/components/MapsModal';
@@ -564,20 +564,20 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>{mission.service === 'delivery' ? 'Forfait cleaner' : 'Taux cleaner'}</p>
             <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>
               {mission.service === 'delivery'
-                ? `${mission.cleanerGain ?? 0}€ / livraison`
-                : (mission.cleanerHourlyRateSnapshot != null ? `${mission.cleanerHourlyRateSnapshot}€/h` : '—')}
+                ? `${money(mission.cleanerGain ?? 0)} / livraison`
+                : (mission.cleanerHourlyRateSnapshot != null ? `${money(mission.cleanerHourlyRateSnapshot)}/h` : '—')}
             </p>
           </div>
           {/* Livraison : jamais facturée au client → on masque le prix client. */}
           {mission.service !== 'delivery' && (
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Prix client</p>
-            <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{mission.price}€</p>
+            <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{money(mission.price)}</p>
           </div>
           )}
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Gain cleaner</p>
-            <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{mission.cleanerGain ?? 0}€</p>
+            <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{money(mission.cleanerGain ?? 0)}</p>
           </div>
         </div>
         )}
@@ -796,7 +796,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Gain cleaner (auto)</label>
                 <div className="w-full px-3 py-2 rounded-lg text-sm border font-semibold" style={{ ...inputStyle, color: '#C9A84C' }}>
-                  {editGainPreview}€
+                  {money(editGainPreview)}
                 </div>
               </div>
             </div>
@@ -809,8 +809,8 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
             )}
             <p className="text-[11px]" style={{ color: '#A8A09A' }}>
               {editForm.service === 'delivery'
-                ? <>Gain = forfait livraison {editCleaner?.delivery_rate ?? 0}€ par livraison (montant fixe, sans durée). Livraison non facturée au client.</>
-                : <>Gain = taux cleaner {editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0}€/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.</>}
+                ? <>Gain = forfait livraison {money(editCleaner?.delivery_rate ?? 0)} par livraison (montant fixe, sans durée). Livraison non facturée au client.</>
+                : <>Gain = taux cleaner {money(editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0)}/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.</>}
             </p>
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={busy}

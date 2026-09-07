@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Depense } from '@/lib/depensesApi';
 import type { Mission } from '@/lib/types';
-import { formatDuration } from '@/lib/format';
+import { formatDuration, money } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import { clientKindOf, CLIENT_KIND_LABEL, CLIENT_KIND_COLOR, type ClientKind } from '@/lib/clientKind';
@@ -148,8 +148,8 @@ export default function StatsPage() {
         {([
           { label: 'Total missions', value: total, icon: 'missions' as IconName },
           { label: 'Taux de completion', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '0%', icon: 'check' as IconName },
-          { label: 'Revenus générés', value: `${revenue}€`, icon: 'wallet' as IconName, accent: true },
-          { label: 'Prix moyen', value: `${avgPrice}€`, icon: 'stats' as IconName },
+          { label: 'Revenus générés', value: money(revenue), icon: 'wallet' as IconName, accent: true },
+          { label: 'Prix moyen', value: money(avgPrice), icon: 'stats' as IconName },
         ]).map(kpi => (
           <div key={kpi.label} className="rounded-2xl p-5 border" style={{ backgroundColor: kpi.accent ? '#C9A84C' : '#FFFFFF', borderColor: kpi.accent ? '#C9A84C' : '#E8E4DC' }}>
             <span className="mb-3 block" style={{ color: kpi.accent ? '#7A6030' : '#C9A84C' }}><Icon name={kpi.icon} size={24} /></span>
@@ -176,11 +176,11 @@ export default function StatsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs" style={{ color: '#A8A09A' }}>Revenus</span>
-                  <span className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{k.ca}€</span>
+                  <span className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{money(k.ca)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs" style={{ color: '#A8A09A' }}>Marge (− salaires)</span>
-                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{k.marge}€</span>
+                  <span className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{money(k.marge)}</span>
                 </div>
               </div>
             </div>
@@ -195,16 +195,16 @@ export default function StatsPage() {
       <div className="rounded-2xl p-5 border mb-8 flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <div>
           <p className="text-xs uppercase tracking-wider" style={{ color: '#7A7068' }}>Bénéfice net (tout compris)</p>
-          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Revenus {revenue}€ − salaires {Math.round(salariesAll)}€ − dépenses {Math.round(depensesAll)}€</p>
+          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Revenus {money(revenue)} − salaires {money(Math.round(salariesAll))} − dépenses {money(Math.round(depensesAll))}</p>
         </div>
-        <p className="text-3xl font-bold" style={{ color: netAllIn >= 0 ? '#5A8A6A' : '#B85A50' }}>{netAllIn}€</p>
+        <p className="text-3xl font-bold" style={{ color: netAllIn >= 0 ? '#5A8A6A' : '#B85A50' }}>{money(netAllIn)}</p>
       </div>
 
       {/* Pilotage : marge par mission + top cleaner + top partenaire Airbnb */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Marge moyenne / mission</p>
-          <p className="text-2xl font-bold" style={{ color: margePerMission >= 0 ? '#5A8A6A' : '#B85A50' }}>{margePerMission}€</p>
+          <p className="text-2xl font-bold" style={{ color: margePerMission >= 0 ? '#5A8A6A' : '#B85A50' }}>{money(margePerMission)}</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>bénéfice par ménage facturé</p>
         </div>
         <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
@@ -215,7 +215,7 @@ export default function StatsPage() {
         <div className="rounded-2xl p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Top partenaire Airbnb</p>
           <p className="text-xl font-bold truncate" style={{ color: '#1A1A1A' }}>{topPartnerEntry?.[0] ?? '—'}</p>
-          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{topPartnerEntry ? `${Math.round(topPartnerEntry[1])}€ de CA` : 'aucune donnée'}</p>
+          <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{topPartnerEntry ? `${money(Math.round(topPartnerEntry[1]))} de CA` : 'aucune donnée'}</p>
         </div>
       </div>
 
@@ -223,7 +223,7 @@ export default function StatsPage() {
       <div className="rounded-2xl p-5 border mb-8 flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
         <div>
           <p className="text-xs uppercase tracking-wider" style={{ color: '#7A7068' }}>Livraisons effectuées</p>
-          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Coût livreurs (montant fixe par livraison) : {deliveriesCost}€</p>
+          <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>Coût livreurs (montant fixe par livraison) : {money(deliveriesCost)}</p>
         </div>
         <p className="text-3xl font-bold" style={{ color: '#C48A2A' }}>{deliveriesCount}</p>
       </div>

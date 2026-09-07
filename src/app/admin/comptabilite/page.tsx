@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Mission, Payment } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
-import { formatDuration } from '@/lib/format';
+import { formatDuration, money } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import type { PayrollRow } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
@@ -96,17 +96,17 @@ function GlobalView() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>Revenus totaux</p>
-          <p className="text-2xl font-bold" style={{ color: '#5A8A6A' }}>{totalRevenue}€</p>
+          <p className="text-2xl font-bold" style={{ color: '#5A8A6A' }}>{money(totalRevenue)}</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>{completedMissions.length} missions terminées</p>
         </div>
         <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-xs mb-2" style={{ color: '#A8A09A' }}>Salaires cleaners</p>
-          <p className="text-2xl font-bold" style={{ color: '#B85A50' }}>{totalSalaries}€</p>
+          <p className="text-2xl font-bold" style={{ color: '#B85A50' }}>{money(totalSalaries)}</p>
           <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Gains distribués</p>
         </div>
         <div className="rounded-2xl p-4 md:p-5 border" style={{ backgroundColor: '#C9A84C', borderColor: '#C9A84C' }}>
           <p className="text-xs mb-2" style={{ color: '#7A6030' }}>Bénéfice net</p>
-          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{netProfit}€</p>
+          <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{money(netProfit)}</p>
           <p className="text-xs mt-1" style={{ color: '#7A6030' }}>Revenus − Salaires</p>
         </div>
       </div>
@@ -116,23 +116,23 @@ function GlobalView() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Revenus</p>
-            <p className="text-xl font-bold" style={{ color: '#5A8A6A' }}>{revenueMonth}€</p>
+            <p className="text-xl font-bold" style={{ color: '#5A8A6A' }}>{money(revenueMonth)}</p>
           </div>
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Salaires base</p>
-            <p className="text-xl font-bold" style={{ color: '#B85A50' }}>{salariesMonth}€</p>
+            <p className="text-xl font-bold" style={{ color: '#B85A50' }}>{money(salariesMonth)}</p>
           </div>
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Primes</p>
-            <p className="text-xl font-bold" style={{ color: '#C48A2A' }}>{primesMonth}€</p>
+            <p className="text-xl font-bold" style={{ color: '#C48A2A' }}>{money(primesMonth)}</p>
           </div>
           <div>
             <p className="text-xs mb-1" style={{ color: '#A8A09A' }}>Bénéfice net</p>
-            <p className="text-xl font-bold" style={{ color: '#C9A84C' }}>{profitMonth}€</p>
+            <p className="text-xl font-bold" style={{ color: '#C9A84C' }}>{money(profitMonth)}</p>
           </div>
         </div>
         <p className="text-[11px] mt-3" style={{ color: '#A8A09A' }}>
-          Bénéfice = revenus − (salaires base + primes). Coût employeur total ce mois : {laborMonth}€.
+          Bénéfice = revenus − (salaires base + primes). Coût employeur total ce mois : {money(laborMonth)}.
         </p>
       </div>
 
@@ -149,15 +149,15 @@ function GlobalView() {
               <div>
                 <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{s.cleaner.name}</p>
                 <p className="text-xs" style={{ color: '#A8A09A' }}>
-                  {s.cleaner.hourly_rate ? `${s.cleaner.hourly_rate}€/h` : ''}
+                  {s.cleaner.hourly_rate ? `${money(s.cleaner.hourly_rate)}/h` : ''}
                 </p>
               </div>
             </div>
             <div><p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{s.missionCountMonth}</p><p className="text-xs" style={{ color: '#A8A09A' }}>{s.missionCount} total</p></div>
-            <div><p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{s.totalEarned}€</p></div>
+            <div><p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{money(s.totalEarned)}</p></div>
             <div>
               <span className="text-sm font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: s.unpaidAmount > 0 ? '#C48A2A15' : '#5A8A6A15', color: s.unpaidAmount > 0 ? '#C48A2A' : '#5A8A6A' }}>
-                {s.unpaidAmount > 0 ? `${s.unpaidAmount}€` : '✓ Payé'}
+                {s.unpaidAmount > 0 ? money(s.unpaidAmount) : '✓ Payé'}
               </span>
             </div>
           </div>
@@ -177,8 +177,8 @@ function GlobalView() {
               <p className="text-xs" style={{ color: '#A8A09A' }}>{m.date} · {formatDuration(m.missionDurationMinutes)}</p>
             </div>
             <p className="text-sm" style={{ color: m.cleanerName ? '#1A1A1A' : '#A8A09A' }}>{m.cleanerName ?? '—'}</p>
-            <p className="text-sm font-semibold" style={{ color: isBillable(m) ? '#5A8A6A' : '#A8A09A' }}>{isBillable(m) ? `${m.price}€` : '—'}</p>
-            <p className="text-sm font-semibold" style={{ color: m.cleanerGain ? '#C9A84C' : '#A8A09A' }}>{m.cleanerGain ? `${m.cleanerGain}€` : '—'}</p>
+            <p className="text-sm font-semibold" style={{ color: isBillable(m) ? '#5A8A6A' : '#A8A09A' }}>{isBillable(m) ? money(m.price) : '—'}</p>
+            <p className="text-sm font-semibold" style={{ color: m.cleanerGain ? '#C9A84C' : '#A8A09A' }}>{m.cleanerGain ? money(m.cleanerGain) : '—'}</p>
           </div>
         ))}
       </div>

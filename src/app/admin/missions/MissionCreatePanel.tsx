@@ -15,7 +15,7 @@ import type { MissionType, MissionSource, MissionService, Apartment, RecurringMi
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { SERVICE_LABEL, canCleanerDoService, serviceParts } from '@/lib/service';
 import { computeMissionGain, DURATION_PRESETS } from '@/lib/pay';
-import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
+import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES, money } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
 
 const emptyForm = {
@@ -47,10 +47,10 @@ function GainPreview({ gain, cleaner, minutes, service }: { gain: number; cleane
   const deliveryRate = cleaner?.delivery_rate ?? 0;
   const parts = serviceParts(service);
   const formula = parts.cleaning && parts.delivery
-    ? `${rate}€/h × ${minutes || 0} min ÷ 60 + ${deliveryRate}€ livraison`
+    ? `${money(rate)}/h × ${minutes || 0} min ÷ 60 + ${money(deliveryRate)} livraison`
     : parts.delivery
-      ? `${deliveryRate}€ par livraison (montant fixe)`
-      : `${rate}€/h × ${minutes || 0} min ÷ 60`;
+      ? `${money(deliveryRate)} par livraison (montant fixe)`
+      : `${money(rate)}/h × ${minutes || 0} min ÷ 60`;
   return (
     <div className="md:col-span-2 rounded-xl px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#C9A84C12', border: '1px solid #C9A84C40' }}>
       <div>
@@ -59,7 +59,7 @@ function GainPreview({ gain, cleaner, minutes, service }: { gain: number; cleane
           {cleaner ? formula : 'Sélectionnez un cleaner pour calculer le gain'}
         </p>
       </div>
-      <span className="text-xl font-bold" style={{ color: '#C9A84C' }}>{gain}€</span>
+      <span className="text-xl font-bold" style={{ color: '#C9A84C' }}>{money(gain)}</span>
     </div>
   );
 }
@@ -752,7 +752,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
               </div>
               {form.price && (
                 <div className="md:col-span-2 px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
-                  Prix client (facturation) repris de l'appartement : <span style={{ color: '#5A8A6A', fontWeight: 600 }}>{form.price}€</span>
+                  Prix client (facturation) repris de l'appartement : <span style={{ color: '#5A8A6A', fontWeight: 600 }}>{money(form.price)}</span>
                 </div>
               )}
               <GainPreview gain={formGain} cleaner={formCleaner} minutes={form.durationMinutes} service={form.service} />
@@ -1141,7 +1141,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                     </div>
                     <p className="text-xs mt-0.5" style={{ color: '#7A7068' }}>
                       {weekdaysLabel(rec.weekdays)}{rec.timeFrom ? ` · ${formatHour(rec.timeFrom)}` : ''}
-                      {` · ${formatDuration(rec.durationMinutes)}`}{rec.price ? ` · ${rec.price}€` : ''}
+                      {` · ${formatDuration(rec.durationMinutes)}`}{rec.price ? ` · ${money(rec.price)}` : ''}
                       {rec.cleanerName ? ` · ${rec.cleanerName}` : ' · non assigné'}
                     </p>
                   </div>
