@@ -64,6 +64,10 @@ export default function PartnerProfileClient() {
 
       <Card className="p-5">
         <SectionTitle>Informations de facturation</SectionTitle>
+        <p className="-mt-1 mb-4 text-xs text-muted">
+          Ces informations concernent <strong>votre société</strong> et figurent sur les factures
+          que nous vous adressons. Elles n’ont rien à voir avec les logements que vous gérez.
+        </p>
         <div className="grid gap-4">
           <div>
             <label className={LABEL} htmlFor="pf-name">Nom de la structure</label>
@@ -80,10 +84,10 @@ export default function PartnerProfileClient() {
           </div>
 
           <div>
-            <label className={LABEL} htmlFor="pf-address">Adresse postale</label>
+            <label className={LABEL} htmlFor="pf-address">Adresse de facturation</label>
             <textarea id="pf-address" value={f.address} onChange={set('address')} rows={3}
               className={FIELD} placeholder={'12 rue de la République\n69002 Lyon'} />
-            <p className="mt-1.5 text-xs text-muted">Le siège de votre structure. C’est une mention obligatoire sur une facture.</p>
+            <p className="mt-1.5 text-xs text-muted">Le siège de votre société — c’est cette adresse qui s’imprime sur la facture, et non celle d’un logement. Mention obligatoire sur une facture.</p>
           </div>
 
           <div>
