@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import PageClient from './PageClient';
+import DevisContent from './DevisContent';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Page publique « Demander un devis ».
@@ -64,6 +65,7 @@ export default function DevisEnLignePage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <PageClient />
+      <DevisContent />
     </>
   );
 }
