@@ -195,6 +195,8 @@ export const SEO_PAGES: SeoPage[] = [
       'menage-conciergerie-lyon',
       'menage-location-courte-duree-lyon',
       'prix-menage-airbnb-lyon',
+      'menage-airbnb-villeurbanne',
+      'menage-airbnb-decines-charpieu',
       'menage-airbnb-villefranche-sur-saone',
       'menage-airbnb-anse',
       'nettoyage-hotel-lyon',
@@ -4143,6 +4145,257 @@ export const SEO_PAGES: SeoPage[] = [
     relatedPosts: ['checklist-menage-maison-hebdomadaire'],
     updatedAt: '2026-09-06',
   },
+  {
+    slug: 'menage-airbnb-villeurbanne',
+    cluster: 'airbnb',
+    keyword: 'nettoyage Airbnb Villeurbanne',
+    eyebrow: 'Villeurbanne',
+    h1: 'Nettoyage Airbnb à Villeurbanne',
+    title: 'Nettoyage Airbnb à Villeurbanne — ménage entre voyageurs | MonCleanerPro',
+    description: "Ménage Airbnb à Villeurbanne : Gratte-Ciel, Charpennes, Tonkin, La Doua. Rotation le jour même, linge fourni, contrôle photo. Devis sous 24h.",
+    intro:
+      "Villeurbanne loue toute l’année, et pas au même public selon le quartier : des séjours d’affaires autour de Charpennes à dix minutes de la Part-Dieu, des familles qui viennent voir un étudiant du côté de la Doua, des visiteurs hospitaliers, et une clientèle de week-end attirée par des nuitées plus abordables qu’en presqu’île. Cette diversité change le travail de ménage bien plus qu’on ne le croit — la durée d’un séjour détermine l’état dans lequel on retrouve un logement. Nous intervenons sur toute la commune, avec la contrainte que tout le monde connaît ici : se garer.",
+    highlights: [
+      { title: 'La rotation du jour même', text: "Départ le matin, arrivée l’après-midi : c’est la norme à Villeurbanne, et notre organisation est calée dessus." },
+      { title: 'Le stationnement anticipé', text: "Nos équipes connaissent les rues où se garer prend vingt minutes. C’est prévu dans la tournée, pas subi le jour J." },
+      { title: 'Immeubles sans ascenseur', text: "Le parc ancien des Gratte-Ciel et du Tonkin en compte beaucoup. Le matériel et le linge sont dimensionnés en conséquence." },
+      { title: 'Un compte rendu après chaque passage', text: "Photos, consommables à réapprovisionner, dégâts constatés : vous savez ce qui s’est passé sans vous déplacer." },
+    ],
+    includes: [
+      'Ménage complet entre deux voyageurs, pièce par pièce',
+      'Changement du linge de lit et de toilette',
+      'Réapprovisionnement des consommables',
+      'Vérification des oublis du voyageur précédent',
+      'Signalement immédiat des dégradations, photos à l’appui',
+      'Remise en place selon vos photos d’annonce',
+    ],
+    sections: [
+      {
+        h2: 'Un quartier, un public, un ménage différent',
+        paragraphs: [
+          "C’est la particularité villeurbannaise : deux logements distants d’un kilomètre n’accueillent pas les mêmes voyageurs. Autour de Charpennes et de la Part-Dieu, ce sont des séjours courts et professionnels — une ou deux nuits, un logement peu occupé, un ménage rapide mais exigeant sur les finitions parce que ce public regarde les détails.",
+          "Du côté de la Doua et des campus, les séjours sont familiaux et plus longs, souvent avec cuisine utilisée tous les jours. Le travail se déplace alors vers la cuisine, le réfrigérateur et les textiles. Aux Gratte-Ciel et au Tonkin, on trouve davantage de séjours de loisir et de week-ends à plusieurs, avec ce que cela implique de vaisselle et de literie supplémentaire. Nous calibrons la durée d’intervention sur ce que le logement reçoit réellement, pas sur sa surface.",
+        ],
+      },
+      {
+        h2: 'Le stationnement, contrainte n°1 d’une tournée villeurbannaise',
+        paragraphs: [
+          "Cela n’a l’air de rien, et c’est pourtant ce qui fait déraper une journée. Se garer près des Gratte-Ciel un jour de marché, ou dans les rues du Tonkin en fin de matinée, peut coûter vingt minutes — multipliées par le nombre de logements, la tournée entière décale et le dernier voyageur arrive avant que le ménage soit fini.",
+          "Nous traitons donc l’accès comme une donnée de planification, au même titre que l’horaire : ordre des logements pensé par secteur, créneaux les plus tendus placés en début de tournée, et places de stationnement connues quand elles existent. Si votre immeuble dispose d’un parking ou d’une place visiteur, signalez-le à la mise en place : c’est l’information qui fait gagner le plus de temps sur l’année.",
+        ],
+      },
+      {
+        h2: 'Plusieurs logements sur la commune : ce que ça change',
+        paragraphs: [
+          "Villeurbanne est assez dense pour que plusieurs biens se traitent dans une même tournée, ce qui n’est pas vrai partout dans la métropole. Pour une conciergerie ou un propriétaire multi-annonces, cela veut dire des interventions enchaînées sans temps de déplacement perdu entre deux, et donc une souplesse réelle sur les horaires de check-in.",
+          "C’est aussi ce qui permet d’absorber un imprévu : un voyageur qui part avec deux heures de retard ne fait pas tomber toute la journée, parce que l’ordre des passages peut être réorganisé sans quitter le secteur.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Intervenez-vous le jour même entre deux voyageurs ?', a: "Oui, c’est le cas le plus courant à Villeurbanne : départ le matin, arrivée l’après-midi. Le créneau se cale avec vous, et nous vous prévenons si un départ tardif menace l’heure d’arrivée du suivant." },
+      { q: 'Fournissez-vous le linge ?', a: "Oui, si vous le souhaitez : linge de lit et de toilette fournis et gérés, ou traitement de votre propre linge selon ce que vous préférez. Beaucoup de conciergeries gardent leur linge et nous confient seulement la rotation." },
+      { q: 'Que se passe-t-il si le voyageur a laissé le logement en mauvais état ?', a: "Nous vous prévenons immédiatement, photos à l’appui, avant même de terminer. Vous pouvez ainsi ouvrir un litige auprès de la plateforme dans les délais, qui sont courts." },
+      { q: 'Couvrez-vous tous les quartiers de Villeurbanne ?', a: "Oui, de Charpennes à la Doua, des Gratte-Ciel au Tonkin, et jusqu’à Cusset et Saint-Jean. La commune entière fait partie de nos secteurs réguliers." },
+      { q: 'Gérez-vous plusieurs logements pour un même propriétaire ?', a: "Oui, et c’est même là que la densité villeurbannaise devient un avantage : plusieurs biens s’enchaînent dans une seule tournée, ce qui donne plus de souplesse sur les horaires." },
+      { q: 'Comment accédez-vous au logement ?', a: "Boîte à clés, code d’immeuble ou serrure connectée, selon ce que vous utilisez. Les modalités sont consignées sur la fiche du logement et connues des seules personnes qui y interviennent." },
+      { q: 'Le ménage Airbnb ouvre-t-il droit au crédit d’impôt ?', a: "Non. Le crédit d’impôt services à la personne concerne l’entretien de votre domicile. Un logement loué en meublé touristique relève de votre activité de location : les frais de ménage y sont des charges déductibles de vos revenus locatifs, ce qui est un mécanisme différent." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-conciergerie-lyon', 'menage-airbnb-venissieux', 'menage-airbnb-decines-charpieu', 'nettoyage-villeurbanne', 'menage-location-courte-duree-lyon'],
+    relatedPosts: ['checklist-menage-airbnb-entre-voyageurs', 'menage-airbnb-creneau-entre-deux-voyageurs'],
+    updatedAt: '2026-09-08',
+  },
+  {
+    slug: 'menage-airbnb-venissieux',
+    cluster: 'airbnb',
+    keyword: 'nettoyage Airbnb Vénissieux',
+    eyebrow: 'Vénissieux',
+    h1: 'Nettoyage Airbnb à Vénissieux',
+    title: 'Nettoyage Airbnb à Vénissieux — ménage entre voyageurs | MonCleanerPro',
+    description: "Ménage Airbnb à Vénissieux : séjours longs, grands logements, accès facile. Rotation fiable, linge géré, compte rendu photo. Devis sous 24h.",
+    intro:
+      "La location courte durée à Vénissieux ne ressemble pas à celle de l’hypercentre lyonnais, et c’est une bonne nouvelle pour qui sait s’y prendre. Les séjours y sont plus longs — déplacements professionnels, missions sur chantier, familles de patients, personnes en mutation — dans un parc de logements plus grands et à des nuitées plus abordables. Cela change deux choses au ménage : ce qu’on trouve en arrivant, et le poids qu’il pèse dans la rentabilité de l’annonce.",
+    highlights: [
+      { title: 'Pensé pour les séjours longs', text: "Une semaine ou un mois d’occupation ne laisse pas le même logement qu’une nuit. Le protocole est adapté, pas simplement rallongé." },
+      { title: 'Accès et stationnement simples', text: "Contrairement au centre, se garer ne coûte pas vingt minutes ici : les créneaux tiennent, et les horaires sont plus souples." },
+      { title: 'Grands logements', text: "T3, T4 et maisons : les surfaces sont plus généreuses qu’en presqu’île, l’intervention est dimensionnée en conséquence." },
+      { title: 'Compte rendu systématique', text: "Photos et signalement des dégâts après chaque passage, pour ouvrir un litige dans les délais si nécessaire." },
+    ],
+    includes: [
+      'Ménage complet entre deux voyageurs',
+      'Cuisine en profondeur : four, plaques, réfrigérateur',
+      'Changement du linge de lit et de toilette',
+      'Réapprovisionnement des consommables',
+      'Contrôle des oublis et des dégradations, photos à l’appui',
+      'Remise en place conforme aux photos de l’annonce',
+    ],
+    sections: [
+      {
+        h2: 'Le séjour long change tout le travail',
+        paragraphs: [
+          "Un voyageur qui reste deux nuits utilise à peine la cuisine et laisse un logement proche de son état de départ. Une personne en mission pendant trois semaines y vit : elle cuisine tous les jours, remplit le réfrigérateur, utilise la machine à laver, déplace les meubles pour installer un bureau. Ce sont deux prestations différentes, et les traiter pareil produit soit un surcoût inutile, soit un logement mal rendu.",
+          "Concrètement, sur un séjour long, l’effort se déplace vers la cuisine — intérieur du four, joints du réfrigérateur, hotte — et vers les textiles, qui ont vraiment servi. À l’inverse, la remise en place décorative compte moins : le logement a été habité, pas visité. Nous ajustons le protocole sur la durée réelle du séjour, information que vous nous transmettez avec la réservation.",
+        ],
+      },
+      {
+        h2: 'Ce que la nuitée plus basse implique',
+        paragraphs: [
+          "C’est le point que peu de prestataires abordent franchement : à Vénissieux, la nuitée est plus abordable qu’en presqu’île, donc le coût du ménage pèse proportionnellement plus lourd dans la rentabilité de l’annonce. Facturer une prestation calibrée pour un studio de l’hypercentre sur un T4 vénissian, c’est manger la marge du propriétaire.",
+          "La réponse n’est pas de bâcler, c’est d’ajuster la fréquence et le périmètre à ce que le logement reçoit. Sur des séjours longs, un ménage entre chaque voyageur suffit là où un logement à forte rotation demanderait davantage. Et les tournées groupées sur le secteur réduisent les temps de déplacement, ce qui se voit sur le devis.",
+        ],
+      },
+      {
+        h2: 'Une logistique plus simple qu’au centre',
+        paragraphs: [
+          "L’accès en voiture, le stationnement, la livraison de linge : tout ce qui complique une tournée dans Lyon intra-muros est plus simple ici. Cela a une conséquence directe pour vous — les créneaux d’intervention sont plus souples, et un départ tardif se rattrape sans faire tomber la journée entière.",
+          "C’est aussi ce qui permet de traiter des demandes de dernière minute, une réservation acceptée la veille pour le lendemain par exemple, là où le centre-ville impose de tout caler des jours à l’avance.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Traitez-vous les séjours de plusieurs semaines ?', a: "Oui, et c’est fréquent à Vénissieux. Le protocole est adapté : plus de temps sur la cuisine et les textiles, moins sur la remise en place décorative. Indiquez-nous la durée du séjour avec la réservation, c’est ce qui nous permet de calibrer." },
+      { q: 'Intervenez-vous en dernière minute ?', a: "Plus facilement qu’au centre, oui, parce que la logistique est plus simple ici. Cela dépend de la charge du jour, mais une demande la veille pour le lendemain est souvent réalisable." },
+      { q: 'Prenez-vous les maisons et les grands logements ?', a: "Oui. Le parc vénissian compte beaucoup de T3, T4 et maisons, et l’intervention est dimensionnée sur la surface réelle et le nombre de couchages, pas sur un forfait unique." },
+      { q: 'Fournissez-vous le linge ?', a: "Au choix : linge fourni et géré par nos soins, ou rotation de votre propre linge. Sur les séjours longs, beaucoup de propriétaires prévoient un change en cours de séjour — cela se cale à la mise en place." },
+      { q: 'Comment sont signalés les dégâts ?', a: "Immédiatement, photos à l’appui, avant même la fin de l’intervention. Les délais de litige des plateformes sont courts : vous prévenir après coup ne vous servirait à rien." },
+      { q: 'Couvrez-vous tout Vénissieux ?', a: "Oui, du centre aux Minguettes en passant par Parilly et le secteur du marché. La commune entière fait partie de nos secteurs réguliers." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-location-courte-duree-lyon', 'menage-airbnb-villeurbanne', 'menage-airbnb-decines-charpieu', 'nettoyage-venissieux', 'menage-conciergerie-lyon'],
+    relatedPosts: ['linge-location-courte-duree', 'checklist-menage-airbnb-entre-voyageurs'],
+    updatedAt: '2026-09-08',
+  },
+  {
+    slug: 'menage-airbnb-decines-charpieu',
+    cluster: 'airbnb',
+    keyword: 'nettoyage Airbnb Décines',
+    eyebrow: 'Décines-Charpieu',
+    h1: 'Nettoyage Airbnb à Décines-Charpieu',
+    title: 'Nettoyage Airbnb à Décines — soirs de match et concerts | MonCleanerPro',
+    description: "Ménage Airbnb à Décines-Charpieu : pics de réservation les soirs de match et de concert au stade, rotations groupées le lendemain. Devis sous 24h.",
+    intro:
+      "Décines a une particularité qu’aucune autre commune de la métropole ne partage : son calendrier de réservations est en grande partie dicté par celui du Groupama Stadium. Un match, un concert, un événement, et des dizaines de logements se remplissent la même nuit — puis se vident tous le lendemain matin, à la même heure. Cette concentration est une aubaine pour le taux d’occupation et un casse-tête pour le ménage, parce qu’elle transforme une journée ordinaire en pic à absorber.",
+    highlights: [
+      { title: 'Les lendemains d’événement absorbés', text: "Quand vingt logements se libèrent le même matin, il faut des équipes, pas de la bonne volonté. Les dates du stade sont dans notre planning." },
+      { title: 'Séjours d’une nuit', text: "Un voyageur venu pour un match dort et repart. Le ménage est court mais dense : literie, sanitaires, finitions visibles." },
+      { title: 'Desserte tramway', text: "Décines s’étire le long du T3. Nos tournées suivent cette logique de secteur, ce qui tient les créneaux." },
+      { title: 'Compte rendu photo', text: "Après une soirée d’événement, savoir ce qui s’est réellement passé dans le logement n’est pas un luxe." },
+    ],
+    includes: [
+      'Ménage entre deux voyageurs, y compris sur séjour d’une nuit',
+      'Changement du linge de lit et de toilette',
+      'Sanitaires et cuisine remis à niveau',
+      'Contrôle des oublis et des dégradations, photos à l’appui',
+      'Réapprovisionnement des consommables',
+      'Interventions groupées les lendemains d’événement',
+    ],
+    sections: [
+      {
+        h2: 'Le stade dicte le calendrier, pas l’inverse',
+        paragraphs: [
+          "Une soirée au Groupama Stadium, ce sont des dizaines de milliers de personnes, et une partie d’entre elles dort à proximité plutôt que de rentrer tard. Pour un propriétaire décinois, cela signifie des nuits pleines à date connue des mois à l’avance — et un départ groupé le lendemain matin, souvent avant onze heures, suivi d’arrivées possibles dès l’après-midi si l’événement s’étale sur deux jours.",
+          "Le problème n’est pas la difficulté du ménage, il est dans la simultanéité. Un prestataire qui traite ces logements un par un ne tiendra jamais la fenêtre. Nous anticipons les dates du calendrier sportif et événementiel comme des pics de charge, avec les effectifs positionnés en amont — exactement la logique que nous appliquons déjà en hôtellerie les jours de forte occupation.",
+        ],
+      },
+      {
+        h2: 'Le séjour d’une nuit demande autre chose',
+        paragraphs: [
+          "Un voyageur venu pour un match arrive en fin d’après-midi, sort, rentre tard et repart le matin. Il n’a pas cuisiné, pas rangé, pas vécu dans le logement. On pourrait croire que le ménage est presque inutile : c’est l’erreur classique.",
+          "Ce type de séjour concentre au contraire tout sur trois postes : la literie, systématiquement à changer, les sanitaires, très sollicités sur une courte durée, et les surfaces visibles à l’entrée, parce que le voyageur suivant se fera son opinion en dix secondes. À l’inverse, l’intérieur du four ou le réfrigérateur n’ont pas bougé. Traiter ce cas avec un protocole de séjour long, c’est facturer du temps inutile ; le traiter à la va-vite, c’est perdre une étoile sur la propreté.",
+        ],
+      },
+      {
+        h2: 'Décines s’étire, la tournée doit suivre',
+        paragraphs: [
+          "La commune est longue, du Grand Large au centre en passant par les secteurs proches du stade, et la desserte se fait principalement le long du tramway T3. Une tournée organisée par ordre chronologique de check-out, sans tenir compte de la géographie, perd un temps considérable en trajets internes.",
+          "Nous construisons donc les tournées par secteur avant de les caler sur les horaires, ce qui laisse de la marge quand un départ prend du retard. C’est aussi ce qui rend possible d’absorber un lendemain d’événement sans reporter les logements du bas de la liste en fin de journée.",
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Gérez-vous les pics des soirs de match ?', a: "Oui, c’est la spécificité décinoise et nous l’intégrons au planning : les dates du calendrier du stade sont anticipées comme des pics de charge, avec les effectifs positionnés à l’avance plutôt que cherchés la veille." },
+      { q: 'Un séjour d’une seule nuit demande-t-il un ménage complet ?', a: "Il demande un ménage différent, pas plus léger : literie systématiquement changée, sanitaires repris à fond, surfaces visibles impeccables. En revanche, les postes cuisine n’ont souvent pas bougé, et nous ne facturons pas du temps qui n’a pas lieu d’être." },
+      { q: 'Intervenez-vous tôt le matin après un événement ?', a: "Oui. Les départs sont groupés et souvent matinaux, les arrivées peuvent suivre le jour même : nos créneaux sont calés sur cette réalité." },
+      { q: 'Couvrez-vous tout Décines-Charpieu ?', a: "Oui, du Grand Large au centre-ville et jusqu’aux abords du stade. Nous intervenons aussi à Meyzieu et Chassieu, ce qui permet de grouper les tournées sur l’est lyonnais." },
+      { q: 'Que faites-vous en cas de dégradation après une soirée ?', a: "Nous vous prévenons immédiatement avec des photos, avant la fin de l’intervention, pour que vous puissiez ouvrir un litige dans les délais très courts imposés par les plateformes." },
+      { q: 'Prenez-vous plusieurs logements pour une même conciergerie ?', a: "Oui, et c’est le cas de figure le plus efficace ici : les logements groupés dans un même secteur permettent d’absorber un lendemain d’événement sans reporter personne en fin de journée." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-conciergerie-lyon', 'menage-airbnb-villeurbanne', 'menage-airbnb-venissieux', 'nettoyage-decines-charpieu', 'menage-location-courte-duree-lyon'],
+    relatedPosts: ['menage-airbnb-creneau-entre-deux-voyageurs', 'checklist-menage-airbnb-entre-voyageurs'],
+    updatedAt: '2026-09-08',
+  },
+  {
+    slug: 'menage-airbnb-ouest-lyonnais',
+    cluster: 'airbnb',
+    keyword: 'nettoyage Airbnb ouest lyonnais',
+    eyebrow: 'Ouest lyonnais',
+    h1: 'Nettoyage Airbnb dans l’ouest lyonnais',
+    title: 'Nettoyage Airbnb ouest lyonnais — Écully, Tassin, Sainte-Foy | MonCleanerPro',
+    description: "Ménage Airbnb dans l’ouest lyonnais : Écully, Tassin, Sainte-Foy, Charbonnières, Craponne. Maisons, extérieurs, standing. Devis sous 24h.",
+    intro:
+      "L’ouest lyonnais loue autre chose que le reste de la métropole : des maisons avec jardin, de grands appartements, des biens de standing loués à la semaine plutôt qu’à la nuit. Écully, Tassin-la-Demi-Lune, Sainte-Foy-lès-Lyon, Charbonnières-les-Bains, Craponne et Francheville accueillent une clientèle d’affaires — écoles de commerce, sièges d’entreprises du Techlid — et des familles en séjour prolongé. Le niveau d’exigence y est supérieur, la tolérance à l’approximation quasi nulle, et les extérieurs font partie de ce que le voyageur juge.",
+    highlights: [
+      { title: 'Maisons et grandes surfaces', text: "Étages, plusieurs salles d’eau, pièces de réception : l’intervention est dimensionnée sur le bien réel, jamais sur un forfait." },
+      { title: 'Les extérieurs comptent', text: "Terrasse, salon de jardin, abords de piscine : c’est la première chose que voit un voyageur qui a réservé pour le cadre." },
+      { title: 'Exigence de finition', text: "Une clientèle qui paie une nuitée haute inspecte. Les points de contrôle sont ceux d’une gouvernante d’hôtel." },
+      { title: 'Séjours à la semaine', text: "Le rythme n’est pas celui de la rotation quotidienne : le protocole est calé sur des séjours plus longs." },
+    ],
+    includes: [
+      'Ménage complet entre deux voyageurs, étages compris',
+      'Plusieurs salles d’eau et sanitaires traités à fond',
+      'Terrasses, salons de jardin et abords remis en état',
+      'Changement et gestion du linge, y compris linge de qualité',
+      'Contrôle des oublis et signalement photo des dégradations',
+      'Remise en place fidèle aux photos de l’annonce',
+    ],
+    sections: [
+      {
+        h2: 'Ce qu’une nuitée élevée change concrètement',
+        paragraphs: [
+          "Un voyageur qui paie cher ne devient pas plus difficile par caprice : il compare simplement à ce qu’il obtiendrait dans un hôtel de même gamme. Et dans un hôtel, personne ne trouve un cheveu dans la douche ni de la poussière sur le dessus d’un cadre. Le standard attendu dans l’ouest lyonnais est donc celui d’une gouvernante, pas celui d’un ménage courant.",
+          "En pratique, cela se joue sur des points précis et toujours les mêmes : les joints de douche, l’intérieur des placards, le dessous des lits, les traces sur l’inox et les vitres. Aucun de ces postes n’apparaît sur une check-list générique, tous figurent sur celle que nous appliquons en hôtellerie. C’est le même référentiel que nous utilisons ici.",
+        ],
+      },
+      {
+        h2: 'Les extérieurs ne sont pas un supplément décoratif',
+        paragraphs: [
+          "Beaucoup de biens de l’ouest lyonnais sont réservés pour leur cadre : une terrasse, un jardin, parfois une piscine. Le voyageur qui arrive va d’abord dehors. Une table de jardin poussiéreuse, des coussins laissés dehors sous la pluie ou des feuilles sur la terrasse annulent l’effet d’un intérieur impeccable.",
+          "Nous intégrons donc les abords au périmètre standard sur ce type de bien, plutôt que de les traiter en option qu’on oublie de commander. Ce qui relève en revanche de l’entretien d’espaces verts — tonte, taille, traitement d’une piscine — est un autre métier, et nous le disons clairement plutôt que de le laisser croire.",
+        ],
+      },
+      {
+        h2: 'Le séjour à la semaine, un rythme différent',
+        paragraphs: [
+          "Ici, on loue plus souvent à la semaine qu’à la nuit. Le ménage n’est donc pas une rotation quotidienne mais une remise à neuf complète entre deux séjours, avec davantage de temps disponible entre le départ et l’arrivée suivante — un vrai confort d’organisation par rapport au centre-ville.",
+          "Cela ouvre aussi une prestation que la courte rotation ne permet pas : le change de linge en milieu de séjour, courant sur les séjours familiaux d’une semaine ou plus. Il se cale à la mise en place, avec le rythme qui vous convient.",
+        ],
+      },
+      {
+        h2: 'Les communes couvertes',
+        paragraphs: [
+          "Nous intervenons sur l’ensemble de l’ouest de la métropole, avec des tournées organisées par proximité plutôt que par commune administrative — un bien de Tassin et un bien de Charbonnières se traitent dans la même sortie.",
+        ],
+        list: [
+          'Écully — proximité des écoles et du Techlid, clientèle d’affaires',
+          'Tassin-la-Demi-Lune — grands appartements et maisons de ville',
+          'Sainte-Foy-lès-Lyon — maisons avec vue et jardins',
+          'Charbonnières-les-Bains — biens de standing, séjours prolongés',
+          'Craponne et Francheville — maisons familiales, séjours à la semaine',
+          'Dardilly et Limonest — proximité immédiate des zones d’activité',
+        ],
+      },
+    ],
+    faq: [
+      { q: 'Traitez-vous les maisons avec extérieurs ?', a: "Oui, et les abords font partie du périmètre standard sur ce type de bien : terrasse, salon de jardin, entrée. En revanche, la tonte, la taille et l’entretien d’une piscine relèvent d’un autre métier et ne sont pas inclus." },
+      { q: 'Quel niveau de finition appliquez-vous ?', a: "Celui que nous appliquons en hôtellerie : joints de douche, intérieur des placards, dessous des lits, traces sur l’inox et les vitres. Ce sont les points qu’un voyageur d’une nuitée élevée inspecte réellement." },
+      { q: 'Proposez-vous un change de linge en milieu de séjour ?', a: "Oui, c’est courant sur les séjours d’une semaine ou plus, fréquents dans l’ouest lyonnais. Le rythme se définit à la mise en place." },
+      { q: 'Quelles communes couvrez-vous exactement ?', a: "Écully, Tassin-la-Demi-Lune, Sainte-Foy-lès-Lyon, Charbonnières-les-Bains, Craponne, Francheville, Dardilly et Limonest. Les tournées sont organisées par proximité, pas par frontière communale." },
+      { q: 'Les grandes surfaces coûtent-elles proportionnellement plus cher ?', a: "L’intervention est dimensionnée sur le bien réel — nombre de salles d’eau, étages, couchages, extérieurs — et non sur un forfait unique. Une maison de deux étages avec trois salles d’eau ne se traite pas comme un T2, et le devis le reflète honnêtement." },
+      { q: 'Le crédit d’impôt s’applique-t-il à ces logements ?', a: "Non, dès lors que le bien est loué en meublé touristique : c’est une activité de location, pas votre domicile. Si vous faites en revanche entretenir votre propre maison, dans ces mêmes communes, le crédit d’impôt de 50 % s’applique pleinement." },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-conciergerie-lyon', 'menage-location-courte-duree-lyon', 'nettoyage-ecully', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon'],
+    relatedPosts: ['linge-location-courte-duree', 'checklist-menage-airbnb-entre-voyageurs'],
+    updatedAt: '2026-09-08',
+  },
 ];
 
 export const SEO_SLUGS = SEO_PAGES.map(p => p.slug);
@@ -4186,6 +4439,9 @@ export const CITY_GEO: Record<string, CityGeo> = {
   // autant en courte durée qu'en fin de chantier — la requête est toujours
   // formulée avec le nom de la commune.
   'menage-airbnb-villefranche-sur-saone':              { city: 'Villefranche-sur-Saône',  lat: 45.9847, lng: 4.7267, postalCode: '69400' },
+  'menage-airbnb-villeurbanne':                        { city: 'Villeurbanne',            lat: 45.7667, lng: 4.8800, postalCode: '69100' },
+  'menage-airbnb-venissieux':                          { city: 'Vénissieux',              lat: 45.6976, lng: 4.8859, postalCode: '69200' },
+  'menage-airbnb-decines-charpieu':                    { city: 'Décines-Charpieu',        lat: 45.7692, lng: 4.9603, postalCode: '69150' },
   'menage-airbnb-anse':                                { city: 'Anse',                    lat: 45.9364, lng: 4.7186, postalCode: '69480' },
 
   // Villes du cluster « chantier-national ». `region` est obligatoire ici : sans
