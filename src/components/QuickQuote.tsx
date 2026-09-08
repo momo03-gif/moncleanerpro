@@ -53,12 +53,14 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
     ].filter(Boolean).join('\n');
 
     try {
+      // La page est connue sans ambiguïté ici : pas besoin du référent.
       const res = await fetch('/api/devis-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientName: nom, clientEmail: email, clientPhone: tel, clientAddress: commune,
           description, lines: [], total: 0, partnerType: 'devis',
+          origin: `/${slug}`,
         }),
       });
       const data = await res.json().catch(() => ({}));

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { getTarifsDB, estimateFromDescription, type Tarif } from '@/lib/devis';
 import { buildCatalog, classify, displayName, modeFor, type Item, type Mode } from '@/lib/devisCatalog';
 import { isEligibleSelection, netAfterCredit, CREDIT_CEILING } from '@/lib/creditImpot';
+import { resolveOrigin } from '@/lib/origin';
 import { getSimulatorConfigDB, type SimulatorConfig } from '@/lib/devisConfig';
 import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './AirbnbSimulator';
 
@@ -56,6 +57,16 @@ export default function DevisEnLignePage() {
   const [sentNumber, setSentNumber] = useState('');
   const [err, setErr] = useState('');
   const topRef = useRef<HTMLDivElement>(null);
+  // Origine de la visite, figée au premier rendu : le référent disparaît dès que
+  // l'internaute navigue dans le sélecteur, il faut le saisir tout de suite.
+  const origin = useRef('');
+
+  useEffect(() => {
+    origin.current = resolveOrigin(
+      document.referrer, window.location.hostname.replace(/^www\./, ''),
+      new URLSearchParams(window.location.search).get('src'),
+    );
+  }, []);
 
   useEffect(() => { getTarifsDB(true).then(setTarifs).catch(() => setTarifs([])); }, []);
   // Configuration du simulateur Airbnb (paliers, zones, options) : éditée dans
@@ -144,6 +155,7 @@ export default function DevisEnLignePage() {
               : `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`,
           ].filter(Boolean).join(' — '),
           lines, total,
+          origin: origin.current,
         }),
       });
       const data = await res.json().catch(() => ({}));

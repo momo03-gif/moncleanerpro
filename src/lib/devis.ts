@@ -25,6 +25,8 @@ export interface Devis {
   clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; status: DevisStatus; validUntil?: string;
   publicToken: string; source: 'admin' | 'public'; invoiceId?: string; createdAt?: string;
+  /** Page ou canal d'où vient la demande (voir src/lib/origin.ts). */
+  origine?: string;
   // Corrections d'un devis déjà envoyé : même numéro, même lien, version incrémentée.
   revision: number; revisionNote?: string; revisedAt?: string;
   previousLines?: DevisLine[]; previousTotal?: number;
@@ -44,6 +46,7 @@ const toDevis = (r: any): Devis => ({
   description: r.description ?? undefined, lines: Array.isArray(r.lines) ? r.lines : [], total: Number(r.total) || 0,
   status: r.status ?? 'brouillon', validUntil: r.valid_until ?? undefined, publicToken: r.public_token,
   source: r.source ?? 'admin', invoiceId: r.invoice_id ?? undefined, createdAt: r.created_at ?? undefined,
+  origine: r.origine ?? undefined,
   revision: Number(r.revision) || 1, revisionNote: r.revision_note ?? undefined, revisedAt: r.revised_at ?? undefined,
   previousLines: Array.isArray(r.previous_lines) ? r.previous_lines : undefined,
   previousTotal: r.previous_total != null ? Number(r.previous_total) : undefined,

@@ -11,6 +11,7 @@ import {
 import { parseTarifsCsv } from '@/lib/tarifsCsv';
 import { DEVIS_PENDING_EVENT } from '@/lib/events';
 import { InvoiceDoc } from '@/components/InvoiceDoc';
+import { originLabel } from '@/lib/origin';
 
 // Modèle CSV téléchargeable (mêmes colonnes que l'export de la grille MonCleanerPro).
 const CSV_TEMPLATE = `Prestation;Unité;Prix;Mots-clés;Actif
@@ -20,6 +21,10 @@ Fin de chantier;m2;5-12;travaux, rénovation, chantier;oui
 Ménage régulier;heure;25-35;récurrent, entretien, heure;oui
 `;
 
+// Montants de DOCUMENT (devis, facture) : les centimes sont toujours affichés,
+// « 80,00 € » et non « 80 € ». C'est la convention comptable, et c'est ce qui
+// distingue cette fonction de `money()` dans src/lib/format.ts, qui sert aux
+// écrans de pilotage et masque les décimales inutiles. Ne pas les fusionner.
 function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 
 // Lien public du devis : accepter ET réserver son créneau se font au même endroit.
@@ -276,6 +281,14 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
                 {d.number} · demande reçue {quand ? `le ${quand}` : ''} depuis le {origine}
                 {d.total > 0 ? ` · estimation ${money(d.total)}` : ''}
               </p>
+              {/* Quelle page a amené ce client. Sans cette information, impossible
+                  de savoir quel contenu rapporte — et le prochain arbitrage de
+                  référencement se prendrait au jugé. */}
+              {d.origine && (
+                <p className="text-xs mt-1 font-medium" style={{ color: '#9A7B22' }}>
+                  {originLabel(d.origine)}
+                </p>
+              )}
               {d.description && (
                 <p className="text-sm mt-2 line-clamp-3" style={{ color: '#7A7068' }}>{d.description}</p>
               )}

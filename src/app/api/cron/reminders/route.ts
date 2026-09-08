@@ -4,6 +4,7 @@ import { sendPushToUser } from '@/lib/webpush';
 import { deleteExpiredMissionPhotosDB } from '@/lib/missionPhotos';
 import { runReservationSync } from '@/lib/reservationSync';
 import { generateRecurringMissions } from '@/lib/recurring';
+import { runFunnelHealthCheck } from '@/lib/funnelHealth';
 
 export const runtime = 'nodejs';
 
@@ -94,5 +95,17 @@ export async function GET(req: NextRequest) {
   try { recurringGenerated = (await generateRecurringMissions()).created; }
   catch (e) { console.error('recurring generation (piggyback):', e); }
 
-  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted, reservationsSync, recurringGenerated });
+  // Surveillance de l’entonnoir de devis (piggyback : les 2 crons de l’offre
+  // gratuite Vercel sont déjà pris). Écrit puis supprime une ligne de test dans
+  // la table `devis` : si cette écriture échoue, celle des visiteurs échoue aussi
+  // et l’admin est prévenu le jour même. Le 28 août 2026, faute de ce contrôle,
+  // la panne a duré dix jours sans que personne ne s’en aperçoive.
+  // Best-effort : un échec ici ne doit pas casser l’envoi des rappels.
+  let funnelHealth: Awaited<ReturnType<typeof runFunnelHealthCheck>> | null = null;
+  if (when === 'today') {
+    try { funnelHealth = await runFunnelHealthCheck(supabase); }
+    catch (e) { console.error('funnel health (piggyback):', e); }
+  }
+
+  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted, reservationsSync, recurringGenerated, funnelHealth });
 }

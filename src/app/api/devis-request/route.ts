@@ -35,6 +35,9 @@ export async function POST(req: Request) {
   // (contrainte CHECK) et le sens attendu côté admin est bien « à traiter ».
   const partnerType = String(body?.partnerType ?? '').trim() || 'devis';
   const partnerLabel = String(body?.partnerLabel ?? '').trim();
+  // D'où vient la demande (page SEO, domaine externe, campagne). Calculée côté
+  // client, où seul le référent est connu. Voir src/lib/origin.ts.
+  const origine = String(body?.origin ?? '').trim().slice(0, 120);
   if (!clientName || !clientEmail) return NextResponse.json({ error: 'Nom et email requis.' }, { status: 200 });
 
   let admin;
@@ -50,19 +53,28 @@ export async function POST(req: Request) {
   }, 0);
   const number = `DEV-${year}-${String(max + 1).padStart(4, '0')}`;
 
-  const { error } = await admin.from('devis').insert({
+  const row = {
     number, partner_label: partnerLabel || clientName || 'Demande en ligne', partner_type: partnerType,
     client_name: clientName, client_email: clientEmail,
     client_phone: clientPhone || null, client_address: clientAddress || null,
     description: description || null, lines, total, status: 'brouillon', source: 'public',
-  });
+    origine: origine || null,
+  };
+  let { error } = await admin.from('devis').insert(row);
+  // Tant que migration_devis_origine.sql n'est pas passée, la colonne n'existe
+  // pas : on réessaie sans elle. Perdre l'origine est regrettable ; perdre la
+  // demande du client ne l'est pas — c'est exactement le bug du 28 août.
+  if (error && /origine/.test(error.message)) {
+    const { origine: _drop, ...withoutOrigine } = row;
+    ({ error } = await admin.from('devis').insert(withoutOrigine));
+  }
   if (error) { console.error('devis-request insert:', error.message); return NextResponse.json({ error: "Enregistrement impossible, réessayez." }, { status: 200 }); }
 
   // Notifier les admins (best-effort).
   try {
     const { data: admins } = await admin.from('users').select('id').eq('role', 'admin');
-    const origine = partnerType === 'airbnb' ? 'depuis son espace partenaire' : 'en ligne';
-    const message = `${clientName} a demandé un devis ${origine}${total ? ` (~${Math.round(total)} €)` : ''}. À traiter.`;
+    const canal = partnerType === 'airbnb' ? 'depuis son espace partenaire' : 'en ligne';
+    const message = `${clientName} a demandé un devis ${canal}${total ? ` (~${Math.round(total)} €)` : ''}. À traiter.`;
     const rows = (admins ?? []).map((u: { id: string }) => ({
       user_id: u.id, role: 'admin', title: 'Nouvelle demande de devis',
       message, type: 'devis_request', mission_id: null,
