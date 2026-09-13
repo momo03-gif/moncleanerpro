@@ -4,7 +4,7 @@ import Motion from '../accueil/Motion';
 import { SEO_PAGES, SEO_SLUGS, getSeoPage, getCityGeo } from '@/lib/seoPages';
 import { getBlogPost } from '@/lib/blogPosts';
 import TrustBar, { ReviewsInline } from '@/components/TrustBar';
-import { SINCE } from '@/lib/proof';
+import { SINCE, REVIEWS } from '@/lib/proof';
 import QuickQuote from '@/components/QuickQuote';
 import FloatingContact from '@/components/FloatingContact';
 
@@ -115,6 +115,10 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
       provider: {
         '@type': 'CleaningService', name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
         telephone: '+33783431700', email: EMAIL,
+        // Même entité que la fiche Google Business et que l'accueil : répété ici
+        // pour que chaque page d'atterrissage porte le rattachement, et pas
+        // seulement la home. Une page SEO est souvent la première vue par Google.
+        sameAs: [REVIEWS.url],
         // Le prestataire, lui, intervient nationalement sur les gros chantiers :
         // on le déclare au niveau `provider`, pendant que `areaServed` ci-dessus
         // garde le grain fin de la ville visée par la page.

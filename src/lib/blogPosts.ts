@@ -223,6 +223,11 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: 'p', text: "Un devis clair, détaillé et sans surprise vaut mieux qu’un prix d’appel flou. Méfiez-vous des tarifs anormalement bas : ils cachent souvent des prestations réduites." },
       { type: 'h2', text: '6. La connaissance du terrain local' },
       { type: 'p', text: "Un prestataire implanté sur Lyon et sa métropole connaît les contraintes locales et intervient plus vite. La proximité, c’est de la réactivité en plus." },
+      { type: 'links', intro: 'Pour aller plus loin :', items: [
+        { label: 'meilleure entreprise de nettoyage à Lyon : la grille de décision', href: '/meilleure-entreprise-nettoyage-lyon' },
+        { label: 'entreprise de nettoyage à Lyon', href: '/entreprise-nettoyage-lyon' },
+        { label: 'contrat de nettoyage entreprise à Lyon', href: '/contrat-nettoyage-entreprise-lyon' },
+      ] },
       { type: 'p', text: "MonCleanerPro coche ces six cases pour les professionnels et les particuliers de Lyon et du Rhône-Alpes. Demandez votre devis gratuit et transparent sous 24h." },
     ],
   },

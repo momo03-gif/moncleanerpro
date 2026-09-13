@@ -3,7 +3,7 @@ import Motion from './Motion';
 import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
 import TrustBar from '@/components/TrustBar';
 import QuickQuote from '@/components/QuickQuote';
-import { SINCE } from '@/lib/proof';
+import { SINCE, REVIEWS } from '@/lib/proof';
 import FloatingContact from '@/components/FloatingContact';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -164,6 +164,20 @@ const jsonLdBusiness = {
     { '@type': 'AdministrativeArea', name: 'Métropole de Lyon' }, { '@type': 'AdministrativeArea', name: 'Rhône-Alpes' },
   ],
   address: { '@type': 'PostalAddress', addressLocality: 'Lyon', addressRegion: 'Auvergne-Rhône-Alpes', addressCountry: 'FR' },
+  // Rattache le site à la fiche Google Business. C'est ce lien qui permet à
+  // Google de traiter les deux comme une seule entité — et donc de faire
+  // remonter la fiche (avis, horaires, itinéraire) sur les requêtes de marque.
+  // À NE PAS confondre avec un balisage d'avis : la note reste sur la fiche,
+  // jamais dans le JSON-LD du site (voir le rappel dans lib/proof.ts).
+  sameAs: [REVIEWS.url],
+  foundingDate: String(SINCE),
+  // Horaires réels de joignabilité, pas d'ouverture d'un local : l'activité
+  // s'exerce chez le client. Déclarer un showroom qui n'existe pas est le
+  // meilleur moyen de récolter un avis négatif sur une porte fermée.
+  openingHoursSpecification: [
+    { '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], opens: '08:00', closes: '19:00' },
+    { '@type': 'OpeningHoursSpecification', dayOfWeek: ['Saturday'], opens: '09:00', closes: '17:00' },
+  ],
   serviceType: ['Nettoyage hôtelier', 'Nettoyage EHPAD', 'Ménage Airbnb et conciergerie', 'Grand ménage', 'Nettoyage de fin de chantier', 'Nettoyage de bureaux', 'Nettoyage de copropriété', 'Nettoyage de vitres'],
 };
 const jsonLdFaq = {
@@ -177,6 +191,8 @@ const jsonLdOrg = {
   image: 'https://moncleanerpro.fr/og-image.png',
   email: EMAIL,
   contactPoint: [{ '@type': 'ContactPoint', telephone: '+33783431700', contactType: 'customer service', areaServed: 'FR', availableLanguage: 'French' }],
+  sameAs: [REVIEWS.url],
+  foundingDate: String(SINCE),
 };
 const jsonLdWebsite = {
   '@context': 'https://schema.org', '@type': 'WebSite',
