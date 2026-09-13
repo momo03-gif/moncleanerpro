@@ -76,6 +76,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Gestion et changement du linge',
       'Interventions récurrentes planifiées',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "Une chambre livrée doit être vendable, pas seulement propre",
@@ -92,6 +93,8 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-fin-de-chantier-hotellerie', 'menage-conciergerie-lyon', 'nettoyage-vitres-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous tous les jours, week-ends compris ?', a: "Oui, nous adaptons la fréquence à votre taux d’occupation, y compris les week-ends et périodes de forte affluence." },
@@ -450,6 +453,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Fréquence adaptée à l’établissement',
       'Traçabilité et suivi des interventions',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "Un lieu de vie avant d’être un établissement",
@@ -466,6 +470,8 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-cabinet-medical-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-vitres-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Respectez-vous des protocoles d’hygiène spécifiques ?', a: "Oui, nous appliquons des protocoles stricts adaptés aux établissements accueillant du public sensible." },
@@ -806,6 +812,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Sols, vitres intérieures et espaces communs',
       'Gestion des corbeilles et réassort consommables',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "Ce qu’un contrat de bureaux couvre vraiment",
@@ -822,6 +829,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     related: ['prix-nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon'],
     faq: [
@@ -853,6 +861,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Local poubelles et sortie / rentrée des bacs',
       'Vitres des parties communes et boîtes aux lettres',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "Trouver la bonne fréquence, ni plus ni moins",
@@ -870,6 +879,8 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-fin-de-chantier-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Travaillez-vous avec les syndics et gestionnaires ?', a: "Oui, nous intervenons pour des syndics professionnels comme pour des copropriétés en gestion bénévole, avec un contrat régulier." },
@@ -900,6 +911,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Encadrements, rebords et traces nettoyés',
       'Passage ponctuel ou récurrent programmé',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "Pourquoi une vitre garde des traces",
@@ -916,6 +928,8 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    related: ['nettoyage-bureaux-lyon', 'nettoyage-commerce-lyon', 'nettoyage-copropriete-lyon', 'entreprise-nettoyage-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Nettoyez-vous les vitres en hauteur ?', a: "Nous traitons les vitres accessibles en sécurité ; pour les grandes hauteurs nécessitant du matériel spécifique, nous vous orientons vers la solution adaptée." },
@@ -948,6 +962,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Sanitaires clients et personnel désinfectés',
       'Réserve, arrière-boutique et gestion des corbeilles',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "L’entrée concentre l’essentiel de la salissure",
@@ -964,6 +979,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous avant l’ouverture du magasin ?', a: "Oui, c’est le cas le plus fréquent. Nous intervenons tôt le matin avant l’arrivée de votre équipe, ou le soir après la fermeture, selon ce qui vous arrange." },
@@ -998,6 +1014,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Vitrerie intérieure, devanture et terrasse vitrée',
       'Sortie des déchets et entretien du local poubelles',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "Nous intervenons en appui de votre plan de maîtrise sanitaire, pas à sa place",
@@ -1015,6 +1032,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Intervenez-vous la nuit ou tôt le matin ?', a: "Oui, la restauration impose des créneaux décalés : nous intervenons après la fermeture ou très tôt le matin, selon votre organisation de service." },
@@ -1050,6 +1068,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Sanitaires désinfectés et réapprovisionnés',
       'Gestion des corbeilles et des déchets non médicaux',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: "La salle d’attente est la pièce la plus observée de votre cabinet",
@@ -1066,6 +1085,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-09',
     faq: [
       { q: 'Prenez-vous en charge les déchets de soins (DASRI) ?', a: "Non. Les déchets d’activités de soins à risques infectieux relèvent d’une filière réglementée et d’un prestataire agréé. Nous gérons uniquement les déchets non médicaux, et nos intervenants sont formés à ne jamais manipuler les contenants dédiés." },
@@ -1165,6 +1185,7 @@ export const SEO_PAGES: SeoPage[] = [
       "Le compte rendu de chaque passage, consultable en ligne",
       'Un contrôle qualité régulier et une remontée immédiate des anomalies',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: 'Comment juger une entreprise de nettoyage avant de signer',
@@ -1183,7 +1204,7 @@ export const SEO_PAGES: SeoPage[] = [
       {
         h2: 'Les secteurs que nous couvrons, et ceux que nous ne couvrons pas',
         paragraphs: [
-          "Nous intervenons sur l'entretien régulier et les remises en état : hôtellerie et hébergement, EHPAD et résidences, bureaux et locaux professionnels, copropriétés et parties communes, commerces et restaurants, cabinets médicaux et paramédicaux, locations courte durée, fin de chantier et après-travaux, ménage à domicile.",
+          "Nous intervenons sur l'entretien régulier et les remises en état : hôtellerie et hébergement, EHPAD et résidences, bureaux et locaux professionnels, copropriétés et parties communes, commerces et restaurants, cabinets médicaux et paramédicaux, crèches et établissements scolaires, salles de sport et clubs de fitness, entrepôts et locaux industriels, locations courte durée, fin de chantier et après-travaux, ménage à domicile.",
           "Nous ne faisons pas de désamiantage, pas de nettoyage après sinistre lourd (incendie, décès, insalubrité extrême) et pas de travaux en hauteur sur cordes. Ce sont des métiers réglementés à part entière, avec leurs habilitations propres. Quand une demande relève de l'un d'eux, nous vous le disons tout de suite plutôt que de nous découvrir dépassés sur place.",
         ],
       },
@@ -1195,7 +1216,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
-    related: ['nettoyage-bureaux-lyon', 'nettoyage-hotel-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-fin-de-chantier-lyon', 'menage-airbnb-lyon', 'nettoyage-ehpad-lyon'],
+    related: ['contrat-nettoyage-entreprise-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-hotel-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-entrepot-lyon', 'nettoyage-ehpad-lyon'],
     updatedAt: '2026-08-31',
     faq: [
       { q: 'Sur quel secteur intervenez-vous ?', a: "Lyon et l'ensemble de la métropole, ainsi que le Beaujolais jusqu'à Villefranche-sur-Saône et Anse. Pour les chantiers importants, nous nous déplaçons sur toute la France." },
@@ -1204,6 +1225,281 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Êtes-vous assurés ?', a: "Oui, nous sommes couverts en responsabilité civile professionnelle. L'attestation vous est transmise avec le devis, sans avoir à la demander." },
       { q: 'Sous quel délai peut-on démarrer ?', a: "Un devis écrit sous 24h après notre échange. Pour une prestation ponctuelle, l'intervention peut souvent être programmée dans la semaine ; pour un contrat régulier, comptez le temps de constituer l'équipe qui vous sera attribuée." },
       { q: 'Que se passe-t-il si le travail ne convient pas ?', a: "Vous nous le signalez et nous repassons. Nous préférons refaire un passage que perdre un client sur un désaccord qui se règle en une heure." },
+    ],
+  },
+  // ── Contrat d'entretien : requête B2B la plus engageante du cluster. Celui qui
+  //    la tape ne cherche pas une prestation, il cherche à sécuriser un engagement.
+  {
+    slug: 'contrat-nettoyage-entreprise-lyon',
+    keyword: 'contrat de nettoyage entreprise Lyon',
+    eyebrow: 'Contrat d’entretien',
+    h1: 'Contrat de nettoyage pour entreprise à Lyon',
+    title: "Contrat de nettoyage entreprise à Lyon — MonCleanerPro",
+    description: "Mettre en place un contrat d’entretien de locaux à Lyon : périmètre, fréquences, continuité de service, changement de prestataire. Devis écrit sous 24h.",
+    intro:
+      "Un contrat de nettoyage n’est pas un bon de commande qu’on signe une fois : c’est le document auquel vous reviendrez le jour où quelque chose ne va pas. La plupart des relations qui se terminent mal ne se sont pas dégradées sur la qualité du travail, mais sur ce que personne n’avait écrit — une fréquence supposée, un local jamais inclus, un remplacement jamais organisé. Cette page décrit ce que nous mettons dans un contrat d’entretien à Lyon, et ce que vous devriez exiger de n’importe quel prestataire avant de signer.",
+    highlights: [
+      { title: 'Un périmètre écrit, poste par poste', text: "Chaque zone, chaque tâche, chaque fréquence est listée. Ce qui n’est pas écrit n’est pas dû, chez nous comme ailleurs : autant que ce soit clair avant." },
+      { title: 'Sans durée d’engagement', text: "Le contrat se poursuit tant qu’il vous convient. Un prestataire qui a besoin d’un préavis de six mois pour vous garder vous dit quelque chose sur lui." },
+      { title: 'La continuité écrite noir sur blanc', text: "Qui intervient en cas d’absence, sous quel délai, avec quelles consignes : c’est prévu au contrat, pas improvisé le matin même." },
+      { title: 'Un contrôle qualité daté', text: "Des points de contrôle programmés, avec un compte rendu écrit. Une qualité qu’on ne mesure jamais finit toujours par glisser." },
+    ],
+    includes: [
+      'Une visite des locaux avant chiffrage, jamais un devis au mètre carré à l’aveugle',
+      'Un cahier des charges détaillé : zones, tâches, fréquences, horaires',
+      'Une équipe nommée et un référent identifié côté MonCleanerPro',
+      'La traçabilité de chaque passage dans l’application, consultable à tout moment',
+      'Une révision annuelle du périmètre, à l’initiative de l’une ou l’autre partie',
+    ],
+    cluster: 'entreprises',
+    sections: [
+      {
+        h2: 'Ce qu’un contrat d’entretien doit contenir pour être utile',
+        paragraphs: [
+          "La longueur d’un contrat ne dit rien de sa qualité. Ce qui compte, c’est qu’il réponde d’avance aux quelques questions qui se poseront réellement. Voici celles que nous traitons systématiquement, et que nous vous invitons à vérifier sur tous les devis que vous recevez.",
+        ],
+        list: [
+          "Le périmètre zone par zone : bureaux, circulations, sanitaires, cuisine ou coin repas, salles de réunion, accueil, local poubelles, extérieurs. Une zone oubliée au contrat est une zone qui ne sera jamais faite.",
+          "La fréquence de chaque tâche, séparément du reste. Vider les corbeilles est quotidien, laver les vitres intérieures ne l’est pas : les mélanger dans une ligne « entretien complet » garantit un désaccord au deuxième mois.",
+          "Les horaires d’intervention et les conditions d’accès : clés, badge, alarme, code, présence d’un salarié. C’est le point qui bloque le plus souvent le tout premier passage.",
+          "La continuité en cas d’absence : nom du remplaçant ou modalité de remplacement, délai, transmission des consignes du site.",
+          "Le circuit de signalement : à qui vous écrivez quand quelque chose ne va pas, sous quel délai vous avez une réponse, et sous quel délai c’est repassé.",
+          "Les consommables : qui fournit le papier, le savon, les sacs. Une ligne de trois mots qui évite six mois de tensions.",
+          "Les conditions de résiliation et de révision, des deux côtés.",
+        ],
+      },
+      {
+        h2: 'Changer de prestataire sans trou de service',
+        paragraphs: [
+          "C’est la crainte qui retient la plupart des entreprises insatisfaites : partir, c’est risquer trois semaines de flottement. Le risque est réel, mais il vient presque toujours de la même chose — la reprise a été calée sur une date, pas sur un état des lieux.",
+          "Nous procédons dans l’ordre inverse. Avant toute date de démarrage, nous visitons les locaux avec vous, nous relevons ce qui a été laissé en retard par le prestataire sortant, et nous distinguons clairement ce qui relève d’une remise à niveau ponctuelle de ce qui relève de l’entretien courant. Sans cette distinction, la nouvelle équipe passe ses premières semaines à rattraper un arriéré, et vous en concluez — à tort — qu’elle ne tient pas la cadence.",
+          "Un point mérite d’être connu avant de lancer une consultation : dans la propreté, les salariés affectés à un site peuvent, sous conditions d’ancienneté et d’affectation, être repris par le prestataire entrant au titre de la convention collective du secteur. Ce n’est ni un obstacle ni un détail administratif : cela détermine qui se présentera chez vous le premier lundi. Nous vous disons franchement ce que cela implique dans votre cas plutôt que de le laisser découvrir après signature.",
+        ],
+      },
+      {
+        h2: 'Pourquoi nous ne chiffrons pas sur plan',
+        paragraphs: [
+          "On nous demande régulièrement un prix à partir d’une surface et d’un nombre de passages. C’est faisable, et c’est exactement comme cela qu’on obtient un contrat qui déraille. Deux plateaux de quatre cents mètres carrés ne demandent pas le même temps selon le nombre de postes de travail, la nature du sol, la présence d’une cuisine partagée, l’existence d’un vrai local ménage avec point d’eau, ou la contrainte d’intervenir avant huit heures.",
+          "Une visite prend quarante minutes et supprime l’essentiel des mauvaises surprises, des deux côtés. Elle nous évite de sous-estimer le temps réel — ce qui produit soit un travail bâclé, soit une demande d’avenant trois mois plus tard — et elle vous évite de payer une marge de sécurité que nous aurions prise faute d’avoir vu les lieux.",
+        ],
+      },
+      {
+        h2: 'Ce qui se passe pendant les vacances et les jours fériés',
+        paragraphs: [
+          "Un contrat annuel ne se vit pas de façon uniforme. Les semaines creuses d’août ou de fin décembre n’ont pas besoin de la même intensité qu’un mois plein, et c’est le bon moment pour les prestations qu’on ne peut pas faire en présence des équipes : décapage et remise en état des sols, nettoyage approfondi des sanitaires, dépoussiérage en hauteur, vitrerie intérieure.",
+          "Nous le prévoyons au contrat plutôt que de facturer une intervention exceptionnelle au moment venu. Concrètement, le volume annuel est lissé et redistribué vers les périodes où il est le plus utile — vous ne payez pas des passages quotidiens dans des locaux vides, et vos sols sont repris une fois par an sans que cela devienne une négociation.",
+        ],
+      },
+    ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-bureaux-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-copropriete-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Faut-il s’engager sur une durée ?', a: "Non. Nos contrats d’entretien sont sans durée d’engagement, avec un préavis court et réciproque. Vous restez parce que le travail est fait." },
+      { q: 'Pouvez-vous reprendre un contrat en cours d’année ?', a: "Oui. Nous calons la date de démarrage sur la fin de votre engagement actuel et nous faisons la visite des locaux en amont, pour que le premier passage ne serve pas à découvrir le site." },
+      { q: 'Le périmètre peut-il évoluer après signature ?', a: "Oui, dans les deux sens. Un déménagement, un étage en plus, une équipe qui passe en télétravail partiel : nous révisons le périmètre et le devis plutôt que de continuer sur un cahier des charges devenu faux." },
+      { q: 'Qui fournit les consommables sanitaires ?', a: "Au choix. Nous pouvons les fournir et les réapprovisionner, ou n’intervenir que sur la prestation si vous avez déjà un fournisseur. C’est écrit au contrat dans les deux cas." },
+      { q: 'Comment est contrôlée la qualité dans la durée ?', a: "Par des points de contrôle programmés sur site, avec compte rendu écrit, en plus de la traçabilité de chaque passage. Le contrôle est daté au contrat : une qualité qu’on ne mesure jamais finit toujours par glisser." },
+      { q: 'Intervenez-vous en dehors des heures d’ouverture ?', a: "Oui, tôt le matin, en soirée ou le week-end selon vos contraintes. Les conditions d’accès sont réglées avant le démarrage, c’est ce qui bloque le plus souvent le premier passage." },
+    ],
+  },
+  // ── Salles de sport : secteur peu adressé par les prestataires généralistes,
+  //    contraintes très spécifiques (vestiaires, matériel, horaires étendus).
+  {
+    slug: 'nettoyage-salle-de-sport-lyon',
+    keyword: 'nettoyage salle de sport Lyon',
+    eyebrow: 'Sport & bien-être',
+    h1: 'Nettoyage de salle de sport à Lyon',
+    title: "Nettoyage de salle de sport à Lyon — MonCleanerPro",
+    description: "Nettoyage de salles de sport et clubs de fitness à Lyon : vestiaires, douches, machines, tapis et sols sportifs. Passages hors affluence. Devis sous 24h.",
+    intro:
+      "Dans une salle de sport, la propreté n’est pas un confort : c’est le premier motif d’avis négatif et la première raison d’un abonnement non renouvelé. Un adhérent pardonne une machine en panne, beaucoup moins une douche entartrée ou un banc qui colle. MonCleanerPro entretient des salles de fitness, des studios de cours collectifs et des clubs de sport à Lyon et dans la métropole, avec des passages calés sur les heures creuses réelles et un traitement séparé des zones humides.",
+    highlights: [
+      { title: 'Passages hors affluence', text: "Tôt le matin, en milieu d’après-midi ou après fermeture : le nettoyage ne se fait pas au milieu des adhérents." },
+      { title: 'Zones humides traitées à part', text: "Douches, vestiaires et sauna suivent leur propre protocole et leur propre matériel, jamais celui du plateau." },
+      { title: 'Le matériel désinfecté, pas juste essuyé', text: "Poignées, réglages, assises, tapis de sol : les surfaces de contact sont traitées avec un temps de pose respecté." },
+      { title: 'Salles en accès libre', text: "Nous intervenons aussi dans les clubs sans personnel sur place, avec accès badge et compte rendu écrit de chaque passage." },
+    ],
+    includes: [
+      'Désinfection des surfaces de contact du matériel cardio et musculation',
+      'Vestiaires, casiers, bancs et sanitaires',
+      'Douches : détartrage, joints, siphons, parois',
+      'Sols sportifs et tapis de cours collectifs, selon le revêtement',
+      'Miroirs, vitres intérieures et accueil',
+      'Réapprovisionnement des consommables si vous le souhaitez',
+    ],
+    cluster: 'entreprises',
+    sections: [
+      {
+        h2: 'Les douches sont le vrai sujet, pas le plateau',
+        paragraphs: [
+          "Le plateau de musculation se nettoie vite et se voit tout de suite. Les zones humides, elles, se dégradent lentement et de façon irréversible si le protocole n’est pas le bon. Un passage quotidien à l’eau claire ne fait que déplacer le problème : le calcaire s’accroche, les joints noircissent, et au bout de quelques mois le seul remède est une remise en état lourde que personne n’avait prévue.",
+          "Nous traitons les douches avec un produit détartrant adapté au revêtement, un temps de contact respecté et une reprise des joints et des siphons à fréquence définie au contrat — pas quand cela se voit. C’est moins spectaculaire qu’un plateau brillant, et c’est ce qui détermine l’état de votre salle dans trois ans.",
+          "Le matériel utilisé dans ces zones ne sort jamais de ces zones. Une frange qui passe des douches au plateau transporte exactement ce qu’on cherchait à éliminer.",
+        ],
+      },
+      {
+        h2: 'Désinfecter du matériel de sport sans l’abîmer',
+        paragraphs: [
+          "Les surfaces de contact d’une salle sont nombreuses et hétérogènes : mousses d’assise, similicuir, poignées caoutchoutées, écrans tactiles, réglages chromés, haltères. Un désinfectant universel appliqué partout et essuyé dans la foulée a deux défauts : il n’a pas désinfecté, faute de temps de pose, et il dégrade les revêtements souples qui finissent par craqueler.",
+          "Nous distinguons ce qui demande un désinfectant avec temps de contact — poignées, assises, tapis de sol, barres — de ce qui demande un simple entretien adapté au matériau. Les écrans et l’électronique de console sont traités à part. Et nous signalons ce que nous voyons passer : une assise fendue ou une poignée décollée retient les salissures et devient impossible à désinfecter correctement, quelle que soit la méthode.",
+        ],
+      },
+      {
+        h2: 'Tenir une salle ouverte en continu',
+        paragraphs: [
+          "Beaucoup de clubs lyonnais fonctionnent aujourd’hui en accès badge sans personnel permanent, parfois du matin au soir sans interruption. Cela change la nature du travail : il n’y a personne pour ouvrir, personne pour signaler, personne pour constater. Le prestataire doit être autonome et laisser une trace.",
+          "Chaque passage est horodaté dans notre application, avec les zones traitées et les anomalies relevées — un distributeur vide, une fuite, un casier forcé, un dégât sur une machine. Vous recevez le compte rendu sans avoir à le demander. Sur un site sans personnel, c’est la seule façon de savoir ce qui s’est passé entre deux de vos visites.",
+          "Nous adaptons aussi le créneau à la fréquentation réelle plutôt qu’à une heure théorique. Une salle de quartier et une salle de centre-ville n’ont pas leur creux au même moment, et intervenir au mauvais moment gêne tout le monde pour un résultat moins bon.",
+        ],
+      },
+    ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-commerce-lyon', 'nettoyage-vitres-lyon', 'contrat-nettoyage-entreprise-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Intervenez-vous avant l’ouverture ou après la fermeture ?', a: "Les deux, selon votre fréquentation réelle. Sur les salles en accès continu, nous calons le passage sur le creux observé et non sur une heure théorique." },
+      { q: 'Utilisez-vous des produits adaptés au matériel de sport ?', a: "Oui. Les surfaces de contact reçoivent un désinfectant avec temps de pose respecté, les revêtements souples un entretien adapté qui ne les craquelle pas, et l’électronique de console est traitée à part." },
+      { q: 'Prenez-vous en charge les douches et le sauna ?', a: "Oui, avec un protocole et un matériel dédiés aux zones humides, qui ne circulent jamais vers le plateau. Le détartrage, les joints et les siphons sont repris à fréquence définie, pas quand cela devient visible." },
+      { q: 'Pouvez-vous intervenir dans une salle sans personnel sur place ?', a: "Oui. Accès par badge ou code, et compte rendu horodaté de chaque passage avec les anomalies constatées. Sur un site sans personnel, la trace écrite est le seul moyen de savoir ce qui a été fait." },
+      { q: 'Gérez-vous les sols sportifs et les tapis de cours collectifs ?', a: "Oui, en fonction du revêtement. Un parquet sportif, un sol amortissant coulé et une dalle PVC ne supportent pas la même quantité d’eau : c’est le point qui abîme le plus souvent ces sols." },
+      { q: 'Fournissez-vous les consommables des vestiaires ?', a: "Si vous le souhaitez. Papier, savon et sacs peuvent être fournis et réapprovisionnés à chaque passage, ou rester à votre charge. C’est précisé au devis." },
+    ],
+  },
+  // ── Écoles et crèches : décision souvent portée par une direction ou une
+  //    association, avec des exigences propres (produits, horaires, stabilité).
+  {
+    slug: 'nettoyage-ecole-creche-lyon',
+    keyword: 'nettoyage école crèche Lyon',
+    eyebrow: 'Petite enfance & enseignement',
+    h1: 'Nettoyage d’école et de crèche à Lyon',
+    title: "Nettoyage d’école et de crèche à Lyon — MonCleanerPro",
+    description: "Entretien d’écoles, crèches et micro-crèches à Lyon : produits adaptés au jeune public, passages hors présence des enfants, remise en état des vacances.",
+    intro:
+      "Une crèche et une école ne se nettoient pas comme des bureaux avec des meubles plus bas. Le public y met les mains partout, porte les objets à la bouche, dort sur place et n’a pas les défenses d’un adulte. MonCleanerPro intervient dans des crèches, micro-crèches, écoles et structures périscolaires de Lyon et de la métropole, avec des produits choisis pour cet usage, des passages calés hors présence des enfants et une remise en état complète pendant les vacances scolaires.",
+    highlights: [
+      { title: 'Produits adaptés au jeune public', text: "Choix des produits et rinçage des surfaces à hauteur d’enfant : ce qui est touché et porté à la bouche ne garde pas de résidu." },
+      { title: 'Hors présence des enfants', text: "Interventions avant l’ouverture ou après la fermeture. Un local en cours de nettoyage n’est pas un local où l’on accueille." },
+      { title: 'Personnel stable et déclaré', text: "Les mêmes intervenants reviennent, connus de l’équipe. Dans ces établissements, le passage d’inconnus n’est pas neutre." },
+      { title: 'Les vacances mises à profit', text: "Sols repris en profondeur, mobilier, hauteurs, vitrerie : ce qui est impossible en période scolaire est programmé au calendrier." },
+    ],
+    includes: [
+      'Salles d’activité, de classe et de motricité',
+      'Dortoirs, lits et mobilier de couchage',
+      'Sanitaires adaptés à la taille des enfants',
+      'Surfaces de contact : poignées, interrupteurs, rampes, tables',
+      'Circulations, entrées, vestiaires et bureaux',
+      'Remise en état programmée pendant les vacances scolaires',
+    ],
+    cluster: 'entreprises',
+    sections: [
+      {
+        h2: 'Ce qui change quand le sol est un plan de travail',
+        paragraphs: [
+          "Dans une crèche, le sol n’est pas une surface de circulation : c’est l’endroit où les enfants passent la journée. Cela déplace complètement les priorités. Un sol brillant mais glissant est un défaut, pas une réussite. Un produit parfumé qui laisse un film n’est pas un plus, c’est un résidu au contact direct de la peau et des mains qui iront à la bouche.",
+          "Nous travaillons donc avec des dosages précis, un rinçage effectif des zones basses, et le minimum de parfum. Les surfaces touchées en permanence — barrières, rampes à hauteur d’enfant, poignées, bords de table, interrupteurs — reçoivent un traitement désinfectant avec un temps de contact respecté, puis un rinçage quand le produit l’exige. Un désinfectant essuyé aussitôt n’a rien désinfecté : c’est vrai partout, cela compte davantage ici.",
+        ],
+      },
+      {
+        h2: 'La frontière avec vos protocoles internes',
+        paragraphs: [
+          "Elle doit être posée avant le devis, parce qu’elle engage des responsabilités différentes. Nous assurons l’entretien des locaux, du mobilier, des sanitaires, des sols et des surfaces de contact, ainsi que la remise en état périodique.",
+          "En revanche, l’entretien des jouets et du matériel pédagogique, la gestion du linge des enfants, la désinfection du plan de change et la partie restauration relèvent de vos protocoles internes et du personnel de l’établissement, qui en porte la responsabilité réglementaire. Un prestataire qui accepte tout sur ces sujets sans discuter devrait vous alerter plutôt que vous rassurer. Nous pouvons en revanche fournir le matériel et les produits nécessaires à vos équipes, et caler nos passages pour ne pas entrer en conflit avec vos propres procédures.",
+        ],
+      },
+      {
+        h2: 'Les vacances scolaires ne sont pas une pause',
+        paragraphs: [
+          "Sur une année, ce sont les seules fenêtres où l’on peut faire ce qui est impossible le reste du temps : décaper et remettre en état les sols, sortir le mobilier, traiter les hauteurs et les luminaires, nettoyer les vitres des deux côtés, reprendre les dortoirs en entier, désencombrer les réserves.",
+          "Nous le planifions au contrat, en début d’année, avec les dates arrêtées avec vous. C’est ce qui évite les deux écueils habituels : une remise en état jamais faite faute de créneau, ou une intervention exceptionnelle demandée en urgence la dernière semaine d’août, au moment précis où personne n’est disponible.",
+        ],
+      },
+      {
+        h2: 'Des intervenants connus de l’équipe',
+        paragraphs: [
+          "Dans une structure qui accueille de jeunes enfants, la rotation permanente d’intervenants inconnus pose un problème qui dépasse la qualité du nettoyage. Nos intervenants sont salariés, déclarés, formés et affectés durablement au site ; ils sont présentés à la direction et à l’équipe en début de contrat.",
+          "Les consignes propres à l’établissement — zones interdites, rangement du matériel dangereux en hauteur, portes et barrières à refermer systématiquement, alarme — sont écrites et transmises à tout remplaçant avant sa première intervention. Sur ce type de site, un intervenant qui découvre les lieux sans consigne n’est pas seulement moins efficace : c’est un risque.",
+        ],
+      },
+    ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-cabinet-medical-lyon', 'nettoyage-ehpad-lyon', 'contrat-nettoyage-entreprise-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Intervenez-vous pendant la présence des enfants ?', a: "Non, sauf demande expresse pour une zone isolée. Les passages sont calés avant l’ouverture ou après la fermeture : un local en cours de nettoyage n’est pas un local d’accueil." },
+      { q: 'Quels produits utilisez-vous dans une crèche ?', a: "Des produits adaptés au contact avec un jeune public, dosés précisément, peu ou pas parfumés, avec rinçage effectif des zones basses et des surfaces portées à la bouche." },
+      { q: 'Prenez-vous en charge le nettoyage des jouets ?', a: "Non. L’entretien des jouets et du matériel pédagogique relève de vos protocoles internes et du personnel de l’établissement. Nous pouvons en revanche fournir le matériel et les produits à vos équipes." },
+      { q: 'Que faites-vous pendant les vacances scolaires ?', a: "La remise en état complète : sols décapés et protégés, mobilier, hauteurs, luminaires, vitrerie, dortoirs. Les dates sont arrêtées avec vous en début d’année et inscrites au contrat." },
+      { q: 'Vos intervenants sont-ils toujours les mêmes ?', a: "Oui, ils sont affectés durablement au site et présentés à l’équipe. Tout remplaçant reçoit par écrit les consignes propres à l’établissement avant sa première intervention." },
+      { q: 'Travaillez-vous avec des structures privées comme associatives ?', a: "Nous intervenons pour des crèches et micro-crèches privées, des écoles privées et des structures associatives ou périscolaires. Pour un marché public, voir notre page dédiée au nettoyage de chantier en marché public." },
+    ],
+  },
+  // ── Entrepôts et locaux industriels : grandes surfaces, co-activité, matériel
+  //    mécanisé. Rien à voir avec du tertiaire, d'où une page à part.
+  {
+    slug: 'nettoyage-entrepot-lyon',
+    keyword: 'nettoyage entrepôt Lyon',
+    eyebrow: 'Entrepôts & locaux industriels',
+    h1: 'Nettoyage d’entrepôt et de local industriel à Lyon',
+    title: "Nettoyage d’entrepôt à Lyon — MonCleanerPro",
+    description: "Nettoyage d’entrepôts et de locaux industriels à Lyon : sols mécanisés, quais, poussière en hauteur, co-activité et plan de prévention. Devis sous 24h.",
+    intro:
+      "Un entrepôt ne se nettoie pas avec les méthodes du tertiaire à plus grande échelle. Les surfaces se comptent en milliers de mètres carrés, le sol supporte des engins et non des chaussures, la poussière se loge en hauteur dans les racks et les charpentes, et l’activité ne s’arrête pas pour vous laisser passer. MonCleanerPro intervient sur des entrepôts logistiques, des ateliers et des locaux industriels de Lyon et de l’est lyonnais, en entretien régulier comme en remise en état ponctuelle.",
+    highlights: [
+      { title: 'Sols traités mécaniquement', text: "Autolaveuse adaptée à la surface et au revêtement. Au-delà de quelques centaines de mètres carrés, le manuel ne tient ni le délai ni le résultat." },
+      { title: 'La poussière traitée en hauteur', text: "Racks, poutres, gaines, luminaires, grilles de ventilation : c’est là qu’elle se reconstitue, et donc là qu’il faut aller la chercher." },
+      { title: 'Co-activité organisée', text: "Intervention pendant l’exploitation avec balisage, circulation coordonnée et plan de prévention quand il est requis." },
+      { title: 'Interventions en arrêt d’activité', text: "Inventaire, fermeture annuelle, changement de locataire : la remise en état complète se cale sur vos fenêtres d’arrêt." },
+    ],
+    includes: [
+      'Sols de stockage et allées de circulation, traitement mécanisé',
+      'Dégagement des zones de sécurité et reprise des marquages au sol',
+      'Dépoussiérage des racks, structures et hauteurs accessibles en nacelle ou à la perche',
+      'Quais de chargement, sas et abords immédiats',
+      'Bureaux, vestiaires, réfectoire et sanitaires du site',
+      'Remise en état complète avant restitution ou changement d’exploitant',
+    ],
+    cluster: 'entreprises',
+    sections: [
+      {
+        h2: 'La poussière d’entrepôt ne vient pas du sol',
+        paragraphs: [
+          "C’est l’erreur d’analyse la plus fréquente. On fait passer une autolaveuse, le sol est net, et trois jours plus tard le voile gris est revenu sur les palettes et les cartons. Rien n’a été mal fait : la poussière n’était simplement pas au sol. Elle est dans les racks, sur les poutres, sur les gaines, sur les luminaires et dans les grilles de ventilation, et chaque passage d’engin la remet en circulation.",
+          "Un entretien qui ne traite que le sol s’épuise à courir après un dépôt qu’il ne supprime jamais. Nous programmons donc le dépoussiérage des hauteurs à une fréquence propre, distincte de celle du sol — souvent une à deux fois par an selon l’activité, en nacelle ou à la perche télescopique, avec aspiration plutôt que soufflage. Souffler déplace le problème et le fait retomber ailleurs, généralement sur ce que vous stockez.",
+        ],
+      },
+      {
+        h2: 'Nettoyer un site qui ne s’arrête pas',
+        paragraphs: [
+          "La plupart des entrepôts ne peuvent pas se permettre une fermeture. Il faut donc intervenir en co-activité, au milieu des chariots élévateurs et des flux de préparation — ce qui est une question de sécurité avant d’être une question d’organisation.",
+          "Concrètement : nous travaillons par zones balisées et fermées une à une plutôt qu’en balayage continu, nos intervenants portent les équipements de protection imposés par le site, et les créneaux sont calés avec votre responsable d’exploitation sur les périodes de moindre flux. Lorsque l’intervention relève d’une entreprise extérieure sur votre site, un plan de prévention est établi avec vous avant le démarrage : ce n’est pas une formalité administrative, c’est le document qui détermine qui circule où, et à quel moment.",
+        ],
+      },
+      {
+        h2: 'Restituer ou reprendre un local industriel',
+        paragraphs: [
+          "Le changement d’exploitant est le moment où l’état réel du bâtiment devient une question financière. Un bail commercial ou industriel impose une restitution en bon état, et les points de litige sont toujours les mêmes : traces d’huile et de pneus incrustées dans le sol béton, marquages illisibles, quais encrassés, vestiaires laissés en l’état, déchets et palettes abandonnés dans un coin.",
+          "Nous traitons ces remises en état comme un chantier, avec un état des lieux en amont et une liste écrite des points repris. La méthode est celle de la fin de chantier, pas celle de l’entretien courant : un sol béton chargé d’huile ne se rattrape pas à l’autolaveuse en un passage. Si votre besoin porte sur une livraison de bâtiment neuf ou une sortie de travaux, notre page de nettoyage de fin de chantier en site industriel traite ce cas précis.",
+        ],
+      },
+      {
+        h2: 'Les zones sociales comptent autant que la surface de stockage',
+        paragraphs: [
+          "Sur un site logistique, les vestiaires, le réfectoire et les sanitaires concentrent une fréquentation intense sur des surfaces réduites, avec des rotations d’équipes qui s’enchaînent. Ce sont aussi les premières zones que le personnel juge, et les premières à remonter en réunion.",
+          "Nous les traitons avec une fréquence propre, souvent quotidienne, indépendante de celle des zones de stockage. Les regrouper dans un forfait global au mètre carré donne mécaniquement le résultat inverse de celui attendu : la surface de stockage écrase tout, et les quelques dizaines de mètres carrés qui pèsent le plus dans le ressenti passent en dernier.",
+        ],
+      },
+    ],
+    related: ['nettoyage-fin-de-chantier-industriel', 'entreprise-nettoyage-lyon', 'contrat-nettoyage-entreprise-lyon', 'nettoyage-bureaux-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Pouvez-vous intervenir sans arrêter l’exploitation ?', a: "Oui, en co-activité : travail par zones balisées fermées une à une, équipements de protection imposés par le site, et créneaux calés avec votre responsable d’exploitation sur les périodes de moindre flux." },
+      { q: 'Un plan de prévention est-il nécessaire ?', a: "Dès lors qu’une entreprise extérieure intervient sur votre site dans les cas prévus par la réglementation, oui. Nous l’établissons avec vous avant le démarrage : c’est lui qui fixe qui circule où et quand." },
+      { q: 'Traitez-vous les hauteurs et les racks ?', a: "Oui, à une fréquence distincte de celle du sol, en nacelle ou à la perche, par aspiration. Souffler la poussière la déplace et la fait retomber sur ce que vous stockez." },
+      { q: 'Quelle surface pouvez-vous traiter ?', a: "Nous dimensionnons l’équipe et le matériel sur la surface réelle et la fenêtre disponible. Le sol est traité mécaniquement à l’autolaveuse ; au-delà de quelques centaines de mètres carrés, le manuel ne tient ni le délai ni le résultat." },
+      { q: 'Intervenez-vous pour une remise en état avant restitution ?', a: "Oui, avec un état des lieux préalable et une liste écrite des points repris : sols béton chargés d’huile, marquages, quais, vestiaires, évacuation des encombrants. La méthode est celle d’un chantier, pas de l’entretien courant." },
+      { q: 'Couvrez-vous l’est lyonnais et la périphérie ?', a: "Oui : Saint-Priest, Vénissieux, Meyzieu, Décines, Corbas, Genas et l’ensemble du bassin logistique lyonnais, ainsi que le nord de la métropole." },
     ],
   },
   // ── Fin de bail : requête très transactionnelle (le locataire cherche à
@@ -1296,6 +1592,7 @@ export const SEO_PAGES: SeoPage[] = [
       'Les conditions applicables aux multi-sites',
       'Un contrat sans durée d\'engagement',
     ],
+    cluster: 'entreprises',
     sections: [
       {
         h2: 'Les six facteurs qui composent le prix',
@@ -1331,6 +1628,7 @@ export const SEO_PAGES: SeoPage[] = [
       },
     ],
     related: ['nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-08-31',
     faq: [
       { q: 'Pouvez-vous donner un ordre de prix par téléphone ?', a: "Nous pouvons cadrer un ordre de grandeur à partir de la surface, du nombre de sanitaires et de la fréquence souhaitée. Le devis ferme, lui, suit une visite : c'est ce qui permet de l'annoncer sans réserve." },
