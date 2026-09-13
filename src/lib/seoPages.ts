@@ -1326,6 +1326,317 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Y a-t-il des prestations que vous refusez ?', a: "Oui, et nous le disons dès le premier échange : désamiantage, sinistre lourd, travaux sur cordes, déchets de soins à risque infectieux. Ce sont des métiers réglementés avec leurs propres habilitations. Un prestataire qui accepte tout devrait vous alerter plutôt que vous rassurer." },
     ],
   },
+  // ── QUARTIERS DE LYON ──────────────────────────────────────────────────────
+  //  Le grain le plus fin du référencement local : sur une requête de proximité,
+  //  Google pondère la distance, et la commune est une maille trop large pour
+  //  une ville de 500 000 habitants.
+  //  RÈGLE : une page quartier n'existe que si le quartier impose une contrainte
+  //  de travail que les autres n'ont pas. Décliner le même texte sur neuf
+  //  arrondissements est exactement ce qui a valu au site un refus pour doublon.
+  //  Angles déjà pris — ne pas les répéter : immeuble tertiaire dont on n'est pas
+  //  propriétaire (Part-Dieu), matériaux contemporains récents (Confluence),
+  //  pierre calcaire et accès sans ascenseur (Vieux Lyon), fenêtres d'atelier et
+  //  pente (Croix-Rousse), entrée d'immeuble bourgeoise et gardien (6e).
+  {
+    slug: 'nettoyage-lyon-part-dieu',
+    keyword: 'nettoyage Part-Dieu',
+    eyebrow: 'Lyon 3e — La Part-Dieu',
+    h1: 'Nettoyage de bureaux à la Part-Dieu',
+    title: 'Nettoyage à la Part-Dieu (Lyon 3e) — MonCleanerPro',
+    description: "Nettoyage de bureaux et de locaux à la Part-Dieu, Lyon 3e : immeubles tertiaires, accès badge, passages avant 8h. Devis écrit sous 24h.",
+    intro:
+      "À la Part-Dieu, la difficulté n’est presque jamais le nettoyage lui-même : c’est d’entrer, de circuler et de sortir dans un immeuble dont vous n’êtes pas propriétaire. Plateaux multi-locataires, PC sécurité, badges nominatifs, ascenseurs partagés avec les autres occupants, plages horaires fixées par le gestionnaire de l’immeuble et non par vous. Un prestataire qui ne connaît pas ces contraintes rate son premier passage — pas par incompétence, parce que personne ne lui a ouvert.",
+    highlights: [
+      { title: 'Les règles de l’immeuble, pas les nôtres', text: "Nous travaillons avec le règlement intérieur du bâtiment : plages autorisées, accès livraison, monte-charge, local déchets commun." },
+      { title: 'Avant 8h ou après 19h', text: "Les plateaux occupés se traitent hors présence. Le créneau est calé avec vous et déclaré au gestionnaire une fois pour toutes." },
+      { title: 'Intervenants déclarés au PC sécurité', text: "Badges nominatifs, liste tenue à jour, pas d’inconnu qui se présente à l’accueil un lundi matin." },
+      { title: 'Traçabilité écrite', text: "Heure d’arrivée, zones faites, anomalies : consultable en ligne, y compris si vous êtes sur un autre site." },
+    ],
+    includes: [
+      'Plateaux de bureaux, postes de travail et salles de réunion',
+      'Sanitaires, tisanerie et espaces de pause',
+      'Accueil, circulations et parties privatives de l’étage',
+      'Vitrerie intérieure et cloisons vitrées',
+      'Sortie des déchets vers le local commun de l’immeuble',
+      'Remise en état des sols programmée hors période d’activité',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'Travailler dans un immeuble qui ne vous appartient pas',
+        paragraphs: [
+          "C’est la particularité du quartier, et elle est mal anticipée. Dans une tour ou un immeuble tertiaire de la Part-Dieu, vous louez des mètres carrés mais vous ne décidez ni des horaires d’accès, ni du monte-charge, ni du local à déchets, ni de la procédure d’entrée des entreprises extérieures. Le gestionnaire, lui, décide de tout cela.",
+          "Nous prenons ces contraintes en amont plutôt qu’au premier passage : récupération du règlement intérieur, déclaration nominative de nos intervenants au PC sécurité, validation du créneau, repérage du chemin réel entre l’entrée livraison et votre étage. Cela prend une visite. Sans elle, l’équipe se présente à six heures devant une porte qui n’ouvre qu’à sept, et vous payez un passage qui n’a pas eu lieu.",
+          "Un point que nous vérifions systématiquement : ce que couvre déjà le prestataire de l’immeuble. Les halls, les ascenseurs et les sanitaires communs sont souvent inclus dans vos charges. Les refaire figurer dans votre devis, c’est vous les faire payer deux fois — cela arrive plus souvent qu’on ne l’imagine.",
+        ],
+      },
+      {
+        h2: 'Le nettoyage d’un plateau occupé ne se fait pas en journée',
+        paragraphs: [
+          "Sur un plateau en activité, une intervention en pleine journée gêne tout le monde et produit un résultat inférieur : on contourne les postes occupés, on ne passe pas sous les bureaux, on évite les salles en réunion. Le résultat est un nettoyage en pointillés, payé plein tarif.",
+          "Nous intervenons donc avant l’arrivée des équipes ou après leur départ, ce qui suppose de régler la question des accès et de l’alarme une fois pour toutes. C’est aussi ce qui permet de traiter correctement ce qui demande du temps : les cloisons vitrées, très nombreuses dans le tertiaire récent du quartier, et les postes de travail eux-mêmes, qui concentrent l’essentiel des surfaces de contact.",
+        ],
+      },
+      {
+        h2: 'Un quartier où la densité joue pour vous',
+        paragraphs: [
+          "La Part-Dieu concentre sur quelques centaines de mètres une part considérable des bureaux lyonnais. Cette densité a un effet direct sur votre prestation : nos intervenants enchaînent plusieurs sites du quartier sans temps de trajet significatif, ce qui rend les créneaux courts du matin réellement tenables et les interventions ponctuelles plus faciles à caser.",
+          "Concrètement, une demande imprévue — un plateau à reprendre avant une visite, une salle de réunion à remettre en état après un événement — se traite dans la journée dans ce secteur, là où elle demanderait un déplacement dédié ailleurs dans la métropole.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'contrat-nettoyage-entreprise-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-vitres-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Intervenez-vous avant l’ouverture des bureaux ?', a: "Oui, c’est le créneau le plus courant sur le quartier. Il suppose de régler en amont l’accès, le badge et l’alarme : nous le faisons lors de la visite, pas le matin du premier passage." },
+      { q: 'Comment gérez-vous l’accès dans une tour ou un immeuble tertiaire ?', a: "Nous récupérons le règlement intérieur de l’immeuble, déclarons nos intervenants au PC sécurité et faisons valider le créneau par le gestionnaire. La liste est tenue à jour, y compris pour un remplaçant." },
+      { q: 'Vos prestations font-elles doublon avec celles de l’immeuble ?', a: "Nous vérifions ce point avant le devis. Halls, ascenseurs et sanitaires communs sont souvent déjà couverts par vos charges : les refacturer reviendrait à vous les faire payer deux fois." },
+      { q: 'Traitez-vous les cloisons vitrées ?', a: "Oui, et elles méritent une ligne à part dans le devis : le tertiaire du quartier en est rempli, elles marquent vite et elles ne se traitent pas à la même fréquence que le reste." },
+      { q: 'Pouvez-vous intervenir en urgence dans la journée ?', a: "Sur ce quartier, souvent oui. La densité de nos sites à la Part-Dieu fait qu’un intervenant est rarement loin, ce qui rend une reprise ponctuelle réalisable sans déplacement dédié." },
+      { q: 'Quelles zones couvrez-vous autour de la Part-Dieu ?', a: "L’ensemble du 3e arrondissement, de la gare à Montchat, ainsi que Villeurbanne et les quartiers limitrophes du 6e." },
+    ],
+  },
+  {
+    slug: 'nettoyage-lyon-confluence',
+    keyword: 'nettoyage Confluence',
+    eyebrow: 'Lyon 2e — La Confluence',
+    h1: 'Nettoyage à la Confluence (Lyon 2e)',
+    title: 'Nettoyage à la Confluence (Lyon 2e) — MonCleanerPro',
+    description: "Nettoyage à la Confluence, Lyon 2e : bureaux et sièges, copropriétés récentes, logements neufs et livraisons de programmes. Devis sous 24h.",
+    intro:
+      "La Confluence est le quartier le plus récent de Lyon, et c’est ce qui définit le travail qu’on y fait. Presque tout y a moins de vingt ans : béton ciré, inox, bardages, immenses surfaces vitrées, parties communes dessinées par des architectes. Ces matériaux sont beaux et ils sont fragiles — pas au sens où ils cassent, au sens où ils gardent définitivement la trace d’un produit inadapté. Un quartier neuf ne se nettoie pas plus facilement qu’un quartier ancien, il se nettoie avec moins de droit à l’erreur.",
+    highlights: [
+      { title: 'Matériaux contemporains', text: "Béton ciré, inox, verre, bardage composite : chacun a son produit et son geste. Une erreur reste visible des années." },
+      { title: 'Grandes surfaces vitrées', text: "Le quartier en est construit. Les baies et les garde-corps vitrés demandent une fréquence propre, pas un passage au hasard." },
+      { title: 'Copropriétés récentes', text: "Parties communes soignées, halls vitrés, locaux vélos et parkings : des équipements neufs qui se dégradent vite s’ils sont mal traités." },
+      { title: 'Livraisons de programmes', text: "Le quartier bouge encore. Nous faisons aussi le nettoyage de livraison avant remise des clés." },
+    ],
+    includes: [
+      'Bureaux, sièges sociaux et espaces d’accueil',
+      'Parties communes de copropriétés récentes : halls, circulations, locaux vélos',
+      'Vitrages, garde-corps et cloisons de verre',
+      'Sols techniques et bétons cirés, avec le produit adapté',
+      'Logements en location courte durée et résidences',
+      'Nettoyage de livraison avant remise des clés',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'Le neuf s’abîme plus vite qu’on ne le croit',
+        paragraphs: [
+          "C’est contre-intuitif, et c’est le principal motif d’intervention que nous voyons sur ce quartier. Un immeuble ancien a déjà tout encaissé ; ses matériaux ont été choisis il y a un siècle pour durer sans soin particulier. Un immeuble récent, lui, utilise des finitions qui supposent un entretien précis dès la première année.",
+          "Le béton ciré est l’exemple type : un produit trop alcalin ou trop acide attaque sa protection, et le mal n’apparaît que six mois plus tard, sous forme de zones mates irrécupérables sans refaire le sol. L’inox brossé garde les traces d’un chiffon abrasif. Les bardages et les menuiseries à joints silicone n’aiment ni les solvants ni le nettoyeur haute pression. Rien de tout cela ne se rattrape : cela se prévient, ou cela se remplace.",
+          "Nous identifions les revêtements lors de la visite, et nous le disons quand un sol a déjà été traité avec le mauvais produit par un prestataire précédent — pour que vous sachiez ce qui relève de l’entretien et ce qui relève d’une réfection, avant de nous demander un résultat que le nettoyage ne peut plus donner.",
+        ],
+      },
+      {
+        h2: 'Un quartier construit en verre',
+        paragraphs: [
+          "La Confluence est probablement le secteur lyonnais où le vitrage représente la plus grande part des surfaces à entretenir : façades, baies toute hauteur, garde-corps de balcon, halls transparents, cloisons intérieures. Ce n’est pas un détail esthétique, c’est une ligne budgétaire qui doit être traitée comme telle.",
+          "Deux choses méritent d’être posées avant le devis. D’abord la fréquence : une vitre se salit surtout par l’extérieur et le rythme dépend de l’exposition au vent et à la poussière, pas d’une règle générale. Ensuite l’accessibilité réelle : ce qui est atteignable depuis l’intérieur ou depuis une perche relève de nous, ce qui exige un accès sur cordes relève d’un métier réglementé distinct que nous ne pratiquons pas et que nous vous disons de faire appel à un spécialiste plutôt que de bricoler.",
+        ],
+      },
+      {
+        h2: 'Un quartier encore en construction',
+        paragraphs: [
+          "La Confluence continue de se livrer par tranches, et cela crée un besoin particulier : le nettoyage de livraison avant remise des clés, sur des bâtiments neufs où la finition est jugée à la loupe par les acquéreurs et les preneurs. Ce n’est pas de l’entretien, c’est un chantier, avec ses propres méthodes — traitement des voiles de ciment, des résidus d’adhésif et des traces de colle, dépoussiérage complet avant mise en service des ventilations.",
+          "Nous faisons les deux, et nous les facturons séparément. Une remise en état de livraison payée au tarif de l’entretien courant produit toujours le même résultat : un bâtiment livré à moitié propre, et une réserve à la remise des clés.",
+        ],
+      },
+    ],
+    related: ['nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-livraison-programme-neuf'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Savez-vous traiter un sol en béton ciré ?', a: "Oui, avec un produit au pH adapté à sa protection. C’est le point sur lequel nous voyons le plus de dégâts irréversibles dans ce quartier : un produit trop agressif laisse des zones mates qui ne se rattrapent qu’en refaisant le sol." },
+      { q: 'À quelle fréquence faut-il laver les vitrages ?', a: "Cela dépend de l’exposition au vent et à la poussière, pas d’une règle générale. Nous calons la fréquence après observation, et nous la révisons si l’exposition réelle ne correspond pas à ce qui était prévu." },
+      { q: 'Intervenez-vous sur les façades en hauteur ?', a: "Uniquement ce qui est atteignable depuis l’intérieur ou à la perche. Les travaux sur cordes relèvent d’un métier réglementé distinct : nous vous orientons vers un spécialiste plutôt que de bricoler une solution." },
+      { q: 'Faites-vous le nettoyage avant remise des clés d’un programme neuf ?', a: "Oui, et c’est une prestation distincte de l’entretien, avec ses méthodes propres : voiles de ciment, résidus de colle et d’adhésif, dépoussiérage avant mise en service des ventilations." },
+      { q: 'Intervenez-vous dans les copropriétés récentes du quartier ?', a: "Oui : halls, circulations, locaux vélos, parkings et abords. Les équipements y sont neufs et soignés, ce qui rend la régularité plus déterminante qu’ailleurs." },
+      { q: 'Couvrez-vous aussi la Presqu’île et Perrache ?', a: "Oui, l’ensemble du 2e arrondissement, de Bellecour à la pointe de la Confluence." },
+    ],
+  },
+  {
+    slug: 'nettoyage-vieux-lyon',
+    keyword: 'nettoyage Vieux Lyon',
+    eyebrow: 'Lyon 5e — Vieux Lyon',
+    h1: 'Nettoyage dans le Vieux Lyon (Lyon 5e)',
+    title: 'Nettoyage dans le Vieux Lyon (5e) — MonCleanerPro',
+    description: "Nettoyage dans le Vieux Lyon : appartements Renaissance, locations courte durée, restaurants. Pierre, tomettes, escaliers sans ascenseur. Devis sous 24h.",
+    intro:
+      "Le Vieux Lyon impose deux contraintes qu’on ne trouve nulle part ailleurs dans la ville, et elles décident de tout : la nature des matériaux, et la façon d’y monter. Pierre calcaire, tomettes, escaliers à vis, cours intérieures, immeubles Renaissance sans ascenseur, ruelles où aucun véhicule ne s’arrête. C’est aussi le secteur où la location courte durée et la restauration sont les plus denses, donc celui où les rotations sont les plus serrées. Les deux ensemble éliminent les prestataires qui travaillent au chariot et au camion garé devant.",
+    highlights: [
+      { title: 'Matériaux anciens respectés', text: "Pierre calcaire, tomettes, terre cuite, bois : aucun détartrant acide, jamais. Le dégât est immédiat et définitif." },
+      { title: 'Sans ascenseur, sans stationnement', text: "Nous venons équipés léger, par les ruelles, avec ce qui monte réellement quatre étages à pied." },
+      { title: 'Rotations courte durée', text: "Le quartier le plus touristique de Lyon : départ, remise en état et arrivée dans la même fenêtre, linge compris." },
+      { title: 'Restaurants et bouchons', text: "Passages avant ouverture ou après service, salle et sanitaires, sans jamais empiéter sur la cuisine." },
+    ],
+    includes: [
+      'Appartements anciens et logements en location courte durée',
+      'Sols en pierre, tomettes et terre cuite, avec un produit neutre',
+      'Escaliers, paliers et cours intérieures de copropriété',
+      'Salles de restaurant, sanitaires et espaces d’accueil',
+      'Vitres à petits carreaux et menuiseries anciennes',
+      'Remise en état après location ou avant état des lieux',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'La pierre ne supporte pas ce qu’on met sur du carrelage',
+        paragraphs: [
+          "C’est l’erreur la plus coûteuse du quartier, et elle est commise tous les jours. La pierre du Vieux Lyon est calcaire. Un détartrant, un anticalcaire, un produit à base d’acide — y compris le vinaigre blanc, si souvent recommandé — attaque chimiquement le calcaire de la pierre exactement comme il attaque le calcaire d’un dépôt. Le résultat est une surface piquée, mate, définitivement marquée. Aucun nettoyage ultérieur ne la répare.",
+          "Le même raisonnement vaut pour les tomettes et la terre cuite, poreuses et souvent simplement huilées ou cirées : un dégraissant puissant retire la protection en un passage et laisse un sol qui se tache ensuite au moindre liquide renversé. Nous travaillons sur ces surfaces avec des produits neutres, peu d’eau, et nous refusons de « faire briller » un sol ancien qui n’est pas censé briller.",
+          "Nous signalons aussi ce que nous trouvons déjà abîmé. Un propriétaire qui découvre après six mois que son sol a été dégradé par le produit d’un précédent prestataire préfère toujours l’avoir su au premier passage.",
+        ],
+      },
+      {
+        h2: 'Monter le matériel sans ascenseur, dans une rue sans voiture',
+        paragraphs: [
+          "Un immeuble Renaissance se monte par un escalier à vis, souvent étroit, parfois en pierre usée et glissante, sans ascenseur, sur quatre ou cinq niveaux. Ajoutez qu’une grande partie du quartier est piétonne ou inaccessible à un véhicule, et le matériel classique du nettoyage professionnel — chariot complet, autolaveuse, gros bidons — devient simplement inutilisable.",
+          "Nous équipons donc les intervenants du secteur pour ce contexte précis : matériel portable, dosages préparés en amont plutôt que des bidons transportés, et un temps de trajet réellement compté dans le devis. C’est ce dernier point qui explique la plupart des prestations bâclées du quartier : un prestataire qui chiffre un logement du Vieux Lyon comme un logement de Villeurbanne découvre sur place qu’il a vendu vingt minutes de portage qu’il n’a pas facturées, et il les prend sur le ménage.",
+        ],
+      },
+      {
+        h2: 'Le quartier le plus tendu de Lyon en rotations',
+        paragraphs: [
+          "Densité touristique maximale, logements souvent petits, escaliers lents, et des départs et arrivées tous les jours de l’année. Sur la courte durée, le Vieux Lyon est le secteur où la fenêtre entre deux voyageurs est la plus difficile à tenir — et où la rater se paie immédiatement en commentaire.",
+          "Nous traitons ces logements par tournées organisées géographiquement, rue par rue, plutôt qu’en déplacements séparés. C’est la seule façon d’absorber un décalage : un voyageur qui part en retard ne fait pas tomber toute la journée si l’intervenant suivant est à cinquante mètres et non à l’autre bout de la métropole. Le linge est préparé en amont, jamais lavé sur place — dans ces logements, la machine est un pari que la fenêtre horaire ne permet pas de prendre.",
+        ],
+      },
+    ],
+    related: ['menage-airbnb-lyon', 'menage-conciergerie-lyon', 'nettoyage-restaurant-lyon', 'nettoyage-fin-de-bail-lyon'],
+    relatedPosts: ['checklist-menage-airbnb-entre-voyageurs', 'menage-airbnb-creneau-entre-deux-voyageurs'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Comment nettoyez-vous un sol en pierre ancienne ?', a: "Avec un produit neutre et peu d’eau. Jamais d’acide ni d’anticalcaire, vinaigre blanc compris : la pierre du quartier est calcaire, et un produit acide l’attaque exactement comme il attaque un dépôt de tartre. Le résultat est définitif." },
+      { q: 'Intervenez-vous dans les immeubles sans ascenseur ?', a: "Oui, c’est la règle du quartier plus que l’exception. Nos intervenants du secteur sont équipés léger, avec des dosages préparés en amont plutôt que des bidons à monter." },
+      { q: 'Le stationnement impossible pose-t-il problème ?', a: "Non, à condition de l’avoir chiffré. Le temps de portage est compté dans le devis : un prestataire qui l’oublie le récupère forcément sur le temps de ménage." },
+      { q: 'Gérez-vous les locations courte durée du quartier ?', a: "Oui, en tournées organisées rue par rue. C’est ce qui permet d’absorber un départ tardif sans faire tomber le reste de la journée. Le linge est préparé en amont, jamais lavé sur place." },
+      { q: 'Intervenez-vous dans les restaurants et les bouchons ?', a: "Oui, avant ouverture ou après service : salle, sanitaires et espaces d’accueil. La cuisine relève de vos propres protocoles d’hygiène et reste hors de notre périmètre." },
+      { q: 'Couvrez-vous tout le 5e arrondissement ?', a: "Oui, du Vieux Lyon à Saint-Just, Point du Jour et Ménival, ainsi que les pentes menant à Fourvière." },
+    ],
+  },
+  {
+    slug: 'nettoyage-croix-rousse',
+    keyword: 'nettoyage Croix-Rousse',
+    eyebrow: 'Lyon 1er & 4e — La Croix-Rousse',
+    h1: 'Nettoyage à la Croix-Rousse (Lyon 1er et 4e)',
+    title: 'Nettoyage à la Croix-Rousse — MonCleanerPro',
+    description: "Nettoyage à la Croix-Rousse, Lyon 1er et 4e : appartements de canuts, hauteur sous plafond, grandes fenêtres d’atelier, parquets anciens. Devis sous 24h.",
+    intro:
+      "La Croix-Rousse a été construite pour des métiers à tisser, pas pour des appartements — et c’est resté visible dans chaque logement. Des plafonds de quatre mètres, des fenêtres d’atelier qui montent jusqu’en haut, des mezzanines, des parquets d’origine, et tout cela au sommet d’une pente où un véhicule se gare rarement. Ce qui se règle ailleurs en un passage y demande une méthode, et surtout du matériel que la plupart des prestataires n’emportent pas.",
+    highlights: [
+      { title: 'Les hauteurs comme sujet principal', text: "Quatre mètres sous plafond, c’est une fenêtre inaccessible à bout de bras et un dessus de meuble que personne ne fait jamais." },
+      { title: 'Fenêtres d’atelier', text: "Grandes surfaces vitrées d’un seul tenant : traitées à la perche, depuis l’intérieur, sans échafaudage ni improvisation." },
+      { title: 'Parquets anciens', text: "Souvent ni vitrifiés ni protégés. Très peu d’eau, produit adapté : un parquet gorgé d’eau gonfle et ne revient pas." },
+      { title: 'Pente et stationnement', text: "Un point de logistique que nous chiffrons au lieu de le découvrir sur place et de le prendre sur le temps de ménage." },
+    ],
+    includes: [
+      'Appartements de canuts, duplex et mezzanines',
+      'Vitres d’atelier et grandes hauteurs accessibles à la perche',
+      'Parquets anciens, tomettes et sols d’origine',
+      'Dessus de meubles, poutres et hauteurs habituellement oubliées',
+      'Parties communes et escaliers de copropriété',
+      'Grand ménage de printemps et remise en état avant état des lieux',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'Tout ce qui est au-dessus de deux mètres',
+        paragraphs: [
+          "Dans un appartement de canut, la moitié du volume est hors de portée d’une personne debout. Les dessus d’armoire, les poutres, les gardes-corps de mezzanine, les luminaires suspendus, le haut des fenêtres d’atelier : ces surfaces accumulent la poussière pendant des années parce qu’un ménage courant ne les touche jamais, et c’est précisément d’elles que redescend la poussière que vous retrouvez le lendemain sur une table que vous venez d’essuyer.",
+          "Nous les traitons à part, à une fréquence propre — quelques fois par an suffit — avec une perche télescopique et un escabeau adapté. Le reste du temps, l’entretien courant reste efficace parce qu’il n’a plus à lutter contre un réservoir permanent au-dessus de lui.",
+          "Ce qui n’est pas accessible en sécurité depuis l’intérieur ne se fait pas. Une fenêtre d’atelier en façade, sur une rue en pente, ne se nettoie pas depuis un escabeau posé sur un trottoir incliné : c’est un accident qui attend son tour, et nous préférons le dire.",
+        ],
+      },
+      {
+        h2: 'Les parquets d’origine ne se lavent pas à l’eau',
+        paragraphs: [
+          "La plupart des parquets du quartier sont anciens, en bois massif, souvent ni vitrifiés ni traités récemment — parfois simplement huilés ou cirés il y a longtemps. Une serpillière classique y fait deux dégâts : l’eau pénètre par les joints et fait gonfler les lames, et un produit dégraissant retire le peu de protection restante.",
+          "Le geste juste est presque contre-intuitif : très peu d’eau, un produit neutre spécifique au bois, et un séchage immédiat. Un parquet ancien ne redeviendra pas neuf, et un prestataire qui vous promet le contraire s’apprête à le décaper. Notre objectif sur ces sols est qu’ils vieillissent lentement, pas qu’ils brillent une semaine.",
+        ],
+      },
+      {
+        h2: 'La pente, le stationnement, et pourquoi cela figure dans le devis',
+        paragraphs: [
+          "Entre les pentes, le plateau, les rues étroites et les jours de marché, se garer à la Croix-Rousse relève souvent de la chance. Ajoutez les escaliers et les immeubles sans ascenseur, et le temps réel entre le véhicule et la porte du logement devient un vrai poste, pas un détail.",
+          "Nous le comptons explicitement. Ce n’est pas une façon élégante de facturer plus : c’est ce qui garantit que le temps prévu pour le ménage soit réellement passé à nettoyer. Un devis qui ignore ce poste ne le fait pas disparaître, il le déplace — sur la qualité du passage, toujours.",
+        ],
+      },
+    ],
+    related: ['menage-domicile-lyon', 'grand-menage-lyon', 'nettoyage-vitres-lyon', 'femme-de-menage-lyon'],
+    relatedPosts: ['checklist-menage-maison-hebdomadaire'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Pouvez-vous nettoyer des fenêtres de quatre mètres ?', a: "Ce qui est accessible en sécurité depuis l’intérieur, à la perche télescopique, oui. Ce qui exigerait un échafaudage ou un accès sur cordes relève d’un métier distinct, et nous vous le disons plutôt que d’improviser." },
+      { q: 'Comment entretenez-vous un parquet ancien ?', a: "Très peu d’eau, produit neutre spécifique au bois, séchage immédiat. Une serpillière classique fait gonfler les lames par les joints, et un dégraissant retire la protection restante." },
+      { q: 'Traitez-vous les dessus de meubles et les poutres ?', a: "Oui, à une fréquence propre, quelques fois par an. C’est de là que redescend la poussière que vous retrouvez le lendemain sur une surface que vous venez d’essuyer." },
+      { q: 'Le stationnement difficile change-t-il le prix ?', a: "Il est compté dans le devis, explicitement. Un devis qui l’ignore ne fait pas disparaître ce temps : il le prend sur le ménage lui-même." },
+      { q: 'Intervenez-vous sur le plateau comme sur les pentes ?', a: "Oui, dans les 1er et 4e arrondissements : le plateau, les pentes, et jusqu’aux abords de Serin et de Caluire." },
+      { q: 'Faites-vous les parties communes des copropriétés du quartier ?', a: "Oui : escaliers, paliers, cours et locaux poubelles. Les escaliers anciens et étroits demandent la même prudence que les sols des logements." },
+    ],
+  },
+  {
+    slug: 'nettoyage-lyon-6-tete-dor',
+    keyword: 'nettoyage Lyon 6e',
+    eyebrow: 'Lyon 6e — Tête d’Or',
+    h1: 'Nettoyage à Lyon 6e, quartier Tête d’Or',
+    title: 'Nettoyage à Lyon 6e (Tête d’Or) — MonCleanerPro',
+    description: "Nettoyage à Lyon 6e, quartier Tête d’Or : appartements haussmanniens, copropriétés de standing, cabinets et professions libérales. Devis sous 24h.",
+    intro:
+      "Le 6e arrondissement est le quartier lyonnais où le nettoyage est le plus jugé sur la finition et le moins sur la performance. Immeubles haussmanniens, entrées en marbre, laiton, parquets point de Hongrie, grandes copropriétés avec gardien, et une forte densité de professions libérales installées dans ces mêmes immeubles. Ce sont des lieux où une trace se voit, où un produit qui sent se remarque, et où le travail doit être évident sans jamais être visible.",
+    highlights: [
+      { title: 'Matériaux nobles', text: "Marbre, laiton, bois vernis, parquets anciens : chacun son produit. Une erreur ne se rattrape pas sur ces surfaces." },
+      { title: 'L’entrée est la carte de visite', text: "Hall, marches, boîtes aux lettres, laiton : c’est ce que voit un visiteur avant tout le reste, et ce que juge la copropriété." },
+      { title: 'Avec le gardien, pas à sa place', text: "Nous posons par écrit qui fait quoi. C’est la première source de tension dans ces immeubles, et elle se règle en une réunion." },
+      { title: 'Cabinets et professions libérales', text: "Salles d’attente, cabinets et bureaux installés dans l’habitat ancien, avec des horaires compatibles avec la patientèle." },
+    ],
+    includes: [
+      'Appartements haussmanniens et grands logements familiaux',
+      'Halls, escaliers, marbre, laiton et parties communes de standing',
+      'Cabinets médicaux, paramédicaux et professions libérales',
+      'Vitres, miroirs et menuiseries anciennes',
+      'Repassage et entretien du linge à domicile',
+      'Grand ménage saisonnier et remise en état avant réception',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'L’entrée d’immeuble décide de la réputation du prestataire',
+        paragraphs: [
+          "Dans une copropriété du 6e, personne ne remarque un local poubelles impeccable. Tout le monde remarque un hall terne, une marche de marbre auréolée ou un laiton piqué. C’est injuste et c’est ainsi : le jugement se forme sur les quinze premiers mètres, et c’est sur eux qu’un contrat se perd en conseil syndical.",
+          "Ces surfaces demandent chacune leur traitement. Le marbre est une pierre calcaire : aucun produit acide, sous peine de le piquer définitivement. Le laiton non verni se ternit naturellement et se traite avec un produit dédié, sans abrasif — un inox ou une crème à récurer le raye en une fois. Les tapis d’escalier et les nez de marche en bois demandent un aspirateur adapté plutôt que de l’eau.",
+          "Nous listons ces postes séparément dans le devis, avec leur fréquence propre. Regroupés dans une ligne « parties communes », ils sont les premiers sacrifiés quand le temps manque.",
+        ],
+      },
+      {
+        h2: 'Le partage des tâches avec le gardien',
+        paragraphs: [
+          "Beaucoup de ces immeubles ont un gardien, et c’est la première source de friction quand elle n’est pas réglée. Deux échecs classiques : des tâches faites deux fois, payées deux fois ; ou une zone que chacun croit à la charge de l’autre et que personne ne fait pendant des mois.",
+          "Nous demandons donc systématiquement, avant le devis, un partage écrit : sortie et rentrée des conteneurs, entretien courant du hall, escaliers, vitres des parties communes, local vélos, abords. Ce document tient sur une page et supprime l’essentiel des désaccords de l’année. Il protège aussi le gardien, qui se retrouve sinon à absorber sans mandat ce que le prestataire n’a pas fait.",
+        ],
+      },
+      {
+        h2: 'Des cabinets installés dans des appartements',
+        paragraphs: [
+          "La particularité du quartier : une grande partie des cabinets médicaux, paramédicaux et libéraux y occupe d’anciens appartements haussmanniens. Vous avez donc un lieu d’exercice professionnel avec des contraintes d’hygiène réelles, dans un bâti ancien avec ses parquets, ses moulures et ses fenêtres à petits bois.",
+          "Cela demande de tenir les deux exigences en même temps : désinfection effective des surfaces de contact et des sanitaires, avec un temps de pose respecté — un désinfectant essuyé aussitôt n’a rien désinfecté — et prudence sur les matériaux anciens qui ne supportent ni l’eau abondante ni les produits agressifs. Les horaires se calent sur les plages sans patientèle, et le périmètre s’arrête clairement à vos protocoles internes : les dispositifs médicaux et les déchets de soins ne relèvent pas de nous.",
+        ],
+      },
+    ],
+    related: ['nettoyage-copropriete-lyon', 'nettoyage-cabinet-medical-lyon', 'menage-domicile-lyon', 'repassage-domicile-lyon'],
+    relatedPosts: ['checklist-menage-maison-hebdomadaire', 'choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-13',
+    faq: [
+      { q: 'Comment entretenez-vous un hall en marbre ?', a: "Avec un produit neutre, jamais acide : le marbre est une pierre calcaire et un anticalcaire le pique définitivement. Le laiton non verni se traite à part, avec un produit dédié et sans abrasif." },
+      { q: 'Comment vous répartissez-vous les tâches avec le gardien ?', a: "Par écrit, avant le devis : conteneurs, hall, escaliers, vitres communes, local vélos, abords. Une page qui supprime l’essentiel des désaccords de l’année, et qui protège aussi le gardien." },
+      { q: 'Intervenez-vous dans les cabinets installés en appartement ?', a: "Oui, c’est fréquent dans le quartier. Nous tenons les deux exigences : désinfection réelle des surfaces de contact avec temps de pose respecté, et prudence sur les parquets, moulures et menuiseries anciennes." },
+      { q: 'Vos produits laissent-ils une odeur ?', a: "Nous travaillons avec très peu de parfum. Dans ces logements comme dans une salle d’attente, une odeur de produit est perçue comme un défaut, pas comme une preuve de propreté." },
+      { q: 'Proposez-vous le repassage à domicile ?', a: "Oui, en complément de l’entretien courant, sur le même créneau et avec la même intervenante." },
+      { q: 'Couvrez-vous tout le 6e arrondissement ?', a: "Oui : Tête d’Or, Foch, Masséna, Brotteaux, ainsi que les abords du parc et la limite avec Villeurbanne." },
+    ],
+  },
   // ── Contrat d'entretien : requête B2B la plus engageante du cluster. Celui qui
   //    la tape ne cherche pas une prestation, il cherche à sécuriser un engagement.
   {
@@ -4804,7 +5115,16 @@ export const getSeoPage = (slug: string) => SEO_PAGES.find(p => p.slug === slug)
 // `region` : département ou région administrative pour le balisage PostalAddress.
 // Par défaut « Rhône » — les pages nationales, elles, sortent du département et
 // doivent porter leur propre valeur, sinon le balisage devient faux.
-export interface CityGeo { city: string; lat: number; lng: number; postalCode?: string; region?: string }
+export interface CityGeo {
+  city: string; lat: number; lng: number; postalCode?: string; region?: string;
+  // Quartier (et non commune). `city` porte alors le nom du quartier, et
+  // `withinCity` la commune qui le contient. Deux conséquences voulues :
+  //  — le balisage déclare un `Place` contenu dans la ville, pas une `City`
+  //    inventée : « Part-Dieu » n'est pas une commune et l'affirmer est faux ;
+  //  — l'entrée est exclue de SERVED_CITIES et des listes de communes, sans
+  //    quoi l'accueil revendiquerait des communes qui n'existent pas.
+  withinCity?: string;
+}
 export const CITY_GEO: Record<string, CityGeo> = {
   'nettoyage-villefranche-sur-saone': { city: 'Villefranche-sur-Saône', lat: 45.9847, lng: 4.7267, postalCode: '69400' },
   'nettoyage-anse':                   { city: 'Anse',                   lat: 45.9364, lng: 4.7186, postalCode: '69480' },
@@ -4841,6 +5161,15 @@ export const CITY_GEO: Record<string, CityGeo> = {
   'menage-airbnb-decines-charpieu':                    { city: 'Décines-Charpieu',        lat: 45.7692, lng: 4.9603, postalCode: '69150' },
   'menage-airbnb-anse':                                { city: 'Anse',                    lat: 45.9364, lng: 4.7186, postalCode: '69480' },
 
+  // Quartiers de Lyon. `withinCity` les distingue des communes : la proximité
+  // se joue au quartier sur une requête locale, mais un quartier ne se balise
+  // pas comme une ville (voir CityGeo).
+  'nettoyage-lyon-part-dieu':  { city: 'La Part-Dieu',  withinCity: 'Lyon', lat: 45.7605, lng: 4.8570, postalCode: '69003' },
+  'nettoyage-lyon-confluence': { city: 'La Confluence', withinCity: 'Lyon', lat: 45.7405, lng: 4.8155, postalCode: '69002' },
+  'nettoyage-vieux-lyon':      { city: 'Vieux Lyon',    withinCity: 'Lyon', lat: 45.7620, lng: 4.8272, postalCode: '69005' },
+  'nettoyage-croix-rousse':    { city: 'La Croix-Rousse', withinCity: 'Lyon', lat: 45.7745, lng: 4.8320, postalCode: '69004' },
+  'nettoyage-lyon-6-tete-dor': { city: 'Lyon 6e — Tête d’Or', withinCity: 'Lyon', lat: 45.7715, lng: 4.8480, postalCode: '69006' },
+
   // Villes du cluster « chantier-national ». `region` est obligatoire ici : sans
   // elle, le balisage les déclarerait dans le Rhône. Ces entrées sont exclues de
   // SERVED_CITIES (voir `scope: 'national'`) pour ne pas laisser l'accueil
@@ -4863,7 +5192,9 @@ export const getCityGeo = (slug: string): CityGeo | undefined => CITY_GEO[slug];
 export const SERVED_CITIES = Array.from(new Set([
   'Lyon',
   ...SEO_PAGES.filter(p => p.scope !== 'national')
-    .map(p => CITY_GEO[p.slug]?.city)
+    // Les quartiers sont déjà couverts par « Lyon » : les lister séparément
+    // reviendrait à déclarer des communes qui n'existent pas.
+    .map(p => (CITY_GEO[p.slug]?.withinCity ? undefined : CITY_GEO[p.slug]?.city))
     .filter((c): c is string => !!c),
 ]));
 

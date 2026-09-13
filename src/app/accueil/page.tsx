@@ -565,10 +565,23 @@ export default function VitrinePage() {
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
             {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e'].join(' · ')}
           </p>
+          {/* Les quartiers qui ont leur page : c'est le grain le plus fin du
+              référencement local, et la liste d'arrondissements ci-dessus ne
+              pointait nulle part. */}
+          <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
+            {SEO_PAGES.filter(p => getCityGeo(p.slug)?.withinCity).map((p, i, arr) => (
+              <span key={p.slug}>
+                <a href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
+                  {getCityGeo(p.slug)!.city}
+                </a>
+                {i < arr.length - 1 ? ' · ' : ''}
+              </span>
+            ))}
+          </p>
           {/* Les communes qui ont leur page deviennent des liens : c'est le maillage
               interne le plus utile de la page, il pousse chaque page locale. */}
           <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
-            {SEO_PAGES.filter(p => getCityGeo(p.slug) && !p.cluster).map((p, i, arr) => (
+            {SEO_PAGES.filter(p => getCityGeo(p.slug) && !getCityGeo(p.slug)!.withinCity && !p.cluster).map((p, i, arr) => (
               <span key={p.slug}>
                 <a href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
                   {getCityGeo(p.slug)!.city}
@@ -599,7 +612,7 @@ export default function VitrinePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos interventions par commune</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {SEO_PAGES.filter(p => getCityGeo(p.slug) && p.scope !== 'national').map(p => (
+              {SEO_PAGES.filter(p => getCityGeo(p.slug) && !getCityGeo(p.slug)!.withinCity && p.scope !== 'national').map(p => (
                 <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
               ))}
             </div>

@@ -97,11 +97,17 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
   // desservie depuis le Rhône, ce qui est faux et affaiblit la page.
   const geo = getCityGeo(p.slug);
   const national = p.scope === 'national';
+  // Un quartier (`withinCity`) se déclare en `Place` contenu dans sa commune.
+  // Le baliser en `City` reviendrait à affirmer que « La Part-Dieu » est une
+  // commune : c'est faux, et un signal faux ne rapporte rien.
   const areaServed = geo
     ? {
-        '@type': 'City', name: geo.city,
-        ...(geo.postalCode ? { address: { '@type': 'PostalAddress', addressLocality: geo.city, postalCode: geo.postalCode, addressRegion: geo.region ?? 'Rhône', addressCountry: 'FR' } } : {}),
+        '@type': geo.withinCity ? 'Place' : 'City', name: geo.city,
+        // La localité d'un quartier reste la commune : un code postal 69003
+        // appartient à Lyon, pas à « La Part-Dieu ».
+        ...(geo.postalCode ? { address: { '@type': 'PostalAddress', addressLocality: geo.withinCity ?? geo.city, postalCode: geo.postalCode, addressRegion: geo.region ?? 'Rhône', addressCountry: 'FR' } } : {}),
         geo: { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng },
+        ...(geo.withinCity ? { containedInPlace: { '@type': 'City', name: geo.withinCity } } : {}),
       }
     : national
       ? { '@type': 'Country', name: 'France' }
