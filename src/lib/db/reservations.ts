@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase';
 import { trimTime } from './shared';
+import { normalizeIcalUrl } from '../icalUrl';
 import type { ReservationFeed, Reservation } from '../types';
 
 function rowToFeed(r: any): ReservationFeed {
@@ -72,14 +73,34 @@ export async function getAllReservationFeeds(): Promise<ReservationFeed[]> {
   return (data ?? []).map(rowToFeed);
 }
 
+/**
+ * Un logement peut porter PLUSIEURS calendriers — c'est le cas normal du
+ * propriétaire sans PMS qui loue sur Airbnb, Booking et Abritel à la fois. Les
+ * départs des différents flux sont ensuite fusionnés en un seul ménage par date
+ * (cf. le garde-fou anti-doublon de materializeMissions).
+ *
+ * Ce qu'on refuse, c'est le MÊME lien deux fois sur le même logement : la
+ * déduplication des réservations se fait par flux, donc chaque séjour
+ * apparaîtrait en double dans le tableau du partenaire. Le ménage resterait
+ * unique, mais la liste mentirait — et c'est le genre de détail qui fait douter
+ * de tout le reste.
+ */
 export async function createReservationFeed(fields: {
   airbnbId: string; partnerId?: string; platform: string; icalUrl: string; label?: string;
 }): Promise<{ error: string | null }> {
+  const url = normalizeIcalUrl(fields.icalUrl);
+
+  const { data: already } = await supabase.from('reservation_feeds')
+    .select('id, ical_url').eq('airbnb_id', fields.airbnbId);
+  if ((already ?? []).some(f => f.ical_url && normalizeIcalUrl(f.ical_url) === url)) {
+    return { error: 'Ce calendrier est déjà connecté à ce logement.' };
+  }
+
   const { error } = await supabase.from('reservation_feeds').insert({
     airbnb_id: fields.airbnbId,
     partner_id: fields.partnerId || null,
     platform: fields.platform,
-    ical_url: fields.icalUrl.trim(),
+    ical_url: url,
     label: fields.label || null,
   });
   if (error) console.error('createReservationFeed:', error.code, error.message);

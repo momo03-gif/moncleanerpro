@@ -17,7 +17,10 @@ import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
 import { fetchLodgifyReservations } from './pms/lodgify';
+import { REST_CONNECTORS } from './pms/catalog';
+import { memoryTokenStore, type TokenStore, type PmsCallOptions } from './pms/rest';
 import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
+import { parseAirbnbDescription } from './guestContact';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
 // d'aujourd'hui jusqu'à J+90 (au-delà, les calendriers évoluent encore trop).
@@ -124,11 +127,39 @@ async function fetchFromIcal(icalUrl: string | null): Promise<ICalEvent[]> {
 }
 
 /**
+ * Jeton OAuth2 rangé DANS LE FLUX. Sur une plateforme sans serveur, chaque
+ * démarrage à froid repart d'une mémoire vide : un jeton gardé en mémoire serait
+ * redemandé sans cesse. Or Guesty n'en délivre que quelques-uns par 24 h et par
+ * application — on couperait au client l'accès à son propre compte.
+ *
+ * Si les colonnes n'existent pas encore (migration_pms_token.sql non jouée), on
+ * retombe silencieusement sur la mémoire : ça marche, c'est juste moins économe.
+ */
+function feedTokenStore(feedId: string): TokenStore {
+  const db = getSupabaseAdmin();
+  return {
+    async get() {
+      const { data, error } = await db.from('reservation_feeds')
+        .select('api_token, api_token_expires_at').eq('id', feedId).maybeSingle();
+      if (error || !data?.api_token || !data.api_token_expires_at) return memoryTokenStore.get(feedId);
+      return { token: data.api_token, expiresAt: new Date(data.api_token_expires_at).getTime() };
+    },
+    async set(_key, token, expiresAt) {
+      const { error } = await db.from('reservation_feeds').update({
+        api_token: token, api_token_expires_at: new Date(expiresAt).toISOString(),
+      }).eq('id', feedId);
+      // Colonne absente : on garde au moins le jeton pour cette exécution.
+      if (error) await memoryTokenStore.set(feedId, token, expiresAt);
+    },
+  };
+}
+
+/**
  * API du PMS de la conciergerie. Horizon identique à l'iCal (90 jours) : au-delà,
  * les réservations bougent trop pour qu'un ménage planifié ait du sens.
  */
 async function fetchFromPms(
-  feed: { platform: string; api_key?: string | null; api_secret?: string | null; external_property_id?: string | null },
+  feed: { id: string; platform: string; api_key?: string | null; api_secret?: string | null; external_property_id?: string | null },
   today: string,
 ): Promise<ICalEvent[]> {
   // Le secret est facultatif : Beds24 et Lodgify n'en ont pas. Chaque connecteur
@@ -143,6 +174,7 @@ async function fetchFromPms(
     { apiKey: feed.api_key, apiSecret: feed.api_secret ?? undefined },
     feed.external_property_id,
     { from: today, to: addDays(today, HORIZON_DAYS) },
+    { tokens: feedTokenStore(feed.id), tokenKey: feed.id },
   );
 }
 
@@ -152,14 +184,46 @@ type PmsFetcher = (
   creds: { apiKey: string; apiSecret?: string },
   propertyId: string,
   range: { from: string; to: string },
+  opts?: PmsCallOptions,
 ) => Promise<ICalEvent[]>;
 
 const PMS_FETCHERS: Record<string, PmsFetcher> = {
+  // Connecteurs dédiés : écrits un par un contre la documentation de l'éditeur.
   smoobu: fetchSmoobuReservations,
   hostaway: fetchHostawayReservations,
   beds24: fetchBeds24Reservations,
   lodgify: fetchLodgifyReservations,
+  // Connecteurs déclaratifs : même socle pour tous (cf. pms/catalog.ts). Ajouter
+  // un éditeur n'exige plus de toucher à ce fichier.
+  ...Object.fromEntries(
+    Object.entries(REST_CONNECTORS).map(([id, c]) => [id, c.fetchReservations as PmsFetcher]),
+  ),
 };
+
+// ── Contact du voyageur : colonnes optionnelles ───────────────────────────────
+// `guest_phone`, `guest_phone_last4` et `reservation_url` n'existent qu'une fois
+// migration_contact_terrain.sql jouée. Tant qu'elle ne l'est pas, la synchro doit
+// continuer à tourner — sans contact, mais sans casser. On le détecte une seule
+// fois (42703 : colonne inconnue) et on n'insiste plus de l'exécution.
+let guestContactColumns = true;
+const GUEST_CONTACT_FIELDS = ['guest_phone', 'guest_phone_last4', 'reservation_url'];
+
+async function upsertReservation(
+  db: ReturnType<typeof getSupabaseAdmin>,
+  row: Record<string, unknown>,
+): Promise<{ error: { message: string } | null }> {
+  if (guestContactColumns) {
+    const { error } = await db.from('reservations').upsert(row, { onConflict: 'feed_id,external_uid' });
+    if (!error) return { error: null };
+    if (error.code !== '42703') return { error };
+    console.warn('Contact voyageur ignoré : migration_contact_terrain.sql pas encore jouée.');
+    guestContactColumns = false;
+  }
+  const stripped = { ...row };
+  for (const f of GUEST_CONTACT_FIELDS) delete stripped[f];
+  const { error } = await db.from('reservations').upsert(stripped, { onConflict: 'feed_id,external_uid' });
+  return { error };
+}
 
 export interface FeedSyncResult {
   feedId: string;
@@ -208,6 +272,11 @@ export async function syncFeed(feed: {
       const status = classifyEvent(ev, inGroup);
       seenUids.add(ev.uid);
 
+      // Ce qu'on peut joindre du voyageur, selon la source : le téléphone quand
+      // c'est une API de PMS, les 4 derniers chiffres et le lien de réservation
+      // quand c'est un calendrier Airbnb. Rien pour les autres iCal.
+      const hints = parseAirbnbDescription(ev.description);
+
       const row = {
         feed_id: feed.id,
         airbnb_id: feed.airbnb_id,
@@ -220,15 +289,16 @@ export async function syncFeed(feed: {
         check_out: ev.end,
         check_in_time: ev.startTime ?? null,
         check_out_time: ev.endTime ?? null,
+        guest_phone: status === 'confirmed' ? (ev.guestPhone ?? null) : null,
+        guest_phone_last4: status === 'confirmed' ? (hints.phoneLast4 ?? null) : null,
+        reservation_url: hints.reservationUrl ?? null,
         raw: ev as unknown as Record<string, unknown>,
         updated_at: new Date().toISOString(),
       };
 
       // Upsert par (feed_id, external_uid). On NE touche pas mission_id : une
       // mission déjà créée reste rattachée même si la réservation est ré-importée.
-      const { error } = await db
-        .from('reservations')
-        .upsert(row, { onConflict: 'feed_id,external_uid' });
+      const { error } = await upsertReservation(db, row);
       if (error) { console.error('upsert reservation:', error.message); continue; }
       imported++;
 
@@ -348,6 +418,8 @@ async function applyReservationDateChange(missionId: string, newDate: string, ne
 // ── ÉTAPE 2 : transformer les départs en missions de ménage ──────────────────
 export interface MaterializeResult {
   created: number;
+  /** Ménages dont l'arrivée suivante a changé depuis leur création. */
+  refreshed: number;
   details: { reservationId: string; missionId: string; airbnbId: string; date: string }[];
 }
 
@@ -366,8 +438,13 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     .lte('check_out', horizon)
     .order('check_out');
 
-  const result: MaterializeResult = { created: 0, details: [] };
-  if (!departures || departures.length === 0) return result;
+  const result: MaterializeResult = { created: 0, refreshed: 0, details: [] };
+  // Pas de départ à traiter ne veut pas dire rien à faire : les arrivées
+  // suivantes des ménages déjà créés, elles, ont pu bouger.
+  if (!departures || departures.length === 0) {
+    result.refreshed = await refreshNextArrivals(today, horizon);
+    return result;
+  }
 
   // Cache des fiches appartement (durée, prix, partenaire).
   // `group_tiers` : forfait selon le NOMBRE de chambres à faire, porté par
@@ -531,7 +608,64 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     result.details.push({ reservationId: first.id, missionId: mission.id, airbnbId: targetAirbnbId, date });
   }
 
+  result.refreshed = await refreshNextArrivals(today, horizon);
   return result;
+}
+
+// ── L'arrivée suivante, tenue à jour ──────────────────────────────────────────
+// `next_arrival` est figé au moment où le ménage est créé. Or l'ordre normal des
+// choses est l'inverse : le départ est connu trois mois à l'avance, le voyageur
+// suivant réserve quinze jours avant. Sans ce passage, le cleaner lit « aucune
+// arrivée » alors que quelqu'un entre à 15 h le jour même — c'est exactement
+// l'information pour laquelle il regarde sa fiche.
+//
+// Deux requêtes, quel que soit le nombre de ménages : on charge la fenêtre puis
+// on calcule en mémoire, et on n'écrit que ce qui a réellement changé.
+async function refreshNextArrivals(today: string, horizon: string): Promise<number> {
+  const db = getSupabaseAdmin();
+
+  const { data: missions } = await db.from('missions')
+    .select('id, airbnb_id, date_from, next_arrival, next_arrival_time')
+    .eq('auto_synced', true)
+    .in('status', ['pending', 'assigned', 'inprogress'])
+    .gte('date_from', today)
+    .lte('date_from', horizon);
+  if (!missions || missions.length === 0) return 0;
+
+  // Les arrivées peuvent tomber après l'horizon des ménages : on regarde plus
+  // loin que lui, sinon un ménage du 90e jour n'aurait jamais son turnover.
+  const { data: arrivals } = await db.from('reservations')
+    .select('airbnb_id, check_in, check_in_time')
+    .eq('status', 'confirmed')
+    .gte('check_in', today)
+    .lte('check_in', addDays(horizon, 30))
+    .order('check_in');
+
+  // Les arrivées d'une maison à annonces multiples valent pour tout le bien :
+  // une chambre qui se remplit occupe la maison.
+  const groups = await loadPropertyGroups();
+  const byScope = new Map<string, { date: string; time: string | null }[]>();
+  for (const a of arrivals ?? []) {
+    const key = groups.get(a.airbnb_id)?.parentId ?? a.airbnb_id;
+    const list = byScope.get(key) ?? [];
+    list.push({ date: a.check_in, time: a.check_in_time ?? null });
+    byScope.set(key, list);
+  }
+
+  let changed = 0;
+  for (const m of missions) {
+    const key = groups.get(m.airbnb_id)?.parentId ?? m.airbnb_id;
+    // `arrivals` est trié : la première arrivée à partir du jour du ménage suffit.
+    const next = (byScope.get(key) ?? []).find(a => a.date >= m.date_from) ?? null;
+    const date = next?.date ?? null;
+    const time = next?.time ?? null;
+    if (date === (m.next_arrival ?? null) && time === (m.next_arrival_time ?? null)) continue;
+    const { error } = await db.from('missions')
+      .update({ next_arrival: date, next_arrival_time: time }).eq('id', m.id);
+    if (error) { console.error('refreshNextArrivals:', error.message); continue; }
+    changed++;
+  }
+  return changed;
 }
 
 // ── Orchestration ─────────────────────────────────────────────────────────────

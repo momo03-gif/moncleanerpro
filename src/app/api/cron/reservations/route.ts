@@ -33,6 +33,9 @@ export async function GET(req: NextRequest) {
       feeds: result.feeds.length,
       imported,
       missionsCreated: result.materialized.created,
+      // Ménages dont l'arrivée suivante a été mise à jour (réservation tombée
+      // après la création du ménage) — utile pour vérifier que ça tourne.
+      turnoversRefreshed: result.materialized.refreshed,
       recurringGenerated,
       errors: result.feeds.filter(f => !f.ok).map(f => ({ feedId: f.feedId, error: f.error })),
     });

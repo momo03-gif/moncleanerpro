@@ -62,6 +62,23 @@ export function pickGuestName(row: Row): string | undefined {
   return joined || undefined;
 }
 
+/**
+ * Téléphone du voyageur. Chaque éditeur le range ailleurs, et certains le
+ * livrent dans un sous-objet `guest`. On accepte les formes courantes, et on
+ * rend undefined plutôt qu'une chaîne vide — un faux numéro affiché au cleaner
+ * serait pire que pas de numéro du tout.
+ */
+export function pickGuestPhone(row: Row): string | undefined {
+  const direct = pick(row, ['phone', 'guestPhone', 'guest_phone', 'phoneNumber', 'phone_number', 'mobile', 'telephone']);
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  const guest = row['guest'] ?? row['guestInfo'] ?? row['customer'];
+  if (guest && typeof guest === 'object') {
+    const nested = pick(guest as Row, ['phone', 'phoneNumber', 'phone_number', 'mobile', 'telephone']);
+    if (typeof nested === 'string' && nested.trim()) return nested.trim();
+  }
+  return undefined;
+}
+
 /** Vrai quand le statut reçu désigne une annulation. */
 export function isCancelled(status: unknown, cancelledValues = ['cancelled', 'canceled', 'cancellation', 'declined']): boolean {
   return typeof status === 'string' && cancelledValues.includes(status.trim().toLowerCase());
@@ -106,6 +123,8 @@ export function toEvent(row: Row, prefix: string, fields: FieldNames): ICalEvent
     end,
     startTime: pickTime(row, fields.arrivalTime),
     endTime: pickTime(row, fields.departureTime),
+    // Un blocage de calendrier n'a pas de voyageur : pas de numéro à porter.
+    guestPhone: isBlocked(status) ? undefined : pickGuestPhone(row),
   };
 }
 

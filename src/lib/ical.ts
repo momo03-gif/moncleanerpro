@@ -14,6 +14,10 @@ export interface ICalEvent {
   startTime?: string;      // HH:mm si l'évènement porte une heure
   endTime?: string;        // HH:mm si l'évènement porte une heure
   description?: string;
+  // Téléphone du voyageur. JAMAIS présent dans un iCal — seules les API de PMS
+  // le fournissent. Le champ vit ici parce que les connecteurs PMS rendent cette
+  // même forme d'évènement (cf. pms/normalize.ts).
+  guestPhone?: string;
 }
 
 // Déplie les lignes : une ligne continuée commence par un espace ou une tabulation

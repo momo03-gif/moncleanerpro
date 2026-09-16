@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import {
@@ -8,27 +8,12 @@ import {
   updateReservationFeed, deleteReservationFeed, countReservationsForFeed,
 } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import type { Apartment, ReservationFeed, Reservation, ReservationPlatform } from '@/lib/types';
+import type { Apartment, ReservationFeed, Reservation } from '@/lib/types';
+import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
 import { Badge, Button, Card, EmptyState, PageTitle, Segmented } from '@/components/ui';
 import ConnectWizard from './ConnectWizard';
-
-// Plateformes supportées + aide « où trouver l'URL iCal ». Toutes exposent un
-// export iCal par logement (l'API native pourra être ajoutée par plateforme).
-const PLATFORMS: { value: ReservationPlatform; label: string; hint: string }[] = [
-  { value: 'airbnb',   label: 'Airbnb',      hint: 'Annonce → Disponibilité → Synchroniser les calendriers → Exporter le calendrier.' },
-  { value: 'booking',  label: 'Booking.com', hint: 'Extranet → Tarifs et disponibilités → Synchro calendrier → Exporter.' },
-  { value: 'guesty',   label: 'Guesty',      hint: 'Listing → Calendar → iCal export link.' },
-  { value: 'hostaway', label: 'Hostaway',    hint: 'Listing → Channel Manager → iCal export.' },
-  { value: 'lodgify',  label: 'Lodgify',     hint: 'Calendar → Import/Export → Export calendar (.ics).' },
-  { value: 'smoobu',   label: 'Smoobu',      hint: 'Apartment → Channel manager → Exportez (iCal).' },
-  { value: 'beds24',   label: 'Beds24',      hint: 'Settings → Sync → Export calendar (iCal).' },
-  { value: 'amenitiz', label: 'Amenitiz',    hint: 'Channel manager → Synchronisation iCal → Lien d\'export.' },
-  { value: 'ical',     label: 'Flux iCal',   hint: 'Collez l\'URL d\'export .ics de votre outil de réservation.' },
-  { value: 'other',    label: 'Autre PMS',   hint: 'Collez l\'URL d\'export iCal fournie par votre logiciel.' },
-];
-const platformLabel = (p: string) => PLATFORMS.find(x => x.value === p)?.label ?? p;
 
 const RES_STATUS: Record<string, { label: string; tone: 'success' | 'danger' | 'warn' | 'neutral' }> = {
   confirmed: { label: 'Confirmée',   tone: 'success' },
@@ -64,9 +49,26 @@ export default function AirbnbSyncPage() {
   // ?connect=1 l'ouvre directement — c'est le lien de première prise en main
   // depuis le tableau de bord.
   const [showForm, setShowForm] = useState(false);
+  // Logement visé par le parcours de connexion. Null = « connecter un logement »
+  // (le partenaire choisit) ; un id = « ajouter un calendrier » à celui-ci.
+  const [connectFor, setConnectFor] = useState<string | null>(null);
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('connect')) setShowForm(true);
   }, []);
+
+  // Un logement peut porter plusieurs calendriers (Airbnb + Booking + Abritel
+  // pour un propriétaire sans logiciel de gestion). On les présente ensemble :
+  // deux cartes séparées portant le même nom de logement laissaient croire à un
+  // doublon, alors que les départs sont fusionnés en un seul ménage par date.
+  const feedGroups = useMemo(() => {
+    const map = new Map<string, { name: string; list: ReservationFeed[] }>();
+    for (const f of feeds) {
+      const g = map.get(f.airbnbId) ?? { name: f.apartmentName ?? 'Appartement', list: [] };
+      g.list.push(f);
+      map.set(f.airbnbId, g);
+    }
+    return [...map.entries()].map(([airbnbId, g]) => ({ airbnbId, ...g }));
+  }, [feeds]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -186,7 +188,7 @@ export default function AirbnbSyncPage() {
       {tab === 'feeds' && (
         <>
           {!showForm && (
-            <button onClick={() => setShowForm(true)}
+            <button onClick={() => { setConnectFor(null); setShowForm(true); }}
               className="w-full mb-4 min-h-[48px] py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border border-gold text-ink active:scale-95 transition-transform">
               <Icon name="plus" size={16} /> Connecter un logement
             </button>
@@ -195,13 +197,18 @@ export default function AirbnbSyncPage() {
           {showForm && user && (
             <ConnectWizard
               apartments={apartments}
+              feeds={feeds}
+              initialApartmentId={connectFor}
               partnerId={user.id}
               partnerName={user.name}
-              onCancel={() => setShowForm(false)}
+              onCancel={() => { setShowForm(false); setConnectFor(null); }}
               onDone={async () => {
-                setShowForm(false);
+                const wasAdding = connectFor !== null;
+                setShowForm(false); setConnectFor(null);
                 await load();
-                toast('Logement connecté — première synchronisation en cours.', 'success');
+                toast(wasAdding
+                  ? 'Calendrier ajouté — première synchronisation en cours.'
+                  : 'Logement connecté — première synchronisation en cours.', 'success');
                 syncNow();
               }}
             />
@@ -211,38 +218,66 @@ export default function AirbnbSyncPage() {
             <EmptyState icon="link" title="Aucun calendrier connecté" hint="Connectez Airbnb, Booking, Smoobu…" />
           ) : feeds.length === 0 ? null : (
             <div className="space-y-3">
-              {feeds.map(f => (
-                <Card key={f.id} className="p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate text-ink">
-                        {f.apartmentName ?? 'Appartement'} <span className="font-normal text-muted">· {platformLabel(f.platform)}</span>
-                      </p>
-                      {f.label && <p className="text-xs truncate text-muted">{f.label}</p>}
-                      {/* Une connexion API apporte les horaires ; un lien iCal non. */}
-                      {f.connectionKind === 'api' && (
-                        <p className="text-[11px] text-success">Connexion API — horaires d&apos;arrivée et de départ inclus</p>
-                      )}
-                    </div>
-                    <Badge tone={f.active ? 'success' : 'neutral'}>{f.active ? 'Actif' : 'En pause'}</Badge>
+              {feedGroups.map(g => (
+                <Card key={g.airbnbId} className="p-4">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-sm font-semibold truncate text-ink">{g.name}</p>
+                    <span className="text-[11px] shrink-0 text-muted">
+                      {g.list.length} calendrier{g.list.length > 1 ? 's' : ''}
+                    </span>
                   </div>
 
-                  <div className="mt-2 text-[11px] text-muted">
-                    {f.lastSyncStatus === 'error' ? (
-                      <span className="font-semibold text-danger">Dernière synchro en échec : {f.lastError}</span>
-                    ) : f.lastSyncAt ? (
-                      <span>Dernière synchro : {fmtDateTime(f.lastSyncAt)}</span>
-                    ) : (
-                      <span>Pas encore synchronisé</span>
-                    )}
+                  {/* La question que se pose tout propriétaire multi-plateformes :
+                      « est-ce que je vais avoir deux ménages ? » — on y répond ici. */}
+                  {g.list.length > 1 && (
+                    <p className="text-[11px] mt-0.5 text-muted">
+                      Les départs des {g.list.length} calendriers sont fusionnés : un seul ménage par date.
+                    </p>
+                  )}
+
+                  <div className="mt-3 space-y-2">
+                    {g.list.map(f => (
+                      <div key={f.id} className="rounded-xl border p-3 border-hairline">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate text-ink">{platformLabel(f.platform)}</p>
+                            {f.label && <p className="text-[11px] truncate text-muted">{f.label}</p>}
+                            {/* Une connexion API apporte les horaires ; un lien iCal non. */}
+                            {f.connectionKind === 'api' && (
+                              <p className="text-[11px] text-success">Connexion API — horaires d&apos;arrivée et de départ inclus</p>
+                            )}
+                          </div>
+                          <Badge tone={f.active ? 'success' : 'neutral'}>{f.active ? 'Actif' : 'En pause'}</Badge>
+                        </div>
+
+                        <div className="mt-1.5 text-[11px] text-muted">
+                          {f.lastSyncStatus === 'error' ? (
+                            <span className="font-semibold text-danger">Dernière synchro en échec : {f.lastError}</span>
+                          ) : f.lastSyncAt ? (
+                            <span>Dernière synchro : {fmtDateTime(f.lastSyncAt)}</span>
+                          ) : (
+                            <span>Pas encore synchronisé</span>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2 mt-2">
+                          <Button variant="ghost" size="sm" onClick={() => toggleFeed(f)} className="flex-1">
+                            {f.active ? 'Mettre en pause' : 'Réactiver'}
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => removeFeed(f)}>Déconnecter</Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
-                  <div className="flex gap-2 mt-3">
-                    <Button variant="ghost" size="sm" onClick={() => toggleFeed(f)} className="flex-1">
-                      {f.active ? 'Mettre en pause' : 'Réactiver'}
+                  {/* Le geste manquait : rien n'indiquait qu'un logement pouvait
+                      recevoir un deuxième calendrier. */}
+                  {!showForm && (
+                    <Button variant="ghost" size="sm" className="w-full mt-2"
+                      onClick={() => { setConnectFor(g.airbnbId); setShowForm(true); }}>
+                      + Ajouter un calendrier
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => removeFeed(f)}>Déconnecter</Button>
-                  </div>
+                  )}
                 </Card>
               ))}
             </div>

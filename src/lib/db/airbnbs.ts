@@ -15,6 +15,8 @@ function rowToApartment(a: any): Apartment {
     productCostCents: a.product_cost_cents != null ? Number(a.product_cost_cents) : undefined,
     portalCode: a.code_portail,
     keyboxCode: a.code_boite,
+    onSiteContactName: a.on_site_contact_name ?? undefined,
+    onSiteContactPhone: a.on_site_contact_phone ?? undefined,
     entryDirectives: a.entry_instructions ?? '',
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
@@ -101,8 +103,43 @@ export async function recalcGroupMissionsDB(houseId: string): Promise<{ updated:
   return { updated, skipped };
 }
 
+// ── Contact de secours : colonnes optionnelles ────────────────────────────────
+// `on_site_contact_name` / `on_site_contact_phone` n'existent qu'une fois
+// migration_contact_terrain.sql jouée. Tant qu'elle ne l'est pas, créer ou
+// modifier un logement doit continuer de marcher — sans le contact, pas d'échec.
+// On le détecte une fois (42703 : colonne inconnue) et on n'insiste plus.
+let contactColumns = true;
+const CONTACT_FIELDS = ['on_site_contact_name', 'on_site_contact_phone'];
+
+function withoutContact(row: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...row };
+  for (const f of CONTACT_FIELDS) delete out[f];
+  return out;
+}
+
+async function insertApartment(row: Record<string, unknown>) {
+  if (contactColumns) {
+    const res = await supabase.from('airbnbs').insert(row).select('id').single();
+    if (!res.error || res.error.code !== '42703') return res;
+    console.warn('Contact du logement ignoré : migration_contact_terrain.sql pas encore jouée.');
+    contactColumns = false;
+  }
+  return supabase.from('airbnbs').insert(withoutContact(row)).select('id').single();
+}
+
+async function patchApartment(id: string, patch: Record<string, unknown>) {
+  if (contactColumns) {
+    const res = await supabase.from('airbnbs').update(patch).eq('id', id);
+    if (!res.error || res.error.code !== '42703') return res;
+    console.warn('Contact du logement ignoré : migration_contact_terrain.sql pas encore jouée.');
+    contactColumns = false;
+  }
+  return supabase.from('airbnbs').update(withoutContact(patch)).eq('id', id);
+}
+
 export async function createAirbnb(fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
+  onSiteContactName?: string; onSiteContactPhone?: string;
   entryDirectives: string; partnerId?: string; partnerName?: string;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
@@ -111,7 +148,7 @@ export async function createAirbnb(fields: {
   groupTiers?: Record<string, { price?: number; minutes?: number }> | null;
 }): Promise<string | null> {
   const isApartment = (fields.structureType ?? 'apartment') === 'apartment';
-  const { data, error } = await supabase.from('airbnbs').insert({
+  const { data, error } = await insertApartment({
     name: fields.name,
     address: fields.address,
     structure_type: fields.structureType ?? 'apartment',
@@ -133,13 +170,16 @@ export async function createAirbnb(fields: {
     notes: fields.notes || null,
     parent_airbnb_id: fields.parentAirbnbId || null,
     group_tiers: fields.groupTiers ?? null,
-  }).select('id').single();
+    on_site_contact_name: fields.onSiteContactName || null,
+    on_site_contact_phone: fields.onSiteContactPhone || null,
+  });
   if (error) { console.error('createAirbnb error:', error.code, error.message); return null; }
   return data?.id ?? null;
 }
 
 export async function updateAirbnb(id: string, fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
+  onSiteContactName?: string; onSiteContactPhone?: string;
   entryDirectives: string; partnerName?: string;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
@@ -171,13 +211,15 @@ export async function updateAirbnb(id: string, fields: {
   if (fields.zoneColor !== undefined) patch.zone_color = fields.zoneColor || null;
   if (fields.zoneName !== undefined) patch.zone_name = fields.zoneName || null;
   if (fields.partnerName !== undefined) patch.partner_name = fields.partnerName || null;
+  if (fields.onSiteContactName !== undefined) patch.on_site_contact_name = fields.onSiteContactName || null;
+  if (fields.onSiteContactPhone !== undefined) patch.on_site_contact_phone = fields.onSiteContactPhone || null;
   if (fields.structureType !== undefined) patch.structure_type = fields.structureType;
   if (fields.structureLabel !== undefined) patch.structure_label = fields.structureLabel || null;
   // Rattachement et forfaits : réglages admin, même règle (écrits seulement si fournis).
   if (fields.parentAirbnbId !== undefined) patch.parent_airbnb_id = fields.parentAirbnbId || null;
   if (fields.groupTiers !== undefined) patch.group_tiers = fields.groupTiers ?? null;
 
-  const { error } = await supabase.from('airbnbs').update(patch).eq('id', id);
+  const { error } = await patchApartment(id, patch);
   if (error) console.error('updateAirbnb error:', error.code, error.message);
   return { error: error?.message ?? null };
 }

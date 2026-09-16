@@ -18,6 +18,7 @@ import { useFeedback } from '@/contexts/FeedbackContext';
 
 const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
+  onSiteContactName: '', onSiteContactPhone: '',
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
   structureType: 'apartment', structureLabel: '', productCostCents: '',
@@ -52,6 +53,8 @@ function aptToForm(a: Apartment): FormState {
     partnerName: a.partnerName ?? '',
     portalCode: a.portalCode ?? '',
     keyboxCode: a.keyboxCode ?? '',
+    onSiteContactName: a.onSiteContactName ?? '',
+    onSiteContactPhone: a.onSiteContactPhone ?? '',
     entryDirectives: a.entryDirectives ?? '',
     bedrooms: a.bedrooms != null ? String(a.bedrooms) : '',
     beds: a.beds != null ? String(a.beds) : '',
@@ -170,6 +173,8 @@ export default function AirbnbPage() {
       partnerName: form.partnerName || undefined,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
+      onSiteContactName: form.onSiteContactName,
+      onSiteContactPhone: form.onSiteContactPhone,
       entryDirectives: form.entryDirectives,
       bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
       beds: form.beds ? Number(form.beds) : undefined,
@@ -271,6 +276,9 @@ export default function AirbnbPage() {
               { label: 'Partenaire / conciergerie', key: 'partnerName', placeholder: 'Hosting Services Lyon', required: false, list: 'partner-names' },
               { label: 'Code portail — optionnel', key: 'portalCode', placeholder: '1234A', required: false, list: undefined },
               { label: 'Code boîte à clé — optionnel', key: 'keyboxCode', placeholder: 'B#4512', required: false, list: undefined },
+              // Qui appeler si l'accès échoue : le cleaner le voit sur sa mission.
+              { label: 'Contact sur place — si l’accès échoue', key: 'onSiteContactName', placeholder: 'Marc, propriétaire', required: false, list: undefined },
+              { label: 'Téléphone de ce contact', key: 'onSiteContactPhone', placeholder: '06 12 34 56 78', required: false, list: undefined },
             ].map(f => (
               <div key={f.key}>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{f.label}</label>

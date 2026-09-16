@@ -29,6 +29,7 @@ function SetupChip({ done, label, onClick }: { done: boolean; label: string; onC
 
 const emptyForm = {
   name: '', address: '', portalCode: '', keyboxCode: '',
+  onSiteContactName: '', onSiteContactPhone: '',
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '', notes: '',
 };
 type FormState = typeof emptyForm;
@@ -39,6 +40,8 @@ function aptToForm(a: Apartment): FormState {
     address: a.address ?? '',
     portalCode: a.portalCode ?? '',
     keyboxCode: a.keyboxCode ?? '',
+    onSiteContactName: a.onSiteContactName ?? '',
+    onSiteContactPhone: a.onSiteContactPhone ?? '',
     entryDirectives: a.entryDirectives ?? '',
     bedrooms: a.bedrooms != null ? String(a.bedrooms) : '',
     beds: a.beds != null ? String(a.beds) : '',
@@ -53,6 +56,9 @@ const TEXT_FIELDS: { label: string; key: keyof FormState; placeholder: string; r
   { label: 'Adresse complète', key: 'address', placeholder: '12 Rue de la Paix, Lyon', required: true },
   { label: 'Code portail — si besoin', key: 'portalCode', placeholder: '1234A' },
   { label: 'Boîte à clé — si besoin', key: 'keyboxCode', placeholder: 'B#4512' },
+  // Le jour où la boîte à clé est vide, c'est cette ligne qui sauve le ménage.
+  { label: 'Contact sur place — qui appeler si l’accès échoue', key: 'onSiteContactName', placeholder: 'Marc, propriétaire' },
+  { label: 'Téléphone de ce contact', key: 'onSiteContactPhone', placeholder: '06 12 34 56 78' },
 ];
 
 const COUNT_FIELDS: { label: string; key: keyof FormState; placeholder: string }[] = [
@@ -129,6 +135,8 @@ export default function AirbnbApartmentsPage() {
       address: form.address,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
+      onSiteContactName: form.onSiteContactName,
+      onSiteContactPhone: form.onSiteContactPhone,
       entryDirectives: form.entryDirectives,
       bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
       beds: form.beds ? Number(form.beds) : undefined,

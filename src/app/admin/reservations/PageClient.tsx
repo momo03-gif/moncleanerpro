@@ -4,14 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAirbnbs, getAllReservations, getAllReservationFeeds } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
+// Nom des plateformes : lu dans le registre, pour que l'admin et l'espace
+// partenaire désignent toujours une source de la même façon.
+import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
-
-const platformLabel = (p: string) => ({
-  airbnb: 'Airbnb', booking: 'Booking.com', guesty: 'Guesty', hostaway: 'Hostaway',
-  lodgify: 'Lodgify', smoobu: 'Smoobu', beds24: 'Beds24', amenitiz: 'Amenitiz',
-  ical: 'iCal', other: 'PMS',
-} as Record<string, string>)[p] ?? p;
 
 const RES_STATUS: Record<string, { label: string; color: string; bg: string }> = {
   confirmed: { label: 'Confirmée', color: '#5A8A6A', bg: '#5A8A6A15' },

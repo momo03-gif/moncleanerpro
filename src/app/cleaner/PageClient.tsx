@@ -24,6 +24,7 @@ import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
 import { getSiteVideosMap } from '@/lib/siteVideos';
+import { getSiteContactsMap, getMissionGuestsMap, type SiteContact, type GuestContact } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -72,7 +73,70 @@ function getWeekBounds() {
 
 // ── Carte mission ─────────────────────────────────────────────────────────────
 
-function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean }) {
+// ── Quand la clé n'est pas dans la boîte ─────────────────────────────────────
+// Le cleaner est devant la porte : il lui faut quelqu'un à joindre, tout de
+// suite. Le contact du logement (propriétaire, conciergerie, gardien) est le
+// recours qui marche toujours. Le voyageur ne vient qu'en second, et seulement
+// si la plateforme nous a donné de quoi le joindre — un calendrier Airbnb ne
+// livre que les 4 derniers chiffres de son numéro et le lien de la conversation.
+function AccessHelp({ site, guest }: { site?: SiteContact; guest?: GuestContact }) {
+  const hasSite = !!(site?.phone || site?.name);
+  const hasGuest = !!(guest?.phone || guest?.reservationUrl || guest?.phoneLast4 || guest?.name);
+  if (!hasSite && !hasGuest) return null;
+
+  return (
+    <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F8F6F2' }}>
+      <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#A8A09A' }}>
+        Si l&apos;accès ne marche pas
+      </p>
+
+      {hasSite && (
+        site!.phone ? (
+          <a href={`tel:${site!.phone}`}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
+            style={{ backgroundColor: '#1A1A1A', color: '#FFFFFF' }}>
+            <Icon name="phone" size={15} />
+            Appeler {site!.name || 'le contact du logement'}
+          </a>
+        ) : (
+          // Un nom sans numéro n'est pas un contact : on le dit plutôt que de
+          // laisser croire qu'il y a quelqu'un au bout.
+          <p className="text-sm" style={{ color: '#7A7068' }}>
+            {site!.name} — aucun numéro enregistré pour ce logement.
+          </p>
+        )
+      )}
+
+      {hasGuest && (
+        <div className={hasSite ? 'mt-2' : ''}>
+          {guest!.phone ? (
+            <a href={`tel:${guest!.phone}`}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border"
+              style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+              <Icon name="phone" size={15} />
+              Appeler le voyageur{guest!.name ? ` (${guest!.name})` : ''}
+            </a>
+          ) : (
+            <p className="text-xs" style={{ color: '#7A7068' }}>
+              Voyageur{guest!.name ? ` : ${guest!.name}` : ''}
+              {guest!.phoneLast4 ? ` · numéro en ••${guest!.phoneLast4}` : ''}
+              {!guest!.phoneLast4 && !guest!.reservationUrl ? ' — aucun numéro transmis par la plateforme.' : ''}
+            </p>
+          )}
+          {!guest!.phone && guest!.reservationUrl && (
+            <a href={guest!.reservationUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold underline"
+              style={{ color: '#C48A2A' }}>
+              Écrire au voyageur sur la plateforme
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissionCard({ mission, userId, onUpdate, highlight, siteContact, guest }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean; siteContact?: SiteContact; guest?: GuestContact }) {
   const { confirm, toast } = useFeedback();
   const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -359,6 +423,8 @@ function MissionCard({ mission, userId, onUpdate, highlight }: { mission: Missio
           </>
         )}
 
+        <AccessHelp site={siteContact} guest={guest} />
+
         {/* Vidéo d'accès du logement (si le site en a une) : comment s'y rendre,
             où trouver la clé. Chargée à la demande — aucun téléchargement auto. */}
         {mission.accessVideoUrl && mission.airbnbId && (
@@ -578,6 +644,10 @@ export default function CleanerDashboard() {
   const [showDone, setShowDone] = useState(false);
   // Horodatage de la dernière synchro quand on affiche des données du cache
   // (hors-ligne). null = données à jour (en ligne).
+  // Contacts de secours : chargés à part du planning (comme la vidéo d'accès).
+  // Une table vide = rien à afficher, jamais une erreur de chargement.
+  const [siteContacts, setSiteContacts] = useState<Record<string, SiteContact>>({});
+  const [guests, setGuests] = useState<Record<string, GuestContact>>({});
   const [offlineSince, setOfflineSince] = useState<string | null>(null);
   // File d'actions hors-ligne en attente / refusées.
   const [sync, setSync] = useState<QueueSummary>({ pending: 0, rejected: 0 });
@@ -615,6 +685,15 @@ export default function CleanerDashboard() {
       : m;
     setMissions(enriched);
     setOfflineSince(null);
+    // Qui appeler si l'accès échoue. Deux requêtes indépendantes du planning :
+    // en cas d'échec (ou de migration non jouée), le bloc ne s'affiche pas, et
+    // c'est tout — le cleaner garde ses missions.
+    const [contacts, guestMap] = await Promise.all([
+      getSiteContactsMap(enriched.map(x => x.airbnbId ?? '').filter(Boolean)),
+      getMissionGuestsMap(enriched.map(x => x.id)),
+    ]);
+    setSiteContacts(contacts);
+    setGuests(guestMap);
     // On ne persiste pas un planning vide par-dessus un cache existant (une requête
     // en échec renvoie [] — inutile d'écraser des données valides).
     if (enriched.length > 0) await cacheMissions(user.id, enriched);
@@ -828,7 +907,8 @@ export default function CleanerDashboard() {
         return (
           <div className="space-y-3">
             {todo.map(m => (
-              <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} highlight={m.id === activeId} />
+              <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} highlight={m.id === activeId}
+                siteContact={m.airbnbId ? siteContacts[m.airbnbId] : undefined} guest={guests[m.id]} />
             ))}
 
             {/* Terminées : repliées, hors du chemin, dépliables au besoin. */}

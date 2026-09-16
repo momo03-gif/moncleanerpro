@@ -13,16 +13,10 @@
 import { useState } from 'react';
 import { createAirbnb, createReservationFeed } from '@/lib/db';
 import { detectPlatform, isLikelyIcalUrl, normalizeIcalUrl, PLATFORM_HELP } from '@/lib/icalUrl';
-import { PMS_LIST, findPms } from '@/lib/pms/registry';
-import type { Apartment, ReservationPlatform } from '@/lib/types';
+import { pmsSelectable, findPms, platformLabel } from '@/lib/pms/registry';
+import type { Apartment, ReservationFeed, ReservationPlatform } from '@/lib/types';
 import { Button, Card, FIELD_SM, Label } from '@/components/ui';
 import Icon from '@/components/Icon';
-
-const PLATFORM_LABEL: Record<string, string> = {
-  airbnb: 'Airbnb', booking: 'Booking.com', guesty: 'Guesty', hostaway: 'Hostaway',
-  lodgify: 'Lodgify', smoobu: 'Smoobu', beds24: 'Beds24', amenitiz: 'Amenitiz',
-  ical: 'Flux iCal', other: 'Autre outil',
-};
 
 interface CheckResult {
   ok: boolean;
@@ -33,15 +27,21 @@ interface CheckResult {
   nextCheckOut?: string | null;
 }
 
-export default function ConnectWizard({ apartments, partnerId, partnerName, onDone, onCancel }: {
+export default function ConnectWizard({
+  apartments, feeds, initialApartmentId, partnerId, partnerName, onDone, onCancel,
+}: {
   apartments: Apartment[];
+  /** Calendriers déjà connectés — sert à dire au partenaire ce qu'il ajoute. */
+  feeds: ReservationFeed[];
+  /** Logement pré-sélectionné (bouton « Ajouter un calendrier » d'un logement). */
+  initialApartmentId?: string | null;
   partnerId: string;
   partnerName?: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
   // Logement : existant, ou créé à la volée (première connexion).
-  const [aptId, setAptId] = useState(apartments[0]?.id ?? 'new');
+  const [aptId, setAptId] = useState(initialApartmentId ?? apartments[0]?.id ?? 'new');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
 
@@ -54,6 +54,8 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
   const [error, setError] = useState('');
 
   const creatingApt = aptId === 'new';
+  // Ce que ce logement porte déjà — pour l'annoncer plutôt que de le laisser deviner.
+  const alreadyConnected = creatingApt ? [] : feeds.filter(f => f.airbnbId === aptId);
   const platform = detectPlatform(url);
   const urlLooksRight = isLikelyIcalUrl(url);
 
@@ -97,12 +99,18 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
     onDone();
   }
 
-  const canConnect = (!creatingApt || (name.trim() && address.trim())) && urlLooksRight && !saving;
+  // Connectable dès que le lien ressemble à un calendrier OU que la vérification
+  // en a lu un pour de bon : aucun logiciel ne doit rester à la porte à cause de
+  // la forme de son adresse.
+  const linkUsable = urlLooksRight || check?.ok === true;
+  const canConnect = (!creatingApt || (name.trim() && address.trim())) && linkUsable && !saving;
 
   return (
     <Card as="section" className="mb-5 p-4 space-y-4">
       <div>
-        <p className="text-sm font-bold text-ink">Connecter un logement</p>
+        <p className="text-sm font-bold text-ink">
+          {alreadyConnected.length > 0 ? 'Ajouter un calendrier' : 'Connecter un logement'}
+        </p>
         <p className="text-xs mt-0.5 text-muted">
           Une fois connecté, chaque départ crée automatiquement le ménage correspondant.
         </p>
@@ -117,6 +125,16 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
             <option value="new">+ Nouveau logement…</option>
           </select>
         )}
+        {/* Un logement peut porter plusieurs calendriers : Airbnb + Booking +
+            Abritel pour un propriétaire sans logiciel de gestion. On le dit ici,
+            sinon personne ne devine qu'il faut repasser par le même écran. */}
+        {alreadyConnected.length > 0 && (
+          <p className="text-[11px] mt-1.5 text-muted">
+            Ce logement a déjà {alreadyConnected.length} calendrier{alreadyConnected.length > 1 ? 's' : ''} ({alreadyConnected.map(f => platformLabel(f.platform)).join(', ')}).
+            Vous pouvez en ajouter un autre : les départs sont fusionnés, un seul ménage par date.
+          </p>
+        )}
+
         {creatingApt && (
           <div className="space-y-2 mt-2">
             <div>
@@ -166,18 +184,22 @@ export default function ConnectWizard({ apartments, partnerId, partnerName, onDo
         {url.trim().length > 8 && (
           platform && urlLooksRight ? (
             <p className="text-[11px] mt-1.5 flex items-center gap-1.5 text-success">
-              <Icon name="check" size={12} /> {PLATFORM_LABEL[platform] ?? 'Calendrier'} reconnu
+              <Icon name="check" size={12} /> {platformLabel(platform)} reconnu
             </p>
           ) : (
+            // On ne bloque pas : certains logiciels servent leur calendrier sur
+            // une adresse qui n'annonce ni « .ics » ni « calendar ». Le bouton
+            // Vérifier reste offert, et c'est le contenu qui tranche.
             <p className="text-[11px] mt-1.5 text-warn">
-              Ce lien ne ressemble pas à un export de calendrier — copiez le lien d&apos;export (.ics), pas l&apos;adresse de l&apos;annonce.
+              Ce lien ne ressemble pas à un export de calendrier — vérifiez-le : s&apos;il en est
+              un, vous pourrez le connecter quand même.
             </p>
           )
         )}
 
         <p className="text-[11px] mt-1.5 text-muted">{PLATFORM_HELP[platform ?? 'ical']}</p>
 
-        {urlLooksRight && (
+        {url.trim().length > 8 && (
           <button type="button" onClick={verify} disabled={checking}
             className="mt-2 text-xs font-semibold px-3 py-2 rounded-lg border border-line text-muted disabled:opacity-50">
             {checking ? 'Vérification…' : 'Vérifier le lien'}
@@ -249,10 +271,15 @@ function PmsConnect({ airbnbId, onNeedApartment, onFallbackToIcal, onDone }: {
   onFallbackToIcal: () => void;
   onDone: () => void;
 }) {
+  // Les logiciels proposés : ceux qu'on sait lire par API d'abord, puis ceux qui
+  // passent par le lien de calendrier, et « Autre logiciel » pour les absents.
+  const SOFTWARE = pmsSelectable();
   const [pmsId, setPmsId] = useState('smoobu');
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
-  const [apartments, setApartments] = useState<{ id: number; name: string }[] | null>(null);
+  // L'identifiant du logement chez l'éditeur : nombre chez les uns, UUID chez
+// les autres. On le traite en texte de bout en bout.
+  const [apartments, setApartments] = useState<{ id: number | string; name: string }[] | null>(null);
   const [chosen, setChosen] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -295,7 +322,14 @@ function PmsConnect({ airbnbId, onNeedApartment, onFallbackToIcal, onDone }: {
         <select id="pms-soft" value={pmsId}
           onChange={e => { setPmsId(e.target.value); setApartments(null); setErr(''); }}
           className={`${FIELD_SM} appearance-none`}>
-          {PMS_LIST.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          {/* Deux groupes, pour que personne ne cherche : ce qu'on sait lire par
+              clé, puis le reste — qui se connecte par le lien de calendrier. */}
+          <optgroup label="Connexion directe (clé API)">
+            {SOFTWARE.filter(p => p.api !== false).map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </optgroup>
+          <optgroup label="Par lien de calendrier">
+            {SOFTWARE.filter(p => p.api === false).map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </optgroup>
         </select>
       </div>
 
@@ -305,8 +339,9 @@ function PmsConnect({ airbnbId, onNeedApartment, onFallbackToIcal, onDone }: {
       {!apiReady ? (
         <div className="rounded-xl border border-warn-line bg-warn-soft px-3 py-2.5">
           <p className="text-[11px] text-warn">
-            Pas encore de connexion directe pour {pms?.label}. Le lien de calendrier fonctionne avec
-            lui — vous aurez les dates, mais pas les horaires d&apos;arrivée et de départ.
+            Pas encore de connexion directe pour {pms && pms.id !== 'other' ? pms.label : 'ce logiciel'}.
+            Le lien de calendrier fonctionne avec lui — vous aurez les dates, mais pas les
+            horaires d&apos;arrivée et de départ.
           </p>
           <button type="button" onClick={onFallbackToIcal}
             className="mt-2 text-[11px] font-semibold underline text-warn">
@@ -319,6 +354,16 @@ function PmsConnect({ airbnbId, onNeedApartment, onFallbackToIcal, onDone }: {
         {pms!.api !== false && pms!.api.help} L&apos;API apporte en plus les heures d&apos;arrivée
         et de départ — donc les départs tardifs.
       </p>
+
+      {/* Connecteur décrit d'après ce que l'éditeur publie, jamais essayé contre
+          un vrai compte. On le dit avant la saisie plutôt que de laisser
+          découvrir l'échec — et « Vérifier la clé » tranche en deux secondes. */}
+      {pms!.api !== false && pms!.api.verified === false && (
+        <p className="text-[11px] rounded-xl border px-3 py-2 border-warn-line bg-warn-soft text-warn">
+          Connexion {pms!.label} encore jamais confirmée sur un compte réel. Vérifiez votre clé
+          ci-dessous : si elle passe, tout fonctionne ; sinon, le lien de calendrier prend le relais.
+        </p>
+      )}
       {/* Chaque éditeur demande ce qui lui est propre : Smoobu une clé et un
           secret, Beds24 et Lodgify une clé seule. On n'affiche que le nécessaire. */}
       {fields.map((f, i) => (

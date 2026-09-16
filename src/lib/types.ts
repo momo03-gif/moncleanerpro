@@ -252,6 +252,10 @@ export interface Apartment {
   portalCode?: string;
   keyboxCode?: string;
   entryDirectives: string;
+  // Qui appeler si l'accès échoue (boîte à clé vide, code refusé). Le recours qui
+  // marche toujours : propriétaire, conciergerie ou gardien — pas le voyageur.
+  onSiteContactName?: string;
+  onSiteContactPhone?: string;
   cleanerId?: string;
   cleanerName?: string;
   clientPrice?: number;
@@ -439,9 +443,17 @@ export interface FinancialEntry {
 
 // Plateformes de réservation supportées. Toutes exposent un export iCal par
 // logement ; les API natives pourront être branchées par plateforme plus tard.
+// Sources de réservations. La liste des identifiants est tenue ici, mais tout ce
+// qui les accompagne (nom affiché, hôtes reconnus, aide « où trouver le lien »,
+// connecteur API) vit dans src/lib/pms/registry.ts — la source de vérité.
+// Un logiciel absent de la liste reste connectable : son lien retombe sur 'ical'.
 export type ReservationPlatform =
-  | 'airbnb' | 'booking' | 'guesty' | 'hostaway' | 'lodgify'
-  | 'smoobu' | 'beds24' | 'amenitiz' | 'ical' | 'other';
+  | 'airbnb' | 'booking' | 'vrbo' | 'expedia'
+  | 'smoobu' | 'hostaway' | 'beds24' | 'lodgify'
+  | 'guesty' | 'hostify' | 'superhote' | 'amenitiz' | 'avantio' | 'smily'
+  | 'hospitable' | 'hostfully' | 'uplisting' | 'ownerrez' | 'octorate'
+  | 'eviivo' | 'elloha' | 'rentalsunited' | 'zeevou' | 'tokeet'
+  | 'ical' | 'other';
 
 // État d'une réservation importée (domaine distinct des statuts de mission).
 export type ReservationStatus = 'confirmed' | 'cancelled' | 'tentative' | 'blocked';

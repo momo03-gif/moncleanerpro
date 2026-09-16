@@ -6,17 +6,22 @@ import { listHostawayListings } from '@/lib/pms/hostaway';
 import { listBeds24Properties } from '@/lib/pms/beds24';
 import { listLodgifyProperties } from '@/lib/pms/lodgify';
 import { findPms, supportsApi } from '@/lib/pms/registry';
+import { REST_CONNECTORS } from '@/lib/pms/catalog';
 
 export const runtime = 'nodejs';
 
 // Un « lister » par logiciel : il rend les logements du compte pour que la
 // conciergerie désigne celui qui correspond au nôtre. Ajouter un éditeur =
 // une ligne ici, une dans PMS_FETCHERS (reservationSync) et une dans le registre.
-const PMS_LISTERS: Record<string, (c: { apiKey: string; apiSecret?: string }) => Promise<{ id: number; name: string }[]>> = {
+type Lister = (c: { apiKey: string; apiSecret?: string }) => Promise<{ id: number | string; name: string }[]>;
+
+const PMS_LISTERS: Record<string, Lister> = {
   smoobu: listSmoobuApartments,
   hostaway: listHostawayListings,
   beds24: listBeds24Properties,
   lodgify: listLodgifyProperties,
+  // Les connecteurs déclaratifs apportent leur « lister » avec eux.
+  ...Object.fromEntries(Object.entries(REST_CONNECTORS).map(([id, c]) => [id, c.list as Lister])),
 };
 
 // Connexion d'un logement à l'API du PMS de la conciergerie.
@@ -54,7 +59,9 @@ export async function POST(req: NextRequest) {
   // proprement plutôt que d'enregistrer une connexion que la synchro ne saurait
   // pas lire (la conciergerie se retrouverait avec un flux mort).
   if (!supportsApi(platform)) {
-    const name = findPms(platform)?.label ?? platform;
+    const def = findPms(platform);
+    // « Autre logiciel » n'a pas de nom à citer : on parle alors de « ce logiciel ».
+    const name = def && def.kind !== 'generic' ? def.label : 'ce logiciel';
     return NextResponse.json({
       error: `Pas encore de connexion directe pour ${name}. Utilisez le lien iCal : il fonctionne avec tous les logiciels.`,
     }, { status: 400 });
@@ -90,6 +97,19 @@ export async function POST(req: NextRequest) {
     .from('airbnbs').select('id, partner_id').eq('id', body.airbnbId).maybeSingle();
   if (!apt || (apt.partner_id !== session.id && session.role !== 'admin')) {
     return NextResponse.json({ error: 'Logement introuvable.' }, { status: 404 });
+  }
+
+  // Même règle que pour les liens iCal : plusieurs sources par logement, oui,
+  // mais pas deux fois la même. Ici, « la même » = le même logement chez le même
+  // éditeur (les réservations arriveraient en double dans le tableau).
+  const { data: already } = await admin.from('reservation_feeds')
+    .select('id')
+    .eq('airbnb_id', body.airbnbId)
+    .eq('platform', platform)
+    .eq('external_property_id', String(body.externalPropertyId))
+    .limit(1);
+  if (already && already.length > 0) {
+    return NextResponse.json({ error: 'Ce logement est déjà connecté à cette source.' }, { status: 400 });
   }
 
   const { error } = await admin.from('reservation_feeds').insert({

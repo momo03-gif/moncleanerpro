@@ -25,8 +25,18 @@ describe('detectPlatform — la plateforme se déduit du lien collé', () => {
     expect(detectPlatform('https://www.beds24.com/api/ical.php?key=1')).toBe('beds24');
   });
 
-  it('range Vrbo/Abritel dans le flux iCal générique', () => {
-    expect(detectPlatform('https://www.vrbo.com/icalendar/abc.ics')).toBe('ical');
+  it('reconnaît les logiciels de conciergerie, pas seulement les places de marché', () => {
+    expect(detectPlatform('https://app.hostify.com/ical/export/abc.ics')).toBe('hostify');
+    expect(detectPlatform('https://api.superhote.com/ical/12.ics')).toBe('superhote');
+    expect(detectPlatform('https://my.guesty.com/calendar/ical/9.ics')).toBe('guesty');
+    expect(detectPlatform('https://app.lodgify.com/calendar/1.ics')).toBe('lodgify');
+    expect(detectPlatform('https://app.avantio.com/calendar/ical/7.ics')).toBe('avantio');
+    expect(detectPlatform('https://my.uplisting.io/ical/3.ics')).toBe('uplisting');
+  });
+
+  it('reconnaît Vrbo/Abritel, quel que soit le nom national du site', () => {
+    expect(detectPlatform('https://www.vrbo.com/icalendar/abc.ics')).toBe('vrbo');
+    expect(detectPlatform('https://www.abritel.fr/icalendar/abc.ics')).toBe('vrbo');
   });
 
   it('retombe sur le flux iCal générique pour un hôte inconnu', () => {
