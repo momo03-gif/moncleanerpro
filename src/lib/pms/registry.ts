@@ -191,7 +191,7 @@ export const PMS_LIST: PmsDefinition[] = [
     api: {
       fields: [{ name: 'apiKey', label: 'Clé API' }],
       help: 'Hostify → Paramètres → API (la clé est fournie par leur support si elle n’y figure pas).',
-      verified: false,
+      verified: true,
     },
   },
   {

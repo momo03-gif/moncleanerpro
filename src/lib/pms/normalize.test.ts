@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickDate, pickTime, pickGuests, pickGuestName, isCancelled, isBlocked, toEvent, toEvents, type FieldNames } from './normalize';
+import { pickDate, pickTime, pickGuests, pickGuestName, pickGuestPhone, isCancelled, isBlocked, toEvent, toEvents, type FieldNames } from './normalize';
 
 const FIELDS: FieldNames = {
   id: ['id', 'bookId'],
@@ -123,5 +123,44 @@ describe('toEvents — échouer franchement plutôt que rendre une liste vide', 
 
   it('accepte une réponse réellement vide', () => {
     expect(toEvents([], 'x', FIELDS, 'Test')).toEqual([]);
+  });
+});
+
+// ── Ce qu'un vrai compte Hostify a appris (09/2026) ─────────────────────────
+describe('Statuts réels d’un PMS — ne jamais nettoyer pour un séjour fantôme', () => {
+  const FIELDS = {
+    id: ['id'], arrival: ['checkIn'], departure: ['checkOut'],
+    arrivalTime: ['planned_arrival'], departureTime: ['planned_departure'], status: ['status'],
+  };
+  const row = (status: string) => toEvent(
+    { id: 1, status, checkIn: '2026-09-18', checkOut: '2026-09-20' }, 'hostify', FIELDS,
+  );
+
+  it('confirme ce qui est accepté', () => {
+    expect(row('accepted')?.status).toBe('CONFIRMED');
+  });
+
+  it('écarte les séjours qui n’auront pas lieu', () => {
+    // Vus tels quels sur le compte : sans ça, un ménage était planifié pour une
+    // réservation expirée ou annulée par le voyageur.
+    for (const s of ['cancelled', 'expired', 'voided', 'timedout', 'declined']) {
+      expect(row(s)?.status).toBe('CANCELLED');
+    }
+  });
+
+  it('range les demandes en « à confirmer », sans créer de ménage', () => {
+    // Une demande n'est pas une réservation : on la garde pour le jour où elle
+    // le devient, mais materializeMissions ne lit que les « confirmed ».
+    for (const s of ['inquiry', 'pending', 'unconfirmed']) {
+      expect(row(s)?.status).toBe('TENTATIVE');
+    }
+  });
+
+  it('lit un téléphone même quand l’éditeur l’envoie en nombre', () => {
+    // Hostify renvoie 33780747060 sans guillemets : le cleaner perdait le contact.
+    expect(pickGuestPhone({ guest_phone: 33780747060 })).toBe('33780747060');
+    expect(pickGuestPhone({ phone: '+33 6 12 34 56 78' })).toBe('+33 6 12 34 56 78');
+    expect(pickGuestPhone({ guest: { phone: '0612345678' } })).toBe('0612345678');
+    expect(pickGuestPhone({})).toBeUndefined();
   });
 });

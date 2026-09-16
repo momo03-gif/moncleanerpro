@@ -63,9 +63,14 @@ describe('Registre des logiciels de gestion', () => {
     expect(supportsApi('hostaway')).toBe(true);
     expect(supportsApi('beds24')).toBe(true);
     expect(supportsApi('lodgify')).toBe(true);
-    // Connecteurs bâtis sur le socle REST commun (cf. catalog.ts) : proposés,
-    // mais annoncés comme non confirmés tant qu'aucune vraie clé n'est passée.
-    for (const id of ['hostify', 'hospitable', 'ownerrez', 'hostfully', 'uplisting', 'guesty']) {
+    // Hostify : confirmé sur un vrai compte (Les Cocons Lyonnais, 09/2026).
+    expect(supportsApi('hostify')).toBe(true);
+    const hostify = findPms('hostify')!.api;
+    expect(hostify !== false && hostify.verified).toBe(true);
+
+    // Les autres connecteurs du socle REST : proposés, mais annoncés comme non
+    // confirmés tant qu'aucune vraie clé n'est passée.
+    for (const id of ['hospitable', 'ownerrez', 'hostfully', 'uplisting', 'guesty']) {
       expect(supportsApi(id)).toBe(true);
       const api = findPms(id)!.api;
       expect(api !== false && api.verified).toBe(false);

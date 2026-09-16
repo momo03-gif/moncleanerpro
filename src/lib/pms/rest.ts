@@ -59,9 +59,25 @@ export interface RestPmsDescriptor {
      * chemin porte déjà l'identifiant (cf. règle absolue plus haut).
      */
     propertyParam: string | null;
-    /** Noms des paramètres de période. */
-    fromParam: string;
-    toParam: string;
+    /**
+     * Noms des paramètres de période — FACULTATIFS. Hostify, par exemple, rend
+     * zéro ligne si on lui envoie `start_date`/`end_date` : mieux vaut ne rien
+     * filtrer côté serveur que de tout perdre. La période est de toute façon
+     * rebornée localement, donc le résultat reste juste.
+     */
+    fromParam?: string;
+    toParam?: string;
+    /**
+     * Pagination. Presque tous plafonnent les pages (Hostify : 100 lignes, quoi
+     * qu'on demande). Sans cela, on ne voit que les PLUS ANCIENNES réservations
+     * et jamais les séjours à venir — donc aucun ménage n'est créé.
+     */
+    pagination?: {
+      pageParam: string;      // ex. « page »
+      sizeParam?: string;     // ex. « per_page »
+      size?: number;          // taille demandée (le serveur peut la réduire)
+      maxPages?: number;      // garde-fou : on ne balaie pas un compte à l'infini
+    };
     /** Paramètres fixes (pagination, statut…). */
     extra?: Params;
     collection?: string[];
@@ -249,6 +265,52 @@ async function request(
 }
 
 /**
+ * Rapatrie toutes les pages d'une liste de réservations.
+ *
+ * Deux garde-fous, parce qu'une boucle de pagination est le meilleur moyen de
+ * marteler l'API d'un client : un nombre de pages maximal, et l'arrêt dès qu'une
+ * page ne contient rien de nouveau (certains éditeurs ignorent `page` et
+ * renvoient éternellement la première).
+ */
+async function collectPages(
+  d: RestPmsDescriptor, path: string, baseParams: Params,
+  creds: PmsCreds, opts: PmsCallOptions, doFetch: FetchLike,
+): Promise<Record<string, unknown>[]> {
+  const pg = d.reservations.pagination;
+  if (!pg) {
+    const payload = await request(d, buildUrl(d.base, path, baseParams), creds, opts, doFetch);
+    return unwrap(payload, d.reservations.collection);
+  }
+
+  const size = pg.size ?? 100;
+  const maxPages = pg.maxPages ?? 20;
+  const all: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+
+  for (let page = 1; page <= maxPages; page++) {
+    const params: Params = { ...baseParams, [pg.pageParam]: page };
+    if (pg.sizeParam) params[pg.sizeParam] = size;
+
+    const payload = await request(d, buildUrl(d.base, path, params), creds, opts, doFetch);
+    const rows = unwrap(payload, d.reservations.collection);
+    if (rows.length === 0) break;
+
+    // Rien de neuf sur cette page → l'éditeur ignore la pagination, on s'arrête.
+    let fresh = 0;
+    for (const r of rows) {
+      const key = JSON.stringify(r.id ?? r.uuid ?? r.confirmation_code ?? r);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      all.push(r);
+      fresh++;
+    }
+    if (fresh === 0) break;
+    if (rows.length < size) break;   // dernière page
+  }
+  return all;
+}
+
+/**
  * Fabrique les deux fonctions d'un connecteur à partir de sa description.
  * Lève à la construction si la description ne restreint pas à un logement :
  * une erreur de programmation ne doit pas devenir une fuite de données.
@@ -283,15 +345,13 @@ export function defineRestPms(d: RestPmsDescriptor): {
         ? d.reservations.path(propertyId)
         : d.reservations.path;
 
-      const params: Params = {
-        ...d.reservations.extra,
-        [d.reservations.fromParam]: range.from,
-        [d.reservations.toParam]: range.to,
-      };
+      const params: Params = { ...d.reservations.extra };
       if (d.reservations.propertyParam) params[d.reservations.propertyParam] = propertyId;
 
-      const payload = await request(d, buildUrl(d.base, path, params), creds, opts, doFetch);
-      const rows = unwrap(payload, d.reservations.collection);
+      if (d.reservations.fromParam) params[d.reservations.fromParam] = range.from;
+      if (d.reservations.toParam) params[d.reservations.toParam] = range.to;
+
+      const rows = await collectPages(d, path, params, creds, opts, doFetch);
 
       // Garde-fou n°2 : on jette ce qui ne concerne pas NOTRE logement. Un
       // éditeur qui ignore le filtre ne doit pas nous faire lire le reste du

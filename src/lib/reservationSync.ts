@@ -45,8 +45,11 @@ function addDays(isoDate: string, days: number): string {
 // Classe un évènement iCal : réservation réelle vs blocage de calendrier.
 // Airbnb/Booking exportent les indisponibilités comme « Not available / Blocked /
 // Closed » — celles-ci ne doivent JAMAIS générer de mission de ménage.
-function classifyEvent(ev: ICalEvent, inGroup = false): 'confirmed' | 'cancelled' | 'blocked' {
+function classifyEvent(ev: ICalEvent, inGroup = false): 'confirmed' | 'cancelled' | 'blocked' | 'tentative' {
   if (ev.status === 'CANCELLED') return 'cancelled';
+  // Demande, option, séjour non payé : gardé en base, mais aucun ménage tant que
+  // ce n'est pas confirmé (materializeMissions ne lit que les « confirmed »).
+  if (ev.status === 'TENTATIVE') return 'tentative';
   const s = (ev.summary ?? '').toLowerCase();
   if (/not available|unavailable|blocked|closed|not avail/.test(s)) return 'blocked';
   // Marqueur de « réservation croisée » : le PMS bloque les annonces sœurs d'une

@@ -70,6 +70,9 @@ export function pickGuestName(row: Row): string | undefined {
  */
 export function pickGuestPhone(row: Row): string | undefined {
   const direct = pick(row, ['phone', 'guestPhone', 'guest_phone', 'phoneNumber', 'phone_number', 'mobile', 'telephone']);
+  // Hostify renvoie le numéro en NOMBRE (33780747060) : un test sur `string`
+  // seul le laissait passer à la trappe, et le cleaner n'avait pas de contact.
+  if (typeof direct === 'number' && Number.isFinite(direct)) return String(direct);
   if (typeof direct === 'string' && direct.trim()) return direct.trim();
   const guest = row['guest'] ?? row['guestInfo'] ?? row['customer'];
   if (guest && typeof guest === 'object') {
@@ -79,9 +82,30 @@ export function pickGuestPhone(row: Row): string | undefined {
   return undefined;
 }
 
-/** Vrai quand le statut reçu désigne une annulation. */
-export function isCancelled(status: unknown, cancelledValues = ['cancelled', 'canceled', 'cancellation', 'declined']): boolean {
+/**
+ * Vrai quand le statut reçu désigne un séjour qui n'aura pas lieu.
+ *
+ * La liste vient du terrain : un compte Hostify réel porte `expired`, `voided`
+ * et `timedout` à côté de `cancelled`. Pris pour des réservations, ils auraient
+ * fait planifier des ménages pour des séjours qui n'ont jamais existé.
+ */
+export function isCancelled(status: unknown, cancelledValues = [
+  'cancelled', 'canceled', 'cancellation', 'declined', 'denied', 'rejected',
+  'expired', 'voided', 'timedout', 'timed_out', 'not_accepted',
+]): boolean {
   return typeof status === 'string' && cancelledValues.includes(status.trim().toLowerCase());
+}
+
+/**
+ * Vrai quand ce n'est pas (encore) une réservation : une demande, un devis, une
+ * option. Ça ne s'annule pas — ça n'est simplement pas confirmé. On le garde en
+ * base pour le jour où ça le devient, mais sans jamais créer de ménage.
+ */
+export function isTentative(status: unknown, tentativeValues = [
+  'inquiry', 'inquiry_preapproved', 'pending', 'request', 'requested',
+  'awaiting_payment', 'unconfirmed', 'tentative', 'hold', 'option',
+]): boolean {
+  return typeof status === 'string' && tentativeValues.includes(status.trim().toLowerCase());
 }
 
 /** Vrai quand la ligne est un blocage de calendrier, pas un séjour. */
@@ -115,7 +139,7 @@ export function toEvent(row: Row, prefix: string, fields: FieldNames): ICalEvent
 
   return {
     uid: `${prefix}-${String(rawId ?? `${start}-${end}`)}`,
-    status: isCancelled(status) ? 'CANCELLED' : 'CONFIRMED',
+    status: isCancelled(status) ? 'CANCELLED' : isTentative(status) ? 'TENTATIVE' : 'CONFIRMED',
     summary: isBlocked(status)
       ? 'Blocked'
       : [who, guests ? `${guests} pers.` : null].filter(Boolean).join(' · ') || 'Réservation',

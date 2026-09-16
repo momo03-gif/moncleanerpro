@@ -112,6 +112,61 @@ describe('defineRestPms — le socle commun des connecteurs', () => {
   });
 });
 
+// ── Pagination : le bug qui rendait la synchro silencieusement vide ─────────
+describe('Pagination — sans elle, on ne voit que les vieilles réservations', () => {
+  const PAGED: RestPmsDescriptor = {
+    ...DESC,
+    reservations: {
+      ...DESC.reservations,
+      fromParam: undefined,
+      toParam: undefined,
+      pagination: { pageParam: 'page', sizeParam: 'per_page', size: 2, maxPages: 10 },
+    },
+  };
+
+  /** Faux Hostify : plafonne à `size` lignes, les plus anciennes d'abord. */
+  function pagedFetch(rows: Record<string, unknown>[]) {
+    const calls: (string | null)[] = [];
+    const impl: FetchLike = async url => {
+      const u = new URL(url);
+      calls.push(u.searchParams.get('page'));
+      const size = Number(u.searchParams.get('per_page') ?? 2);
+      const page = Number(u.searchParams.get('page') ?? 1);
+      return { ok: true, status: 200, json: async () => rows.slice((page - 1) * size, page * size) } as Response;
+    };
+    return { impl, calls };
+  }
+
+  it('va chercher les pages suivantes jusqu’à la dernière', async () => {
+    // Cas réel : 327 réservations chez Hostify, la seule à venir en page 2.
+    const rows = [
+      { id: 1, listing_id: '42', checkIn: '2023-01-02', checkOut: '2023-01-06' },
+      { id: 2, listing_id: '42', checkIn: '2023-02-02', checkOut: '2023-02-06' },
+      { id: 3, listing_id: '42', checkIn: '2026-09-18', checkOut: '2026-09-20' },
+    ];
+    const { impl, calls } = pagedFetch(rows);
+    const events = await defineRestPms(PAGED).fetchReservations({ apiKey: 'K' }, '42', RANGE, { fetchImpl: impl });
+
+    expect(calls).toEqual(['1', '2']);
+    // Seul le séjour dans la période ressort — mais il a fallu la page 2 pour le voir.
+    expect(events.map(e => e.uid)).toEqual(['demo-3']);
+  });
+
+  it('s’arrête si l’éditeur ignore « page » et resert la même chose', async () => {
+    // Sinon : boucle infinie sur l'API d'un client. Inacceptable.
+    let calls = 0;
+    const impl: FetchLike = async () => {
+      calls++;
+      return { ok: true, status: 200, json: async () => ([
+        { id: 1, listing_id: '42', checkIn: '2026-09-18', checkOut: '2026-09-20' },
+        { id: 2, listing_id: '42', checkIn: '2026-09-21', checkOut: '2026-09-23' },
+      ]) } as Response;
+    };
+    await defineRestPms(PAGED).fetchReservations({ apiKey: 'K' }, '42', RANGE, { fetchImpl: impl });
+    expect(calls).toBe(2);   // 1re page, 2e identique → arrêt
+  });
+});
+
 // ── OAuth2 : le jeton, et surtout sa conservation ────────────────────────────
 const OAUTH_DESC: RestPmsDescriptor = {
   ...DESC,

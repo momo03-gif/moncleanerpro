@@ -44,9 +44,17 @@ const COMMON_FIELDS: FieldNames = {
 
 export const REST_PMS: RestPmsDescriptor[] = [
   {
-    // Hostify — « Open API », clé générée dans le compte. La documentation
-    // complète n'est pas publiée en ligne (elle passe par leur support), donc
-    // description d'après ce qu'ils exposent publiquement.
+    // Hostify — CONFIRMÉ sur un compte réel (Les Cocons Lyonnais, 09/2026).
+    // Trois choses que seule une vraie clé pouvait apprendre :
+    //
+    //  1. `start_date`/`end_date` ne filtrent pas : ils VIDENT le résultat.
+    //     Aucun filtre de période côté serveur, donc ; on borne localement.
+    //  2. Hostify plafonne à 100 lignes par page quoi qu'on demande, et range
+    //     les réservations de la PLUS ANCIENNE à la plus récente. Sans
+    //     pagination, un logement à 327 réservations ne montrait que 2023-2025
+    //     et jamais les séjours à venir — donc aucun ménage créé.
+    //  3. Les statuts réels sont `accepted`, `cancelled`, `expired`, `voided`,
+    //     `timedout`, `inquiry` (cf. normalize.ts, qui les départage).
     id: 'hostify',
     label: 'Hostify',
     base: 'https://api-rms.hostify.com',
@@ -55,14 +63,19 @@ export const REST_PMS: RestPmsDescriptor[] = [
     reservations: {
       path: '/reservations',
       propertyParam: 'listing_id',
-      fromParam: 'start_date',
-      toParam: 'end_date',
-      extra: { per_page: 200 },
+      // Pas de fromParam/toParam : cf. point 1 ci-dessus.
+      pagination: { pageParam: 'page', sizeParam: 'per_page', size: 100, maxPages: 25 },
       collection: ['reservations'],
-      fields: COMMON_FIELDS,
+      fields: {
+        ...COMMON_FIELDS,
+        // Hostify écrit `checkIn`/`checkOut`, et porte les horaires réels dans
+        // `planned_arrival`/`planned_departure` quand l'hôte les a saisis.
+        arrivalTime: ['planned_arrival', ...COMMON_FIELDS.arrivalTime],
+        departureTime: ['planned_departure', ...COMMON_FIELDS.departureTime],
+      },
       propertyIdFields: ['listing_id', 'listingId'],
     },
-    verified: false,
+    verified: true,
   },
   {
     // Hospitable — jeton personnel (Personal Access Token) créé par l'hôte
