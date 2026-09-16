@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>MonCleanerPro</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+             background: #FAFAF8; color: #1A1A1A;
+             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      main { max-width: 20rem; padding: 2rem; text-align: center; }
+      h1 { font-size: 1.125rem; margin: 0 0 .75rem; }
+      p { font-size: .875rem; color: #7A7068; margin: 0; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Cette page n'est affichée que si l'application ne parvient pas du tout à
+      joindre app.moncleanerpro.fr au tout premier lancement. En fonctionnement
+      normal, Capacitor charge directement le site (voir capacitor.config.json),
+      et c'est le service worker du site qui gère le mode hors-ligne.
+    -->
+    <main>
+      <h1>Connexion impossible</h1>
+      <p>Vérifiez votre connexion internet, puis rouvrez l’application.</p>
+    </main>
+  </body>
+</html>

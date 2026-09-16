@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { FeedbackProvider } from '@/contexts/FeedbackContext';
 import ServiceWorkerReg from '@/components/ServiceWorkerReg';
 import PwaSetup from '@/components/PwaSetup';
+import NativeBridge from '@/components/NativeBridge';
 // Mesure d'audience Vercel : sans cookie ni identifiant persistant, donc pas de
 // bandeau de consentement à ajouter (contrairement à Google Analytics). Sans
 // mesure, impossible de savoir quelles pages amènent réellement des demandes.
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <FeedbackProvider>
             {children}
             <PwaSetup />
+            <NativeBridge />
           </FeedbackProvider>
         </AuthProvider>
         <ServiceWorkerReg />

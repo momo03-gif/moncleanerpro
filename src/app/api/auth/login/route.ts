@@ -34,6 +34,10 @@ export async function POST(req: Request) {
   const { data: u, error } = await db.from('users').select('*').eq('email', email).single();
   if (error || !u) return NextResponse.json(INVALID, { status: 401 });
 
+  // Compte supprimé par son titulaire : il ne se rouvre jamais, même si un
+  // ancien mot de passe circule encore quelque part.
+  if (u.deleted_at) return NextResponse.json(INVALID, { status: 401 });
+
   const { ok, needsRehash } = await verifyPassword(password, u.password_hash);
   if (!ok) return NextResponse.json(INVALID, { status: 401 });
 

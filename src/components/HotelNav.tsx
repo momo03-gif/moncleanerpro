@@ -10,6 +10,7 @@ import Logo from '@/components/Logo';
 const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/hotel', label: 'Demander', icon: 'request' },
   { href: '/hotel/historique', label: 'Mes demandes', icon: 'history' },
+  { href: '/hotel/compte', label: 'Mon compte', icon: 'user' },
 ];
 
 export default function HotelNav() {

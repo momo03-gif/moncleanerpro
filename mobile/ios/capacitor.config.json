@@ -1,0 +1,22 @@
+{
+  "appId": "fr.moncleanerpro.app",
+  "appName": "MonCleanerPro",
+  "webDir": "www",
+  "server": {
+    "url": "https://app.moncleanerpro.fr",
+    "hostname": "app.moncleanerpro.fr",
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": false,
+    "backgroundColor": "#FAFAF8"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["alert", "sound", "badge"]
+    }
+  }
+}

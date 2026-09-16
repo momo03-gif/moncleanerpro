@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['@sentry/nextjs', 'leaflet', '@supabase/supabase-js'],
   },
 
+  // Vérification de propriété du domaine pour les applications mobiles.
+  // Ces deux adresses sont IMPOSÉES par Android et iOS (chemin exact, à la
+  // racine du domaine). On les fait pointer vers des routes pour que leur
+  // contenu vienne de variables d'environnement — voir src/app/api/wellknown/.
+  async rewrites() {
+    return [
+      { source: '/.well-known/assetlinks.json', destination: '/api/wellknown/assetlinks' },
+      { source: '/.well-known/apple-app-site-association', destination: '/api/wellknown/aasa' },
+    ];
+  },
+
   // Redirections des adresses « attendues » vers les pages réelles.
   // Ces URL sont celles que les visiteurs (et nous-mêmes) tapent spontanément :
   // sans redirection elles renvoient un 404. Créer une seconde page au contenu

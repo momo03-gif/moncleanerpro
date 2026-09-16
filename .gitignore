@@ -43,3 +43,15 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# applications mobiles — secrets de signature et projets générés
+# La clé de signature Android est IRREMPLAÇABLE : la perdre interdit toute mise
+# à jour de l'application, la publier permettrait à un tiers de la remplacer.
+mobile/android/*.keystore
+mobile/android/*.jks
+mobile/android/*.p8
+mobile/**/android/
+mobile/ios/ios/
+mobile/ios/node_modules/
+mobile/**/*.aab
+mobile/**/*.apk

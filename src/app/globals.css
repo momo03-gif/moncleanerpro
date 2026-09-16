@@ -196,3 +196,36 @@ input:-webkit-autofill:focus {
   /* éviter de couper une ligne de prestation entre deux pages */
   .invoice-print tr { page-break-inside: avoid; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Application installée depuis un store (classe posée par NativeBridge)
+
+   Sur iPhone, la WebView occupe TOUT l'écran : sans ces règles, l'en-tête passe
+   sous l'encoche et la barre de navigation du bas sous la barre d'accueil. On
+   n'applique donc les marges de sécurité QUE dans l'app native — le site vu
+   dans un navigateur n'est pas modifié.
+   ════════════════════════════════════════════════════════════════════════════ */
+.native-app header {
+  padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+}
+
+.native-app nav[class*="fixed"][class*="bottom-0"] {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 0.25rem);
+}
+
+/* Pas de sélection ni de menu « copier » au appui long sur les boutons et la
+   navigation : c'est le détail qui trahit un site affiché dans une app. Les
+   champs de saisie et les contenus lisibles restent sélectionnables. */
+.native-app button,
+.native-app nav,
+.native-app header {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Rebond élastique du scroll sur le <body> : sur iOS il décolle toute la page
+   et laisse apparaître une bande blanche sous l'en-tête figé. */
+.native-ios body {
+  overscroll-behavior-y: none;
+}

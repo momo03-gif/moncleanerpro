@@ -10,6 +10,7 @@ import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
 import MotivationPanel from './MotivationPanel';
 import Loading from "@/components/Loading";
+import DeleteAccountCard from '@/components/DeleteAccountCard';
 
 const AVAIL_STATUSES = [
   { value: 'available', label: 'Disponible',  color: '#5A8A6A' },
@@ -256,6 +257,10 @@ export default function CleanerProfil() {
             </div>
           ))
         )}
+      </div>
+
+      <div className="mt-6">
+        <DeleteAccountCard />
       </div>
     </div>
   );

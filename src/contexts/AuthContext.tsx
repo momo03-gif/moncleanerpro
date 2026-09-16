@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Role } from '@/lib/types';
+import { unregisterNativePush } from '@/lib/native';
 
 interface AuthContextValue {
   user: User | null;
@@ -46,6 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout(): Promise<void> {
+    // Détacher l'appareil AVANT de fermer la session : la route a besoin du
+    // cookie. Sinon un téléphone partagé garderait les notifications du compte
+    // précédent.
+    await unregisterNativePush();
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
     setUser(null);
   }

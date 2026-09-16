@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getBillingProfileDB, saveBillingProfileDB } from '@/lib/db/partners';
 import { Card, PageTitle, SectionTitle } from '@/components/ui';
 import Loading from '@/components/Loading';
+import DeleteAccountCard from '@/components/DeleteAccountCard';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Profil partenaire — informations de FACTURATION.
@@ -106,6 +107,10 @@ export default function PartnerProfileClient() {
           {busy ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </Card>
+
+      <div className="mt-6">
+        <DeleteAccountCard />
+      </div>
     </div>
   );
 }
