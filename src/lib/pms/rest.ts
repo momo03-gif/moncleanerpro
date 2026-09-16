@@ -49,6 +49,28 @@ export interface RestPmsDescriptor {
     collection?: string[];
     idFields?: string[];
     nameFields?: string[];
+    /**
+     * Tous les éditeurs ne montrent pas tous les logements sur cet endpoint.
+     * Chez Hostify, une clé de conciergerie n'en voit que six alors que son
+     * compte en exploite treize : les annonces par canal (« … - Bcom ») et les
+     * annonces refaites n'y figurent pas, et `/listings/all` est refusé.
+     * Résultat : le logement qu'on cherchait à connecter n'était pas proposé,
+     * et on en connectait un homonyme endormi.
+     *
+     * On complète donc la liste avec les logements VUS dans les réservations
+     * récentes : même API, même clé, et surtout les noms que la conciergerie lit
+     * dans son propre logiciel.
+     *
+     * ⚠️ Ce balayage n'a lieu QU'À LA CONNEXION, pour dresser la liste des
+     * logements à choisir — exactement ce que fait l'endpoint de liste. La
+     * synchro, elle, reste filtrée sur le seul logement retenu (RÈGLE ABSOLUE).
+     */
+    alsoFromReservations?: {
+      idField: string;
+      nameField: string;
+      /** Nombre de pages à lire EN FIN de liste (les plus récentes). */
+      recentPages?: number;
+    };
   };
 
   reservations: {
@@ -265,6 +287,52 @@ async function request(
 }
 
 /**
+ * Logements aperçus dans les réservations, quand l'endpoint de liste est
+ * incomplet. On ne lit QUE les dernières pages : les éditeurs rangent leurs
+ * réservations de la plus ancienne à la plus récente, et ce sont les logements
+ * actifs aujourd'hui qui nous intéressent — pas ceux abandonnés en 2023.
+ * Quatre requêtes au maximum, uniquement pendant le parcours de connexion.
+ */
+async function discoverFromReservations(
+  d: RestPmsDescriptor, creds: PmsCreds, opts: PmsCallOptions, doFetch: FetchLike,
+): Promise<Map<string, string>> {
+  const extra = d.listings.alsoFromReservations!;
+  const out = new Map<string, string>();
+  const path = typeof d.reservations.path === 'function' ? d.reservations.path('') : d.reservations.path;
+  const size = d.reservations.pagination?.size ?? 100;
+  const pageParam = d.reservations.pagination?.pageParam ?? 'page';
+  const sizeParam = d.reservations.pagination?.sizeParam;
+
+  const harvest = (rows: Record<string, unknown>[]) => {
+    for (const r of rows) {
+      const id = readField(r, [extra.idField]);
+      if (!id || out.has(id)) continue;
+      out.set(id, readField(r, [extra.nameField]) ?? `Logement ${id}`);
+    }
+  };
+
+  const ask = async (page: number) => {
+    const params: Params = { [pageParam]: page };
+    if (sizeParam) params[sizeParam] = size;
+    const payload = await request(d, buildUrl(d.base, path, params), creds, opts, doFetch);
+    harvest(unwrap(payload, d.reservations.collection));
+    const total = (payload as { total?: number } | null)?.total;
+    return typeof total === 'number' ? total : null;
+  };
+
+  try {
+    const total = await ask(1);
+    const lastPage = total ? Math.ceil(total / size) : 1;
+    const pages = extra.recentPages ?? 3;
+    for (let p = lastPage; p > lastPage - pages && p > 1; p--) await ask(p);
+  } catch (e) {
+    // Le complément est un bonus : s'il échoue, la liste de base reste valable.
+    console.warn(`découverte des logements ${d.label} :`, (e as Error)?.message);
+  }
+  return out;
+}
+
+/**
  * Rapatrie toutes les pages d'une liste de réservations.
  *
  * Deux garde-fous, parce qu'une boucle de pagination est le meilleur moyen de
@@ -330,13 +398,23 @@ export function defineRestPms(d: RestPmsDescriptor): {
       const doFetch = opts.fetchImpl ?? fetch;
       const url = buildUrl(d.base, d.listings.path, d.listings.params?.(creds) ?? {});
       const payload = await request(d, url, creds, opts, doFetch);
-      return unwrap(payload, d.listings.collection)
-        .map(row => {
-          const id = readField(row, d.listings.idFields ?? ['id', 'uuid', 'listingId', 'propertyId', 'rentalId']);
-          const name = readField(row, d.listings.nameFields ?? ['name', 'title', 'internalName', 'nickname', 'propertyName']);
-          return id ? { id, name: name ?? `Logement ${id}` } : null;
-        })
-        .filter((p): p is PmsProperty => p !== null);
+
+      const found = new Map<string, string>();
+      for (const row of unwrap(payload, d.listings.collection)) {
+        const id = readField(row, d.listings.idFields ?? ['id', 'uuid', 'listingId', 'propertyId', 'rentalId']);
+        const name = readField(row, d.listings.nameFields ?? ['name', 'title', 'internalName', 'nickname', 'propertyName']);
+        if (id) found.set(id, name ?? `Logement ${id}`);
+      }
+
+      // Complément : les logements aperçus dans les réservations récentes.
+      const extra = d.listings.alsoFromReservations;
+      if (extra) {
+        for (const [id, name] of await discoverFromReservations(d, creds, opts, doFetch)) {
+          if (!found.has(id)) found.set(id, name);
+        }
+      }
+
+      return [...found].map(([id, name]) => ({ id, name }));
     },
 
     async fetchReservations(creds, propertyId, range, opts = {}) {

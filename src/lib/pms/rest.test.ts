@@ -167,6 +167,61 @@ describe('Pagination — sans elle, on ne voit que les vieilles réservations', 
   });
 });
 
+// ── Découverte des logements que l'endpoint de liste ne montre pas ──────────
+describe('Logements découverts dans les réservations', () => {
+  // Cas réel : la clé d'une conciergerie voyait 6 logements alors que son compte
+  // en exploitait 13. Les 7 manquants — annonces Booking et annonces refaites —
+  // portaient l'essentiel des départs à venir, et on avait connecté des
+  // homonymes endormis sans que rien ne le signale.
+  const DISCO: RestPmsDescriptor = {
+    ...DESC,
+    listings: {
+      path: '/listings',
+      alsoFromReservations: { idField: 'listing_id', nameField: 'listing_nickname', recentPages: 2 },
+    },
+    reservations: {
+      ...DESC.reservations,
+      pagination: { pageParam: 'page', sizeParam: 'per_page', size: 2, maxPages: 10 },
+    },
+  };
+
+  function accountFetch() {
+    const pages = [
+      [{ listing_id: '1', listing_nickname: 'Vieille annonce' }, { listing_id: '1', listing_nickname: 'Vieille annonce' }],
+      [{ listing_id: '2', listing_nickname: 'Le Savoir - Bcom' }, { listing_id: '3', listing_nickname: 'Le Tolstoi & SPA' }],
+    ];
+    const impl: FetchLike = async url => {
+      const u = new URL(url);
+      if (u.pathname === '/listings') {
+        return { ok: true, status: 200, json: async () => ([{ id: '1', name: 'Vieille annonce' }]) } as Response;
+      }
+      const page = Number(u.searchParams.get('page') ?? 1);
+      return { ok: true, status: 200, json: async () => ({ total: 4, page, reservations: pages[page - 1] ?? [] }) } as Response;
+    };
+    return impl;
+  }
+
+  it('complète la liste avec les logements vus dans les réservations récentes', async () => {
+    const list = await defineRestPms(DISCO).list({ apiKey: 'K' }, { fetchImpl: accountFetch() });
+    expect(list.map(p => p.name).sort())
+      .toEqual(['Le Savoir - Bcom', 'Le Tolstoi & SPA', 'Vieille annonce']);
+  });
+
+  it('garde le nom de l’endpoint de liste quand le logement y figure déjà', async () => {
+    const list = await defineRestPms(DISCO).list({ apiKey: 'K' }, { fetchImpl: accountFetch() });
+    expect(list.find(p => p.id === '1')?.name).toBe('Vieille annonce');
+  });
+
+  it('ne fait pas échouer la connexion si la découverte échoue', async () => {
+    // Le complément est un bonus : l'essentiel est de pouvoir choisir un logement.
+    const impl: FetchLike = async url => new URL(url).pathname === '/listings'
+      ? ({ ok: true, status: 200, json: async () => ([{ id: '1', name: 'Seule annonce' }]) } as Response)
+      : ({ ok: false, status: 500, json: async () => ({}) } as Response);
+    const list = await defineRestPms(DISCO).list({ apiKey: 'K' }, { fetchImpl: impl });
+    expect(list).toEqual([{ id: '1', name: 'Seule annonce' }]);
+  });
+});
+
 // ── OAuth2 : le jeton, et surtout sa conservation ────────────────────────────
 const OAUTH_DESC: RestPmsDescriptor = {
   ...DESC,

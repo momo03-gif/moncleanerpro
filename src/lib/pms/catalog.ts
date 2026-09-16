@@ -59,7 +59,15 @@ export const REST_PMS: RestPmsDescriptor[] = [
     label: 'Hostify',
     base: 'https://api-rms.hostify.com',
     auth: creds => ({ 'x-api-key': creds.apiKey }),
-    listings: { path: '/listings', params: () => ({ per_page: 200 }), collection: ['listings'] },
+    listings: {
+      path: '/listings',
+      params: () => ({ per_page: 200 }),
+      collection: ['listings'],
+      // Une clé de conciergerie ne voit pas tous ses logements ici (6 annoncés
+      // sur 13 réellement exploités) : on complète avec ceux des réservations
+      // récentes, sous le nom que Hostify leur donne (`listing_nickname`).
+      alsoFromReservations: { idField: 'listing_id', nameField: 'listing_nickname', recentPages: 4 },
+    },
     reservations: {
       path: '/reservations',
       propertyParam: 'listing_id',
