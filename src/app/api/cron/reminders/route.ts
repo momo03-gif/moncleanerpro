@@ -80,13 +80,14 @@ export async function GET(req: NextRequest) {
   // Synchronisation des réservations (piggyback : 2 crons gratuits déjà utilisés).
   // Importe les iCal des conciergeries/partenaires Airbnb et crée les missions de
   // ménage des départs. Best-effort : un échec ne casse pas l'envoi des rappels.
-  let reservationsSync: { imported: number; missionsCreated: number; turnoversRefreshed: number } | null = null;
+  let reservationsSync: { imported: number; missionsCreated: number; turnoversRefreshed: number; realigned: number } | null = null;
   try {
     const r = await runReservationSync();
     reservationsSync = {
       imported: r.feeds.reduce((s, f) => s + f.imported, 0),
       missionsCreated: r.materialized.created,
       turnoversRefreshed: r.materialized.refreshed,
+      realigned: r.materialized.realigned,
     };
   } catch (e) { console.error('reservation sync (piggyback):', e); }
 

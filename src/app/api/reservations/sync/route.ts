@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
       // Ménages dont l'arrivée suivante a été mise à jour (réservation tombée
       // après la création du ménage) — utile pour vérifier que ça tourne.
       turnoversRefreshed: result.materialized.refreshed,
+      // Ménages en attente remis d'aplomb sur la fiche logement.
+      realigned: result.materialized.realigned,
       errors,
     });
   } catch (e: unknown) {

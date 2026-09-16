@@ -21,6 +21,7 @@ import { REST_CONNECTORS } from './pms/catalog';
 import { memoryTokenStore, type TokenStore, type PmsCallOptions } from './pms/rest';
 import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
 import { parseAirbnbDescription } from './guestContact';
+import { shouldRealign } from './missionDefaults';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
 // d'aujourd'hui jusqu'à J+90 (au-delà, les calendriers évoluent encore trop).
@@ -423,6 +424,8 @@ export interface MaterializeResult {
   created: number;
   /** Ménages dont l'arrivée suivante a changé depuis leur création. */
   refreshed: number;
+  /** Ménages en attente réalignés sur la durée et le prix de la fiche. */
+  realigned: number;
   details: { reservationId: string; missionId: string; airbnbId: string; date: string }[];
 }
 
@@ -441,11 +444,12 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     .lte('check_out', horizon)
     .order('check_out');
 
-  const result: MaterializeResult = { created: 0, refreshed: 0, details: [] };
+  const result: MaterializeResult = { created: 0, refreshed: 0, realigned: 0, details: [] };
   // Pas de départ à traiter ne veut pas dire rien à faire : les arrivées
   // suivantes des ménages déjà créés, elles, ont pu bouger.
   if (!departures || departures.length === 0) {
     result.refreshed = await refreshNextArrivals(today, horizon);
+    result.realigned = await refreshMissionDefaults(today, horizon);
     return result;
   }
 
@@ -612,7 +616,57 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   }
 
   result.refreshed = await refreshNextArrivals(today, horizon);
+  result.realigned = await refreshMissionDefaults(today, horizon);
   return result;
+}
+
+async function refreshMissionDefaults(today: string, horizon: string): Promise<number> {
+  const db = getSupabaseAdmin();
+
+  const { data: missions } = await db.from('missions')
+    .select('id, airbnb_id, mission_duration_minutes, apartment_default_duration_snapshot, price, airbnbs(estimated_cleaning_minutes, client_price)')
+    .eq('auto_synced', true)
+    .eq('status', 'pending')
+    .gte('date_from', today)
+    .lte('date_from', horizon);
+  if (!missions || missions.length === 0) return 0;
+
+  // Les maisons à annonces multiples sont hors de portée : leur durée et leur
+  // prix dépendent des chambres qui se libèrent ce jour-là (forfaits par
+  // palier), pas de la seule fiche. On les laisse telles qu'elles ont été
+  // calculées à la création.
+  const groups = await loadPropertyGroups();
+
+  let changed = 0;
+  for (const m of missions as unknown as {
+    id: string; airbnb_id: string; mission_duration_minutes: number | null;
+    apartment_default_duration_snapshot: number | null; price: number | null;
+    airbnbs: { estimated_cleaning_minutes: number | null; client_price: number | null } | null;
+  }[]) {
+    if (!m.airbnbs || groups.has(m.airbnb_id)) continue;
+
+    const apt = {
+      minutes: m.airbnbs.estimated_cleaning_minutes != null ? Number(m.airbnbs.estimated_cleaning_minutes) : null,
+      price: m.airbnbs.client_price != null ? Number(m.airbnbs.client_price) : null,
+    };
+    const mis = {
+      minutes: m.mission_duration_minutes != null ? Number(m.mission_duration_minutes) : null,
+      snapshot: m.apartment_default_duration_snapshot != null ? Number(m.apartment_default_duration_snapshot) : null,
+      price: m.price != null ? Number(m.price) : null,
+    };
+    if (!shouldRealign(mis, apt)) continue;
+
+    const minutes = apt.minutes ?? mis.minutes ?? 60;
+    const { error } = await db.from('missions').update({
+      mission_duration_minutes: minutes,
+      apartment_default_duration_snapshot: minutes,
+      hours_worked: Math.round((minutes / 60) * 100) / 100,
+      price: apt.price ?? mis.price ?? 0,
+    }).eq('id', m.id);
+    if (error) { console.error('refreshMissionDefaults:', error.message); continue; }
+    changed++;
+  }
+  return changed;
 }
 
 // ── L'arrivée suivante, tenue à jour ──────────────────────────────────────────
