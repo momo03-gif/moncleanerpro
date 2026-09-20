@@ -14,7 +14,7 @@
 // les missions du cleaner qui les consulte, et n'est repris nulle part ailleurs.
 
 import { supabase } from './supabase';
-import { displayableGuestName, dialablePhone } from './guestContact';
+import { dialablePhone } from './guestContact';
 
 export interface SiteContact {
   name?: string;
@@ -52,39 +52,26 @@ export async function getSiteContactsMap(airbnbIds: string[]): Promise<Record<st
   }
 }
 
-/** Voyageur rattaché à chaque mission demandée (quand la source le fournit). */
+/**
+ * Voyageur rattaché à chaque mission demandée (quand la source le fournit).
+ *
+ * Passe par le serveur : le nom et le téléphone des voyageurs ne sont plus
+ * lisibles avec la clé publique, et la route ne rend que les ménages qui
+ * appartiennent au demandeur — cleaner assigné, partenaire propriétaire, ou
+ * admin. Un ménage terminé ne rend rien : un numéro n'a pas à traîner dans
+ * l'historique.
+ */
 export async function getMissionGuestsMap(missionIds: string[]): Promise<Record<string, GuestContact>> {
   const ids = Array.from(new Set(missionIds.filter(Boolean)));
   if (ids.length === 0) return {};
   try {
-    const { data, error } = await supabase
-      .from('reservations')
-      .select('mission_id, guest_name, guest_phone, guest_phone_last4, reservation_url')
-      .in('mission_id', ids)
-      .eq('status', 'confirmed');
-    if (error) return {};
-
-    const map: Record<string, GuestContact> = {};
-    for (const r of data ?? []) {
-      const row = r as {
-        mission_id: string; guest_name?: string; guest_phone?: string;
-        guest_phone_last4?: string; reservation_url?: string;
-      };
-      const contact: GuestContact = {
-        name: displayableGuestName(row.guest_name),
-        phone: dialablePhone(row.guest_phone),
-        phoneLast4: row.guest_phone_last4 || undefined,
-        reservationUrl: row.reservation_url || undefined,
-      };
-      if (!contact.name && !contact.phone && !contact.phoneLast4 && !contact.reservationUrl) continue;
-
-      // Un ménage peut couvrir plusieurs réservations (logement à deux
-      // calendriers, maison à annonces multiples). On garde la plus utile :
-      // celle qui porte un vrai numéro l'emporte sur celle qui n'a qu'un nom.
-      const kept = map[row.mission_id];
-      if (!kept || (!kept.phone && contact.phone)) map[row.mission_id] = contact;
-    }
-    return map;
+    const res = await fetch('/api/reservations/contacts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ missionIds: ids }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json().catch(() => ({}));
+    return (data.contacts ?? {}) as Record<string, GuestContact>;
   } catch {
     return {};
   }

@@ -35,7 +35,9 @@ function rowToReservation(r: any): Reservation {
     apartmentName: r.airbnbs?.name ?? undefined,
     partnerId: r.partner_id ?? undefined,
     platform: r.platform,
-    externalUid: r.external_uid,
+    externalUid: r.external_uid ?? '',
+    // Nom et téléphone du voyageur : jamais lus par le navigateur (cf. FEED/
+    // RESERVATION_SELECT). Le terrain les obtient par une route serveur.
     guestName: r.guest_name ?? undefined,
     status: r.status,
     checkIn: r.check_in ?? '',
@@ -56,7 +58,18 @@ function rowToReservation(r: any): Reservation {
 const FEED_SELECT = 'id, airbnb_id, partner_id, platform, ical_url, label, active, '
   + 'last_sync_at, last_sync_status, last_error, created_at, '
   + 'connection_kind, external_property_id, airbnbs(name)';
-const RESERVATION_SELECT = '*, airbnbs(name)';
+// ⚠️ Colonnes EXPLICITES ici aussi. Cette table contient le NOM et le TÉLÉPHONE
+// des voyageurs de nos clients, plus l'évènement brut du calendrier (`raw`), qui
+// porte lui-même des coordonnées. Rien de tout cela n'est affiché dans les
+// écrans : les tableaux montrent des dates, un statut et un logement.
+// Le contact d'un voyageur se lit UNIQUEMENT par /api/reservations/contacts, et
+// seulement pour les ménages du cleaner qui le demande.
+// Les colonnes sensibles ne sont plus lisibles avec la clé publique
+// (cf. supabase/migration_reservations_verrouillage.sql) : ne pas les remettre
+// ici, la requête entière serait refusée.
+const RESERVATION_SELECT = 'id, feed_id, airbnb_id, partner_id, platform, status, '
+  + 'check_in, check_out, check_in_time, check_out_time, mission_id, mission_created_at, '
+  + 'created_at, airbnbs(name)';
 
 // Flux d'un partenaire (ou tous, pour l'admin).
 export async function getReservationFeedsForPartner(userId: string): Promise<ReservationFeed[]> {
