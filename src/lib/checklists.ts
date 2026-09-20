@@ -9,7 +9,6 @@
 
 import { supabase } from './supabase';
 import { compressImage } from './imageCompress';
-import { STARTER_CHECKLIST } from './checklistCompute';
 import type { ChecklistItem, ChecklistCheck, MissionChecklistLine } from './types';
 
 // La logique pure (conformité, regroupement, modèle de démarrage) vit dans
