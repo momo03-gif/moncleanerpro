@@ -30,10 +30,12 @@ export async function POST(req: NextRequest) {
   if (!session) return refus('Non authentifié.', 401);
 
   let b: {
-    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring';
+    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring' | 'set-duration' | 'generate-recurring';
     missionId?: string; missionIds?: string[];
     cleanerId?: string; cleanerName?: string;
     recurringId?: string;
+    minutes?: number;
+    aptDefault?: number | null;
   } = {};
   try { b = await req.json(); } catch { return refus('Requête invalide.', 400); }
 
@@ -148,6 +150,52 @@ export async function POST(req: NextRequest) {
       // On rend l'ancien cleaner : il doit être prévenu, sinon il continue de
       // compter sur la mission et se déplace pour rien.
       return NextResponse.json({ ok: true, previousCleanerId: avant.cleaner_id });
+    }
+
+    case 'set-duration': {
+      // Changer la durée d'un ménage, c'est changer la PAIE du cleaner : le gain
+      // est recalculé ici, à partir du taux en base. Utilisé par l'approbation
+      // d'un temps supplémentaire, l'ajout de temps par l'admin et la validation
+      // d'une demande — les trois derniers endroits où le navigateur écrivait
+      // encore de l'argent.
+      if (!estAdmin) return refus('Réservé à l’administration.');
+      if (!b.missionId || typeof b.minutes !== 'number') return refus('Ménage ou durée manquant.', 400);
+      const minutes = Math.max(0, Math.round(b.minutes));
+
+      const { data: m } = await db.from('missions')
+        .select('service, cleaner_id').eq('id', b.missionId).maybeSingle();
+      if (!m) return refus('Mission introuvable.', 404);
+
+      const patch: Record<string, unknown> = {
+        mission_duration_minutes: minutes,
+        hours_worked: Math.round((minutes / 60) * 100) / 100,
+      };
+      if (b.aptDefault != null) patch.apartment_default_duration_snapshot = b.aptDefault;
+
+      if (m.cleaner_id) {
+        const { data: cleaner } = await db.from('cleaners')
+          .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).maybeSingle();
+        const rate = Number(cleaner?.hourly_rate) || 0;
+        const deliveryRate = Number(cleaner?.delivery_rate) || 0;
+        patch.cleaner_gain = computeMissionGain({
+          service: m.service as MissionService | undefined,
+          hourlyRate: rate, deliveryRate, durationMinutes: minutes,
+        });
+        patch.cleaner_hourly_rate_snapshot = rate;
+      }
+
+      const { error } = await db.from('missions').update(patch).eq('id', b.missionId);
+      if (error) { console.error('missions/set-duration:', error.message); return refus('Enregistrement impossible.', 500); }
+      return NextResponse.json({ ok: true, minutes });
+    }
+
+    case 'generate-recurring': {
+      // La génération des missions récurrentes calcule elle aussi des gains : elle
+      // tourne donc ici, en service_role, et plus dans le navigateur.
+      if (!estAdmin) return refus('Réservé à l’administration.');
+      const { generateRecurringMissions } = await import('@/lib/recurring');
+      const res = await generateRecurringMissions();
+      return NextResponse.json({ ok: true, created: res.created });
     }
 
     default:

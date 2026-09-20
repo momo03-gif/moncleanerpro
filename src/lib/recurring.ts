@@ -4,7 +4,10 @@
 // la création du planning. Ce sont des missions 'cleaning' normales (facturables/payées).
 // Table `recurring_missions` non verrouillée (comme missions/airbnbs) → client anon OK.
 
-import { supabase } from './supabase';
+// Côté serveur (cron, route) : service_role. Côté navigateur : clé publique —
+// mais la génération n'y tourne plus, elle passe par /api/missions.
+import { getServerDb } from './serverDb';
+const supabase = getServerDb();
 import { computeCleanerGain } from './pay';
 import { parisToday, addDaysStr, occurrenceDates } from './recurringDates';
 import type { RecurringMission } from './types';

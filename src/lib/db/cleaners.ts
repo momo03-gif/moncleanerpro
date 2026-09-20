@@ -5,29 +5,44 @@
 import { supabase } from '../supabase';
 import { postServer } from './shared';
 
-export async function getCleaners() {
-  const { data: cleaners } = await supabase.from('cleaners').select('*').order('created_at');
-  if (cleaners && cleaners.length > 0) return cleaners;
+// ── Lecture : par le serveur ─────────────────────────────────────────────────
+// La table porte l'e-mail, le téléphone, le TAUX HORAIRE et le type de contrat
+// de chaque salarié. Ces colonnes ne sont plus lisibles avec la clé publique :
+// /api/cleaners les rend à l'admin, et à chacun sa propre fiche.
+export interface CleanerRecord {
+  id: string;
+  user_id?: string | null;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  status?: string | null;
+  hourly_rate?: number | null;
+  delivery_rate?: number | null;
+  can_clean?: boolean | null;
+  can_deliver?: boolean | null;
+  employment_type?: string | null;
+  license_plate?: string | null;
+  formation_completee?: boolean | null;
+  created_at?: string | null;
+}
 
-  // Fallback: get cleaners from users table directly (jamais password_hash : colonne
-  // révoquée à la clé publique, donc on liste explicitement les colonnes lisibles)
-  const { data: users } = await supabase.from('users').select('id, name, email, phone, status').eq('role', 'cleaner');
-  return (users ?? []).map(u => ({
-    id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate: 0, status: u.status ?? 'active', can_clean: true, can_deliver: false, delivery_rate: 0,
-  }));
+async function lireCleaners(payload: Record<string, unknown>): Promise<CleanerRecord[]> {
+  try {
+    const res = await fetch('/api/cleaners', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.cleaners ?? [];
+  } catch { return []; }
+}
+
+export async function getCleaners() {
+  return lireCleaners({ op: 'list' });
 }
 
 export async function getActiveCleanersDB() {
-  const { data: cleaners } = await supabase.from('cleaners').select('*').eq('status', 'active');
-  if (cleaners && cleaners.length > 0) return cleaners;
-
-  // Fallback: get from users table — id = users.id, consistent with missions.cleaner_id
-  const { data: users } = await supabase.from('users').select('id, name, email, phone, status').eq('role', 'cleaner').eq('status', 'active');
-  return (users ?? []).map(u => ({
-    id: u.id, user_id: u.id, name: u.name, email: u.email, phone: u.phone ?? null,
-    hourly_rate: 0, status: 'active', can_clean: true, can_deliver: false, delivery_rate: 0,
-  }));
+  return lireCleaners({ op: 'list', activeOnly: true });
 }
 
 export async function createCleaner(fields: {
@@ -103,9 +118,18 @@ export async function updateCleanerPasswordDB(cleanerId: string, newPassword: st
 }
 
 export async function getCleanerByUserId(userId: string) {
-  const { data } = await supabase.from('cleaners').select('*').eq('user_id', userId).single();
-  if (data) return data;
-  // Fallback: return user row if no cleaners entry (sans password_hash — colonne révoquée)
+  // Sa propre fiche, complète : un cleaner a le droit de connaître son taux.
+  try {
+    const res = await fetch('/api/cleaners', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op: 'self', userId }),
+    });
+    if (res.ok) {
+      const { cleaner } = await res.json();
+      if (cleaner) return cleaner;
+    }
+  } catch { /* repli ci-dessous */ }
+  // Repli : la fiche utilisateur, quand aucune ligne `cleaners` n'existe.
   const { data: user } = await supabase.from('users').select('id, name, email, phone, status, role').eq('id', userId).single();
   return user;
 }

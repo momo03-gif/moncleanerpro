@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { createMissionDB, createMissionsBatchDB, createAppointmentDB, createOneShotMissionDB } from '@/lib/db';
-import { createRecurringDB, updateRecurringDB, setRecurringActiveDB, deleteRecurringDB, generateRecurringMissions } from '@/lib/recurring';
+import { createRecurringDB, updateRecurringDB, setRecurringActiveDB, deleteRecurringDB } from '@/lib/recurring';
 import { geocodeAddress } from '@/lib/zones';
 import type { MissionType, MissionSource, MissionService, Apartment, RecurringMission } from '@/lib/types';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -232,7 +232,13 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
   }
   async function regenRecurring() {
     setRecBusy(true);
-    try { await generateRecurringMissions(); }
+    // La génération calcule des gains : elle tourne côté serveur.
+    try {
+      await fetch('/api/missions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-recurring' }),
+      });
+    }
     catch (e) { console.error('regen recurring:', e); }
     setRecBusy(false);
     await onReload();

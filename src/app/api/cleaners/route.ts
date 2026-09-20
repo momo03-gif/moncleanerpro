@@ -32,8 +32,32 @@ export async function POST(req: Request) {
   // Op « self » : le cleaner n'agit que sur son propre compte (admin : accès total).
   const selfDenied = (userId: string) => !isAdmin && userId !== session.id;
 
+  // Colonnes qu'un navigateur non-admin n'a pas à connaître : rémunération,
+  // coordonnées, type de contrat, plaque. Elles ne sont plus lisibles avec la
+  // clé publique ; seul l'admin les reçoit ici, et chacun voit SA fiche.
+  const COLONNES_PUBLIQUES = 'id, user_id, name, status, can_clean, can_deliver, formation_completee, created_at';
+  const COLONNES_COMPLETES = COLONNES_PUBLIQUES
+    + ', email, phone, hourly_rate, delivery_rate, employment_type, license_plate';
+
   try {
     switch (b.op) {
+      // ── LECTURE ──
+      case 'list': {
+        const colonnes = isAdmin ? COLONNES_COMPLETES : COLONNES_PUBLIQUES;
+        let q = db.from('cleaners').select(colonnes);
+        if (b.activeOnly) q = q.eq('status', 'active');
+        const { data, error } = await q.order('created_at');
+        if (error) { console.error('cleaners/list:', error.message); return NextResponse.json({ error: 'Lecture impossible.' }, { status: 500 }); }
+        return NextResponse.json({ cleaners: data ?? [] });
+      }
+
+      case 'self': {
+        // Sa propre fiche, complète : un cleaner a le droit de connaître son taux.
+        const userId = isAdmin && b.userId ? b.userId : session.id;
+        const { data } = await db.from('cleaners').select(COLONNES_COMPLETES).eq('user_id', userId).maybeSingle();
+        return NextResponse.json({ cleaner: data ?? null });
+      }
+
       // ── ADMIN (par cleaners.id) ──
       case 'setActive': {
         if (!isAdmin) return adminOnly();

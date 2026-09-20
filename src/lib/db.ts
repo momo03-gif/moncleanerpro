@@ -746,23 +746,17 @@ export async function resolveExtraTimeDB(
     return { error: null };
   }
 
-  // Approbation : la durée payée augmente du temps demandé, gain recalculé.
+  // Approbation : la durée payée augmente du temps demandé. Le gain est
+  // recalculé PAR LE SERVEUR, à partir du taux en base — le navigateur n'écrit
+  // plus d'argent.
   const extra = Math.max(0, Math.round(Number(m.extra_time_minutes) || 0));
   const newMinutes = (Number(m.mission_duration_minutes) || 0) + extra;
-  const patch: Record<string, unknown> = {
-    extra_time_status: 'approved',
-    mission_duration_minutes: newMinutes,
-    hours_worked: Math.round((newMinutes / 60) * 100) / 100,
-  };
-  if (m.cleaner_id) {
-    const { data: cleaner } = await supabase.from('cleaners')
-      .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).single();
-    const rate = Number(cleaner?.hourly_rate) || 0;
-    const deliveryRate = Number(cleaner?.delivery_rate) || 0;
-    patch.cleaner_gain = computeMissionGain({ service: (m as any).service, hourlyRate: rate, deliveryRate, durationMinutes: newMinutes });
-    patch.cleaner_hourly_rate_snapshot = rate;
-  }
-  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
+
+  const paie = await ecrireMission({ action: 'set-duration', missionId, minutes: newMinutes });
+  if (paie.error) return { error: paie.error };
+
+  const { error } = await supabase.from('missions')
+    .update({ extra_time_status: 'approved' }).eq('id', missionId);
   if (error) return { error: error.message };
   await notifyExtraTimeResolved(missionId, true);
   return { error: null };
@@ -782,22 +776,10 @@ export async function addMissionTimeDB(
     .select('cleaner_id, service, mission_duration_minutes').eq('id', missionId).single();
   if (!m) return { error: 'Mission introuvable.' };
 
+  // La durée pilote la paie : le recalcul se fait côté serveur.
   const newMinutes = Math.max(0, (Number(m.mission_duration_minutes) || 0) + delta);
-  const patch: Record<string, unknown> = {
-    mission_duration_minutes: newMinutes,
-    hours_worked: Math.round((newMinutes / 60) * 100) / 100,
-  };
-  if (m.cleaner_id) {
-    const { data: cleaner } = await supabase.from('cleaners')
-      .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).single();
-    const rate = Number(cleaner?.hourly_rate) || 0;
-    const deliveryRate = Number(cleaner?.delivery_rate) || 0;
-    patch.cleaner_gain = computeMissionGain({ service: (m as any).service, hourlyRate: rate, deliveryRate, durationMinutes: newMinutes });
-    patch.cleaner_hourly_rate_snapshot = rate;
-  }
-  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
-  if (error) return { error: error.message };
-  return { error: null };
+  const res = await ecrireMission({ action: 'set-duration', missionId, minutes: newMinutes });
+  return { error: res.error };
 }
 
 // ── POINTAGE AUTOMATIQUE (début / fin + géolocalisation) ────────────────────────
@@ -1071,6 +1053,8 @@ export async function updateMissionDB(
   if (!auth.ok) return { error: auth.error };
 
   const isAdmin = actor.role === 'admin';
+  // Rempli quand la durée change : la paie est alors recalculée côté serveur.
+  let recalculerPaie: { minutes: number; aptDefault: number | null } | null = null;
   const patch: Record<string, unknown> = {};
 
   // Champs opérationnels — créateur et admin
@@ -1130,17 +1114,10 @@ export async function updateMissionDB(
       patch.hours_worked = Math.round((minutes / 60) * 100) / 100;
       if (aptDefault != null) patch.apartment_default_duration_snapshot = aptDefault;
 
-      if (cleanerId) {
-        const { data: cleaner } = await supabase.from('cleaners')
-          .select('hourly_rate, delivery_rate').eq('id', cleanerId).single();
-        const rate = Number(cleaner?.hourly_rate) || 0;
-        const deliveryRate = Number(cleaner?.delivery_rate) || 0;
-        patch.cleaner_gain = computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes });
-        patch.cleaner_hourly_rate_snapshot = rate;
-      } else {
-        patch.cleaner_gain = 0;
-        patch.cleaner_hourly_rate_snapshot = null;
-      }
+      // Le gain n'est plus calculé ici : il l'est par le serveur, juste après
+      // l'enregistrement (cf. `recalculerPaie` plus bas). Le navigateur n'écrit
+      // pas d'argent.
+      recalculerPaie = { minutes, aptDefault: aptDefault ?? null };
     }
   }
 
@@ -1158,6 +1135,16 @@ export async function updateMissionDB(
   if (!data || data.length === 0) {
     return { error: 'Cette mission est clôturée et ne peut plus être modifiée.' };
   }
+  // La durée a changé → la paie est recalculée côté serveur, à partir du taux en
+  // base. C'était le dernier endroit où le navigateur écrivait de l'argent.
+  if (recalculerPaie) {
+    const res = await ecrireMission({
+      action: 'set-duration', missionId,
+      minutes: recalculerPaie.minutes, aptDefault: recalculerPaie.aptDefault,
+    });
+    if (res.error) console.error('recalcul de la paie:', res.error);
+  }
+
   // Notif : mission modifiée (admin + cleaner si assignée)
   await notifyMissionModified(missionId, actor.role, actor.id);
   return { error: null };
