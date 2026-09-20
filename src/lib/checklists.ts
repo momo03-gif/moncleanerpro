@@ -18,6 +18,24 @@ export {
   checklistProgress, groupByRoom, STARTER_CHECKLIST, type ChecklistProgress,
 } from './checklistCompute';
 
+// ── Écritures : par le serveur, jamais par le navigateur ─────────────────────
+// `checklist_items` et `mission_checklist_checks` ont la RLS active : une
+// écriture depuis la clé publique est refusée (42501), silencieusement pour
+// l'utilisateur. Tout ce qui écrit passe donc par /api/checklist, qui vérifie la
+// session et le droit avant d'agir. La LECTURE, elle, reste directe.
+async function ecrire(payload: Record<string, unknown>): Promise<{ error: string | null; item?: unknown }> {
+  try {
+    const res = await fetch('/api/checklist', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data.error ?? 'Enregistrement impossible.' };
+    return { error: null, item: data.item };
+  } catch {
+    return { error: 'Connexion impossible. Réessayez.' };
+  }
+}
+
 // ── Lignes → objets ───────────────────────────────────────────────────────────
 
 function rowToItem(r: Record<string, unknown>): ChecklistItem {
@@ -66,43 +84,20 @@ export async function addChecklistItemDB(
   const label = fields.label.trim();
   if (!label) return { item: null, error: 'Intitulé requis.' };
 
-  const { data: last } = await supabase
-    .from('checklist_items').select('position')
-    .eq('airbnb_id', airbnbId).is('archived_at', null)
-    .order('position', { ascending: false }).limit(1).maybeSingle();
-
-  const { data, error } = await supabase.from('checklist_items').insert({
-    airbnb_id: airbnbId,
-    label,
-    room: fields.room?.trim() || null,
-    required: fields.required !== false,
-    position: ((last?.position as number) ?? -1) + 1,
-    created_by: fields.createdBy ?? null,
-  }).select('*').single();
-
-  if (error) { console.error('addChecklistItemDB:', error.message); return { item: null, error: error.message }; }
-  return { item: rowToItem(data), error: null };
+  const res = await ecrire({
+    action: 'add', airbnbId, label,
+    room: fields.room ?? null, required: fields.required !== false, authorName: fields.createdBy,
+  });
+  if (res.error) return { item: null, error: res.error };
+  return { item: res.item ? rowToItem(res.item as Record<string, unknown>) : null, error: null };
 }
 
 export async function updateChecklistItemDB(
   id: string,
   fields: { label?: string; room?: string | null; required?: boolean; position?: number; referencePhotoUrl?: string | null },
 ): Promise<{ error: string | null }> {
-  const patch: Record<string, unknown> = {};
-  if (fields.referencePhotoUrl !== undefined) patch.reference_photo_url = fields.referencePhotoUrl || null;
-  if (fields.label !== undefined) {
-    const label = fields.label.trim();
-    if (!label) return { error: 'Intitulé requis.' };
-    patch.label = label;
-  }
-  if (fields.room !== undefined) patch.room = fields.room?.trim() || null;
-  if (fields.required !== undefined) patch.required = fields.required;
-  if (fields.position !== undefined) patch.position = fields.position;
-  if (Object.keys(patch).length === 0) return { error: null };
-
-  const { error } = await supabase.from('checklist_items').update(patch).eq('id', id);
-  if (error) console.error('updateChecklistItemDB:', error.message);
-  return { error: error?.message ?? null };
+  if (fields.label !== undefined && !fields.label.trim()) return { error: 'Intitulé requis.' };
+  return ecrire({ action: 'update', itemId: id, ...fields });
 }
 
 /**
@@ -110,20 +105,13 @@ export async function updateChecklistItemDB(
  * passés gardent la preuve de ce qui avait été demandé et coché.
  */
 export async function archiveChecklistItemDB(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('checklist_items')
-    .update({ archived_at: new Date().toISOString() }).eq('id', id);
-  if (error) console.error('archiveChecklistItemDB:', error.message);
-  return { error: error?.message ?? null };
+  return ecrire({ action: 'archive', itemId: id });
 }
 
-/** Réordonne le standard (liste d'ids dans le nouvel ordre). */
+/** Ordre d'affichage : la position de chaque point suit l'ordre de la liste. */
 export async function reorderChecklistDB(ids: string[]): Promise<{ error: string | null }> {
-  const results = await Promise.all(
-    ids.map((id, i) => supabase.from('checklist_items').update({ position: i }).eq('id', id)),
-  );
-  const failed = results.find(r => r.error);
-  if (failed?.error) { console.error('reorderChecklistDB:', failed.error.message); return { error: failed.error.message }; }
-  return { error: null };
+  if (ids.length === 0) return { error: null };
+  return ecrire({ action: 'reorder', ids });
 }
 
 // ── L'exécution (par mission) ─────────────────────────────────────────────────
@@ -153,23 +141,14 @@ export async function getMissionChecklistDB(missionId: string, airbnbId: string)
 export async function checkChecklistItemDB(
   missionId: string, item: ChecklistItem, checkedBy?: string,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('mission_checklist_checks').upsert({
-    mission_id: missionId,
-    item_id: item.id,
-    label_snapshot: item.label,
-    checked_at: new Date().toISOString(),
-    checked_by: checkedBy ?? null,
-  }, { onConflict: 'mission_id,item_id' });
-  if (error) console.error('checkChecklistItemDB:', error.message);
-  return { error: error?.message ?? null };
+  return ecrire({
+    action: 'check', missionId, itemId: item.id, labelSnapshot: item.label, authorName: checkedBy,
+  });
 }
 
 /** Décoche un point (supprime la ligne). */
 export async function uncheckChecklistItemDB(missionId: string, itemId: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('mission_checklist_checks')
-    .delete().eq('mission_id', missionId).eq('item_id', itemId);
-  if (error) console.error('uncheckChecklistItemDB:', error.message);
-  return { error: error?.message ?? null };
+  return ecrire({ action: 'uncheck', missionId, itemId });
 }
 
 /**
@@ -230,19 +209,5 @@ export async function uploadChecklistPhotoDB(
 
 /** Installe le modèle de démarrage sur un logement (uniquement si le standard est vide). */
 export async function seedStarterChecklistDB(airbnbId: string, createdBy?: string): Promise<{ error: string | null }> {
-  const existing = await getChecklistForApartmentDB(airbnbId);
-  if (existing.length > 0) return { error: 'Ce logement a déjà une checklist.' };
-
-  const { error } = await supabase.from('checklist_items').insert(
-    STARTER_CHECKLIST.map((it, i) => ({
-      airbnb_id: airbnbId,
-      label: it.label,
-      room: it.room,
-      required: it.required !== false,
-      position: i,
-      created_by: createdBy ?? null,
-    })),
-  );
-  if (error) console.error('seedStarterChecklistDB:', error.message);
-  return { error: error?.message ?? null };
+  return ecrire({ action: 'seed', airbnbId, authorName: createdBy });
 }
