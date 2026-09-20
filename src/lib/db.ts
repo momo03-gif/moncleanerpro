@@ -663,33 +663,10 @@ export async function updateMissionStatusDB(id: string, status: MissionStatus, a
 }
 
 export async function assignCleanerToMissionDB(missionId: string, cleanerId: string, cleanerName: string): Promise<void> {
-  // cleanerId is already cleaners.id (from the dropdown) — store directly.
-  // Gain cleaner recalculé : taux horaire du cleaner × durée de la mission / 60.
-  const [{ data: cleaner }, { data: mission }] = await Promise.all([
-    supabase.from('cleaners').select('hourly_rate, delivery_rate').eq('id', cleanerId).single(),
-    supabase.from('missions').select('service, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)').eq('id', missionId).single(),
-  ]);
-  const rate = Number(cleaner?.hourly_rate) || 0;
-  const deliveryRate = Number(cleaner?.delivery_rate) || 0;
-  const service = (mission as any)?.service as MissionService | undefined;
-  const aptDefault = (mission as any)?.airbnbs?.estimated_cleaning_minutes
-    ?? (mission as any)?.apartment_default_duration_snapshot
-    ?? null;
-  const minutes = (mission as any)?.mission_duration_minutes != null
-    ? Number((mission as any).mission_duration_minutes)
-    : (aptDefault != null ? Number(aptDefault) : 60);
-
-  await supabase.from('missions').update({
-    cleaner_id: cleanerId,
-    cleaner_name: cleanerName,
-    status: 'assigned',
-    cleaner_gain: computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes }),
-    cleaner_hourly_rate_snapshot: rate,
-    mission_duration_minutes: minutes,
-    apartment_default_duration_snapshot: aptDefault != null ? Number(aptDefault) : null,
-    hours_worked: Math.round((minutes / 60) * 100) / 100,
-  }).eq('id', missionId);
-  // Notif cleaner : nouvelle mission
+  // Le gain du cleaner est recalculé côté serveur : taux horaire × durée. Il ne
+  // se décide pas dans le navigateur.
+  const res = await ecrireMission({ action: 'assign', missionId, cleanerId, cleanerName });
+  if (res.error) { console.error('assignCleanerToMissionDB:', res.error); return; }
   await notifyCleanerNewMission(missionId);
 }
 
@@ -704,9 +681,9 @@ export async function updateMissionsOrderDB(orders: { id: string; order: number 
 // Assignation groupée d'un même cleaner à plusieurs missions (tournée par zone).
 // Réutilise la logique unitaire → le gain de chaque mission est recalculé.
 export async function assignCleanerToMissionsDB(missionIds: string[], cleanerId: string, cleanerName: string): Promise<void> {
-  for (const id of missionIds) {
-    await assignCleanerToMissionDB(id, cleanerId, cleanerName);
-  }
+  const res = await ecrireMission({ action: 'assign', missionIds, cleanerId, cleanerName });
+  if (res.error) { console.error('assignCleanerToMissionsDB:', res.error); return; }
+  for (const id of missionIds) await notifyCleanerNewMission(id);
 }
 
 // ── TEMPS SUPPLÉMENTAIRE (cleaner → admin) ──────────────────────────────────────
@@ -1000,29 +977,19 @@ export async function withdrawMissionDB(
 // être prévenu, sinon il continue de compter dessus et se déplace pour rien.
 // Interdit sur une mission terminée ou annulée : on ne réécrit pas le passé.
 export async function unassignMissionDB(missionId: string): Promise<{ error: string | null }> {
-  const { data: before } = await supabase.from('missions')
-    .select('cleaner_id, cleaner_name, status').eq('id', missionId).maybeSingle();
-  if (!before?.cleaner_id) return { error: 'Aucun cleaner sur cette mission.' };
-  if (before.status === 'done' || before.status === 'cancelled') {
-    return { error: 'Mission déjà terminée ou annulée.' };
+  const res = await ecrireMission({ action: 'unassign', missionId });
+  if (res.error) return { error: res.error };
+
+  const ancien = res.data?.previousCleanerId as string | undefined;
+  if (ancien) {
+    try {
+      const { notifyCleanerMissionUnassigned } = await import('./notifications');
+      await notifyCleanerMissionUnassigned(missionId, ancien);
+    } catch (e) { console.error('notify unassign:', e); }
   }
-
-  const { data, error } = await supabase.from('missions')
-    .update({
-      status: 'pending', cleaner_id: null, cleaner_name: null,
-      // Une éventuelle demande en attente n'a plus lieu d'être.
-      pending_cleaner_id: null, pending_cleaner_name: null, pending_requested_at: null,
-    })
-    .eq('id', missionId).not('status', 'in', '(done,cancelled)').select('id');
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) return { error: 'Retrait impossible sur cette mission.' };
-
-  try {
-    const { notifyCleanerMissionUnassigned } = await import('./notifications');
-    await notifyCleanerMissionUnassigned(missionId, before.cleaner_id as string);
-  } catch (e) { console.error('notify unassign:', e); }
   return { error: null };
 }
+
 
 // ── MODIFICATION / SUPPRESSION SÉCURISÉES ──────────────────────────────────────
 // La règle est appliquée ICI (logique métier = source de vérité), pas seulement
@@ -1196,27 +1163,31 @@ export async function updateMissionDB(
   return { error: null };
 }
 
+// ── Suppression et affectation : par le serveur ──────────────────────────────
+// Supprimer une mission efface une journée de planning ; assigner un cleaner
+// écrit sa PAIE. Ces deux gestes ne passent plus par le navigateur : la route
+// vérifie la session et les droits, et la base a retiré au rôle public le droit
+// de supprimer et d'écrire les colonnes de paie
+// (cf. supabase/migration_missions_verrouillage.sql).
+async function ecrireMission(payload: Record<string, unknown>): Promise<{ error: string | null; data?: Record<string, unknown> }> {
+  try {
+    const res = await fetch('/api/missions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { error: res.ok ? null : String(data.error ?? 'Action impossible.'), data };
+  } catch {
+    return { error: 'Connexion impossible. Réessayez.' };
+  }
+}
+
 export async function deleteMissionDB(
   missionId: string,
   actor: MissionActor,
 ): Promise<{ error: string | null }> {
-  const auth = await authorizeMissionMutation(missionId, actor, 'supprimer');
-  if (!auth.ok) return { error: auth.error };
-
-  // Notif AVANT suppression (le contexte de la mission disparaît ensuite)
+  // Notification AVANT suppression : ensuite le contexte de la mission a disparu.
   await notifyMissionCancelled(missionId, actor.role, actor.id);
-
-  // L'admin peut supprimer une mission clôturée ; les autres rôles restent bloqués
-  // par la garde atomique (.not status in done/cancelled).
-  let del = supabase.from('missions').delete().eq('id', missionId);
-  if (actor.role !== 'admin') del = del.not('status', 'in', '(done,cancelled)');
-  const { data, error } = await del.select('id');
-
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) {
-    return { error: 'Cette mission est clôturée et ne peut plus être supprimée.' };
-  }
-  return { error: null };
+  return ecrireMission({ action: 'delete', missionId });
 }
 
 // Admin : reprendre une mission terminée → la repasse « en cours » et efface la

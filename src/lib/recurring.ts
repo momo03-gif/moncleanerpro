@@ -108,9 +108,14 @@ export async function updateRecurringDB(id: string, fields: {
   }).eq('id', id);
   if (error) { console.error('updateRecurringDB:', error.code, error.message); return { error: error.message, generated: 0 }; }
 
-  const today = parisToday();
-  await supabase.from('missions').delete()
-    .eq('recurring_id', id).gte('date_from', today).in('status', ['pending', 'assigned']);
+  // Purge des occurrences à venir : par le serveur, le navigateur n'a plus le
+  // droit de supprimer des missions (cf. migration_missions_verrouillage.sql).
+  try {
+    await fetch('/api/missions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete-recurring', recurringId: id }),
+    });
+  } catch (e) { console.error('purge récurrence:', e); }
   const gen = await generateRecurringMissions();
   return { error: null, generated: gen.created };
 }

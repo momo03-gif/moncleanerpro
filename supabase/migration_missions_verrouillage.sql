@@ -1,0 +1,37 @@
+-- ══════════════════════════════════════════════════════════════════════════════
+-- MonCleanerPro — Verrouillage de `missions`, premier temps : la SUPPRESSION
+-- À exécuter dans Supabase > SQL Editor. Idempotent.
+--
+-- POURQUOI EN DEUX TEMPS : `missions` est écrite depuis une vingtaine
+-- d'endroits — statuts, horaires de pointage, photos, ordre du planning,
+-- acceptation par le cleaner, désistement — et la file hors-ligne du cleaner
+-- rejoue certaines de ces écritures quand le réseau revient. Tout déplacer d'un
+-- coup, c'est risquer de casser le geste quotidien de l'équipe. On procède donc
+-- par ce qui fait le plus de dégâts en premier.
+--
+-- CE TEMPS-CI : personne ne supprime plus une mission depuis un navigateur.
+-- C'était l'action la plus destructrice — effacer le planning d'une journée, ou
+-- toutes les occurrences à venir d'une récurrence — et c'est la plus simple à
+-- déplacer : il n'y avait que deux chemins, tous deux passés par /api/missions,
+-- qui vérifie la session et les droits (admin, ou créateur de la mission).
+--
+-- LE TEMPS SUIVANT, à préparer : retirer au navigateur le droit d'écrire les
+-- colonnes d'argent — `cleaner_gain`, `cleaner_hourly_rate_snapshot`, `price`.
+-- L'affectation d'un cleaner est déjà passée côté serveur, mais trois fonctions
+-- d'administration les écrivent encore depuis le navigateur (approbation d'un
+-- temps supplémentaire, ajout de temps par l'admin, validation d'une demande).
+-- Les déplacer AVANT de retirer les droits, sinon ces écrans cassent en silence.
+--
+-- ⚠️ AVANT D'EXÉCUTER : déployer le code qui fait passer la suppression par
+-- /api/missions.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+REVOKE DELETE ON missions FROM anon, authenticated;
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- VÉRIFICATION, avec la CLÉ PUBLIQUE :
+--   · delete from missions        → doit être REFUSÉ (42501)
+-- Et dans l'application :
+--   · un admin supprime bien une mission depuis le planning ;
+--   · modifier une récurrence purge bien ses occurrences à venir.
+-- ══════════════════════════════════════════════════════════════════════════════
