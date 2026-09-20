@@ -116,37 +116,58 @@ export async function deleteTarifDB(id: string) {
 export { estimateFromDescription, rangeForLines, tarifRange } from './devisEstimate';
 
 // ── DEVIS ─────────────────────────────────────────────────────────────────────
-export async function getDevisListDB(): Promise<Devis[]> {
-  const { data, error } = await supabase.from('devis').select('*').order('created_at', { ascending: false });
-  if (error) { console.error('getDevisListDB:', error.code, error.message); return []; }
-  return (data ?? []).map(toDevis);
+// ── Devis : tout passe par le serveur ────────────────────────────────────────
+// Un devis porte le nom, l'e-mail, le téléphone et l'ADRESSE du prospect, plus
+// le détail chiffré de l'offre. Lue depuis le navigateur, la table livrait le
+// fichier prospects complet à la clé publique, et laissait modifier un montant
+// ou un statut. Lecture et écriture passent donc par /api/devis (administration)
+// et /api/devis/public (le client, par le jeton de son lien).
+async function devisServeur(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const res = await fetch('/api/devis', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(String(data.error ?? 'Enregistrement impossible.'));
+  return data;
 }
+
+export async function getDevisListDB(): Promise<Devis[]> {
+  try {
+    const res = await fetch('/api/devis');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.devis ?? []).map(toDevis);
+  } catch (e) { console.error('getDevisListDB:', e); return []; }
+}
+
 // Demandes de devis reçues et pas encore chiffrées — la pastille de l'entrée
 // « Devis » du menu. Les demandes ne passent plus par la cloche : ce compteur est
 // ce qui les rend visibles, et il ne retombe que lorsqu'elles sont traitées.
 export async function getDevisPendingCountDB(): Promise<number> {
-  const { count } = await supabase
-    .from('devis')
-    .select('id', { count: 'exact', head: true })
-    .eq('source', 'public')
-    .eq('status', 'brouillon');
-  return count ?? 0;
+  try {
+    const res = await fetch('/api/devis?type=pending');
+    if (!res.ok) return 0;
+    return Number((await res.json()).count) || 0;
+  } catch { return 0; }
 }
 
+/** Le devis que le client ouvre depuis son lien. Le jeton fait office de clé. */
 export async function getDevisByTokenDB(token: string): Promise<Devis | null> {
-  const { data } = await supabase.from('devis').select('*').eq('public_token', token).single();
-  return data ? toDevis(data) : null;
+  try {
+    const res = await fetch(`/api/devis/public?token=${encodeURIComponent(token)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.devis ? toDevis(data.devis) : null;
+  } catch { return null; }
 }
 
-// Numéro auto DEV-AAAA-0001 (incrément annuel).
 export async function nextDevisNumberDB(): Promise<string> {
-  const year = new Date().getFullYear();
-  const { data } = await supabase.from('devis').select('number').like('number', `DEV-${year}-%`);
-  const max = (data ?? []).reduce((m, r: any) => {
-    const n = parseInt(String(r.number).split('-')[2] ?? '0', 10);
-    return Number.isFinite(n) && n > m ? n : m;
-  }, 0);
-  return `DEV-${year}-${String(max + 1).padStart(4, '0')}`;
+  const annee = new Date().getFullYear();
+  try {
+    const res = await fetch('/api/devis?type=next-number');
+    if (res.ok) return String((await res.json()).number ?? `DEV-${annee}-0001`);
+  } catch { /* repli ci-dessous */ }
+  return `DEV-${annee}-0001`;
 }
 
 export async function saveDevisDB(f: {
@@ -154,15 +175,10 @@ export async function saveDevisDB(f: {
   clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; validUntil?: string; status?: DevisStatus; source?: 'admin' | 'public';
 }): Promise<{ error: string | null; id: string | null }> {
-  const { data, error } = await supabase.from('devis').insert({
-    number: f.number, partner_label: f.partnerLabel, partner_type: f.partnerType || null,
-    client_name: f.clientName || null, client_email: f.clientEmail || null,
-    client_phone: f.clientPhone || null, client_address: f.clientAddress || null,
-    description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
-    status: f.status ?? 'brouillon', source: f.source ?? 'admin',
-  }).select('id').single();
-  if (error) { console.error('saveDevisDB:', error.code, error.message); return { error: error.message, id: null }; }
-  return { error: null, id: data?.id ?? null };
+  try {
+    const d = await devisServeur({ action: 'save', fields: f });
+    return { error: null, id: (d.id as string) ?? null };
+  } catch (e) { return { error: (e as Error).message, id: null }; }
 }
 
 // Met à jour le CONTENU d'un devis existant (rouvrir un brouillon → modifier →
@@ -171,60 +187,43 @@ export async function updateDevisDB(id: string, f: {
   clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; validUntil?: string; status?: DevisStatus;
 }): Promise<{ error: string | null }> {
-  const patch: Record<string, unknown> = {
-    partner_label: f.clientName || 'Client',
-    client_name: f.clientName || null, client_email: f.clientEmail || null,
-    client_phone: f.clientPhone || null, client_address: f.clientAddress || null,
-    description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
-  };
-  if (f.status) patch.status = f.status;
-  const { error } = await supabase.from('devis').update(patch).eq('id', id);
-  if (error) console.error('updateDevisDB:', error.code, error.message);
-  return { error: error?.message ?? null };
+  try { await devisServeur({ action: 'update', id, fields: f }); return { error: null }; }
+  catch (e) { return { error: (e as Error).message }; }
 }
 
 // CORRECTION d'un devis DÉJÀ ENVOYÉ (le client s'est trompé de prestation, un
-// élément manquait…). On garde le MÊME devis : même numéro, même lien public —
-// le client n'a qu'une seule adresse à retenir. On incrémente la version, on
-// archive le contenu précédent (pour lui montrer ce qui change) et on enregistre
-// le mot d'explication. Une décision déjà prise (accepté/refusé) est annulée :
-// le devis repasse en attente, le client doit se prononcer sur la NOUVELLE
-// version. Un devis déjà converti en facture n'est plus corrigeable.
+// élément manquait…). Même numéro, même lien public — le client n'a qu'une seule
+// adresse à retenir. La version est incrémentée, le contenu précédent archivé,
+// et le mot d'explication enregistré. Une décision déjà prise est annulée : le
+// client doit se prononcer sur la NOUVELLE version. Un devis déjà converti en
+// facture n'est plus corrigeable (vérifié côté serveur).
 export async function reviseDevisDB(id: string, f: {
   clientName?: string; clientEmail?: string; clientPhone?: string; clientAddress?: string; description?: string;
   lines: DevisLine[]; total: number; validUntil?: string; note: string;
 }): Promise<{ error: string | null; revision: number | null }> {
   const note = f.note.trim();
   if (!note) return { error: 'Explique au client ce qui change dans ce devis.', revision: null };
-
-  // On relit la ligne pour archiver l'état RÉEL en base (l'écran peut être ouvert
-  // depuis un moment) et pour vérifier qu'elle n'est pas déjà facturée.
-  const { data: current, error: readErr } = await supabase
-    .from('devis').select('lines, total, revision, invoice_id').eq('id', id).single();
-  if (readErr) { console.error('reviseDevisDB(read):', readErr.code, readErr.message); return { error: readErr.message, revision: null }; }
-  if (current?.invoice_id) return { error: 'Ce devis est déjà converti en facture : créez plutôt un avoir ou un nouveau devis.', revision: null };
-
-  const revision = (Number(current?.revision) || 1) + 1;
-  const { error } = await supabase.from('devis').update({
-    partner_label: f.clientName || 'Client',
-    client_name: f.clientName || null, client_email: f.clientEmail || null,
-    client_phone: f.clientPhone || null, client_address: f.clientAddress || null,
-    description: f.description || null, lines: f.lines, total: f.total, valid_until: f.validUntil || null,
-    status: 'envoye',
-    revision, revision_note: note, revised_at: new Date().toISOString(),
-    previous_lines: current?.lines ?? [], previous_total: current?.total ?? 0,
-  }).eq('id', id);
-  if (error) { console.error('reviseDevisDB:', error.code, error.message); return { error: error.message, revision: null }; }
-  return { error: null, revision };
+  try {
+    const d = await devisServeur({ action: 'revise', id, note, fields: f });
+    return { error: null, revision: Number(d.revision) || null };
+  } catch (e) { return { error: (e as Error).message, revision: null }; }
 }
 
 export async function setDevisStatusDB(id: string, status: DevisStatus): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('devis').update({ status }).eq('id', id);
-  return { error: error?.message ?? null };
+  try { await devisServeur({ action: 'status', id, status }); return { error: null }; }
+  catch (e) { return { error: (e as Error).message }; }
 }
+
+/** Réponse du client depuis son lien : accepté ou refusé, rien d'autre. */
 export async function setDevisStatusByTokenDB(token: string, status: DevisStatus): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('devis').update({ status }).eq('public_token', token);
-  return { error: error?.message ?? null };
+  try {
+    const res = await fetch('/api/devis/public', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, status }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { error: res.ok ? null : String(data.error ?? 'Enregistrement impossible.') };
+  } catch { return { error: 'Connexion impossible. Réessayez.' }; }
 }
 
 // Conversion d'un devis ACCEPTÉ en facture (réutilise saveInvoiceDB → table invoices).
@@ -241,6 +240,6 @@ export async function convertDevisToInvoiceDB(devis: Devis): Promise<{ error: st
     lines: devis.lines.map(l => ({ date: dateStr, label: l.nom, type: 'devis', amount: l.total, unitPrice: l.prix_unitaire })),
   });
   if (res.error) return { error: res.error, number: null };
-  await supabase.from('devis').update({ status: 'accepte' }).eq('id', devis.id);
+  await setDevisStatusDB(devis.id, 'accepte');
   return { error: null, number: invoiceNo };
 }
