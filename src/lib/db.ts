@@ -666,7 +666,7 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
   // Le gain du cleaner est recalculé côté serveur : taux horaire × durée. Il ne
   // se décide pas dans le navigateur.
   const res = await ecrireMission({ action: 'assign', missionId, cleanerId, cleanerName });
-  if (res.error) { console.error('assignCleanerToMissionDB:', res.error); return; }
+  if (res.error) { await signalerEchecArgent('affectation', missionId, res.error); return; }
   await notifyCleanerNewMission(missionId);
 }
 
@@ -919,7 +919,7 @@ export async function finishMissionDB(
   // clôture elle-même : la mission est terminée, le cleaner est parti.
   if (cloturerArgent != null) {
     const res = await ecrireMission({ action: 'close-money', missionId, actualMinutes: cloturerArgent });
-    if (res.error) console.error('clôture financière:', res.error);
+    if (res.error) await signalerEchecArgent('clôture financière', missionId, res.error);
   }
   await notifyMissionCompleted(missionId);
   return { error: null };
@@ -1140,12 +1140,32 @@ export async function updateMissionDB(
   // base. C'était le dernier endroit où le navigateur écrivait de l'argent.
   if (recalculerPaie) {
     const res = await ecrireMission({ action: 'set-duration', missionId, ...recalculerPaie });
-    if (res.error) console.error('recalcul de la paie:', res.error);
+    if (res.error) await signalerEchecArgent('recalcul de la paie', missionId, res.error);
   }
 
   // Notif : mission modifiée (admin + cleaner si assignée)
   await notifyMissionModified(missionId, actor.role, actor.id);
   return { error: null };
+}
+
+/**
+ * Signale bruyamment un échec sur un montant.
+ *
+ * Ces calculs se font côté serveur depuis le verrouillage. Si l'un échoue, la
+ * mission est quand même enregistrée — on ne bloque pas un cleaner qui a fini
+ * son ménage — mais le montant, lui, est faux. Une erreur dans la console du
+ * navigateur ne serait vue par personne : celle-ci part dans Sentry, et se
+ * découvre en minutes plutôt qu'au moment de la paie.
+ */
+async function signalerEchecArgent(quoi: string, missionId: string, message: string) {
+  console.error(`${quoi}:`, message);
+  try {
+    const Sentry = await import('@sentry/nextjs');
+    Sentry.captureException(new Error(`${quoi} — ${message}`), {
+      tags: { area: 'argent', operation: quoi },
+      extra: { missionId },
+    });
+  } catch { /* Sentry indisponible : la console reste le dernier recours */ }
 }
 
 // ── Suppression et affectation : par le serveur ──────────────────────────────
