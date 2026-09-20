@@ -43,23 +43,63 @@ function rowToApartment(a: any): Apartment {
   };
 }
 
+// ⚠️ Colonnes EXPLICITES, pas d'étoile : les champs d'accès (codes, directives,
+// contact de secours) ne sont plus lisibles avec la clé publique. Une étoile
+// les redemanderait et la requête entière serait refusée.
+const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, '
+  + 'cleaner_id, partner_id, partner_name, bedrooms, beds, sofa_beds, client_price, '
+  + 'estimated_cleaning_minutes, latitude, longitude, zone_id, zone_color, zone_name, '
+  + 'access_video_url, access_video_path, parent_airbnb_id, group_tiers, created_at, cleaners(name)';
+
+/**
+ * Complète les fiches avec leurs champs d'accès, via le serveur : l'admin
+ * obtient tous les logements, un partenaire seulement les siens. Échec
+ * silencieux — mieux vaut une fiche sans code qu'un écran vide.
+ */
+async function enrichirAcces(apts: Apartment[]): Promise<Apartment[]> {
+  if (apts.length === 0) return apts;
+  try {
+    const res = await fetch('/api/airbnbs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'access', ids: apts.map(a => a.id) }),
+    });
+    if (!res.ok) return apts;
+    const { acces } = await res.json();
+    if (!acces) return apts;
+    return apts.map(a => {
+      const x = acces[a.id];
+      return x ? {
+        ...a,
+        portalCode: x.portalCode ?? a.portalCode,
+        keyboxCode: x.keyboxCode ?? a.keyboxCode,
+        entryDirectives: x.entryDirectives ?? a.entryDirectives,
+        notes: x.notes ?? a.notes,
+        onSiteContactName: x.onSiteContactName ?? a.onSiteContactName,
+        onSiteContactPhone: x.onSiteContactPhone ?? a.onSiteContactPhone,
+      } : a;
+    });
+  } catch { return apts; }
+}
+
 export async function getAirbnbs(): Promise<Apartment[]> {
-  const { data, error } = await supabase.from('airbnbs').select('*, cleaners(name)').order('created_at');
+  const { data, error } = await supabase.from('airbnbs').select(APT_SELECT).order('created_at');
   if (error) console.error('getAirbnbs error:', error.code, error.message);
-  return (data ?? []).map(rowToApartment);
+  return enrichirAcces((data ?? []).map(rowToApartment));
 }
 
 // Appartements d'un partenaire Airbnb (avec compte) — filtrés par partner_id
 export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]> {
   const { data, error } = await supabase
     .from('airbnbs')
-    .select('*, cleaners(name)')
+    .select(APT_SELECT)
     .eq('partner_id', userId)
     .order('created_at');
   if (error) console.error('getAirbnbsForPartner error:', error.code, error.message);
   // Le partenaire ne doit PAS voir la durée de ménage (paramétrée par l'admin, elle
   // sert à la paie des cleaners) ni le gain cleaner : on les retire.
-  return (data ?? []).map(rowToApartment).map(a => ({ ...a, estimatedCleaningMinutes: undefined, cleanerGain: undefined }));
+  const base = (data ?? []).map(rowToApartment)
+    .map(a => ({ ...a, estimatedCleaningMinutes: undefined, cleanerGain: undefined }));
+  return enrichirAcces(base);
 }
 
 // Réapplique les forfaits d'une maison partagée aux ménages À VENIR.

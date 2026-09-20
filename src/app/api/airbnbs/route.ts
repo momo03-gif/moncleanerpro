@@ -23,13 +23,14 @@ export async function POST(req: NextRequest) {
   if (sansSession) return sansSession;
 
   let b: {
-    action?: 'create' | 'update' | 'delete' | 'assign-cleaner' | 'set-coords' | 'set-zones';
+    action?: 'create' | 'update' | 'delete' | 'assign-cleaner' | 'set-coords' | 'set-zones' | 'access';
     id?: string;
     row?: Record<string, unknown>;
     patch?: Record<string, unknown>;
     cleanerId?: string | null;
     lat?: number; lng?: number;
     zones?: { id: string; zoneId: string | null; zoneColor: string | null; zoneName: string | null }[];
+    ids?: string[];
   } = {};
   try { b = await req.json(); } catch { return refus('Requête invalide.', 400); }
 
@@ -122,6 +123,35 @@ export async function POST(req: NextRequest) {
         if (error) { console.error('airbnbs/set-zones:', error.message); return refus('Enregistrement impossible.', 500); }
       }
       return NextResponse.json({ ok: true, count: zones.length });
+    }
+
+    case 'access': {
+      // Les champs d'ACCÈS d'une fiche logement : code du portail, code de la
+      // boîte à clés, directives d'entrée, notes, contact de secours. Ils ne
+      // sont plus lisibles avec la clé publique ; ici, on ne rend que les
+      // logements du demandeur — tous pour l'admin, les siens pour un partenaire.
+      let q = db.from('airbnbs').select(
+        'id, code_portail, code_boite, entry_instructions, notes, on_site_contact_name, on_site_contact_phone',
+      );
+      if (!estAdmin) q = q.eq('partner_id', appelant!.id);
+      if (b.ids?.length) q = q.in('id', b.ids.slice(0, 500));
+
+      const { data, error } = await q;
+      if (error) { console.error('airbnbs/access:', error.message); return refus('Lecture impossible.', 500); }
+
+      const acces: Record<string, Record<string, string | undefined>> = {};
+      for (const r of data ?? []) {
+        const row = r as Record<string, string | null>;
+        acces[row.id as string] = {
+          portalCode: row.code_portail || undefined,
+          keyboxCode: row.code_boite || undefined,
+          entryDirectives: row.entry_instructions || undefined,
+          notes: row.notes || undefined,
+          onSiteContactName: row.on_site_contact_name || undefined,
+          onSiteContactPhone: row.on_site_contact_phone || undefined,
+        };
+      }
+      return NextResponse.json({ acces });
     }
 
     default:

@@ -18,6 +18,7 @@ import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts } from '
 import { computeMissionGain } from '@/lib/pay';
 import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
+import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
@@ -178,8 +179,10 @@ function MissionIncidentPanel({ mission }: { mission: Mission }) {
 // ── Carte mission admin ───────────────────────────────────────────────────────
 
 export default function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, onToggleSelect,
-  position, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: {
+  position, canMoveUp, canMoveDown, onMoveUp, onMoveDown, terrain }: {
   mission: Mission;
+  /** Codes d'accès et contacts, servis par /api/missions/terrain. */
+  terrain?: TerrainInfo;
   cleaners: any[];
   onRefresh: () => void;
   selectable?: boolean;
@@ -212,7 +215,13 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     deliveryInstructions: mission.deliveryInstructions ?? '',
   });
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
-  const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
+  // Codes d'accès : servis par /api/missions/terrain. Repli sur les notes de la
+  // mission pour les anciennes missions dont le texte les contient encore.
+  const notesParsees = parseMissionNotes(mission.notes);
+  const portalCode = terrain?.portalCode ?? notesParsees.portalCode;
+  const keyboxCode = terrain?.keyboxCode ?? notesParsees.keyboxCode;
+  const extra = [terrain?.entryInstructions, terrain?.apartmentNotes, notesParsees.extra]
+    .filter(Boolean).join(' · ') || notesParsees.extra;
   const notesIsLong = extra.length > 120;
 
   async function changeStatus(s: MissionStatus) {

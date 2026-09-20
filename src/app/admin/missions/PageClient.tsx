@@ -13,6 +13,7 @@ import type { RecurringMission } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { supabase } from '@/lib/supabase';
+import { getTerrainMap, type TerrainInfo } from '@/lib/fieldContact';
 import type { Mission, HotelAnnounce, Apartment } from '@/lib/types';
 import { canCleanerDoService } from '@/lib/service';
 import Icon from '@/components/Icon';
@@ -52,6 +53,7 @@ export default function MissionsPage() {
   // en a en attente. Le badge de comptage sur l'onglet évite d'en manquer.
   const [tab, setTab] = useState<typeof TABS[number]>('Missions');
   const didAutoTab = useRef(false);
+  const [terrain, setTerrain] = useState<Record<string, TerrainInfo>>({});
   const [missions, setMissions] = useState<Mission[]>([]);
   const [requests, setRequests] = useState<HotelAnnounce[]>([]);
   const [cleaners, setCleaners] = useState<any[]>([]);
@@ -93,6 +95,10 @@ export default function MissionsPage() {
       getApprovedHotelsDB(), getAirbnbs(), getAssignableStaffDB(), listRecurringDB(),
     ]);
     setMissions(m); setRequests(r); setCleaners(c); setStaff(s); setRecurrings(rec);
+    // Codes d'accès : servis par le serveur, plus par la jointure (ils ouvrent
+    // des portes). Une requête, indépendante — en cas d'échec le planning
+    // s'affiche quand même, sans les codes.
+    getTerrainMap(m.map(x => x.id)).then(setTerrain).catch(() => {});
     // Appartements triés par ordre alphabétique (listes de sélection).
     setHotels(h); setAirbnbs([...a].sort((x, y) => x.name.localeCompare(y.name, 'fr', { sensitivity: 'base', numeric: true })));
     // Choix de l'onglet initial : une seule fois, avant le 1er affichage (couvert par
@@ -472,6 +478,7 @@ export default function MissionsPage() {
                   <div className="space-y-2">
                     {group.missions.map((m, i) => (
                       <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
+                        terrain={terrain[m.id]}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
                         selected={selectedIds.has(m.id)}
                         onToggleSelect={toggleSelect}

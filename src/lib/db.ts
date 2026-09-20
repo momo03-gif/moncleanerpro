@@ -61,7 +61,11 @@ async function resolveToCleanerTableId(userId: string): Promise<string | null> {
 
 // Sélection commune : on joint l'appartement lié pour les missions Airbnb
 // afin d'en récupérer adresse + accès sans dupliquer l'info dans la mission.
-const MISSION_SELECT = '*, airbnbs(name, address, code_portail, code_boite, entry_instructions, partner_name, notes, client_price, estimated_cleaning_minutes, zone_id, zone_color, zone_name, structure_type, structure_label)';
+// ⚠️ La jointure ne transporte PLUS les codes d'accès ni les notes du logement :
+// cette requête est faite avec la clé publique, et ces champs ouvrent des portes.
+// Ils sont servis par /api/missions/terrain, qui ne les rend que pour les
+// ménages du demandeur. Ne pas les remettre ici.
+const MISSION_SELECT = '*, airbnbs(name, address, partner_name, client_price, estimated_cleaning_minutes, zone_id, zone_color, zone_name, structure_type, structure_label)';
 
 function rowToMission(row: any): Mission {
   let property = row.property_name ?? '';
@@ -73,13 +77,9 @@ function rowToMission(row: any): Mission {
   if (row.airbnb_id && apt) {
     property = apt.name ?? property;
     address = apt.address ?? address;
-    const parts: string[] = [];
-    if (apt.code_portail) parts.push(`Code portail : ${apt.code_portail}`);
-    if (apt.code_boite) parts.push(`Boîte à clé : ${apt.code_boite}`);
-    if (apt.entry_instructions) parts.push(apt.entry_instructions);
-    if (apt.notes) parts.push(apt.notes); // notes particulières de l'appartement
-    if (row.instructions) parts.push(row.instructions); // consignes ajoutées par le partenaire
-    notes = parts.length > 0 ? parts.join(' · ') : undefined;
+    // Les codes d'accès et les notes du logement arrivent par la route terrain ;
+    // ici ne restent que les consignes ajoutées sur la mission elle-même.
+    notes = row.instructions || undefined;
   }
 
   // Durée de paie : minutes = source de vérité ; heures dérivées pour les agrégations existantes.
