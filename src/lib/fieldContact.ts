@@ -52,27 +52,52 @@ export async function getSiteContactsMap(airbnbIds: string[]): Promise<Record<st
   }
 }
 
+/** Ce que la route « terrain » rend pour un ménage. */
+export interface TerrainInfo {
+  portalCode?: string;
+  keyboxCode?: string;
+  entryInstructions?: string;
+  apartmentNotes?: string;
+  accessVideoUrl?: string;
+  siteContact?: SiteContact;
+  guest?: GuestContact;
+}
+
 /**
- * Voyageur rattaché à chaque mission demandée (quand la source le fournit).
+ * Tout ce qu'il faut pour entrer dans un logement, en UNE requête : codes
+ * d'accès, directives, vidéo, contact de secours et contact du voyageur.
  *
- * Passe par le serveur : le nom et le téléphone des voyageurs ne sont plus
- * lisibles avec la clé publique, et la route ne rend que les ménages qui
- * appartiennent au demandeur — cleaner assigné, partenaire propriétaire, ou
- * admin. Un ménage terminé ne rend rien : un numéro n'a pas à traîner dans
- * l'historique.
+ * Remplace les trois appels séparés d'avant (vidéo, contact du logement,
+ * voyageur). Sur un téléphone en 4G, chaque aller-retour évité vaut 150 à
+ * 300 ms — et les codes d'accès ne transitent plus par une requête lisible avec
+ * la clé publique.
+ *
+ * Échec silencieux : une table vide, jamais d'erreur qui ferait tomber le
+ * planning.
  */
-export async function getMissionGuestsMap(missionIds: string[]): Promise<Record<string, GuestContact>> {
+export async function getTerrainMap(missionIds: string[]): Promise<Record<string, TerrainInfo>> {
   const ids = Array.from(new Set(missionIds.filter(Boolean)));
   if (ids.length === 0) return {};
   try {
-    const res = await fetch('/api/reservations/contacts', {
+    const res = await fetch('/api/missions/terrain', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ missionIds: ids }),
     });
     if (!res.ok) return {};
     const data = await res.json().catch(() => ({}));
-    return (data.contacts ?? {}) as Record<string, GuestContact>;
+    return (data.terrain ?? {}) as Record<string, TerrainInfo>;
   } catch {
     return {};
   }
+}
+
+/**
+ * Voyageur rattaché à chaque mission — conservé pour les écrans qui n'ont besoin
+ * que de ça. Les plannings passent par getTerrainMap, qui rend tout d'un coup.
+ */
+export async function getMissionGuestsMap(missionIds: string[]): Promise<Record<string, GuestContact>> {
+  const terrain = await getTerrainMap(missionIds);
+  const out: Record<string, GuestContact> = {};
+  for (const [id, info] of Object.entries(terrain)) if (info.guest) out[id] = info.guest;
+  return out;
 }

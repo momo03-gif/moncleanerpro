@@ -23,8 +23,7 @@ import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
-import { getSiteVideosMap } from '@/lib/siteVideos';
-import { getSiteContactsMap, getMissionGuestsMap, type SiteContact, type GuestContact } from '@/lib/fieldContact';
+import { getTerrainMap, type SiteContact, type GuestContact, type TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -136,7 +135,7 @@ function AccessHelp({ site, guest }: { site?: SiteContact; guest?: GuestContact 
   );
 }
 
-function MissionCard({ mission, userId, onUpdate, highlight, siteContact, guest }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean; siteContact?: SiteContact; guest?: GuestContact }) {
+function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean; terrain?: TerrainInfo }) {
   const { confirm, toast } = useFeedback();
   const [mapsOpen, setMapsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -172,7 +171,14 @@ function MissionCard({ mission, userId, onUpdate, highlight, siteContact, guest 
   const canStart  = !isSimple && (mission.status === 'accepted' || mission.status === 'pending');
   const canFinish = !isSimple && mission.status === 'in_progress';
   const canDeliver = isSimple && isOpen;
-  const { portalCode, keyboxCode, extra } = parseMissionNotes(mission.notes);
+  // Codes d'accès : servis par /api/missions/terrain (ils ne transitent plus par
+  // une requête lisible publiquement). Repli sur les notes de la mission tant que
+  // la jointure les porte encore — le temps que la colonne soit fermée en base.
+  const notesParsees = parseMissionNotes(mission.notes);
+  const portalCode = terrain?.portalCode ?? notesParsees.portalCode;
+  const keyboxCode = terrain?.keyboxCode ?? notesParsees.keyboxCode;
+  const extra = [terrain?.entryInstructions, terrain?.apartmentNotes, notesParsees.extra]
+    .filter(Boolean).join(' · ') || notesParsees.extra;
   const notesIsLong = extra.length > 120;
 
   // Pointage : on capture une position approximative (best-effort) au démarrage
@@ -423,12 +429,13 @@ function MissionCard({ mission, userId, onUpdate, highlight, siteContact, guest 
           </>
         )}
 
-        <AccessHelp site={siteContact} guest={guest} />
+        <AccessHelp site={terrain?.siteContact} guest={terrain?.guest} />
 
         {/* Vidéo d'accès du logement (si le site en a une) : comment s'y rendre,
             où trouver la clé. Chargée à la demande — aucun téléchargement auto. */}
-        {mission.accessVideoUrl && mission.airbnbId && (
-          <SiteAccessVideo airbnbId={mission.airbnbId} videoUrl={mission.accessVideoUrl} mode="view" />
+        {(terrain?.accessVideoUrl ?? mission.accessVideoUrl) && mission.airbnbId && (
+          <SiteAccessVideo airbnbId={mission.airbnbId}
+            videoUrl={(terrain?.accessVideoUrl ?? mission.accessVideoUrl)!} mode="view" />
         )}
 
         {/* Consignes de livraison — affichées quand la mission inclut une livraison. */}
@@ -644,10 +651,10 @@ export default function CleanerDashboard() {
   const [showDone, setShowDone] = useState(false);
   // Horodatage de la dernière synchro quand on affiche des données du cache
   // (hors-ligne). null = données à jour (en ligne).
-  // Contacts de secours : chargés à part du planning (comme la vidéo d'accès).
-  // Une table vide = rien à afficher, jamais une erreur de chargement.
-  const [siteContacts, setSiteContacts] = useState<Record<string, SiteContact>>({});
-  const [guests, setGuests] = useState<Record<string, GuestContact>>({});
+  // Codes d'accès, vidéo, contacts : une seule requête après le planning
+  // (cf. /api/missions/terrain). Une table vide = rien à afficher, jamais une
+  // erreur qui ferait tomber la liste des missions.
+  const [terrain, setTerrain] = useState<Record<string, TerrainInfo>>({});
   const [offlineSince, setOfflineSince] = useState<string | null>(null);
   // File d'actions hors-ligne en attente / refusées.
   const [sync, setSync] = useState<QueueSummary>({ pending: 0, rejected: 0 });
@@ -677,23 +684,13 @@ export default function CleanerDashboard() {
     // évite que la requête ralentisse à mesure que les missions s'accumulent.
     const since = toDateStr(new Date(Date.now() - 183 * 86400000));
     const m = await getMissionsForCleanerDB(user.id, since);
-    // Enrichissement vidéo d'accès : UNE requête dédiée et résiliente (découplée du
-    // chargement des missions → si la colonne/feature n'existe pas, aucun impact).
-    const videoMap = await getSiteVideosMap(m.map(x => x.airbnbId ?? '').filter(Boolean));
-    const enriched = Object.keys(videoMap).length > 0
-      ? m.map(x => (x.airbnbId && videoMap[x.airbnbId] ? { ...x, accessVideoUrl: videoMap[x.airbnbId] } : x))
-      : m;
+    const enriched = m;
     setMissions(enriched);
     setOfflineSince(null);
-    // Qui appeler si l'accès échoue. Deux requêtes indépendantes du planning :
-    // en cas d'échec (ou de migration non jouée), le bloc ne s'affiche pas, et
-    // c'est tout — le cleaner garde ses missions.
-    const [contacts, guestMap] = await Promise.all([
-      getSiteContactsMap(enriched.map(x => x.airbnbId ?? '').filter(Boolean)),
-      getMissionGuestsMap(enriched.map(x => x.id)),
-    ]);
-    setSiteContacts(contacts);
-    setGuests(guestMap);
+    // Codes d'accès, directives, vidéo et contacts : UNE requête, indépendante du
+    // planning. En cas d'échec, le cleaner garde ses missions — il lui manque
+    // seulement le bloc d'accès, et il peut appeler l'agence.
+    setTerrain(await getTerrainMap(enriched.map(x => x.id)));
     // On ne persiste pas un planning vide par-dessus un cache existant (une requête
     // en échec renvoie [] — inutile d'écraser des données valides).
     if (enriched.length > 0) await cacheMissions(user.id, enriched);
@@ -908,7 +905,7 @@ export default function CleanerDashboard() {
           <div className="space-y-3">
             {todo.map(m => (
               <MissionCard key={m.id} mission={m} userId={user.id} onUpdate={load} highlight={m.id === activeId}
-                siteContact={m.airbnbId ? siteContacts[m.airbnbId] : undefined} guest={guests[m.id]} />
+                terrain={terrain[m.id]} />
             ))}
 
             {/* Terminées : repliées, hors du chemin, dépliables au besoin. */}
