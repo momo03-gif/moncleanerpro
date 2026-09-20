@@ -51,7 +51,11 @@ export default function DevisEnLignePage() {
   const [expanded, setExpanded] = useState(false);
   const [desc, setDesc] = useState('');
   const [aiMsg, setAiMsg] = useState('');
-  const [form, setForm] = useState({ nom: '', tel: '', email: '', adresse: '', message: '' });
+  const [form, setForm] = useState({ nom: '', tel: '', email: '', adresse: '', message: '', website: '' });
+  // Heure d'ouverture de la page : un envoi en moins de trois secondes trahit un
+  // robot (cf. spamScore.ts). Fixée après le montage, jamais pendant le rendu.
+  const ouvertureRef = useRef(0);
+  useEffect(() => { ouvertureRef.current = Date.now(); }, []);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [sentNumber, setSentNumber] = useState('');
@@ -144,6 +148,9 @@ export default function DevisEnLignePage() {
           // ni cherchable.
           clientPhone: form.tel,
           clientAddress: form.adresse,
+          // Anti-robot : champ piège et durée de saisie (cf. spamScore.ts).
+          website: form.website ?? '',
+          elapsedMs: ouvertureRef.current ? Date.now() - ouvertureRef.current : undefined,
           description: [
             desc, form.message,
             // Le simulateur décrit le logement (surface, voyageurs, zone) : c'est
@@ -395,7 +402,7 @@ function TicketLines({ sel, byName, onRemove, showPrice = false }: { sel: Sel; b
 }
 
 // ── Vue récap + formulaire ──
-function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number }; sel: Sel; byName: Map<string, Tarif>; simQuote: SimulatorSubmission | null; form: { nom: string; tel: string; email: string; adresse: string; message: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
+function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number }; sel: Sel; byName: Map<string, Tarif>; simQuote: SimulatorSubmission | null; form: { nom: string; tel: string; email: string; adresse: string; message: string; website: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
   // ── Crédit d'impôt services à la personne ──
   // Le particulier ne règle que la moitié (avance immédiate URSSAF). On ne
   // l'annonce QUE si toute la sélection s'y prête : un Airbnb ou un local pro
@@ -481,6 +488,12 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
           <Field label="Adresse / Ville" val={form.adresse} on={v => set('adresse', v)} ph="Adresse d’intervention" />
           <div className="dv-field dv-full"><label>Description complémentaire</label>
             <textarea value={form.message} onChange={e => set('message', e.target.value)} placeholder="État général, contraintes d’accès, urgence, fréquence souhaitée…" /></div>
+
+          {/* Champ piège anti-robot : masqué et hors navigation clavier. */}
+          <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+            <label htmlFor="dv-website">Ne pas remplir</label>
+            <input id="dv-website" name="website" type="text" tabIndex={-1} autoComplete="off"
+              value={form.website} onChange={e => set('website', e.target.value)} /></div>
         </div>
         {err && <p className="dv-err-msg">{err}</p>}
         <div className="dv-recap-actions">

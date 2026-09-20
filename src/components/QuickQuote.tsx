@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { SOURCES } from '@/lib/proof';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -26,6 +26,11 @@ const label: React.CSSProperties = {
 
 export default function QuickQuote({ service, slug }: { service: string; slug: string }) {
   const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'error'>('idle');
+  // Heure d'affichage du formulaire : un envoi en moins de trois secondes n'est
+  // pas humain. Cf. spamScore.ts. Fixée après le montage — appeler Date.now()
+  // pendant le rendu n'est pas permis.
+  const ouvertureRef = useRef(0);
+  useEffect(() => { ouvertureRef.current = Date.now(); }, []);
   const [message, setMessage] = useState('');
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -38,6 +43,8 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
     const commune = String(f.get('commune') ?? '').trim();
     const besoin = String(f.get('besoin') ?? '').trim();
     const source = String(f.get('source') ?? '').trim();
+    // Champ piège : invisible pour un humain, rempli par les robots.
+    const website = String(f.get('website') ?? '').trim();
 
     if (!nom || !email || !tel) { setState('error'); setMessage('Merci d’indiquer votre nom, votre téléphone et votre email.'); return; }
     setState('sending');
@@ -61,6 +68,7 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
           clientName: nom, clientEmail: email, clientPhone: tel, clientAddress: commune,
           description, lines: [], total: 0, partnerType: 'devis',
           origin: `/${slug}`,
+          website, elapsedMs: ouvertureRef.current ? Date.now() - ouvertureRef.current : undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -146,6 +154,12 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
           Utilisez l’estimation en ligne
         </a>.
       </p>
+      {/* Champ piège anti-robot : masqué et retiré de la navigation clavier.
+          Un humain ne le voit pas ; un robot remplit tout ce qu'il trouve. */}
+      <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+        <label htmlFor="qq-website">Ne pas remplir</label>
+        <input id="qq-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
     </form>
   );
 }

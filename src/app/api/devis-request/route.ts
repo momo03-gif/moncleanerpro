@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { evaluerSpam } from '@/lib/spamScore';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Demande de devis — route SERVEUR (service_role). Sert DEUX entrées :
@@ -40,6 +41,24 @@ export async function POST(req: Request) {
   const origine = String(body?.origin ?? '').trim().slice(0, 120);
   if (!clientName || !clientEmail) return NextResponse.json({ error: 'Nom et email requis.' }, { status: 200 });
 
+  // ── Filtre anti-robot ──────────────────────────────────────────────────────
+  // Des robots ont trouvé le formulaire : démarchage en anglais, numéro à
+  // l'étranger, aucune prestation cochée. Cf. spamScore.ts pour les règles, et
+  // surtout pour le principe : plusieurs indices sont nécessaires, un client
+  // maladroit passe toujours.
+  const verdict = evaluerSpam({
+    clientName, clientEmail, clientPhone, clientAddress, description, total,
+    lignes: lines.length,
+    honeypot: String(body?.website ?? ''),          // champ piège, invisible à l'écran
+    dureeSaisieMs: Number(body?.elapsedMs) || undefined,
+  });
+  if (verdict.issue === 'spam') {
+    // On répond « c'est envoyé » : dire à un robot qu'il est repéré l'aide à
+    // s'adapter. Rien n'est enregistré, rien ne sonne.
+    console.warn('devis-request spam écarté:', verdict.score, verdict.motifs.join(' · '));
+    return NextResponse.json({ ok: true, number: null }, { status: 200 });
+  }
+
   let admin;
   try { admin = getSupabaseAdmin(); }
   catch (e) { console.error('devis-request admin client:', e); return NextResponse.json({ error: 'Service indisponible.' }, { status: 200 }); }
@@ -71,6 +90,13 @@ export async function POST(req: Request) {
   if (error) { console.error('devis-request insert:', error.message); return NextResponse.json({ error: "Enregistrement impossible, réessayez." }, { status: 200 }); }
 
   // Notifier les admins (best-effort).
+  // Sauf en cas de doute : la demande est en base, l'admin la verra dans sa
+  // liste « à traiter », mais elle ne fait pas sonner son téléphone.
+  if (verdict.issue === 'doute') {
+    console.warn('devis-request douteux (enregistré, non notifié):', verdict.score, verdict.motifs.join(' · '));
+    return NextResponse.json({ ok: true, number }, { status: 200 });
+  }
+
   try {
     const { data: admins } = await admin.from('users').select('id').eq('role', 'admin');
     const canal = partnerType === 'airbnb' ? 'depuis son espace partenaire' : 'en ligne';
