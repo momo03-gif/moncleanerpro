@@ -131,7 +131,12 @@ export async function POST(req: Request) {
       try {
         const origin = new URL(req.url).origin;
         fetch(`${origin}/api/push`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Appel de serveur à serveur : /api/push exige un appelant identifié.
+            ...(process.env.CRON_SECRET ? { Authorization: `Bearer ${process.env.CRON_SECRET}` } : {}),
+          },
           body: JSON.stringify({ items: (admins ?? []).map((u: { id: string }) => ({ userId: u.id, title: 'Nouveau rendez-vous', body: msg, url: '/admin/rendez-vous', tag: 'appointment_booked' })) }),
         }).catch(() => {});
       } catch { /* ignore */ }

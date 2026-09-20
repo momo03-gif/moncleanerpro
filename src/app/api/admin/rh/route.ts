@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigerAdmin } from '@/lib/apiGuard';
 import {
   getRhConfigDB, saveRhConfigDB,
   getPrimeTypesDB, createPrimeTypeDB, updatePrimeTypeDB, deletePrimeTypeDB,
@@ -17,6 +18,11 @@ import {
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  // Cette route lit et écrit en service_role : elle traverse tous les droits de
+  // la base. Sans cette vérification, elle répondait à n'importe qui.
+  const { refus } = await exigerAdmin();
+  if (refus) return refus;
+
   let body: any = {};
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 }); }
   const { op, args = {} } = body;

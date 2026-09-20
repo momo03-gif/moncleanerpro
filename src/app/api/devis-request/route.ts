@@ -111,7 +111,13 @@ export async function POST(req: Request) {
       try {
         const origin = new URL(req.url).origin;
         fetch(`${origin}/api/push`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Appel de serveur à serveur : la route /api/push exige désormais
+            // un appelant identifié, et il n'y a pas de session ici.
+            ...(process.env.CRON_SECRET ? { Authorization: `Bearer ${process.env.CRON_SECRET}` } : {}),
+          },
           body: JSON.stringify({
             items: (admins ?? []).map((u: { id: string }) => ({
               userId: u.id, title: 'Nouvelle demande de devis', body: message,

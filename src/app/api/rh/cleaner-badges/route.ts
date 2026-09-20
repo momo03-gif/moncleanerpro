@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigerSession } from '@/lib/apiGuard';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeBadges, computeLevel, type BadgeStats } from '@/lib/badges';
 
@@ -18,6 +19,9 @@ function monthBounds(p: string) {
 }
 
 export async function POST(req: Request) {
+  const { refus } = await exigerSession();
+  if (refus) return refus;
+
   let userId = '';
   try { userId = String((await req.json())?.userId ?? ''); } catch { /* noop */ }
   if (!userId) return NextResponse.json({ error: 'userId requis.' }, { status: 400 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { exigerInterne, exigerSession } from '@/lib/apiGuard';
 import { runReservationSync } from '@/lib/reservationSync';
 
 export const runtime = 'nodejs';
@@ -7,6 +8,14 @@ export const runtime = 'nodejs';
 // Body JSON : { partnerId? , feedId? } — cible un partenaire ou un flux précis.
 // Sans filtre, synchronise tous les flux actifs (réservé à un usage admin/cron).
 export async function POST(req: NextRequest) {
+  // Declencher une synchro fait partir des requetes vers les APIs de nos
+  // clients : reserve aux personnes connectees (ou a un appel interne).
+  const { refus } = await exigerInterne(req);
+  if (refus) {
+    const { refus: refusSession } = await exigerSession();
+    if (refusSession) return refusSession;
+  }
+
   let body: { partnerId?: string; feedId?: string } = {};
   try { body = await req.json(); } catch { /* corps vide accepté */ }
 

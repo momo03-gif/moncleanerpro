@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { exigerSession } from '@/lib/apiGuard';
 
 export const runtime = 'nodejs';
 
@@ -7,6 +8,11 @@ export const runtime = 'nodejs';
 // exigé par la politique d'usage de Nominatim.
 // GET /api/geocode?q=<adresse>  →  { lat, lon } | null
 export async function GET(req: NextRequest) {
+  // Sinon la route sert de proxy anonyme vers Nominatim, au nom de notre
+  // serveur — et c'est notre acces qui serait bloque en cas d'abus.
+  const { refus } = await exigerSession();
+  if (refus) return refus;
+
   const q = req.nextUrl.searchParams.get('q')?.trim();
   if (!q) return NextResponse.json({ error: 'q requis' }, { status: 400 });
 
