@@ -892,6 +892,8 @@ export async function finishMissionDB(
 
   // Heure de fin = celle capturée sur place (hors-ligne) ou maintenant (en ligne).
   const now = at ? new Date(at) : new Date();
+  // Minutes réellement travaillées, quand il y a eu un pointage de début.
+  let cloturerArgent: number | null = null;
   const patch: Record<string, unknown> = { status: 'done', ended_at: now.toISOString() };
   if (m.started_at) {
     const mins = Math.max(0, Math.round((now.getTime() - new Date(m.started_at).getTime()) / 60000));
@@ -901,28 +903,24 @@ export async function finishMissionDB(
     const svc = md.service ?? 'cleaning';
     const planned = Number(md.mission_duration_minutes) || 0;
 
-    // PAIE CLEANER — HÔTEL / EHPAD UNIQUEMENT : payé au TEMPS RÉEL travaillé
-    // (pointage), même si < prévu. Ménage uniquement (la livraison = forfait).
-    // Les Airbnb gardent la paie au temps prévu (marge Airbnb fixe).
-    const rate = Number(md.cleaner_hourly_rate_snapshot) || 0;
-    if (md.source === 'hotel' && svc === 'cleaning' && rate > 0) {
-      patch.cleaner_gain = computeCleanerGain(rate, mins);
-    }
-
-    // FACTURATION HÔTEL / EHPAD (source 'hotel') : on facture le MAX(temps
-    // accordé, temps réel). Dépassement → on facture le réel ; plus rapide → on
-    // facture quand même le temps convenu (jamais moins). Airbnb NON concernés
-    // (prix fixe par ménage). Sans pointage → prix prévu conservé (ce bloc est
-    // dans `if (m.started_at)`).
-    const basePrice = Number(md.price) || 0;
-    if (md.source === 'hotel' && planned > 0 && basePrice > 0) {
-      patch.price = billableHotelPrice(basePrice, planned, mins);
-    }
+    // PAIE CLEANER et FACTURATION HÔTEL : pour une mission d'hôtel, la paie suit
+    // le TEMPS RÉEL pointé et la facture le MAX(temps accordé, temps réel). Deux
+    // calculs d'argent — ils se font désormais côté serveur (action
+    // 'close-money'), après l'enregistrement de la clôture. Le téléphone du
+    // cleaner n'écrit plus de montant.
+    cloturerArgent = mins;
   }
   if (coords) { patch.end_lat = coords.lat; patch.end_lng = coords.lng; }
 
   const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
   if (error) return { error: error.message };
+
+  // Les montants, par le serveur. Un échec ici ne doit pas remettre en cause la
+  // clôture elle-même : la mission est terminée, le cleaner est parti.
+  if (cloturerArgent != null) {
+    const res = await ecrireMission({ action: 'close-money', missionId, actualMinutes: cloturerArgent });
+    if (res.error) console.error('clôture financière:', res.error);
+  }
   await notifyMissionCompleted(missionId);
   return { error: null };
 }
@@ -1054,7 +1052,7 @@ export async function updateMissionDB(
 
   const isAdmin = actor.role === 'admin';
   // Rempli quand la durée change : la paie est alors recalculée côté serveur.
-  let recalculerPaie: { minutes: number; aptDefault: number | null } | null = null;
+  let recalculerPaie: { minutes?: number; aptDefault?: number | null; price?: number } | null = null;
   const patch: Record<string, unknown> = {};
 
   // Champs opérationnels — créateur et admin
@@ -1076,7 +1074,10 @@ export async function updateMissionDB(
       patch.cleaner_id = fields.cleanerId || null;
       patch.cleaner_name = fields.cleanerName ?? null;
     }
-    if (fields.price !== undefined) patch.price = fields.price;  // prix CLIENT uniquement
+    // Prix CLIENT : c'est de l'argent, il part par le serveur avec le reste.
+    if (fields.price !== undefined) {
+      recalculerPaie = { ...(recalculerPaie ?? {}), price: Number(fields.price) || 0 };
+    }
     if (fields.status !== undefined) patch.status = toDbMissionStatus(fields.status);
 
     // ── Recalcul du gain cleaner ──────────────────────────────────────────
@@ -1117,7 +1118,7 @@ export async function updateMissionDB(
       // Le gain n'est plus calculé ici : il l'est par le serveur, juste après
       // l'enregistrement (cf. `recalculerPaie` plus bas). Le navigateur n'écrit
       // pas d'argent.
-      recalculerPaie = { minutes, aptDefault: aptDefault ?? null };
+      recalculerPaie = { ...(recalculerPaie ?? {}), minutes, aptDefault: aptDefault ?? null };
     }
   }
 
@@ -1138,10 +1139,7 @@ export async function updateMissionDB(
   // La durée a changé → la paie est recalculée côté serveur, à partir du taux en
   // base. C'était le dernier endroit où le navigateur écrivait de l'argent.
   if (recalculerPaie) {
-    const res = await ecrireMission({
-      action: 'set-duration', missionId,
-      minutes: recalculerPaie.minutes, aptDefault: recalculerPaie.aptDefault,
-    });
+    const res = await ecrireMission({ action: 'set-duration', missionId, ...recalculerPaie });
     if (res.error) console.error('recalcul de la paie:', res.error);
   }
 

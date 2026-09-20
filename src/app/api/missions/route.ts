@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { computeMissionGain } from '@/lib/pay';
+import { computeMissionGain, computeCleanerGain, billableHotelPrice } from '@/lib/pay';
 import type { MissionService } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -30,12 +30,14 @@ export async function POST(req: NextRequest) {
   if (!session) return refus('Non authentifié.', 401);
 
   let b: {
-    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring' | 'set-duration' | 'generate-recurring';
+    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring' | 'set-duration' | 'generate-recurring' | 'close-money';
     missionId?: string; missionIds?: string[];
     cleanerId?: string; cleanerName?: string;
     recurringId?: string;
     minutes?: number;
     aptDefault?: number | null;
+    price?: number;
+    actualMinutes?: number;
   } = {};
   try { b = await req.json(); } catch { return refus('Requête invalide.', 400); }
 
@@ -159,20 +161,26 @@ export async function POST(req: NextRequest) {
       // d'une demande — les trois derniers endroits où le navigateur écrivait
       // encore de l'argent.
       if (!estAdmin) return refus('Réservé à l’administration.');
-      if (!b.missionId || typeof b.minutes !== 'number') return refus('Ménage ou durée manquant.', 400);
-      const minutes = Math.max(0, Math.round(b.minutes));
+      if (!b.missionId) return refus('Ménage manquant.', 400);
+      if (typeof b.minutes !== 'number' && typeof b.price !== 'number') {
+        return refus('Durée ou prix requis.', 400);
+      }
+      const minutes = typeof b.minutes === 'number' ? Math.max(0, Math.round(b.minutes)) : null;
 
       const { data: m } = await db.from('missions')
         .select('service, cleaner_id').eq('id', b.missionId).maybeSingle();
       if (!m) return refus('Mission introuvable.', 404);
 
-      const patch: Record<string, unknown> = {
-        mission_duration_minutes: minutes,
-        hours_worked: Math.round((minutes / 60) * 100) / 100,
-      };
+      const patch: Record<string, unknown> = {};
+      if (minutes != null) {
+        patch.mission_duration_minutes = minutes;
+        patch.hours_worked = Math.round((minutes / 60) * 100) / 100;
+      }
       if (b.aptDefault != null) patch.apartment_default_duration_snapshot = b.aptDefault;
+      // Le prix CLIENT (facturation) est lui aussi écrit ici : c'est de l'argent.
+      if (typeof b.price === 'number') patch.price = Math.max(0, b.price);
 
-      if (m.cleaner_id) {
+      if (minutes != null && m.cleaner_id) {
         const { data: cleaner } = await db.from('cleaners')
           .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).maybeSingle();
         const rate = Number(cleaner?.hourly_rate) || 0;
@@ -187,6 +195,41 @@ export async function POST(req: NextRequest) {
       const { error } = await db.from('missions').update(patch).eq('id', b.missionId);
       if (error) { console.error('missions/set-duration:', error.message); return refus('Enregistrement impossible.', 500); }
       return NextResponse.json({ ok: true, minutes });
+    }
+
+    case 'close-money': {
+      // Fin de mission : pour un hôtel, la paie suit le TEMPS RÉEL pointé et la
+      // facturation le MAX(temps accordé, temps réel). Deux calculs d'argent,
+      // faits ici — le téléphone du cleaner ne les écrit plus. Autorisé au
+      // cleaner assigné, puisque c'est lui qui clôture.
+      if (!b.missionId || typeof b.actualMinutes !== 'number') return refus('Ménage ou durée manquant.', 400);
+
+      const { data: m } = await db.from('missions')
+        .select('source, service, price, mission_duration_minutes, cleaner_hourly_rate_snapshot, cleaner_id, cleaners(user_id)')
+        .eq('id', b.missionId).maybeSingle();
+      if (!m) return refus('Mission introuvable.', 404);
+
+      const cleanerUserId = (m as { cleaners?: { user_id?: string } }).cleaners?.user_id ?? null;
+      if (!estAdmin && cleanerUserId !== session.id) return refus('Ce ménage ne vous est pas attribué.');
+
+      const mins = Math.max(0, Math.round(b.actualMinutes));
+      const svc = (m.service ?? 'cleaning') as string;
+      const planned = Number(m.mission_duration_minutes) || 0;
+      const patch: Record<string, unknown> = {};
+
+      const rate = Number(m.cleaner_hourly_rate_snapshot) || 0;
+      if (m.source === 'hotel' && svc === 'cleaning' && rate > 0) {
+        patch.cleaner_gain = computeCleanerGain(rate, mins);
+      }
+      const basePrice = Number(m.price) || 0;
+      if (m.source === 'hotel' && planned > 0 && basePrice > 0) {
+        patch.price = billableHotelPrice(basePrice, planned, mins);
+      }
+      if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true, rien: true });
+
+      const { error } = await db.from('missions').update(patch).eq('id', b.missionId);
+      if (error) { console.error('missions/close-money:', error.message); return refus('Enregistrement impossible.', 500); }
+      return NextResponse.json({ ok: true });
     }
 
     case 'generate-recurring': {
