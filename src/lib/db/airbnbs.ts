@@ -108,33 +108,33 @@ export async function recalcGroupMissionsDB(houseId: string): Promise<{ updated:
 // migration_contact_terrain.sql jouée. Tant qu'elle ne l'est pas, créer ou
 // modifier un logement doit continuer de marcher — sans le contact, pas d'échec.
 // On le détecte une fois (42703 : colonne inconnue) et on n'insiste plus.
-let contactColumns = true;
-const CONTACT_FIELDS = ['on_site_contact_name', 'on_site_contact_phone'];
-
-function withoutContact(row: Record<string, unknown>): Record<string, unknown> {
-  const out = { ...row };
-  for (const f of CONTACT_FIELDS) delete out[f];
-  return out;
+// ── Écritures : par le serveur ───────────────────────────────────────────────
+// Cette table porte l'adresse exacte, le code du portail, celui de la boîte à
+// clés et les directives d'entrée : de quoi entrer chez les clients de nos
+// clients. Les écritures passent par /api/airbnbs, qui vérifie la session et,
+// pour un partenaire, que le logement lui appartient — et qui ignore les
+// champs qui nous sont propres (prix facturé, temps de ménage, zone).
+async function ecrireLogement(payload: Record<string, unknown>): Promise<{ error: string | null; id?: string | null }> {
+  try {
+    const res = await fetch('/api/airbnbs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: String(data.error ?? 'Enregistrement impossible.') };
+    return { error: null, id: (data.id as string) ?? null };
+  } catch {
+    return { error: 'Connexion impossible. Réessayez.' };
+  }
 }
 
 async function insertApartment(row: Record<string, unknown>) {
-  if (contactColumns) {
-    const res = await supabase.from('airbnbs').insert(row).select('id').single();
-    if (!res.error || res.error.code !== '42703') return res;
-    console.warn('Contact du logement ignoré : migration_contact_terrain.sql pas encore jouée.');
-    contactColumns = false;
-  }
-  return supabase.from('airbnbs').insert(withoutContact(row)).select('id').single();
+  const res = await ecrireLogement({ action: 'create', row });
+  return { data: res.id ? { id: res.id } : null, error: res.error ? { message: res.error, code: '' } : null };
 }
 
 async function patchApartment(id: string, patch: Record<string, unknown>) {
-  if (contactColumns) {
-    const res = await supabase.from('airbnbs').update(patch).eq('id', id);
-    if (!res.error || res.error.code !== '42703') return res;
-    console.warn('Contact du logement ignoré : migration_contact_terrain.sql pas encore jouée.');
-    contactColumns = false;
-  }
-  return supabase.from('airbnbs').update(withoutContact(patch)).eq('id', id);
+  const res = await ecrireLogement({ action: 'update', id, patch });
+  return { error: res.error ? { message: res.error, code: '' } : null };
 }
 
 export async function createAirbnb(fields: {
@@ -225,20 +225,21 @@ export async function updateAirbnb(id: string, fields: {
 }
 
 export async function deleteAirbnb(id: string) {
-  const { error } = await supabase.from('airbnbs').delete().eq('id', id);
-  if (error) console.error('deleteAirbnb error:', error.code, error.message);
+  const res = await ecrireLogement({ action: 'delete', id });
+  if (res.error) console.error('deleteAirbnb error:', res.error);
 }
 
 export async function assignAirbnbCleaner(airbnbId: string, cleanerId: string | null) {
-  await supabase.from('airbnbs').update({ cleaner_id: cleanerId }).eq('id', airbnbId);
+  const res = await ecrireLogement({ action: 'assign-cleaner', id: airbnbId, cleanerId });
+  if (res.error) console.error('assignAirbnbCleaner error:', res.error);
 }
 
 // ── ZONES GÉOGRAPHIQUES ─────────────────────────────────────────────────────────
 
 // Enregistre les coordonnées géocodées d'un appartement.
 export async function setAirbnbCoordsDB(id: string, lat: number, lng: number) {
-  const { error } = await supabase.from('airbnbs').update({ latitude: lat, longitude: lng }).eq('id', id);
-  if (error) console.error('setAirbnbCoordsDB error:', error.code, error.message);
+  const res = await ecrireLogement({ action: 'set-coords', id, lat, lng });
+  if (res.error) console.error('setAirbnbCoordsDB error:', res.error);
 }
 
 // Recalcule les zones de tous les appartements géolocalisés (clustering 2 km)
@@ -253,14 +254,20 @@ export async function regenerateZonesDB(): Promise<{ zones: number; assigned: nu
   const assignment = clusterApartments(apts);
 
   // Écrit chaque appartement (ceux sans coords sont remis à zone nulle).
-  await Promise.all(apts.map(a => {
-    const z = assignment.get(a.id);
-    return supabase.from('airbnbs').update({
-      zone_id: z?.zoneId ?? null,
-      zone_color: z?.zoneColor ?? null,
-      zone_name: z?.zoneName ?? null,
-    }).eq('id', a.id);
-  }));
+  // En une seule requête serveur : la table n'est plus écrite par le navigateur.
+  const res = await ecrireLogement({
+    action: 'set-zones',
+    zones: apts.map(a => {
+      const z = assignment.get(a.id);
+      return {
+        id: a.id,
+        zoneId: z?.zoneId ?? null,
+        zoneColor: z?.zoneColor ?? null,
+        zoneName: z?.zoneName ?? null,
+      };
+    }),
+  });
+  if (res.error) console.error('regenerateZonesDB:', res.error);
 
   const zoneIds = new Set(Array.from(assignment.values()).map(z => z.zoneId));
   return { zones: zoneIds.size, assigned: assignment.size };
