@@ -4,7 +4,6 @@
 
 import { supabase } from '../supabase';
 import { trimTime } from './shared';
-import { normalizeIcalUrl } from '../icalUrl';
 import type { ReservationFeed, Reservation } from '../types';
 
 function rowToFeed(r: any): ReservationFeed {
@@ -73,51 +72,44 @@ export async function getAllReservationFeeds(): Promise<ReservationFeed[]> {
   return (data ?? []).map(rowToFeed);
 }
 
+// ── Écritures : par le serveur, jamais par le navigateur ─────────────────────
+// Cette table porte les clés API des conciergeries — une clé Hostify ouvre tout
+// le compte de gestion du client. Les écritures passent donc par
+// /api/reservations/feeds, qui vérifie la session et la propriété du logement ;
+// en base, le rôle public n'a plus le droit d'écrire ni de lire les colonnes
+// secrètes (cf. supabase/migration_feeds_verrouillage.sql).
+async function ecrireFlux(payload: Record<string, unknown>): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch('/api/reservations/feeds', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { error: res.ok ? null : (data.error ?? 'Enregistrement impossible.') };
+  } catch {
+    return { error: 'Connexion impossible. Réessayez.' };
+  }
+}
+
 /**
  * Un logement peut porter PLUSIEURS calendriers — c'est le cas normal du
  * propriétaire sans PMS qui loue sur Airbnb, Booking et Abritel à la fois. Les
- * départs des différents flux sont ensuite fusionnés en un seul ménage par date
- * (cf. le garde-fou anti-doublon de materializeMissions).
- *
- * Ce qu'on refuse, c'est le MÊME lien deux fois sur le même logement : la
- * déduplication des réservations se fait par flux, donc chaque séjour
- * apparaîtrait en double dans le tableau du partenaire. Le ménage resterait
- * unique, mais la liste mentirait — et c'est le genre de détail qui fait douter
- * de tout le reste.
+ * départs des différents flux sont fusionnés en un seul ménage par date.
+ * Ce qu'on refuse, c'est le MÊME lien deux fois sur le même logement (le
+ * contrôle est fait côté serveur, où il ne peut pas être contourné).
  */
 export async function createReservationFeed(fields: {
   airbnbId: string; partnerId?: string; platform: string; icalUrl: string; label?: string;
 }): Promise<{ error: string | null }> {
-  const url = normalizeIcalUrl(fields.icalUrl);
-
-  const { data: already } = await supabase.from('reservation_feeds')
-    .select('id, ical_url').eq('airbnb_id', fields.airbnbId);
-  if ((already ?? []).some(f => f.ical_url && normalizeIcalUrl(f.ical_url) === url)) {
-    return { error: 'Ce calendrier est déjà connecté à ce logement.' };
-  }
-
-  const { error } = await supabase.from('reservation_feeds').insert({
-    airbnb_id: fields.airbnbId,
-    partner_id: fields.partnerId || null,
-    platform: fields.platform,
-    ical_url: url,
-    label: fields.label || null,
+  return ecrireFlux({
+    action: 'create', airbnbId: fields.airbnbId,
+    platform: fields.platform, icalUrl: fields.icalUrl, label: fields.label ?? null,
   });
-  if (error) console.error('createReservationFeed:', error.code, error.message);
-  return { error: error?.message ?? null };
 }
 
 export async function updateReservationFeed(id: string, fields: {
   platform?: string; icalUrl?: string; label?: string; active?: boolean;
 }): Promise<{ error: string | null }> {
-  const patch: Record<string, unknown> = {};
-  if (fields.platform !== undefined) patch.platform = fields.platform;
-  if (fields.icalUrl !== undefined) patch.ical_url = fields.icalUrl.trim();
-  if (fields.label !== undefined) patch.label = fields.label || null;
-  if (fields.active !== undefined) patch.active = fields.active;
-  const { error } = await supabase.from('reservation_feeds').update(patch).eq('id', id);
-  if (error) console.error('updateReservationFeed:', error.code, error.message);
-  return { error: error?.message ?? null };
+  return ecrireFlux({ action: 'update', feedId: id, ...fields });
 }
 
 /**
@@ -134,9 +126,7 @@ export async function countReservationsForFeed(feedId: string): Promise<number> 
 }
 
 export async function deleteReservationFeed(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('reservation_feeds').delete().eq('id', id);
-  if (error) console.error('deleteReservationFeed:', error.code, error.message);
-  return { error: error?.message ?? null };
+  return ecrireFlux({ action: 'delete', feedId: id });
 }
 
 // Réservations d'un partenaire (tableau « Réservations synchronisées »).
