@@ -21,10 +21,28 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS partner_id UUID REFERENCES users(i
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS due_date DATE;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid_at  TIMESTAMPTZ;
 
+-- Le document lui-même. L'entreprise dépose le PDF — qu'il vienne de l'app ou
+-- du logiciel du comptable — et le client le télécharge depuis son espace.
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS file_url  TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS file_path TEXT;   -- chemin Storage, pour pouvoir remplacer
+
 CREATE INDEX IF NOT EXISTS idx_invoices_partner ON invoices(partner_id, created_at DESC);
 
 COMMENT ON COLUMN invoices.due_date IS
   'Echeance de paiement. Passee, la facture s''affiche « en retard » chez le client.';
+
+-- Le dossier des factures : PRIVE.
+-- Une facture porte une raison sociale, des montants, une adresse. Un dossier
+-- public la rendrait lisible par quiconque devine l'adresse du fichier — c'est
+-- exactement ce qu'on a passe la semaine a fermer ailleurs. Le serveur depose le
+-- fichier et delivre au client un lien SIGNE, valable quelques minutes, apres
+-- avoir verifie que la facture est bien la sienne.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('factures', 'factures', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+-- Aucune policy pour anon ni authenticated : seul service_role y accede, donc
+-- seules nos routes serveur.
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- VÉRIFICATION :
