@@ -9,6 +9,7 @@ export const DEFAULT_PROFIT_CONFIG: ProfitConfig = {
   productCostCents: 50, marginTarget: 0.30,
   fuelConsumption: 7, fuelPrice: 1.90, fuelRouteFactor: 1.4,
   cdiChargeRate: 0.45, vatRate: 0.20,
+  linenKitPrice: 0, linenKitCost: 0,
 };
 
 // ── Calculateur de prix rentable (hôtels / EHPAD : seul coût = le cleaner) ────────

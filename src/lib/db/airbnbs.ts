@@ -17,6 +17,10 @@ function rowToApartment(a: any): Apartment {
     keyboxCode: a.code_boite,
     onSiteContactName: a.on_site_contact_name ?? undefined,
     onSiteContactPhone: a.on_site_contact_phone ?? undefined,
+    lingeMode: a.linge_mode ?? 'aucun',
+    lingeKits: a.linge_kits != null ? Number(a.linge_kits) : undefined,
+    lingeForfait: a.linge_forfait != null ? Number(a.linge_forfait) : undefined,
+    lingeLibelle: a.linge_libelle ?? undefined,
     entryDirectives: a.entry_instructions ?? '',
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
@@ -47,6 +51,7 @@ function rowToApartment(a: any): Apartment {
 // contact de secours) ne sont plus lisibles avec la clé publique. Une étoile
 // les redemanderait et la requête entière serait refusée.
 const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, '
+  + 'linge_mode, linge_kits, linge_forfait, linge_libelle, '
   + 'cleaner_id, partner_id, partner_name, bedrooms, beds, sofa_beds, client_price, '
   + 'estimated_cleaning_minutes, latitude, longitude, zone_id, zone_color, zone_name, '
   + 'access_video_url, access_video_path, parent_airbnb_id, group_tiers, created_at, cleaners(name)';
@@ -181,6 +186,7 @@ export async function createAirbnb(fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
   onSiteContactName?: string; onSiteContactPhone?: string;
   entryDirectives: string; partnerId?: string; partnerName?: string;
+  lingeMode?: string; lingeKits?: number | null; lingeForfait?: number | null; lingeLibelle?: string | null;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
   structureType?: string; structureLabel?: string; productCostCents?: number;
@@ -212,6 +218,10 @@ export async function createAirbnb(fields: {
     group_tiers: fields.groupTiers ?? null,
     on_site_contact_name: fields.onSiteContactName || null,
     on_site_contact_phone: fields.onSiteContactPhone || null,
+    linge_mode: fields.lingeMode || 'aucun',
+    linge_kits: fields.lingeKits ?? null,
+    linge_forfait: fields.lingeForfait ?? null,
+    linge_libelle: fields.lingeLibelle || null,
   });
   if (error) { console.error('createAirbnb error:', error.code, error.message); return null; }
   return data?.id ?? null;
@@ -221,6 +231,7 @@ export async function updateAirbnb(id: string, fields: {
   name: string; address: string; portalCode?: string; keyboxCode?: string;
   onSiteContactName?: string; onSiteContactPhone?: string;
   entryDirectives: string; partnerName?: string;
+  lingeMode?: string; lingeKits?: number | null; lingeForfait?: number | null; lingeLibelle?: string | null;
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
   structureType?: string; structureLabel?: string; productCostCents?: number;
@@ -253,6 +264,12 @@ export async function updateAirbnb(id: string, fields: {
   if (fields.partnerName !== undefined) patch.partner_name = fields.partnerName || null;
   if (fields.onSiteContactName !== undefined) patch.on_site_contact_name = fields.onSiteContactName || null;
   if (fields.onSiteContactPhone !== undefined) patch.on_site_contact_phone = fields.onSiteContactPhone || null;
+  // Fourniture facturée : c'est du prix, donc réservé à l'admin (le formulaire
+  // partenaire ne l'envoie pas, et la route l'ignorerait de toute façon).
+  if (fields.lingeMode !== undefined) patch.linge_mode = fields.lingeMode || 'aucun';
+  if (fields.lingeKits !== undefined) patch.linge_kits = fields.lingeKits ?? null;
+  if (fields.lingeForfait !== undefined) patch.linge_forfait = fields.lingeForfait ?? null;
+  if (fields.lingeLibelle !== undefined) patch.linge_libelle = fields.lingeLibelle || null;
   if (fields.structureType !== undefined) patch.structure_type = fields.structureType;
   if (fields.structureLabel !== undefined) patch.structure_label = fields.structureLabel || null;
   // Rattachement et forfaits : réglages admin, même règle (écrits seulement si fournis).

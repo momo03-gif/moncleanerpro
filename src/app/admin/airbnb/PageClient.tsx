@@ -19,6 +19,7 @@ import { useFeedback } from '@/contexts/FeedbackContext';
 const emptyForm = {
   name: '', address: '', partnerName: '', portalCode: '', keyboxCode: '',
   onSiteContactName: '', onSiteContactPhone: '',
+  lingeMode: 'aucun', lingeKits: '', lingeForfait: '', lingeLibelle: '',
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
   structureType: 'apartment', structureLabel: '', productCostCents: '',
@@ -55,6 +56,10 @@ function aptToForm(a: Apartment): FormState {
     keyboxCode: a.keyboxCode ?? '',
     onSiteContactName: a.onSiteContactName ?? '',
     onSiteContactPhone: a.onSiteContactPhone ?? '',
+    lingeMode: a.lingeMode ?? 'aucun',
+    lingeKits: a.lingeKits != null ? String(a.lingeKits) : '',
+    lingeForfait: a.lingeForfait != null ? String(a.lingeForfait) : '',
+    lingeLibelle: a.lingeLibelle ?? '',
     entryDirectives: a.entryDirectives ?? '',
     bedrooms: a.bedrooms != null ? String(a.bedrooms) : '',
     beds: a.beds != null ? String(a.beds) : '',
@@ -175,6 +180,10 @@ export default function AirbnbPage() {
       keyboxCode: form.keyboxCode || undefined,
       onSiteContactName: form.onSiteContactName,
       onSiteContactPhone: form.onSiteContactPhone,
+      lingeMode: form.lingeMode,
+      lingeKits: form.lingeKits === '' ? null : Number(form.lingeKits) || 0,
+      lingeForfait: form.lingeForfait === '' ? null : Number(form.lingeForfait) || 0,
+      lingeLibelle: form.lingeLibelle,
       entryDirectives: form.entryDirectives,
       bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
       beds: form.beds ? Number(form.beds) : undefined,
@@ -287,6 +296,53 @@ export default function AirbnbPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
             ))}
+            {/* ── Fourniture de linge et consommables ─────────────────────────
+                Facturée À PART du ménage, toujours. Ce sont des biens : ils
+                n'ouvrent aucun droit au crédit d'impôt, et les mélanger au prix
+                du ménage gonflerait la base de l'avance immédiate URSSAF. Voir
+                src/lib/linge.ts. */}
+            <div className="md:col-span-2 rounded-xl border p-4" style={{ borderColor: '#E8E4DC', backgroundColor: '#FBFAF7' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>
+                Linge et consommables fournis
+              </label>
+              <p className="text-xs mb-3" style={{ color: '#7A7068' }}>
+                Facturés sur une ligne séparée du ménage. Le prix d’un kit se règle une
+                seule fois dans Tarification ; ici, on indique ce que demande CE logement.
+              </p>
+              <div className="grid md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Fourniture</label>
+                  <select value={form.lingeMode} onChange={e => setForm(p => ({ ...p, lingeMode: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}>
+                    <option value="aucun">Aucune — le client fournit</option>
+                    <option value="kit">Au kit</option>
+                    <option value="forfait">Forfait négocié</option>
+                  </select>
+                </div>
+                {form.lingeMode === 'kit' && (
+                  <div>
+                    <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Nombre de kits par ménage</label>
+                    <input value={form.lingeKits} onChange={e => setForm(p => ({ ...p, lingeKits: e.target.value }))}
+                      inputMode="numeric" placeholder="2" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+                  </div>
+                )}
+                {form.lingeMode === 'forfait' && (
+                  <div>
+                    <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Montant par ménage (€)</label>
+                    <input value={form.lingeForfait} onChange={e => setForm(p => ({ ...p, lingeForfait: e.target.value }))}
+                      inputMode="decimal" placeholder="12" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+                  </div>
+                )}
+                {form.lingeMode !== 'aucun' && (
+                  <div>
+                    <label className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Libellé sur la facture — optionnel</label>
+                    <input value={form.lingeLibelle} onChange={e => setForm(p => ({ ...p, lingeLibelle: e.target.value }))}
+                      placeholder="Linge et consommables" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle} />
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* ── Maison à plusieurs annonces ──────────────────────────────────
                 Une même maison peut être commercialisée en entier ET à la chambre
                 (ex. Anse : l'annonce maison + 3 chambres). Rattacher les chambres

@@ -22,6 +22,9 @@ export async function getProfitConfigDB(): Promise<ProfitConfig> {
     fuelRouteFactor: Number(data.fuel_route_factor) || 1.4,
     cdiChargeRate: data.cdi_charge_rate != null ? Number(data.cdi_charge_rate) : 0.45,
     vatRate: data.vat_rate != null ? Number(data.vat_rate) : 0.20,
+    // Linge : ce qu'un kit est facturé au client, et ce qu'il nous coûte.
+    linenKitPrice: data.linen_kit_price != null ? Number(data.linen_kit_price) : 0,
+    linenKitCost: data.linen_kit_cost != null ? Number(data.linen_kit_cost) : 0,
   };
 }
 
@@ -38,6 +41,8 @@ export async function saveProfitConfigDB(cfg: ProfitConfig): Promise<{ error: st
     fuel_route_factor: cfg.fuelRouteFactor,
     cdi_charge_rate: cfg.cdiChargeRate,
     vat_rate: cfg.vatRate,
+    linen_kit_price: cfg.linenKitPrice ?? 0,
+    linen_kit_cost: cfg.linenKitCost ?? 0,
   }, { onConflict: 'id' });
   return { error: error?.message ?? null };
 }

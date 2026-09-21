@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
     'client_price', 'estimated_cleaning_minutes', 'product_cost_cents',
     'zone_id', 'zone_color', 'zone_name', 'partner_id', 'partner_name',
     'parent_airbnb_id', 'group_tiers', 'cleaner_id',
+    // La fourniture facturée est un prix : un partenaire ne la fixe pas.
+    'linge_mode', 'linge_kits', 'linge_forfait', 'linge_libelle',
   ];
   function filtrer(champs: Record<string, unknown>): Record<string, unknown> {
     if (estAdmin) return champs;

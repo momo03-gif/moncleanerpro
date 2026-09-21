@@ -256,6 +256,13 @@ export interface Apartment {
   // marche toujours : propriétaire, conciergerie ou gardien — pas le voyageur.
   onSiteContactName?: string;
   onSiteContactPhone?: string;
+  // Fourniture de linge / consommables FACTURÉE au client. Toujours une ligne
+  // séparée du ménage : ce sont des biens, ils n'ouvrent aucun droit au crédit
+  // d'impôt (cf. lib/linge.ts).
+  lingeMode?: 'aucun' | 'kit' | 'forfait';
+  lingeKits?: number;
+  lingeForfait?: number;
+  lingeLibelle?: string;
   cleanerId?: string;
   cleanerName?: string;
   clientPrice?: number;
@@ -410,6 +417,10 @@ export interface ProfitConfig {
   fuelRouteFactor: number;    // distance route ≈ vol d'oiseau × facteur
   cdiChargeRate: number;      // charges patronales sur un CDI (0.45 = +45 %)
   vatRate: number;            // TVA pour le calcul TTC (0.20 = 20 %)
+  /** Prix d'un kit de linge facturé au client (€). */
+  linenKitPrice?: number;
+  /** Ce qu'un kit nous coûte (€) — pour que la marge reste vraie. */
+  linenKitCost?: number;
 }
 
 export type NotificationType =
