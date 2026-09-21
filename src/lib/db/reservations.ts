@@ -3,6 +3,7 @@
 // iCal et la création des missions se font côté serveur (routes API → service_role).
 
 import { supabase } from '../supabase';
+import { dedupeStays, doublonsSejours } from '../reservationDedupe';
 import { trimTime } from './shared';
 import type { ReservationFeed, Reservation } from '../types';
 
@@ -27,6 +28,11 @@ function rowToFeed(r: any): ReservationFeed {
   };
 }
 
+// Un même séjour peut arriver par deux calendriers du même logement (PMS +
+// ancien lien iCal, Airbnb + Booking sur la même annonce). La déduplication par
+// (feed_id, external_uid) ne voit pas ces jumeaux : ils viennent de flux
+// différents. On les réduit à l'affichage, sinon un seul voyageur qui s'en va
+// est compté deux fois. Voir lib/reservationDedupe.ts.
 function rowToReservation(r: any): Reservation {
   return {
     id: r.id,
@@ -147,7 +153,7 @@ export async function getReservationsForPartner(userId: string): Promise<Reserva
   const { data, error } = await supabase.from('reservations').select(RESERVATION_SELECT)
     .eq('partner_id', userId).order('check_out', { ascending: false });
   if (error) console.error('getReservationsForPartner:', error.code, error.message);
-  return (data ?? []).map(rowToReservation);
+  return dedupeStays((data ?? []).map(rowToReservation));
 }
 
 // Toutes les réservations (vue admin occupation).
@@ -155,5 +161,21 @@ export async function getAllReservations(): Promise<Reservation[]> {
   const { data, error } = await supabase.from('reservations').select(RESERVATION_SELECT)
     .order('check_out', { ascending: false });
   if (error) console.error('getAllReservations:', error.code, error.message);
-  return (data ?? []).map(rowToReservation);
+  return dedupeStays((data ?? []).map(rowToReservation));
+}
+
+/**
+ * Les séjours qu'un partenaire reçoit DEUX fois — deux calendriers du même
+ * logement qui décrivent les mêmes nuits.
+ *
+ * Les écrans dédoublonnent déjà à l'affichage, mais masquer un doublon ne
+ * débranche pas le flux en trop : tant qu'il est là, chaque import le
+ * recrée. On le remonte donc à l'exploitant pour qu'il choisisse le
+ * calendrier à garder.
+ */
+export async function getStayDuplicatesForPartner(userId: string) {
+  const { data, error } = await supabase.from('reservations').select(RESERVATION_SELECT)
+    .eq('partner_id', userId).gte('check_out', new Date().toISOString().slice(0, 10));
+  if (error) { console.error('getStayDuplicatesForPartner:', error.code, error.message); return []; }
+  return doublonsSejours((data ?? []).map(rowToReservation));
 }

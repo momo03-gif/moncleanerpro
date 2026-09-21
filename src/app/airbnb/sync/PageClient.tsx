@@ -7,6 +7,7 @@ import {
   getAirbnbsForPartner, getReservationFeedsForPartner, getReservationsForPartner,
   updateReservationFeed, deleteReservationFeed, countReservationsForFeed,
 } from '@/lib/db';
+import { getStayDuplicatesForPartner } from '@/lib/db/reservations';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, ReservationFeed, Reservation } from '@/lib/types';
 import { platformLabel } from '@/lib/pms/registry';
@@ -37,6 +38,10 @@ export default function AirbnbSyncPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [feeds, setFeeds] = useState<ReservationFeed[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  // Séjours reçus deux fois : deux calendriers d'un même logement qui décrivent
+  // les mêmes nuits. Les écrans les fusionnent déjà, mais tant que le flux en
+  // trop est branché, chaque import les recrée — donc on le dit.
+  const [doublons, setDoublons] = useState<{ apartmentName?: string; checkIn: string; checkOut: string; plateformes: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'feeds' | 'reservations'>('feeds');
   const [syncing, setSyncing] = useState(false);
@@ -72,12 +77,13 @@ export default function AirbnbSyncPage() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [a, f, r] = await Promise.all([
+    const [a, f, r, d] = await Promise.all([
       getAirbnbsForPartner(user.id),
       getReservationFeedsForPartner(user.id),
       getReservationsForPartner(user.id),
+      getStayDuplicatesForPartner(user.id),
     ]);
-    setApartments(a); setFeeds(f); setReservations(r);
+    setApartments(a); setFeeds(f); setReservations(r); setDoublons(d);
     setLoading(false);
   }, [user]);
 
@@ -176,6 +182,33 @@ export default function AirbnbSyncPage() {
           </p>
         );
       })()}
+
+      {/* Deux calendriers d'un même logement qui décrivent les mêmes nuits : le
+          séjour arrive deux fois, et les départs se comptent double. Les écrans
+          le corrigent à l'affichage, mais le flux en trop reste à débrancher. */}
+      {doublons.length > 0 && (
+        <div className="rounded-2xl border border-warn-line bg-warn-soft px-4 py-3 mb-4">
+          <p className="text-xs font-semibold text-warn">
+            {doublons.length} séjour{doublons.length > 1 ? 's' : ''} reçu{doublons.length > 1 ? 's' : ''} deux fois
+          </p>
+          <p className="text-[11px] mt-1 text-warn">
+            Deux calendriers décrivent les mêmes nuits pour un même logement. Vos
+            compteurs sont corrigés automatiquement, mais gardez un seul de ces
+            calendriers pour que la synchronisation cesse de les dédoubler.
+          </p>
+          <ul className="mt-2 space-y-0.5">
+            {doublons.slice(0, 5).map(d => (
+              <li key={`${d.apartmentName}-${d.checkIn}`} className="text-[11px] text-warn">
+                {d.apartmentName ?? 'Logement'} — du {d.checkIn} au {d.checkOut}
+                {d.plateformes.length > 1 && <> · {d.plateformes.join(' + ')}</>}
+              </li>
+            ))}
+            {doublons.length > 5 && (
+              <li className="text-[11px] text-warn">… et {doublons.length - 5} autre{doublons.length - 5 > 1 ? 's' : ''}</li>
+            )}
+          </ul>
+        </div>
+      )}
 
       <Segmented
         value={tab}
