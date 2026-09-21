@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession, exigerAdmin } from '@/lib/apiGuard';
 import { echeance } from '@/lib/factureStatut';
+import { ligneFourniture } from '@/lib/linge';
 
 export const runtime = 'nodejs';
 
@@ -77,7 +78,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  let b: { action?: string; id?: string; dueDate?: string; paid?: boolean; partnerId?: string } = {};
+  let b: {
+    action?: string; id?: string; dueDate?: string; paid?: boolean; partnerId?: string;
+    missionIds?: string[]; figer?: boolean;
+  } = {};
   try { b = await req.json(); } catch { return refus('Requête invalide.', 400); }
 
   const { refus: sansSession, appelant } = await exigerSession();
@@ -98,6 +102,76 @@ export async function POST(req: NextRequest) {
       const { data, error } = await db.storage.from(BUCKET).createSignedUrl(f.file_path as string, 300);
       if (error || !data) { console.error('factures/lien:', error?.message); return refus('Lien indisponible.', 500); }
       return NextResponse.json({ url: data.signedUrl });
+    }
+
+    // ── La fourniture de linge à facturer, ménage par ménage ────────────────
+    //
+    // Le prix d'un kit vit dans `profit_config`, fermée à la clé publique : le
+    // navigateur ne peut donc pas calculer cette ligne, et c'est très bien — il
+    // n'a pas à connaître ce que l'entreprise facture ses marchandises avant
+    // qu'on le lui dise.
+    //
+    // ORDRE DE PRIORITÉ : le snapshot posé sur la mission l'emporte sur la fiche
+    // du logement. Une facture déjà émise ne doit pas changer de montant parce
+    // qu'on a renégocié le forfait le mois suivant.
+    case 'fournitures': {
+      if (!estAdmin) return refus('Réservé à l’administration.');
+      const ids = (b.missionIds ?? []).filter(Boolean);
+      if (ids.length === 0) return NextResponse.json({ fournitures: {} });
+
+      // Tant que migration_linge.sql n'est pas passée, les colonnes n'existent
+      // pas : on rend une facture sans fourniture plutôt qu'une erreur.
+      const { data: missions, error: errM } = await db.from('missions')
+        .select('id, airbnb_id, supplies_amount, supplies_label, supplies_kits').in('id', ids);
+      if (errM) return NextResponse.json({ fournitures: {}, indisponible: true });
+
+      const { data: cfg } = await db.from('profit_config').select('linen_kit_price').limit(1).maybeSingle();
+      const prixKit = Number(cfg?.linen_kit_price) || 0;
+
+      const aptIds = Array.from(new Set((missions ?? []).map(m => m.airbnb_id).filter(Boolean)));
+      const { data: apts, error: errA } = aptIds.length > 0
+        ? await db.from('airbnbs')
+            .select('id, linge_mode, linge_kits, linge_forfait, linge_libelle').in('id', aptIds)
+        : { data: [], error: null };
+      if (errA) return NextResponse.json({ fournitures: {}, indisponible: true });
+      const parLogement = new Map((apts ?? []).map((a: any) => [a.id, a]));
+
+      const fournitures: Record<string, { montant: number; libelle: string; kits: number }> = {};
+      const aFiger: { id: string; montant: number; libelle: string; kits: number }[] = [];
+
+      for (const m of missions ?? []) {
+        const fige = Number(m.supplies_amount) || 0;
+        if (fige > 0) {
+          fournitures[m.id] = {
+            montant: fige,
+            libelle: (m.supplies_label as string) || 'Linge et consommables',
+            kits: Number(m.supplies_kits) || 0,
+          };
+          continue;
+        }
+        const apt: any = m.airbnb_id ? parLogement.get(m.airbnb_id) : null;
+        if (!apt) continue;
+        const l = ligneFourniture({
+          mode: apt.linge_mode ?? 'aucun', kits: apt.linge_kits,
+          forfait: apt.linge_forfait, libelle: apt.linge_libelle,
+        }, prixKit);
+        if (!l) continue;
+        fournitures[m.id] = l;
+        aFiger.push({ id: m.id, ...l });
+      }
+
+      // `figer` n'est demandé qu'au moment où la facture part : le montant
+      // devient celui qui a été facturé, et ne suit plus la fiche.
+      if (b.figer && aFiger.length > 0) {
+        for (const f of aFiger) {
+          const { error } = await db.from('missions').update({
+            supplies_amount: f.montant, supplies_label: f.libelle, supplies_kits: f.kits,
+          }).eq('id', f.id);
+          if (error) { console.error('factures/figer:', error.message); break; }
+        }
+      }
+
+      return NextResponse.json({ fournitures });
     }
 
     // ── Marquer payée, ou revenir en arrière ─────────────────────────────────

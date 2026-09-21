@@ -4,6 +4,7 @@ import type React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
+import { lignesFacture, totauxFacture, appliquerCorrections, type MenageAFacturer } from '@/lib/factureLignes';
 import { vueFacture } from '@/lib/factureStatut';
 import { inputStyle } from '@/lib/ui';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
@@ -36,6 +37,23 @@ const TYPE_LABEL = MISSION_TYPE_LABEL;
 
 function money(n: number) {
   return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// Demande au serveur la fourniture de chaque ménage. `figer` n'est vrai qu'au
+// moment où la facture part : le montant est alors écrit sur la mission et ne
+// suivra plus une renégociation ultérieure de la fiche du logement.
+async function chargerFournitures(
+  missionIds: string[], figer = false,
+): Promise<Record<string, { montant: number; libelle: string; kits: number }>> {
+  if (missionIds.length === 0) return {};
+  try {
+    const res = await fetch('/api/factures', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'fournitures', missionIds, figer }),
+    });
+    if (!res.ok) return {};
+    return (await res.json()).fournitures ?? {};
+  } catch { return {}; }
 }
 
 export default function FacturationPage() {
@@ -98,22 +116,49 @@ export default function FacturationPage() {
     [done, partner],
   );
 
-  function amountOf(m: Mission): number {
-    const v = amounts[m.id];
-    if (v !== undefined) return Number(v) || 0;
-    return m.price || 0;
-  }
-  const liveLines = selMissions.map(m => ({
-    id: m.id, date: m.date,
-    label: m.property || TYPE_LABEL[m.type] || 'Ménage',
-    type: m.type,
-    apartment: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
-    cleaner: m.cleanerName || '—',
-    duration: m.duration || 0,
-    unitPrice: amountOf(m),
-    amount: amountOf(m),
+  // ── Linge et consommables ─────────────────────────────────────────────────
+  // Le prix d'un kit vit dans profit_config, fermée au navigateur : c'est le
+  // serveur qui rend la fourniture de chaque ménage. On la demande dès que la
+  // sélection change, et on la FIGE au moment où la facture part.
+  const [fournitures, setFournitures] = useState<Record<string, { montant: number; libelle: string; kits: number }>>({});
+
+  const selIds = useMemo(() => selMissions.map(m => m.id).join(','), [selMissions]);
+  useEffect(() => {
+    const ids = selIds ? selIds.split(',') : [];
+    if (ids.length === 0) { setFournitures({}); return; }
+    let annule = false;
+    (async () => {
+      const f = await chargerFournitures(ids);
+      if (!annule) setFournitures(f);
+    })();
+    return () => { annule = true; };
+  }, [selIds]);
+
+  const menages: MenageAFacturer[] = appliquerCorrections(
+    selMissions.map(m => ({
+      id: m.id,
+      date: m.date,
+      logement: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
+      type: m.type,
+      cleaner: m.cleanerName || '—',
+      minutes: Math.round((m.duration || 0) * 60),
+      prix: m.price || 0,
+      fourniture: fournitures[m.id] ?? null,
+    })),
+    amounts,
+  );
+
+  // Une ligne de fourniture n'a pas d'`id` : InvoiceDoc ne la rend donc pas
+  // modifiable. Le linge se facture ce qu'il coûte, il ne se retouche pas.
+  const lignes = lignesFacture(menages);
+  const liveLines = lignes.map(l => ({
+    id: l.fourniture ? undefined : l.missionId,
+    date: l.date, label: l.label, type: l.type, apartment: l.apartment,
+    cleaner: l.cleaner, duration: l.duration,
+    unitPrice: l.unitPrice, amount: l.amount,
   }));
-  const total = liveLines.reduce((s, l) => s + l.amount, 0);
+  const totaux = totauxFacture(lignes);
+  const total = totaux.total;
   const partnerType = selMissions[0]?.source ?? 'airbnb';
 
   // Le libellé vient des missions, la fiche vient des comptes : on les relie par
@@ -211,6 +256,11 @@ export default function FacturationPage() {
   function sendWhatsApp() { window.open(`https://wa.me/?text=${encodeURIComponent(buildText())}`, '_blank'); }
 
   async function handleSaveInvoice() {
+    // On fige la fourniture au moment où la facture est archivée : ce qui a été
+    // facturé ne doit plus bouger si le forfait linge est renégocié plus tard.
+    const fige = await chargerFournitures(selMissions.map(m => m.id), true);
+    if (Object.keys(fige).length > 0) setFournitures(fige);
+
     const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, duration, unitPrice }) =>
       ({ date, label, type, amount, apartment, cleaner, duration, unitPrice }));
     const { saveInvoiceDB, getInvoicesDB } = await loadDb();
@@ -326,6 +376,24 @@ export default function FacturationPage() {
             </div>
             {partner && liveLines.length > 0 && (
               <div className="pt-1 space-y-3">
+                {/* Prestations et fournitures séparées : le crédit d'impôt ne
+                    porte que sur le ménage, jamais sur le linge. Le total dû
+                    reste la somme des deux. */}
+                {totaux.fournitures > 0 && (
+                  <div className="rounded-xl border px-4 py-3" style={{ borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
+                    <div className="flex items-center justify-between text-xs" style={{ color: '#7A7068' }}>
+                      <span>Prestations de ménage</span>
+                      <span className="font-semibold" style={{ color: '#1A1A1A' }}>{money(totaux.prestations)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1" style={{ color: '#7A7068' }}>
+                      <span>Linge et consommables</span>
+                      <span className="font-semibold" style={{ color: '#1A1A1A' }}>{money(totaux.fournitures)}</span>
+                    </div>
+                    <p className="text-[11px] mt-2" style={{ color: '#A8A09A' }}>
+                      Seules les prestations ouvrent droit au crédit d’impôt : le linge est une marchandise.
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 items-center">
                   <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Imprimer / PDF</button>
                   <button onClick={handleSaveInvoice} className="px-5 py-2.5 rounded-xl text-sm font-semibold border" style={{ borderColor: '#C9A84C', color: '#C9A84C' }}>Enregistrer</button>
