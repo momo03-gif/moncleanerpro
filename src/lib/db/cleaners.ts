@@ -4,6 +4,7 @@
 
 import { supabase } from '../supabase';
 import { postServer } from './shared';
+import { getServerDb } from '../serverDb';
 
 // ── Lecture : par le serveur ─────────────────────────────────────────────────
 // La table porte l'e-mail, le téléphone, le TAUX HORAIRE et le type de contrat
@@ -26,7 +27,26 @@ export interface CleanerRecord {
   created_at?: string | null;
 }
 
+// Toutes les colonnes, y compris la rémunération : réservées au serveur et à
+// l'admin (cf. /api/cleaners).
+const CLEANER_COLONNES = 'id, user_id, name, status, can_clean, can_deliver, formation_completee, '
+  + 'created_at, email, phone, hourly_rate, delivery_rate, employment_type, license_plate';
+
 async function lireCleaners(payload: Record<string, unknown>): Promise<CleanerRecord[]> {
+  // CÔTÉ SERVEUR (moteur RH, fiches de paie, crons) : on lit directement en
+  // service_role. Passer par la route serait une URL relative, qui n'existe pas
+  // hors navigateur — c'est ce qui vidait les salaires de la comptabilité.
+  if (typeof window === 'undefined') {
+    try {
+      const db = getServerDb();
+      let q = db.from('cleaners').select(CLEANER_COLONNES);
+      if (payload.activeOnly) q = q.eq('status', 'active');
+      const { data } = await q.order('created_at');
+      return (data ?? []) as unknown as CleanerRecord[];
+    } catch (e) { console.error('lireCleaners (serveur):', e); return []; }
+  }
+
+  // CÔTÉ NAVIGATEUR : par la route, qui décide de ce qu'on a le droit de voir.
   try {
     const res = await fetch('/api/cleaners', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -118,6 +138,12 @@ export async function updateCleanerPasswordDB(cleanerId: string, newPassword: st
 }
 
 export async function getCleanerByUserId(userId: string) {
+  // Côté serveur : lecture directe (une URL relative n'existe pas hors navigateur).
+  if (typeof window === 'undefined') {
+    const { data } = await getServerDb().from('cleaners')
+      .select(CLEANER_COLONNES).eq('user_id', userId).maybeSingle();
+    if (data) return data;
+  }
   // Sa propre fiche, complète : un cleaner a le droit de connaître son taux.
   try {
     const res = await fetch('/api/cleaners', {
