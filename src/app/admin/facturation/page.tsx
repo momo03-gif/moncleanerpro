@@ -4,6 +4,7 @@ import type React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
+import { vueFacture } from '@/lib/factureStatut';
 import { inputStyle } from '@/lib/ui';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
@@ -49,6 +50,9 @@ export default function FacturationPage() {
 
   const [tab, setTab] = useState<'new' | 'history'>('new');
   const [viewing, setViewing] = useState<InvoiceRecord | null>(null);
+  // Dépôt du PDF et règlement : une facture à la fois, avec son message d'erreur.
+  const [invoiceBusy, setInvoiceBusy] = useState<string | null>(null);
+  const [invoiceErr, setInvoiceErr] = useState('');
 
   const init = monthBounds();
   const [from, setFrom] = useState(init.from);
@@ -351,16 +355,68 @@ export default function FacturationPage() {
             </div>
           ) : (
             <div className="space-y-2 mb-6">
-              {invoices.map(inv => (
-                <button key={inv.id} onClick={() => setViewing(inv)} className="w-full text-left rounded-2xl border px-5 py-4 flex items-center gap-4 transition-all" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{inv.partnerLabel}</p>
-                    <p className="text-xs" style={{ color: '#A8A09A' }}>{inv.number} · {fmtDateFR(inv.periodFrom)} → {fmtDateFR(inv.periodTo)} · {inv.lines.length} mission{inv.lines.length > 1 ? 's' : ''}</p>
+              {invoiceErr && (
+                <p role="alert" className="text-xs px-4 py-2 rounded-lg" style={{ backgroundColor: '#B85A5015', color: '#B85A50' }}>{invoiceErr}</p>
+              )}
+              {invoices.map(inv => {
+                const v = vueFacture({ status: inv.status, dueDate: inv.dueDate, paidAt: inv.paidAt });
+                const rouge = v.couleur === 'rouge';
+                return (
+                <div key={inv.id} className="rounded-2xl border px-5 py-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+                  <button onClick={() => setViewing(inv)} className="w-full text-left flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{inv.partnerLabel}</p>
+                      <p className="text-xs" style={{ color: '#A8A09A' }}>{inv.number} · {fmtDateFR(inv.periodFrom)} → {fmtDateFR(inv.periodTo)}{inv.lines.length > 0 ? ` · ${inv.lines.length} mission${inv.lines.length > 1 ? 's' : ''}` : ''}</p>
+                    </div>
+                    {/* Même code couleur que chez le client : vert réglé, rouge dû. */}
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                      style={rouge ? { backgroundColor: '#B85A5015', color: '#B85A50' } : { backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+                      {v.libelle}
+                    </span>
+                    <span className="text-sm font-bold shrink-0" style={{ color: '#1A1A1A' }}>{inv.total.toFixed(2)} €</span>
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t" style={{ borderColor: '#F0EDE7' }}>
+                    {/* Déposer le PDF : celui de l'app, ou celui du comptable. */}
+                    <label className="text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer"
+                      style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+                      {inv.hasFile ? 'Remplacer le PDF' : 'Déposer le PDF'}
+                      <input type="file" accept="application/pdf" className="hidden"
+                        onChange={async e => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+                          setInvoiceBusy(inv.id);
+                          const { uploadInvoiceFileDB } = await loadDb();
+                          const res = await uploadInvoiceFileDB(inv.id, file);
+                          setInvoiceBusy(null);
+                          if (res.error) { setInvoiceErr(res.error); return; }
+                          setInvoiceErr(''); await loadAll();
+                        }} />
+                    </label>
+
+                    {inv.hasFile && <span className="text-[11px]" style={{ color: '#5A8A6A' }}>Document déposé — le client peut le télécharger</span>}
+
+                    <button
+                      onClick={async () => {
+                        setInvoiceBusy(inv.id);
+                        const { setInvoicePaidDB } = await loadDb();
+                        const res = await setInvoicePaidDB(inv.id, v.etat !== 'payee');
+                        setInvoiceBusy(null);
+                        if (res.error) { setInvoiceErr(res.error); return; }
+                        setInvoiceErr(''); await loadAll();
+                      }}
+                      disabled={invoiceBusy === inv.id}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg ml-auto disabled:opacity-50"
+                      style={v.etat === 'payee'
+                        ? { backgroundColor: '#F5F3EF', color: '#7A7068' }
+                        : { backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
+                      {invoiceBusy === inv.id ? '…' : v.etat === 'payee' ? 'Annuler le règlement' : 'Marquer payée'}
+                    </button>
                   </div>
-                  <span className="text-sm font-bold shrink-0" style={{ color: '#1A1A1A' }}>{inv.total.toFixed(2)} €</span>
-                  <span className="text-xs shrink-0" style={{ color: '#C9A84C' }}>Voir →</span>
-                </button>
-              ))}
+                </div>
+                );
+              })}
             </div>
           )
         )}

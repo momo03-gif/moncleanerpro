@@ -6,6 +6,7 @@ import { getBillingProfileDB, saveBillingProfileDB } from '@/lib/db/partners';
 import { Card, PageTitle, SectionTitle } from '@/components/ui';
 import Loading from '@/components/Loading';
 import DeleteAccountCard from '@/components/DeleteAccountCard';
+import PartnerInvoices from '@/components/PartnerInvoices';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Profil partenaire — informations de FACTURATION.
@@ -107,6 +108,12 @@ export default function PartnerProfileClient() {
           {busy ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </Card>
+
+      {/* Les factures : ce que le client vient chercher le plus souvent après
+          ses coordonnées. Vert = réglé, rouge = dû. */}
+      <div className="mt-6">
+        <PartnerInvoices />
+      </div>
 
       <div className="mt-6">
         <DeleteAccountCard />

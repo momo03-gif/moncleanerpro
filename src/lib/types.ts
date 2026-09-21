@@ -381,6 +381,11 @@ export interface InvoiceRecord {
   lines: InvoiceLine[];
   status: string;
   createdAt: string;
+  // Suivi du règlement et document déposé (cf. /api/factures).
+  dueDate?: string | null;
+  paidAt?: string | null;
+  hasFile?: boolean;
+  partnerId?: string | null;
 }
 
 // ── Intervention récurrente (ménage programmé à jours fixes) ─────────────────────
