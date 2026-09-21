@@ -172,6 +172,49 @@ export interface BillingProfile {
   email: string;
   phone: string;
   address: string;
+  /** SIRET du client — attendu sur une facture entre professionnels. */
+  siret: string;
+  /** TVA intracommunautaire — utile surtout pour un client hors de France. */
+  tvaIntracom: string;
+}
+
+/** Vue d'ensemble du compte, affichée en tête du profil. */
+export interface PartnerResume {
+  clientDepuis: string | null;
+  logements: number | null;
+  menagesMois: number | null;
+  menagesAVenir: number | null;
+  factures: number;
+  facturesImpayees: number;
+  facturesEnRetard: number;
+  soldeDu: number;
+  contrat: {
+    id: string; reference: string; version: number;
+    statut: string; dateEffet: string; accepteLe: string | null;
+  } | null;
+}
+
+export async function getPartnerResumeDB(userId?: string): Promise<PartnerResume | null> {
+  const q = new URLSearchParams({ op: 'resume' });
+  if (userId) q.set('userId', userId);
+  try { const d = await getServer(`/api/partners?${q.toString()}`); return d.resume ?? null; }
+  catch { return null; }
+}
+
+/**
+ * Change le mot de passe du compte connecté. L'ancien est exigé : c'est ce qui
+ * empêche un téléphone laissé déverrouillé de fermer le compte de son titulaire.
+ */
+export async function changePasswordDB(current: string, next: string): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch('/api/account/password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current, next }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: d.error ?? 'Modification impossible.' };
+    return { error: null };
+  } catch { return { error: 'Modification impossible pour le moment.' }; }
 }
 
 export async function getBillingProfileDB(userId?: string, kind?: 'hotel' | 'airbnb'): Promise<BillingProfile | null> {
@@ -188,11 +231,15 @@ export async function getBillingProfileDB(userId?: string, kind?: 'hotel' | 'air
  * pour le dire au partenaire plutôt que de lui laisser croire que c'est passé.
  */
 export async function saveBillingProfileDB(
-  fields: { name: string; email: string; phone: string; address: string; userId?: string; kind?: 'hotel' | 'airbnb' },
-): Promise<{ error: string | null; addressSkipped?: boolean }> {
+  fields: {
+    name: string; email: string; phone: string; address: string;
+    siret?: string; tvaIntracom?: string;
+    userId?: string; kind?: 'hotel' | 'airbnb';
+  },
+): Promise<{ error: string | null; addressSkipped?: boolean; colonnesIgnorees?: string[] }> {
   try {
     const d = await postServer('/api/partners', { op: 'updateBilling', ...fields });
-    return { error: null, addressSkipped: !!d?.addressSkipped };
+    return { error: null, addressSkipped: !!d?.addressSkipped, colonnesIgnorees: d?.colonnesIgnorees ?? [] };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Enregistrement impossible.' };
   }

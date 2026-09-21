@@ -180,13 +180,81 @@ export async function GET(req: Request) {
         return NextResponse.json({ profile: data ? {
           kind: 'hotel', name: data.hotel_name ?? '', email: data.email ?? '',
           phone: data.phone ?? '', address: data.address ?? '',
+          siret: data.siret ?? '', tvaIntracom: data.tva_intracom ?? '',
         } : null });
       }
       const { data } = await db.from('airbnb_partners').select('*').eq('user_id', target).single();
       return NextResponse.json({ profile: data ? {
         kind: 'airbnb', name: data.partner_name ?? '', email: data.email ?? '',
         phone: data.phone ?? '', address: data.address ?? '',
+        siret: data.siret ?? '', tvaIntracom: data.tva_intracom ?? '',
       } : null });
+    }
+    // ── Vue d'ensemble du compte, pour l'en-tête du profil ──────────────────
+    // Ce qu'un client veut voir en arrivant sur sa fiche : depuis quand il est
+    // chez nous, ce que nous entretenons pour lui, ce qu'il a consommé ce
+    // mois-ci, ce qu'il reste à régler. Quatre chiffres, une requête.
+    //
+    // Chaque lecture est isolée : une table absente ou une colonne pas encore
+    // migrée ne doit pas faire tomber tout l'écran de profil.
+    case 'resume': {
+      const target = url.searchParams.get('userId') || session.id;
+      if (!isAdmin && target !== session.id) return adminOnly();
+
+      const aujourdhui = new Date();
+      const debutMois = new Date(Date.UTC(aujourdhui.getUTCFullYear(), aujourdhui.getUTCMonth(), 1))
+        .toISOString().slice(0, 10);
+      const jour = aujourdhui.toISOString().slice(0, 10);
+
+      const compte = async (p: PromiseLike<{ count: number | null; error: unknown }>): Promise<number | null> => {
+        try { const { count, error } = await p; return error ? null : (count ?? 0); }
+        catch { return null; }
+      };
+
+      const [logements, menagesMois, aVenir, factures, contrat, utilisateur] = await Promise.all([
+        compte(db.from('airbnbs').select('id', { count: 'exact', head: true }).eq('partner_id', target)),
+        compte(db.from('missions').select('id', { count: 'exact', head: true })
+          .eq('partner_id', target).eq('status', 'done').gte('date', debutMois)),
+        compte(db.from('missions').select('id', { count: 'exact', head: true })
+          .eq('partner_id', target).gte('date', jour).not('status', 'in', '(done,cancelled)')),
+        (async () => {
+          try {
+            const { data } = await db.from('invoices')
+              .select('total, status, paid_at, due_date').eq('partner_id', target);
+            return data ?? [];
+          } catch { return []; }
+        })(),
+        (async () => {
+          try {
+            const { data } = await db.from('contrats')
+              .select('id, reference, version, statut, date_effet, accepte_le')
+              .eq('client_id', target).order('version', { ascending: false }).limit(1);
+            return data?.[0] ?? null;
+          } catch { return null; }
+        })(),
+        (async () => {
+          const { data } = await db.from('users').select('created_at, name, email').eq('id', target).maybeSingle();
+          return data ?? null;
+        })(),
+      ]);
+
+      const impayees = (factures as any[]).filter(f => f.status !== 'paid' && !f.paid_at);
+      const soldeDu = impayees.reduce((s, f) => s + (Number(f.total) || 0), 0);
+      const enRetard = impayees.filter(
+        f => f.due_date && String(f.due_date).slice(0, 10) < jour).length;
+
+      return NextResponse.json({ resume: {
+        clientDepuis: utilisateur?.created_at ?? null,
+        logements, menagesMois, menagesAVenir: aVenir,
+        factures: (factures as any[]).length,
+        facturesImpayees: impayees.length,
+        facturesEnRetard: enRetard,
+        soldeDu: Math.round(soldeDu * 100) / 100,
+        contrat: contrat ? {
+          id: contrat.id, reference: contrat.reference, version: contrat.version,
+          statut: contrat.statut, dateEffet: contrat.date_effet, accepteLe: contrat.accepte_le,
+        } : null,
+      } });
     }
     case 'partnerNames': {
       if (!isAdmin) return adminOnly();
@@ -279,9 +347,15 @@ export async function POST(req: Request) {
         const email = String(b.email ?? '').trim();
         const phone = String(b.phone ?? '').trim();
         const address = String(b.address ?? '').trim();
+        const siret = String(b.siret ?? '').replace(/\s+/g, '');
+        const tva = String(b.tvaIntracom ?? '').replace(/\s+/g, '').toUpperCase();
         // Le nom de la structure est ce qui s'imprime en tête de facture : une
         // facture adressée à « » n'est pas une facture.
         if (!name) return NextResponse.json({ error: 'Le nom de la structure est requis.' }, { status: 400 });
+        // Un SIRET faux est pire qu'un SIRET absent : il part sur une facture.
+        if (siret && !/^\d{14}$/.test(siret)) {
+          return NextResponse.json({ error: 'Le SIRET doit comporter 14 chiffres.' }, { status: 400 });
+        }
 
         const table = kind === 'hotel' ? 'hotels' : 'airbnb_partners';
         const patch: Record<string, unknown> = {
@@ -289,18 +363,32 @@ export async function POST(req: Request) {
           email: email || null,
           phone: phone || null,
           address: address || null,
+          siret: siret || null,
+          tva_intracom: tva || null,
         };
-        let { error } = await db.from(table).update(patch).eq('user_id', target);
-        // Tant que migration_partner_billing.sql n'est pas passée, `address`
-        // n'existe pas sur airbnb_partners : on enregistre le reste plutôt que
-        // de perdre toute la saisie du partenaire.
-        if (error && /address/.test(error.message)) {
-          delete patch.address;
+
+        // Une colonne peut manquer tant que sa migration n'est pas passée
+        // (`address` → migration_partner_billing, `siret`/`tva_intracom` →
+        // migration_profil_partenaire). Plutôt que de perdre TOUTE la saisie du
+        // client, on retire la colonne que Postgres signale et on réessaie, puis
+        // on lui dit précisément ce qui n'a pas été enregistré.
+        const ignorees: string[] = [];
+        let error: { message: string } | null = null;
+        for (let essai = 0; essai < 4; essai++) {
           ({ error } = await db.from(table).update(patch).eq('user_id', target));
-          if (!error) return NextResponse.json({ ok: true, addressSkipped: true });
+          if (!error) break;
+          const manquante = Object.keys(patch).find(
+            c => c !== 'hotel_name' && c !== 'partner_name' && error!.message.includes(c));
+          if (!manquante) break;
+          delete patch[manquante];
+          ignorees.push(manquante);
         }
         if (error) throw error;
-        return NextResponse.json({ ok: true });
+        return NextResponse.json({
+          ok: true,
+          addressSkipped: ignorees.includes('address'),
+          colonnesIgnorees: ignorees,
+        });
       }
       case 'refuseAirbnbPartner': {
         if (!isAdmin) return adminOnly();

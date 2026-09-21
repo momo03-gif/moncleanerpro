@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { vueFacture, resteADevoir } from '@/lib/factureStatut';
-import { Card, SectionTitle } from '@/components/ui';
+import { Badge, Card, SectionTitle } from '@/components/ui';
 import Icon from '@/components/Icon';
 
 // ── Les factures du client, dans son espace ──────────────────────────────────
@@ -112,12 +112,7 @@ export default function PartnerInvoices() {
                     </div>
 
                     {/* Vert = réglé, rouge = dû. Rien d'autre à décoder. */}
-                    <span className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                      style={rouge
-                        ? { backgroundColor: '#B85A5015', color: '#B85A50' }
-                        : { backgroundColor: '#5A8A6A15', color: '#5A8A6A' }}>
-                      {v.libelle}
-                    </span>
+                    <Badge tone={rouge ? 'danger' : 'success'}>{v.libelle}</Badge>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 mt-2">

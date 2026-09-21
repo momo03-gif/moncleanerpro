@@ -367,7 +367,7 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
   sites?: Apartment[];
   recentMissions?: Mission[];
 }) {
-  const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'password' | 'contrat'>('view');
   const [showDetail, setShowDetail] = useState(false);
   const [form, setForm] = useState({ name: account.name, email: account.email, phone: account.phone, address: account.address });
   const [password, setPassword] = useState('');
@@ -398,6 +398,40 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
     const res = await updateHotelClientTypeDB(account.id, ct);
     if (res.error) { setClientType(prev); flash(res.error); return; }
     onUpdate({ ...account, clientType: ct });
+  }
+
+  // ── Contrat de prestation ────────────────────────────────────────────────
+  // Le document est assemblé côté serveur à partir de ce qu'on a déjà : la
+  // fiche du client, ses logements, leurs prix, leur fourniture de linge. On
+  // ne ressaisit rien ici — sinon le contrat dirait autre chose que la facture.
+  const [dateEffet, setDateEffet] = useState(() => new Date().toISOString().slice(0, 10));
+  const [contrat, setContrat] = useState<{ reference: string; version: number; statut: string; accepte_le: string | null } | null>(null);
+  const [contratLu, setContratLu] = useState(false);
+
+  async function ouvrirContrat() {
+    setMode('contrat');
+    if (!account.userId || contratLu) return;
+    try {
+      const res = await fetch(`/api/contrats?clientId=${encodeURIComponent(account.userId)}`);
+      if (res.ok) { const { contrats } = await res.json(); setContrat((contrats ?? [])[0] ?? null); }
+    } catch { /* l'écran dira « aucun contrat » */ }
+    setContratLu(true);
+  }
+
+  async function etablirContrat() {
+    if (!account.userId) { flash('Ce partenaire n’a pas de compte connecté.'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/contrats', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generer', clientId: account.userId, dateEffet }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { flash(d.error ?? 'Création impossible.'); return; }
+      setContrat(d.contrat);
+      flash('Contrat proposé au client');
+    } catch { flash('Création impossible pour le moment.'); }
+    finally { setBusy(false); }
   }
 
   function flash(text: string) { setMsg(text); setTimeout(() => setMsg(m => (m === text ? null : m)), 1800); }
@@ -534,11 +568,39 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
         </div>
       )}
 
+      {mode === 'contrat' && (
+        <div className="mt-3 pt-3 border-t grid gap-2" style={{ borderColor: '#F2EFE9' }}>
+          <p className="text-xs" style={{ color: '#7A7068' }}>
+            {contrat
+              ? <>Contrat <span className="font-semibold" style={{ color: '#1A1A1A' }}>{contrat.reference}</span>
+                  {contrat.version > 1 ? ` v${contrat.version}` : ''} — {
+                    contrat.statut === 'accepte'
+                      ? `accepté le ${new Date(contrat.accepte_le ?? '').toLocaleDateString('fr-FR')}`
+                      : contrat.statut === 'propose' ? 'en attente d’acceptation' : contrat.statut
+                  }.</>
+              : <>Aucun contrat établi. Le document sera assemblé à partir de la fiche du client et de ses logements ({sites.length}).</>}
+          </p>
+          <p className="text-xs" style={{ color: '#A8A09A' }}>
+            Établir un nouveau contrat crée une version qui remplace la précédente : le client devra l’accepter à nouveau.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs" style={{ color: '#7A7068' }} htmlFor={`eff-${account.id}`}>Prise d’effet</label>
+            <input id={`eff-${account.id}`} type="date" value={dateEffet} onChange={e => setDateEffet(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+            <button disabled={busy} onClick={etablirContrat} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+              {contrat ? 'Établir une nouvelle version' : 'Établir et proposer'}
+            </button>
+            <button onClick={() => setMode('view')} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Fermer</button>
+          </div>
+        </div>
+      )}
+
       {mode === 'view' && (
         <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: '#F2EFE9' }}>
           <button onClick={() => setShowDetail(d => !d)} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: showDetail ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>Détail</button>
           <button onClick={() => setMode('edit')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Modifier</button>
           <button onClick={() => setMode('password')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Mot de passe</button>
+          <button onClick={ouvrirContrat} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Contrat</button>
           <button disabled={busy} onClick={toggleSuspend} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: suspended ? '#5A8A6A' : '#C48A2A' }}>
             {suspended ? 'Réactiver' : 'Suspendre'}
           </button>
