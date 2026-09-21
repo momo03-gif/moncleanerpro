@@ -99,9 +99,13 @@ export default function LogementDetailClient() {
   // Ménages récents (missions du logement), les plus récents d'abord.
   const recentMissions = [...missions].sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
 
-  // Activité du mois en cours (nb de ménages non annulés + coût estimé) pour ce logement.
+  // Activité du mois en cours (nb de ménages non annulés + coût estimé) pour ce
+  // logement. Les livraisons en sont exclues : elles ne sont pas facturées au
+  // client, et les compter gonflait le nombre de ménages du relevé envoyé au
+  // propriétaire. Elles restent listées plus bas, sous leur vrai nom.
   const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const monthMissions = missions.filter(m => m.date.startsWith(monthPrefix) && m.status !== 'cancelled');
+  const monthMissions = missions.filter(m =>
+    m.date.startsWith(monthPrefix) && m.status !== 'cancelled' && serviceParts(m.service).cleaning);
   const monthCost = Math.round(monthMissions.reduce((s, m) => s + (m.price || 0), 0));
 
   // Calendrier d'occupation du mois en cours.

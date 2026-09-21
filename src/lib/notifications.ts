@@ -48,12 +48,14 @@ interface MissionContext {
   createdBy: string | null;
   createdByRole: string | null;
   partnerId: string | null;
+  /** Le service rendu : une livraison ne s'annonce pas comme un ménage. */
+  service: string | null;
 }
 
 async function loadMissionContext(missionId: string): Promise<MissionContext | null> {
   const { data, error } = await supabase
     .from('missions')
-    .select('id, date_from, time_from, property_name, client_name, cleaner_id, cleaner_name, created_by, created_by_role, partner_id, airbnbs(name)')
+    .select('id, date_from, time_from, property_name, client_name, cleaner_id, cleaner_name, created_by, created_by_role, partner_id, service, airbnbs(name)')
     .eq('id', missionId)
     .single();
   if (error || !data) return null;
@@ -71,6 +73,7 @@ async function loadMissionContext(missionId: string): Promise<MissionContext | n
     cleanerUserId, cleanerName: data.cleaner_name ?? null,
     createdBy: data.created_by ?? null, createdByRole: data.created_by_role ?? null,
     partnerId: (data as { partner_id?: string | null }).partner_id ?? null,
+    service: (data as { service?: string | null }).service ?? null,
   };
 }
 
@@ -285,8 +288,17 @@ export async function notifyMissionCompleted(missionId: string) {
     // Message orienté « compte-rendu » : on l'invite à consulter photos + rapport.
     const partnerRecipient = ctx.partnerId ?? ctx.createdBy;
     if (partnerRecipient) {
-      const partnerMsg = `Ménage terminé à ${ctx.place}. Compte-rendu disponible : photos avant/après et rapport.`;
-      rows.push({ userId: partnerRecipient, role: 'partner', title: 'Ménage terminé — compte-rendu prêt', message: partnerMsg, type: 'mission_completed', missionId });
+      // Une livraison n'est pas un ménage : l'annoncer comme tel faisait croire
+      // au partenaire que son logement avait été nettoyé.
+      const livraison = ctx.service === 'delivery';
+      const partnerMsg = livraison
+        ? `Livraison effectuée à ${ctx.place}.`
+        : `Ménage terminé à ${ctx.place}. Compte-rendu disponible : photos avant/après et rapport.`;
+      rows.push({
+        userId: partnerRecipient, role: 'partner',
+        title: livraison ? 'Livraison effectuée' : 'Ménage terminé — compte-rendu prêt',
+        message: partnerMsg, type: 'mission_completed', missionId,
+      });
     }
     await dispatch(rows);
   } catch (e) { console.error('notifyMissionCompleted:', e); }

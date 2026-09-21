@@ -7,8 +7,15 @@
 // Convention d'occupation : un séjour occupe les nuits de checkIn (inclus) à
 // checkOut (exclu). Le jour du départ n'est donc PAS occupé — c'est le jour du
 // ménage, et éventuellement de l'arrivée suivante (turnover).
+//
+// UNE LIVRAISON N'EST PAS UN MÉNAGE, et ici l'erreur coûtait cher : une
+// livraison posée le jour d'un départ remplissait la case « ménage », et
+// `departuresWithoutCleaning` ne signalait plus le départ non couvert. La
+// conciergerie croyait son logement pris en charge alors que personne ne
+// venait le nettoyer. La livraison est donc marquée à part.
 
 import type { Apartment, Mission, Reservation } from './types';
+import { serviceParts } from './service';
 
 export interface CalendarCell {
   day: string;             // YYYY-MM-DD
@@ -22,6 +29,7 @@ export interface CalendarCell {
   missionStatus?: string;
   missionTime?: string;    // heure prévue du ménage
   cleanerName?: string;    // intervenant assigné (vide = pas encore assigné)
+  delivery?: boolean;      // une livraison est prévue ce jour (jamais un ménage)
 }
 
 export interface CalendarRow {
@@ -59,12 +67,15 @@ export function buildCalendar(
   return apartments.map(apt => {
     const stays = confirmed.filter(r => r.airbnbId === apt.id);
     const aptMissions = missions.filter(m => m.airbnbId === apt.id && m.status !== 'cancelled');
+    // La case « ménage » ne retient que les interventions qui nettoient.
+    const aptMenages = aptMissions.filter(m => serviceParts(m.service).cleaning);
+    const aptLivraisons = aptMissions.filter(m => !serviceParts(m.service).cleaning && serviceParts(m.service).delivery);
 
     const cells = days.map<CalendarCell>(day => {
       const arrivalStay = stays.find(r => r.checkIn === day);
       const departureStay = stays.find(r => r.checkOut === day);
       const occupied = stays.some(r => r.checkIn <= day && r.checkOut > day);
-      const mission = aptMissions.find(m => m.date === day);
+      const mission = aptMenages.find(m => m.date === day);
       return {
         day,
         occupied,
@@ -77,6 +88,7 @@ export function buildCalendar(
         missionStatus: mission?.status,
         missionTime: mission?.time || undefined,
         cleanerName: mission?.cleanerName || undefined,
+        delivery: aptLivraisons.some(m => m.date === day) || undefined,
       };
     });
 
@@ -86,7 +98,7 @@ export function buildCalendar(
 
 /** Compteurs d'un jour, toutes lignes confondues (bandeau de résumé). */
 export function daySummary(rows: CalendarRow[], day: string) {
-  let arrivals = 0, departures = 0, turnovers = 0, cleanings = 0, cleaningsDone = 0;
+  let arrivals = 0, departures = 0, turnovers = 0, cleanings = 0, cleaningsDone = 0, deliveries = 0;
   for (const row of rows) {
     const cell = row.cells.find(c => c.day === day);
     if (!cell) continue;
@@ -97,8 +109,9 @@ export function daySummary(rows: CalendarRow[], day: string) {
       cleanings++;
       if (cell.missionStatus === 'completed') cleaningsDone++;
     }
+    if (cell.delivery) deliveries++;
   }
-  return { arrivals, departures, turnovers, cleanings, cleaningsDone };
+  return { arrivals, departures, turnovers, cleanings, cleaningsDone, deliveries };
 }
 
 /** Départs sans ménage prévu sur la période — le trou qui coûte cher. */

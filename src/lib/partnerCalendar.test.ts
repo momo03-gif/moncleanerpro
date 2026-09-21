@@ -104,7 +104,7 @@ describe('daySummary — compteurs du jour', () => {
       '2026-08-15', 1,
     );
     expect(daySummary(rows, '2026-08-15')).toEqual({
-      arrivals: 2, departures: 1, turnovers: 1, cleanings: 1, cleaningsDone: 1,
+      arrivals: 2, departures: 1, turnovers: 1, cleanings: 1, cleaningsDone: 1, deliveries: 0,
     });
   });
 });
@@ -126,5 +126,44 @@ describe('departuresWithoutCleaning — le trou qui coûte cher', () => {
       [cleaning('a1', '2026-08-15')], '2026-08-14', 3,
     );
     expect(departuresWithoutCleaning(rows)).toEqual([]);
+  });
+});
+
+describe('Une livraison ne remplit pas la case ménage', () => {
+  const apartments = [apt('a1', 'T2 Croix-Rousse')];
+  const livraison = (airbnbId: string, date: string): Mission =>
+    ({ id: `l-${airbnbId}-${date}`, airbnbId, date, status: 'pending', service: 'delivery',
+       property: '', address: '', time: '09:00', duration: 20, price: 0, type: 'regular' } as Mission);
+
+  it('signale toujours le départ non couvert quand seule une livraison est prévue', () => {
+    // C'est le vrai danger : la conciergerie croyait son départ pris en charge
+    // alors que personne ne venait nettoyer.
+    const rows = buildCalendar(apartments,
+      [stay('a1', '2026-08-10', '2026-08-14')], [livraison('a1', '2026-08-14')],
+      '2026-08-14', 1);
+    expect(rows[0].cells[0].missionId).toBeUndefined();
+    expect(departuresWithoutCleaning(rows)).toEqual([
+      { apartmentName: 'T2 Croix-Rousse', day: '2026-08-14' },
+    ]);
+  });
+
+  it('marque quand même la livraison, pour qu’elle reste visible', () => {
+    const rows = buildCalendar(apartments, [], [livraison('a1', '2026-08-14')], '2026-08-14', 1);
+    expect(rows[0].cells[0].delivery).toBe(true);
+  });
+
+  it('compte les livraisons à part dans le résumé du jour', () => {
+    const rows = buildCalendar(apartments, [],
+      [cleaning('a1', '2026-08-14'), livraison('a1', '2026-08-14')], '2026-08-14', 1);
+    const s = daySummary(rows, '2026-08-14');
+    expect(s.cleanings).toBe(1);
+    expect(s.deliveries).toBe(1);
+  });
+
+  it('garde « ménage + livraison » du côté des ménages', () => {
+    const mixte = { ...cleaning('a1', '2026-08-14'), service: 'cleaning_delivery' } as Mission;
+    const rows = buildCalendar(apartments, [], [mixte], '2026-08-14', 1);
+    expect(rows[0].cells[0].missionId).toBe(mixte.id);
+    expect(rows[0].cells[0].delivery).toBeUndefined();
   });
 });

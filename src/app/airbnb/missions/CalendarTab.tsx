@@ -116,6 +116,9 @@ export default function CalendarTab({ apartments, reservations, missions }: {
             <span><span className="font-bold text-ink">{summary.departures}</span> départ{summary.departures > 1 ? 's' : ''}</span>
             {summary.turnovers > 0 && <span className="font-semibold text-danger">{summary.turnovers} turnover{summary.turnovers > 1 ? 's' : ''}</span>}
             <span><span className="font-bold text-ink">{summary.cleaningsDone}/{summary.cleanings}</span> ménage{summary.cleanings > 1 ? 's' : ''}</span>
+            {summary.deliveries > 0 && (
+              <span><span className="font-bold text-ink">{summary.deliveries}</span> livraison{summary.deliveries > 1 ? 's' : ''}</span>
+            )}
           </div>
         </Card>
       )}
@@ -220,6 +223,8 @@ export default function CalendarTab({ apartments, reservations, missions }: {
                         <span className="text-[10px] leading-tight px-1 py-0.5 rounded border border-dashed border-danger text-danger font-semibold">
                           ménage manquant
                         </span>
+                      ) : cell.delivery ? (
+                        <span className="text-[10px] leading-tight text-muted">livraison</span>
                       ) : !cell.arrival && cell.occupied ? (
                         <span className="text-[10px] leading-tight text-faint">occupé</span>
                       ) : null}

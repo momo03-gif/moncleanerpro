@@ -70,16 +70,52 @@ describe('apartmentStats — les chiffres du mois par logement', () => {
 describe('totalStats — le cumul tous logements', () => {
   it('additionne et pondère la note par le nombre de ménages notés', () => {
     const rows = [
-      { apartmentId: 'a1', apartmentName: 'A', cleanings: 10, cost: 600, turnovers: 4, avgRating: 5, ratedCount: 8, openRepairs: 0 },
-      { apartmentId: 'a2', apartmentName: 'B', cleanings: 2, cost: 120, turnovers: 1, avgRating: 3, ratedCount: 2, openRepairs: 1 },
+      { apartmentId: 'a1', apartmentName: 'A', cleanings: 10, cost: 600, deliveries: 0, turnovers: 4, avgRating: 5, ratedCount: 8, openRepairs: 0 },
+      { apartmentId: 'a2', apartmentName: 'B', cleanings: 2, cost: 120, deliveries: 3, turnovers: 1, avgRating: 3, ratedCount: 2, openRepairs: 1 },
     ];
-    expect(totalStats(rows)).toMatchObject({ cleanings: 12, cost: 720, turnovers: 5, openRepairs: 1, avgRating: 4.6 });
+    expect(totalStats(rows)).toMatchObject({ cleanings: 12, cost: 720, deliveries: 3, turnovers: 5, openRepairs: 1, avgRating: 4.6 });
   });
 
   it('reste vide quand aucun ménage n’a été noté', () => {
     const total = totalStats([
-      { apartmentId: 'a1', apartmentName: 'A', cleanings: 0, cost: 0, turnovers: 0, avgRating: null, ratedCount: 0, openRepairs: 0 },
+      { apartmentId: 'a1', apartmentName: 'A', cleanings: 0, cost: 0, deliveries: 0, turnovers: 0, avgRating: null, ratedCount: 0, openRepairs: 0 },
     ]);
     expect(total.avgRating).toBeNull();
+  });
+});
+
+describe('Une livraison n’est pas un ménage', () => {
+  const apartments = [apt('a1', 'T2')];
+
+  it('ne compte pas une livraison dans les ménages du mois', () => {
+    // Une livraison a bien eu lieu dans le logement, mais elle ne remplace
+    // aucun passage de ménage et n'est jamais facturée au client.
+    const rows = apartmentStats(apartments, [
+      done('a1', '2026-08-03'),
+      done('a1', '2026-08-04', { service: 'delivery', price: 0 }),
+    ], [], '2026-08');
+    expect(rows[0].cleanings).toBe(1);
+    expect(rows[0].deliveries).toBe(1);
+  });
+
+  it('une mission « ménage + livraison » reste un ménage', () => {
+    const rows = apartmentStats(apartments,
+      [done('a1', '2026-08-03', { service: 'cleaning_delivery' })], [], '2026-08');
+    expect(rows[0].cleanings).toBe(1);
+    expect(rows[0].deliveries).toBe(0);
+  });
+
+  it('n’ajoute pas une livraison au coût du mois', () => {
+    const rows = apartmentStats(apartments, [
+      done('a1', '2026-08-03', { price: 60 }),
+      done('a1', '2026-08-04', { service: 'delivery', price: 25 }),
+    ], [], '2026-08');
+    expect(rows[0].cost).toBe(60);
+  });
+
+  it('ne compte pas une livraison comme un turnover absorbé', () => {
+    const rows = apartmentStats(apartments,
+      [done('a1', '2026-08-03', { service: 'delivery', nextArrival: '2026-08-03' })], [], '2026-08');
+    expect(rows[0].turnovers).toBe(0);
   });
 });

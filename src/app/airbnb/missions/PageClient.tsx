@@ -12,6 +12,7 @@ import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
 import { MISSION_STATUS_CFG } from '@/lib/labels';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
+import { serviceParts, serviceLabel } from '@/lib/service';
 import CalendarTab from './CalendarTab';
 import Icon from '@/components/Icon';
 import MissionReport from '@/components/MissionReport';
@@ -55,7 +56,10 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
   const { confirm, toast } = useFeedback();
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   const locked = isMissionLocked(mission.status);
-  const readiness = missionReadiness(mission);
+  // Une livraison n'est pas un ménage : elle ne prépare pas le logement pour
+  // le voyageur suivant, et l'annoncer comme un départ à couvrir est faux.
+  const livraison = !serviceParts(mission.service).cleaning && serviceParts(mission.service).delivery;
+  const readiness = livraison ? null : missionReadiness(mission);
   const [editOpen, setEditOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -115,7 +119,10 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
     <Card className="overflow-hidden">
       <div className="px-5 py-3.5 flex items-center justify-between gap-2 border-b border-hairline">
         <span className="text-sm font-semibold truncate text-ink">{mission.property || 'Mission'}</span>
-        <Badge style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</Badge>
+        <span className="flex items-center gap-1.5 shrink-0">
+          {livraison && <Badge tone="neutral">{serviceLabel(mission.service)}</Badge>}
+          <Badge style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</Badge>
+        </span>
       </div>
 
       <div className="px-5 py-4">
@@ -126,7 +133,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
         )}
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <span>{formatDate(mission.date)}</span>
-          {mission.time && <span>Départ {formatHour(mission.time)}</span>}
+          {mission.time && <span>{livraison ? formatHour(mission.time) : `Départ ${formatHour(mission.time)}`}</span>}
         </div>
         {/* Préparation du logement : remplace l'ancien bandeau « arrivée le jour
             même » — il dit en plus si c'est prêt, et avec quelle marge. */}
@@ -578,10 +585,15 @@ export default function AirbnbMissionsPage() {
               ).map(([day, dayMissions]) => {
                 const turnover = dayMissions.some(m => m.nextArrival && m.nextArrival === m.date);
                 const isToday = day === today;
+                const nbMenages = dayMissions.filter(m => serviceParts(m.service).cleaning).length;
+                const nbLivraisons = dayMissions.length - nbMenages;
                 return (
                   <div key={day}>
                     <DayHeading day={day} isToday={isToday}>
-                      <span className="text-xs text-muted">· {dayMissions.length} ménage{dayMissions.length > 1 ? 's' : ''}</span>
+                      <span className="text-xs text-muted">
+                        {nbMenages > 0 && <>· {nbMenages} ménage{nbMenages > 1 ? 's' : ''}</>}
+                        {nbLivraisons > 0 && <> · {nbLivraisons} livraison{nbLivraisons > 1 ? 's' : ''}</>}
+                      </span>
                       {turnover && <Badge tone="danger" size="sm">turnover</Badge>}
                     </DayHeading>
                     <div className="space-y-3">

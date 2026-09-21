@@ -16,6 +16,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { getAirbnbsForPartner, getMissionsForPartnerDB } from '@/lib/db';
+import { serviceParts } from '@/lib/service';
 import { getMissionPhotosForMissionsDB, PHOTO_RETENTION_DAYS } from '@/lib/missionPhotos';
 import { getRepairsForApartmentDB } from '@/lib/repairs';
 import { downloadElementPdf } from '@/lib/pdf';
@@ -67,8 +68,10 @@ export default function OwnerReportClient() {
   useEffect(() => { load(); }, [load]);
 
   // Ménages du mois sélectionné, terminés, du plus ancien au plus récent.
+  // Ce relevé part au PROPRIÉTAIRE du logement : il ne doit annoncer que des
+  // ménages. Une livraison n'en est pas un, et n'est pas facturée.
   const monthMissions = missions
-    .filter(m => m.date.startsWith(month) && m.status === 'completed')
+    .filter(m => m.date.startsWith(month) && m.status === 'completed' && serviceParts(m.service).cleaning)
     .sort((a, b) => a.date.localeCompare(b.date));
 
   // Les photos ne sont chargées que pour le mois affiché (et sont purgées après

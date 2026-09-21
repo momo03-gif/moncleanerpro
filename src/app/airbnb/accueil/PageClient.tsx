@@ -19,6 +19,7 @@ import type { Apartment, Reservation, Mission, ReservationFeed, Repair } from '@
 import { missionStatusCfg, missionStatusLabel } from '@/lib/labels';
 import { formatHour } from '@/lib/format';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
+import { serviceParts } from '@/lib/service';
 import Icon, { type IconName } from '@/components/Icon';
 import Loading from '@/components/Loading';
 import { AlertRow, Badge, Card, PageTitle, SectionTitle, Tile } from '@/components/ui';
@@ -96,8 +97,15 @@ export default function PartnerHomeClient() {
   const arrivalsByDay = new Set(confirmed.map(r => r.checkIn));
   const isTurnover = (checkOut: string) => arrivalsByDay.has(checkOut);
 
-  // Ménages du jour (missions datées aujourd'hui, non annulées).
-  const missionsToday = missions
+  // Ce tableau de bord parle de MÉNAGES. Une livraison se produit bien dans le
+  // logement, mais elle n'est pas facturée au client et ne couvre aucun départ :
+  // la compter ici annonçait des interventions qui n'en étaient pas, et faisait
+  // croire qu'une journée était prise en charge. Elle reste visible dans le
+  // Planning et sur la fiche du logement, sous son vrai nom.
+  const menages = missions.filter(m => serviceParts(m.service).cleaning);
+
+  // Ménages du jour (datés aujourd'hui, non annulés).
+  const missionsToday = menages
     .filter(m => m.date === t && m.status !== 'cancelled')
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   const doneToday = missionsToday.filter(m => m.status === 'completed').length;
@@ -119,7 +127,7 @@ export default function PartnerHomeClient() {
   const syncError = feeds.some(f => f.lastSyncStatus === 'error');
 
   // ── Chiffres clés ─────────────────────────────────────────────────────
-  const pendingCount = missions.filter(m => m.status === 'pending' && m.date >= t).length;
+  const pendingCount = menages.filter(m => m.status === 'pending' && m.date >= t).length;
 
   // Vue « property management » du jour : arrivées, départs, occupation.
   const arrivalsToday = confirmed.filter(r => r.checkIn === t).length;
@@ -129,7 +137,7 @@ export default function PartnerHomeClient() {
   const freeToday = apartments.length - occupiedToday;
 
   // Activité de la semaine (7 jours glissants) : nb de ménages + coût estimé.
-  const weekMissions = missions.filter(m => m.status !== 'cancelled' && m.date >= t && m.date < in7);
+  const weekMissions = menages.filter(m => m.status !== 'cancelled' && m.date >= t && m.date < in7);
   const weekCost = Math.round(weekMissions.reduce((s, m) => s + (m.price || 0), 0));
   const weekDone = weekMissions.filter(m => m.status === 'completed').length;
 
@@ -147,12 +155,12 @@ export default function PartnerHomeClient() {
   // ── Aperçu 7 prochains jours (nb de ménages non annulés par jour) ──────
   const week = Array.from({ length: 7 }, (_, i) => {
     const day = addDaysStr(i);
-    const count = missions.filter(m => m.date === day && m.status !== 'cancelled').length;
+    const count = menages.filter(m => m.date === day && m.status !== 'cancelled').length;
     const turnover = confirmed.some(r => r.checkOut === day && isTurnover(r.checkOut));
     return { day, count, turnover };
   });
 
-  const upcomingMissions = missions
+  const upcomingMissions = menages
     .filter(m => !DONE(m.status) && m.date > t && m.date <= in7)
     .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
 
