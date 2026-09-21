@@ -23,3 +23,36 @@ describe('occurrenceDates — dates d’un planning récurrent', () => {
     expect(occurrenceDates('2026-06-10', '2026-06-08', [1])).toEqual([]);
   });
 });
+
+// ── Fréquences d'un abonnement « sans engagement » ──────────────────────────
+// Une offre grand public ne se vend pas en « tous les mardis » mais en
+// hebdomadaire / une semaine sur deux / une fois par mois.
+describe('occurrenceDates — fréquence d’abonnement', () => {
+  it('chaque semaine, comme avant', () => {
+    // 2026-10-05 est un lundi.
+    expect(occurrenceDates('2026-10-05', '2026-11-02', [1], 1))
+      .toEqual(['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02']);
+  });
+
+  it('une semaine sur deux, en partant de la semaine de souscription', () => {
+    expect(occurrenceDates('2026-10-05', '2026-11-02', [1], 2))
+      .toEqual(['2026-10-05', '2026-10-19', '2026-11-02']);
+  });
+
+  it('une fois par mois (toutes les quatre semaines)', () => {
+    expect(occurrenceDates('2026-10-05', '2026-12-07', [1], 4))
+      .toEqual(['2026-10-05', '2026-11-02', '2026-11-30']);
+  });
+
+  it('garde la parité même si le planning démarre un dimanche', () => {
+    // Le calage se fait sur le lundi de la semaine : sans lui, un départ le
+    // dimanche ferait basculer la parité dès le lendemain.
+    const d = occurrenceDates('2026-10-04', '2026-10-31', [2], 2);
+    expect(d).toEqual(['2026-10-06', '2026-10-20']);
+  });
+
+  it('sans intervalle précisé, se comporte comme avant', () => {
+    expect(occurrenceDates('2026-10-05', '2026-10-19', [1]))
+      .toEqual(['2026-10-05', '2026-10-12', '2026-10-19']);
+  });
+});
