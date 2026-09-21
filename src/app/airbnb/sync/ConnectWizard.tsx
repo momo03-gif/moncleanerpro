@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { createAirbnb, createReservationFeed } from '@/lib/db';
 import { detectPlatform, isLikelyIcalUrl, normalizeIcalUrl, PLATFORM_HELP } from '@/lib/icalUrl';
 import { pmsSelectable, findPms, platformLabel } from '@/lib/pms/registry';
+import { conflitCalendrier } from '@/lib/pms/conflits';
 import type { Apartment, ReservationFeed, ReservationPlatform } from '@/lib/types';
 import { Button, Card, FIELD_SM, Label } from '@/components/ui';
 import Icon from '@/components/Icon';
@@ -134,6 +135,20 @@ export default function ConnectWizard({
             Vous pouvez en ajouter un autre : les départs sont fusionnés, un seul ménage par date.
           </p>
         )}
+
+        {/* Un logiciel de gestion redistribue déjà Airbnb et Booking : brancher
+            l'un des deux en plus fait arriver le même séjour deux fois. On le
+            dit avant, sans rien interdire — une annonce peut légitimement être
+            tenue hors du PMS. */}
+        {(() => {
+          const avert = conflitCalendrier(alreadyConnected, platform);
+          if (!avert) return null;
+          return (
+            <p className="text-[11px] mt-2 px-3 py-2 rounded-lg border border-warn-line bg-warn-soft text-warn">
+              {avert}
+            </p>
+          );
+        })()}
 
         {creatingApt && (
           <div className="space-y-2 mt-2">
