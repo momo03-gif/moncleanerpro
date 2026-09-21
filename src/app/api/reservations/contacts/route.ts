@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   // Quels ménages le demandeur a-t-il le droit de voir ?
   const { data: missions } = await db.from('missions')
-    .select('id, status, partner_id, cleaners(user_id)')
+    .select('id, status, partner_id, cleaners!missions_cleaner_id_fkey(user_id)')
     .in('id', ids)
     .not('status', 'in', '("done","cancelled")');
 

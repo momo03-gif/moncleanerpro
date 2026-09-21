@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
       if (!b.missionId || typeof b.actualMinutes !== 'number') return refus('Ménage ou durée manquant.', 400);
 
       const { data: m } = await db.from('missions')
-        .select('source, service, price, mission_duration_minutes, cleaner_hourly_rate_snapshot, cleaner_id, cleaners(user_id)')
+        .select('source, service, price, mission_duration_minutes, cleaner_hourly_rate_snapshot, cleaner_id, cleaners!missions_cleaner_id_fkey(user_id)')
         .eq('id', b.missionId).maybeSingle();
       if (!m) return refus('Mission introuvable.', 404);
 

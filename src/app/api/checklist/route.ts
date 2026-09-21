@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
       // Le cleaner assigné : missions.cleaner_id désigne cleaners.id, alors que
       // la session porte users.id — d'où la traduction.
       const { data: mission } = await db.from('missions')
-        .select('id, cleaner_id, cleaners(user_id)').eq('id', b.missionId).maybeSingle();
+        .select('id, cleaner_id, cleaners!missions_cleaner_id_fkey(user_id)').eq('id', b.missionId).maybeSingle();
       const cleanerUserId = (mission as { cleaners?: { user_id?: string } } | null)?.cleaners?.user_id ?? null;
       if (!canCheckChecklist(actor, mission ? { cleanerUserId } : null)) {
         return refus('Ce ménage ne vous est pas attribué.');

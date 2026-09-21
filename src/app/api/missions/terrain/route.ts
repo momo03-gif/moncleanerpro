@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const estAdmin = appelant!.role === 'admin';
 
   const { data: missions } = await db.from('missions')
-    .select('id, status, airbnb_id, partner_id, cleaners(user_id), '
+    .select('id, status, airbnb_id, partner_id, cleaners!missions_cleaner_id_fkey(user_id), '
       + 'airbnbs(code_portail, code_boite, entry_instructions, notes, access_video_url, on_site_contact_name, on_site_contact_phone)')
     .in('id', ids);
 
