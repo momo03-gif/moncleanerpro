@@ -5,6 +5,8 @@ import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB
 import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
+import { ligneFourniture } from '@/lib/linge';
+import { getProfitConfigDB } from '@/lib/profitability';
 import { formatDuration } from '@/lib/format';
 import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
@@ -97,6 +99,10 @@ function groupByPartner(list: Apartment[]): { name: string; apts: Apartment[] }[
 export default function AirbnbPage() {
   const { confirm, toast } = useFeedback();
   const [apartments, setApartments] = useState<Apartment[]>([]);
+  // Prix d'un kit : réglage global (Stats → Rentabilité). Sert à montrer, dans
+  // la fiche et sur la ligne du site, ce que la fourniture facture vraiment.
+  const [prixKit, setPrixKit] = useState(0);
+  useEffect(() => { getProfitConfigDB().then(c => setPrixKit(Number(c.linenKitPrice) || 0)).catch(() => {}); }, []);
   const [partnerNames, setPartnerNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -341,6 +347,35 @@ export default function AirbnbPage() {
                   </div>
                 )}
               </div>
+
+              {/* Ce que ça facture vraiment — sinon on saisit « 2 kits » sans
+                  savoir ce que le client paiera. */}
+              {(() => {
+                if (form.lingeMode === 'aucun') return null;
+                const l = ligneFourniture({
+                  mode: form.lingeMode as 'kit' | 'forfait',
+                  kits: Number(form.lingeKits) || 0,
+                  forfait: Number(form.lingeForfait) || 0,
+                  libelle: form.lingeLibelle,
+                }, prixKit);
+                if (form.lingeMode === 'kit' && prixKit <= 0) {
+                  return (
+                    <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FDF4E3', color: '#9A7B22' }}>
+                      Le prix d’un kit n’est pas renseigné. Réglez-le dans Stats → Rentabilité,
+                      sinon la fourniture sera facturée 0 €.
+                    </p>
+                  );
+                }
+                return (
+                  <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
+                    {l
+                      ? <>Facturé <strong>{l.montant.toFixed(2)} €</strong> par ménage, sur une ligne séparée
+                          {form.lingeMode === 'kit' && prixKit > 0 && <> ({Number(form.lingeKits) || 0} × {prixKit.toFixed(2)} €)</>}.
+                          {' '}Cette ligne n’ouvre pas droit au crédit d’impôt.</>
+                      : <>Rien ne sera facturé tant que le {form.lingeMode === 'kit' ? 'nombre de kits' : 'montant'} n’est pas renseigné.</>}
+                  </p>
+                );
+              })()}
             </div>
 
             {/* ── Maison à plusieurs annonces ──────────────────────────────────
@@ -525,7 +560,7 @@ export default function AirbnbPage() {
               {g.open && (
                 <div className="px-3 pb-3 pt-1 space-y-2 border-t" style={{ borderColor: '#F2EFE9' }}>
                   {g.shown.map(apt => (
-                    <SiteRow key={apt.id} apt={apt}
+                    <SiteRow key={apt.id} apt={apt} prixKit={prixKit}
                       onEdit={() => openEdit(apt)} onDelete={() => handleDelete(apt.id)} onMaps={() => setMapsModal(apt.address)} />
                   ))}
                 </div>
@@ -547,8 +582,10 @@ export default function AirbnbPage() {
 }
 
 // ── Ligne compacte d'un site : résumé + détail au clic. ──────────────────────────
-function SiteRow({ apt, onEdit, onDelete, onMaps }: {
+function SiteRow({ apt, onEdit, onDelete, onMaps, prixKit = 0 }: {
   apt: Apartment;
+  /** Prix d'un kit (réglage global), pour afficher ce que la fourniture facture. */
+  prixKit?: number;
   onEdit: () => void;
   onDelete: () => void;
   onMaps: () => void;
@@ -606,6 +643,18 @@ function SiteRow({ apt, onEdit, onDelete, onMaps }: {
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: apt.zoneColor ?? '#9CA3AF' }} />{apt.zoneName}
               </span>
             )}
+            {/* Fourniture de linge : visible d'un coup d'œil, comme la durée. */}
+            {(() => {
+              const l = ligneFourniture({
+                mode: apt.lingeMode ?? 'aucun', kits: apt.lingeKits, forfait: apt.lingeForfait, libelle: apt.lingeLibelle,
+              }, prixKit);
+              if (!l) return null;
+              return (
+                <span className="text-xs" style={{ color: '#7A7068' }}>
+                  {l.libelle} · <strong>{l.montant.toFixed(2)} €</strong>
+                </span>
+              );
+            })()}
           </div>
 
           {hasBeds && (
