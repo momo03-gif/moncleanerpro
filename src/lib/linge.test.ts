@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ligneFourniture, baseEligible, totalFacture, coutFourniture } from './linge';
+import { ligneFourniture, baseEligible, totalFacture, coutFourniture, prixKitDepuisTarifs } from './linge';
 
 describe('ligneFourniture — ce qu’on facture pour le linge', () => {
   it('multiplie le nombre de kits par le prix du kit', () => {
@@ -66,5 +66,50 @@ describe('coutFourniture — pour que la marge reste vraie', () => {
   it('ne compte rien quand le client fournit', () => {
     expect(coutFourniture({ mode: 'aucun' }, 3.2)).toBe(0);
     expect(coutFourniture(null, 3.2)).toBe(0);
+  });
+});
+
+describe('Prix d’un kit — repris de la grille du devis en ligne', () => {
+  const GRILLE = [
+    { nom: 'Ménage entre deux voyageurs', prix: 45, actif: true },
+    { nom: 'Gestion du linge', prix: 9, actif: true },
+    { nom: 'Kit consommables', prix: 5, actif: true },
+    { nom: 'Vitrerie', prix: 30, actif: true },
+  ];
+
+  it('ne retient que la section Linge & consommables', () => {
+    const k = prixKitDepuisTarifs(GRILLE);
+    expect(k.lignes.map(l => l.nom)).toEqual(['Gestion du linge', 'Kit consommables']);
+    expect(k.prix).toBe(14);
+  });
+
+  it('rend le détail pour qu’un écran puisse justifier le total', () => {
+    // Un prix qu'on ne sait pas expliquer au client n'a rien à faire sur une facture.
+    expect(prixKitDepuisTarifs(GRILLE).lignes).toEqual([
+      { nom: 'Gestion du linge', prix: 9 },
+      { nom: 'Kit consommables', prix: 5 },
+    ]);
+  });
+
+  it('ignore une prestation désactivée', () => {
+    const k = prixKitDepuisTarifs([...GRILLE, { nom: 'Linge premium', prix: 20, actif: false }]);
+    expect(k.prix).toBe(14);
+  });
+
+  it('retombe sur la borne basse quand la ligne est en fourchette', () => {
+    const k = prixKitDepuisTarifs([{ nom: 'Gestion du linge', prix: 0, prixMin: 8, actif: true }]);
+    expect(k.prix).toBe(8);
+  });
+
+  it('rend zéro quand la grille ne tarife pas le linge — sans planter', () => {
+    expect(prixKitDepuisTarifs([{ nom: 'Vitrerie', prix: 30 }]).prix).toBe(0);
+    expect(prixKitDepuisTarifs([]).prix).toBe(0);
+    expect(prixKitDepuisTarifs(null).prix).toBe(0);
+  });
+
+  it('se branche sur ligneFourniture : 2 kits à 14 € font 28 €', () => {
+    const { prix } = prixKitDepuisTarifs(GRILLE);
+    const l = ligneFourniture({ mode: 'kit', kits: 2 }, prix);
+    expect(l).toEqual({ montant: 28, libelle: 'Linge — 2 kits', kits: 2 });
   });
 });

@@ -6,7 +6,8 @@ import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { ligneFourniture } from '@/lib/linge';
-import { getProfitConfigDB } from '@/lib/profitability';
+import { prixKitDepuisTarifs } from '@/lib/linge';
+import { getTarifsDB } from '@/lib/devis';
 import { formatDuration } from '@/lib/format';
 import { STRUCTURE_LABEL, structureLabel } from '@/lib/labels';
 import Icon from '@/components/Icon';
@@ -99,10 +100,19 @@ function groupByPartner(list: Apartment[]): { name: string; apts: Apartment[] }[
 export default function AirbnbPage() {
   const { confirm, toast } = useFeedback();
   const [apartments, setApartments] = useState<Apartment[]>([]);
-  // Prix d'un kit : réglage global (Stats → Rentabilité). Sert à montrer, dans
-  // la fiche et sur la ligne du site, ce que la fourniture facture vraiment.
+  // Prix d'un kit : il vient de la GRILLE TARIFAIRE, section « Linge &
+  // consommables » — la même qui pilote le devis en ligne. On garde le détail
+  // pour pouvoir montrer d'où sort le montant, au lieu d'un nombre nu.
   const [prixKit, setPrixKit] = useState(0);
-  useEffect(() => { getProfitConfigDB().then(c => setPrixKit(Number(c.linenKitPrice) || 0)).catch(() => {}); }, []);
+  const [detailKit, setDetailKit] = useState<{ nom: string; prix: number }[]>([]);
+  useEffect(() => {
+    getTarifsDB(true)
+      .then(ts => {
+        const k = prixKitDepuisTarifs(ts.map(t => ({ nom: t.nom, prix: t.prix, prixMin: t.prixMin, actif: t.actif })));
+        setPrixKit(k.prix); setDetailKit(k.lignes);
+      })
+      .catch(() => {});
+  }, []);
   const [partnerNames, setPartnerNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -361,8 +371,9 @@ export default function AirbnbPage() {
                 if (form.lingeMode === 'kit' && prixKit <= 0) {
                   return (
                     <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#FDF4E3', color: '#9A7B22' }}>
-                      Le prix d’un kit n’est pas renseigné. Réglez-le dans Stats → Rentabilité,
-                      sinon la fourniture sera facturée 0 €.
+                      Le linge n’est pas tarifé dans votre grille. Ajoutez-le dans Devis →
+                      grille tarifaire (section « Linge &amp; consommables »), sinon la
+                      fourniture sera facturée 0 €.
                     </p>
                   );
                 }
@@ -370,7 +381,7 @@ export default function AirbnbPage() {
                   <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5F3EF', color: '#1A1A1A' }}>
                     {l
                       ? <>Facturé <strong>{l.montant.toFixed(2)} €</strong> par ménage, sur une ligne séparée
-                          {form.lingeMode === 'kit' && prixKit > 0 && <> ({Number(form.lingeKits) || 0} × {prixKit.toFixed(2)} €)</>}.
+                          {form.lingeMode === 'kit' && prixKit > 0 && <> ({Number(form.lingeKits) || 0} × {prixKit.toFixed(2)} €{detailKit.length > 0 && <> — {detailKit.map(d => `${d.nom} ${d.prix.toFixed(2)} €`).join(' + ')}</>})</>}.
                           {' '}Cette ligne n’ouvre pas droit au crédit d’impôt.</>
                       : <>Rien ne sera facturé tant que le {form.lingeMode === 'kit' ? 'nombre de kits' : 'montant'} n’est pas renseigné.</>}
                   </p>

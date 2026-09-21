@@ -19,9 +19,14 @@
 //
 // DEUX FAÇONS DE FACTURER, selon le logement :
 //   · AU KIT — le cas courant : un prix de kit, valable partout, multiplié par
-//     le nombre de kits que demande le logement ;
+//     le nombre de kits que demande le logement. Ce prix n'est PAS saisi deux
+//     fois : il vient de la section « Linge & consommables » de la grille
+//     tarifaire, celle qui pilote déjà le devis en ligne. Voir
+//     `prixKitDepuisTarifs` plus bas ;
 //   · AU FORFAIT — un montant négocié pour ce logement, qui remplace le calcul.
 // Et bien sûr : AUCUNE, quand le client fournit son propre linge.
+
+import { estFourniture } from './devisCatalog';
 
 export type ModeLinge = 'aucun' | 'kit' | 'forfait';
 
@@ -114,4 +119,44 @@ export function coutFourniture(
     ? Math.max(0, Math.round(Number(f.kits) || kitsForfait || 0))
     : Math.max(0, Math.round(Number(f.kits) || 0));
   return centimes(kits * unite);
+}
+
+// ── Le prix d'un kit vient de la grille tarifaire, pas d'un réglage à part ───
+//
+// Il existait un champ « prix d'un kit » dans les réglages de rentabilité,
+// saisi à la main. Or la même chose est déjà tarifée dans la grille qui pilote
+// le devis en ligne, section « Linge & consommables » : gestion du linge, kit
+// consommables. Deux endroits pour un seul prix, c'est la garantie qu'ils
+// finissent par se contredire — et que le client ne paie pas ce que le devis
+// lui avait annoncé.
+//
+// Un kit, c'est donc ce que coûte cette section sur un devis : la somme de ses
+// prestations actives. On rend le détail avec le total pour que l'écran puisse
+// le montrer, plutôt que d'afficher un nombre qu'on ne saurait pas justifier.
+
+export interface TarifFourniture {
+  nom: string;
+  prix: number;
+  actif?: boolean;
+  /** Certaines lignes sont saisies en fourchette : la borne basse fait foi. */
+  prixMin?: number | null;
+}
+
+export interface PrixKit {
+  /** Ce qu'un kit facture au client, toutes prestations de la section. */
+  prix: number;
+  /** Le détail, pour l'afficher : « Gestion du linge 9 € + Kit consommables 5 € ». */
+  lignes: { nom: string; prix: number }[];
+}
+
+export function prixKitDepuisTarifs(tarifs: TarifFourniture[] | null | undefined): PrixKit {
+  const lignes = (tarifs ?? [])
+    .filter(t => t && t.actif !== false && typeof t.nom === 'string')
+    .filter(t => estFourniture(t.nom))
+    .map(t => ({ nom: t.nom, prix: centimes(Number(t.prix) || Number(t.prixMin) || 0) }))
+    // Une prestation de la section laissée à 0 n'est pas facturée : l'inclure
+    // ne changerait rien au total et ferait douter de la ligne affichée.
+    .filter(l => l.prix > 0);
+
+  return { prix: centimes(lignes.reduce((s, l) => s + l.prix, 0)), lignes };
 }

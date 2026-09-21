@@ -185,14 +185,11 @@ export default function ProfitabilityPanel() {
           <h3 className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Paramètres de rentabilité</h3>
           <p className="text-xs mb-4" style={{ color: '#A8A09A' }}>Ils définissent ce qui est « rentable » et le prix conseillé. Modifiables à tout moment.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Le linge se règle ICI, une seule fois : le jour où le fournisseur
-                augmente, on ne reprend pas quarante fiches de logement. */}
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Kit de linge — facturé (€)</label>
-              <input type="number" min={0} step={0.5} value={form.linenKitPrice ?? 0}
-                onChange={e => setForm(f => ({ ...f!, linenKitPrice: Number(e.target.value) || 0 }))}
-                className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
-            </div>
+            {/* Ce que le kit est FACTURÉ ne se règle plus ici : il vient de la
+                grille tarifaire, section « Linge & consommables », la même qui
+                pilote le devis en ligne. Deux endroits pour un seul prix, et le
+                client finit par payer autre chose que ce qu'on lui a annoncé.
+                Ne reste ici que ce qu'il nous COÛTE — une donnée interne. */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Kit de linge — ce qu’il coûte (€)</label>
               <input type="number" min={0} step={0.5} value={form.linenKitCost ?? 0}

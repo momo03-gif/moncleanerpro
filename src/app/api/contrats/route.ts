@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession, exigerAdmin } from '@/lib/apiGuard';
 import { articlesContrat, totalParPassage, type DonneesContrat, type LogementContrat } from '@/lib/contrat';
-import { ligneFourniture } from '@/lib/linge';
+import { ligneFourniture, prixKitDepuisTarifs } from '@/lib/linge';
 
 export const runtime = 'nodejs';
 
@@ -158,11 +158,11 @@ async function construireDonnees(
   clientId: string,
   dateEffet?: string,
 ): Promise<DonneesContrat | null> {
-  const [{ data: entreprise }, { data: partenaire }, { data: hotel }, { data: config }] = await Promise.all([
+  const [{ data: entreprise }, { data: partenaire }, { data: hotel }, { data: grille }] = await Promise.all([
     db.from('company_info').select('*').eq('id', 1).maybeSingle(),
     db.from('airbnb_partners').select('*').eq('user_id', clientId).maybeSingle(),
     db.from('hotels').select('*').eq('user_id', clientId).maybeSingle(),
-    db.from('profit_config').select('linen_kit_price').limit(1).maybeSingle(),
+    db.from('tarifs').select('nom_prestation, prix_unitaire, prix_min, actif'),
   ]);
 
   const fiche: any = partenaire ?? hotel;
@@ -172,7 +172,12 @@ async function construireDonnees(
     .select('name, address, client_price, estimated_cleaning_minutes, linge_mode, linge_kits, linge_forfait, linge_libelle')
     .eq('partner_id', clientId).order('name');
 
-  const prixKit = Number(config?.linen_kit_price) || 0;
+  // Le prix d'un kit est celui de la grille tarifaire (section « Linge &
+  // consommables »), la même qui sert au devis en ligne.
+  const { prix: prixKit } = prixKitDepuisTarifs((grille ?? []).map((t: any) => ({
+    nom: t.nom_prestation, prix: Number(t.prix_unitaire) || 0,
+    prixMin: t.prix_min, actif: t.actif,
+  })));
   const logements: LogementContrat[] = (apparts ?? []).map((a: any) => {
     const f = ligneFourniture({
       mode: a.linge_mode ?? 'aucun', kits: a.linge_kits,

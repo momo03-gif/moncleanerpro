@@ -48,6 +48,11 @@ export const SECTION_ORDER: Record<string, string[]> = {
 };
 const SINGLE_SECTIONS = new Set(['Entretien classique du logement', 'Coliving / Colocation']);
 
+/** La section du catalogue qui porte le linge et les consommables. Elle sert
+ *  aussi HORS devis : c'est cette tarification qui donne le prix d'un kit sur
+ *  une fiche de logement (cf. lib/linge.ts). Une seule grille à tenir. */
+export const SECTION_LINGE = 'Linge & consommables';
+
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 // Classe une prestation dans une macro-catégorie + section d'après son NOM.
@@ -60,7 +65,7 @@ export function classify(t: Tarif): { macro: string; section: string } {
   // Airbnb & conciergerie : carte à part. Le linge et les consommables sont
   // séparés du ménage lui-même — ce sont deux décisions distinctes pour une
   // conciergerie (elle peut fournir son propre linge).
-  if (/linge|consommable|\bkit\b/.test(n)) return { macro: 'airbnb', section: 'Linge & consommables' };
+  if (/linge|consommable|\bkit\b/.test(n)) return { macro: 'airbnb', section: SECTION_LINGE };
   if (/hebergement|airbnb|courte duree|location saisonniere|conciergerie|voyageur/.test(n)) {
     return { macro: 'airbnb', section: 'Ménage entre deux voyageurs' };
   }
@@ -200,4 +205,15 @@ export function buildCatalog(tarifs: Tarif[]): Macro[] {
     if (sections.length) out.push({ id: m.id, title: m.title, tagline: m.tagline, sections });
   }
   return out;
+}
+
+/**
+ * Vrai si cette prestation relève du linge et des consommables.
+ *
+ * Exposé pour que la facturation d'un logement reprenne EXACTEMENT la même
+ * tarification que le devis en ligne, au lieu d'entretenir un prix de kit à
+ * part qui finit toujours par diverger.
+ */
+export function estFourniture(nom: string): boolean {
+  return classify({ nom } as Tarif).section === SECTION_LINGE;
 }

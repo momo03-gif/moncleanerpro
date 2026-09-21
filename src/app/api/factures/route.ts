@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession, exigerAdmin } from '@/lib/apiGuard';
 import { echeance } from '@/lib/factureStatut';
-import { ligneFourniture } from '@/lib/linge';
+import { ligneFourniture, prixKitDepuisTarifs } from '@/lib/linge';
 
 export const runtime = 'nodejs';
 
@@ -125,8 +125,14 @@ export async function POST(req: NextRequest) {
         .select('id, airbnb_id, supplies_amount, supplies_label, supplies_kits').in('id', ids);
       if (errM) return NextResponse.json({ fournitures: {}, indisponible: true });
 
-      const { data: cfg } = await db.from('profit_config').select('linen_kit_price').limit(1).maybeSingle();
-      const prixKit = Number(cfg?.linen_kit_price) || 0;
+      // Le prix d'un kit vient de la GRILLE TARIFAIRE, section « Linge &
+      // consommables » — celle qui pilote déjà le devis en ligne. Pas d'un
+      // réglage à part : le client doit payer ce que le devis lui annonce.
+      const { data: grille } = await db.from('tarifs').select('nom_prestation, prix_unitaire, prix_min, actif');
+      const { prix: prixKit } = prixKitDepuisTarifs((grille ?? []).map((t: any) => ({
+        nom: t.nom_prestation, prix: Number(t.prix_unitaire) || 0,
+        prixMin: t.prix_min, actif: t.actif,
+      })));
 
       const aptIds = Array.from(new Set((missions ?? []).map(m => m.airbnb_id).filter(Boolean)));
       const { data: apts, error: errA } = aptIds.length > 0
