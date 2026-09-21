@@ -2,10 +2,11 @@
 // Un planning décrit un ménage hebdomadaire (jours de semaine cochés). Les missions
 // réelles sont matérialisées sur un horizon glissant — par le cron (piggyback) et à
 // la création du planning. Ce sont des missions 'cleaning' normales (facturables/payées).
-// Table `recurring_missions` non verrouillée (comme missions/airbnbs) → client anon OK.
-
-// Côté serveur (cron, route) : service_role. Côté navigateur : clé publique —
-// mais la génération n'y tourne plus, elle passe par /api/missions.
+// La table `recurring_missions` est FERMÉE à la clé publique : un planning
+// matérialise des missions, donc des prix client et des gains cleaner. Les
+// fonctions appelées par les écrans passent toutes par /api/admin/recurring,
+// qui vérifie la session admin ; seul `generateRecurringMissions` touche encore
+// la base directement, et il ne tourne que côté serveur (cron + cette route).
 import { getServerDb } from './serverDb';
 const supabase = getServerDb();
 import { computeCleanerGain } from './pay';
@@ -31,25 +32,40 @@ const toRecurring = (r: any): RecurringMission => ({
   createdAt: r.created_at ?? undefined,
 });
 
+/** Appel de la route d'administration — une seule façon d'écrire un planning. */
+async function poster(corps: Record<string, unknown>): Promise<{ error: string | null; generated: number }> {
+  try {
+    const res = await fetch('/api/admin/recurring', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corps),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: d.error ?? 'Enregistrement impossible.', generated: 0 };
+    return { error: null, generated: d.generated ?? 0 };
+  } catch {
+    return { error: 'Enregistrement impossible pour le moment.', generated: 0 };
+  }
+}
+
 export async function listRecurringDB(): Promise<RecurringMission[]> {
-  const { data, error } = await supabase.from('recurring_missions')
-    .select('*, airbnbs(name, address)').order('created_at', { ascending: false });
-  if (error) { console.error('listRecurringDB:', error.code, error.message); return []; }
-  return (data ?? []).map(toRecurring);
+  try {
+    const res = await fetch('/api/admin/recurring');
+    if (!res.ok) return [];
+    const { plannings } = await res.json();
+    return (plannings ?? []).map(toRecurring);
+  } catch { return []; }
 }
 
 export async function setRecurringActiveDB(id: string, active: boolean): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('recurring_missions').update({ active }).eq('id', id);
-  // (Re)matérialise immédiatement à la réactivation.
-  if (!error && active) await generateRecurringMissions();
-  return { error: error?.message ?? null };
+  const { error } = await poster({ action: 'setActive', id, active });
+  return { error };
 }
 
 // Supprime le planning. Les missions DÉJÀ générées sont conservées (recurring_id
 // passe à NULL via ON DELETE SET NULL) — ce sont des données de référence.
 export async function deleteRecurringDB(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('recurring_missions').delete().eq('id', id);
-  return { error: error?.message ?? null };
+  const { error } = await poster({ action: 'delete', id });
+  return { error };
 }
 
 export async function createRecurringDB(fields: {
@@ -59,33 +75,12 @@ export async function createRecurringDB(fields: {
   startDate: string; endDate?: string; createdBy?: string;
   addressLat?: number; addressLng?: number;
 }): Promise<{ error: string | null; generated: number }> {
-  const linked = !!fields.airbnbId;
-  const { error } = await supabase.from('recurring_missions').insert({
-    airbnb_id: fields.airbnbId || null,
-    property_name: linked ? null : (fields.propertyName || null),
-    address: linked ? null : (fields.address || null),
-    address_lat: fields.addressLat ?? null,
-    address_lng: fields.addressLng ?? null,
-    cleaner_id: fields.cleanerId || null,
-    cleaner_name: fields.cleanerName || null,
-    service: 'cleaning',
-    weekdays: fields.weekdays,
-    time_from: fields.timeFrom || null,
-    duration_minutes: fields.durationMinutes || 60,
-    price: fields.price || 0,
-    start_date: fields.startDate,
-    end_date: fields.endDate || null,
-    created_by: fields.createdBy || null,
-  });
-  if (error) { console.error('createRecurringDB:', error.code, error.message); return { error: error.message, generated: 0 }; }
-  const gen = await generateRecurringMissions();
-  return { error: null, generated: gen.created };
+  return poster({ action: 'create', fields });
 }
 
-// Modifie un planning : met à jour la règle, puis RÉALIGNE l'agenda — supprime les
-// missions FUTURES non démarrées qu'il avait générées (status pending/assigned, date ≥
-// aujourd'hui) et régénère selon la nouvelle règle. Les missions passées / en cours /
-// terminées sont conservées (données de référence).
+// Modifie un planning : la route met à jour la règle, purge les occurrences
+// FUTURES non démarrées, puis régénère selon la nouvelle règle. Les missions
+// passées, en cours ou terminées sont conservées.
 export async function updateRecurringDB(id: string, fields: {
   airbnbId?: string; propertyName?: string; address?: string;
   cleanerId?: string; cleanerName?: string;
@@ -93,34 +88,7 @@ export async function updateRecurringDB(id: string, fields: {
   startDate: string; endDate?: string;
   addressLat?: number; addressLng?: number;
 }): Promise<{ error: string | null; generated: number }> {
-  const linked = !!fields.airbnbId;
-  const { error } = await supabase.from('recurring_missions').update({
-    airbnb_id: fields.airbnbId || null,
-    property_name: linked ? null : (fields.propertyName || null),
-    address: linked ? null : (fields.address || null),
-    address_lat: fields.addressLat ?? null,
-    address_lng: fields.addressLng ?? null,
-    cleaner_id: fields.cleanerId || null,
-    cleaner_name: fields.cleanerName || null,
-    weekdays: fields.weekdays,
-    time_from: fields.timeFrom || null,
-    duration_minutes: fields.durationMinutes || 60,
-    price: fields.price || 0,
-    start_date: fields.startDate,
-    end_date: fields.endDate || null,
-  }).eq('id', id);
-  if (error) { console.error('updateRecurringDB:', error.code, error.message); return { error: error.message, generated: 0 }; }
-
-  // Purge des occurrences à venir : par le serveur, le navigateur n'a plus le
-  // droit de supprimer des missions (cf. migration_missions_verrouillage.sql).
-  try {
-    await fetch('/api/missions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete-recurring', recurringId: id }),
-    });
-  } catch (e) { console.error('purge récurrence:', e); }
-  const gen = await generateRecurringMissions();
-  return { error: null, generated: gen.created };
+  return poster({ action: 'update', id, fields });
 }
 
 // Matérialise les missions des plannings actifs sur un horizon glissant. Idempotent :

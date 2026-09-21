@@ -2,14 +2,21 @@
 // La logique de calcul PURE est dans profitabilityCompute.ts (testable sans I/O) ;
 // on la réexporte ici pour les appelants existants.
 
-import { supabase } from './supabase';
+// La table `profit_config` est fermée à la clé publique : elle dit ce que
+// l'entreprise gagne. Lecture et écriture passent par /api/admin/profit-config,
+// qui vérifie la session admin.
 import { DEFAULT_PROFIT_CONFIG } from './profitabilityCompute';
 import type { ProfitConfig } from './types';
 
 export { estimateFuel, computeApartmentProfitability, recommendedHourlyPrice, type ApartmentProfit, type PriceQuote } from './profitabilityCompute';
 
 export async function getProfitConfigDB(): Promise<ProfitConfig> {
-  const { data } = await supabase.from('profit_config').select('*').eq('id', 1).single();
+  // `any` assumé : c'est la ligne brute de la base, remise en forme juste après.
+  let data: any = null;
+  try {
+    const res = await fetch('/api/admin/profit-config');
+    if (res.ok) data = (await res.json()).config ?? null;
+  } catch { /* on retombe sur les valeurs par défaut */ }
   if (!data) return { ...DEFAULT_PROFIT_CONFIG };
   return {
     productCostCents: Number(data.product_cost_cents) || 0,
@@ -29,20 +36,14 @@ export async function getProfitConfigDB(): Promise<ProfitConfig> {
 }
 
 export async function saveProfitConfigDB(cfg: ProfitConfig): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('profit_config').upsert({
-    id: 1,
-    product_cost_cents: Math.round(cfg.productCostCents) || 0,
-    margin_target: cfg.marginTarget,
-    fuel_base_address: cfg.fuelBaseAddress || null,
-    fuel_base_lat: cfg.fuelBaseLat ?? null,
-    fuel_base_lng: cfg.fuelBaseLng ?? null,
-    fuel_consumption: cfg.fuelConsumption,
-    fuel_price: cfg.fuelPrice,
-    fuel_route_factor: cfg.fuelRouteFactor,
-    cdi_charge_rate: cfg.cdiChargeRate,
-    vat_rate: cfg.vatRate,
-    linen_kit_price: cfg.linenKitPrice ?? 0,
-    linen_kit_cost: cfg.linenKitCost ?? 0,
-  }, { onConflict: 'id' });
-  return { error: error?.message ?? null };
+  try {
+    const res = await fetch('/api/admin/profit-config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const d = await res.json().catch(() => ({}));
+    return { error: res.ok ? null : (d.error ?? 'Enregistrement impossible.') };
+  } catch {
+    return { error: 'Enregistrement impossible pour le moment.' };
+  }
 }
