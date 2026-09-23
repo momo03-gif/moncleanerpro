@@ -30,9 +30,10 @@ export async function POST(req: NextRequest) {
   if (!session) return refus('Non authentifié.', 401);
 
   let b: {
-    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring' | 'set-duration' | 'generate-recurring' | 'close-money';
+    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring' | 'set-duration' | 'generate-recurring' | 'close-money' | 'reassign';
     missionId?: string; missionIds?: string[];
     cleanerId?: string; cleanerName?: string;
+    fromCleanerId?: string; toCleanerId?: string; apercu?: boolean;
     recurringId?: string;
     minutes?: number;
     aptDefault?: number | null;
@@ -130,6 +131,93 @@ export async function POST(req: NextRequest) {
         if (error) { console.error('missions/assign:', error.message); return refus('Affectation impossible.', 500); }
       }
       return NextResponse.json({ ok: true, count: ids.length });
+    }
+
+    // ── Transférer toutes les missions à venir d'un intervenant ────────────
+    //
+    // Un cleaner est arrêté, part en congés, s'en va : reprendre ses vingt
+    // missions une par une prend dix minutes, et se fait à 6h du matin.
+    //
+    // PÉRIMÈTRE (cf. lib/reassign.ts) : à venir ou aujourd'hui, et seulement
+    // « en attente » ou « attribuée ». Une mission terminée reste à celui qui
+    // l'a faite — elle est payée. Une mission en cours ne bouge pas : quelqu'un
+    // est sur place. Le passé non fait relève d'une décision, pas d'un transfert.
+    //
+    // LE GAIN EST RECALCULÉ au taux du nouvel intervenant. Le recopier ferait
+    // d'un transfert une erreur de paie silencieuse.
+    case 'reassign': {
+      if (!estAdmin) return refus('Réservé à l’administration.');
+      if (!b.fromCleanerId) return refus('Intervenant de départ manquant.', 400);
+
+      const aujourdhui = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(new Date());
+
+      const { data: aBouger, error: errLecture } = await db.from('missions')
+        .select('id, status, date_from, service, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)')
+        .eq('cleaner_id', b.fromCleanerId)
+        .in('status', ['pending', 'assigned'])
+        .gte('date_from', aujourdhui)
+        .order('date_from');
+      if (errLecture) { console.error('missions/reassign(read):', errLecture.message); return refus('Lecture impossible.', 500); }
+
+      const lignes = aBouger ?? [];
+      const dates = lignes.map(m => m.date_from as string).filter(Boolean);
+      const apercu = { nombre: lignes.length, premiere: dates[0], derniere: dates[dates.length - 1] };
+
+      // Un bouton qui déplace vingt missions sans dire combien ni jusqu'à quand
+      // est un bouton qu'on n'ose pas cliquer.
+      if (b.apercu) return NextResponse.json({ apercu });
+
+      if (!b.toCleanerId) return refus('Intervenant qui reprend manquant.', 400);
+      if (b.toCleanerId === b.fromCleanerId) return refus('C’est déjà le même intervenant.', 400);
+      if (lignes.length === 0) return NextResponse.json({ ok: true, count: 0, apercu });
+
+      const { data: cible } = await db.from('cleaners')
+        .select('id, name, hourly_rate, delivery_rate, status').eq('id', b.toCleanerId).maybeSingle();
+      if (!cible) return refus('Intervenant introuvable.', 404);
+      if (cible.status !== 'active') return refus('Cet intervenant n’est pas actif.', 400);
+
+      const rate = Number(cible.hourly_rate) || 0;
+      const deliveryRate = Number(cible.delivery_rate) || 0;
+
+      let count = 0;
+      for (const m of lignes) {
+        const aptDefault = (m as { airbnbs?: { estimated_cleaning_minutes?: number } }).airbnbs?.estimated_cleaning_minutes
+          ?? m.apartment_default_duration_snapshot ?? null;
+        const minutes = m.mission_duration_minutes != null
+          ? Number(m.mission_duration_minutes)
+          : (aptDefault != null ? Number(aptDefault) : 60);
+
+        // Le filtre de statut est REJOUÉ à l'écriture : entre la lecture et
+        // maintenant, le cleaner a pu démarrer une mission.
+        const { data: maj, error } = await db.from('missions').update({
+          cleaner_id: cible.id,
+          cleaner_name: cible.name ?? null,
+          status: 'assigned',
+          cleaner_gain: computeMissionGain({
+            service: m.service as MissionService | undefined,
+            hourlyRate: rate, deliveryRate, durationMinutes: minutes,
+          }),
+          cleaner_hourly_rate_snapshot: rate,
+          mission_duration_minutes: minutes,
+          apartment_default_duration_snapshot: aptDefault != null ? Number(aptDefault) : null,
+          hours_worked: Math.round((minutes / 60) * 100) / 100,
+          // Une demande en attente portait sur l'ancien intervenant : elle n'a
+          // plus d'objet.
+          pending_cleaner_id: null, pending_cleaner_name: null, pending_requested_at: null,
+        }).eq('id', m.id).in('status', ['pending', 'assigned']).select('id');
+        if (error) { console.error('missions/reassign:', error.message); return refus('Transfert impossible.', 500); }
+        if (maj && maj.length > 0) count++;
+      }
+
+      // Les deux intervenants doivent l'apprendre de nous, pas en ouvrant
+      // l'application par hasard.
+      if (count > 0) {
+        const { notifyMissionsTransferees } = await import('@/lib/notifications');
+        await notifyMissionsTransferees(b.fromCleanerId, cible.id, count, apercu.premiere, apercu.derniere);
+      }
+      return NextResponse.json({ ok: true, count, apercu });
     }
 
     case 'unassign': {

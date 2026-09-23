@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, updateCleanerEmploymentTypeDB, deleteCleanerDB, createPaymentDB } from '@/lib/db';
+import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, updateCleanerEmploymentTypeDB, deleteCleanerDB, createPaymentDB, reassignCleanerMissionsDB } from '@/lib/db';
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { capabilitiesLabel, serviceParts } from '@/lib/service';
+import { apercuTransfert, refusTransfert } from '@/lib/reassign';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
 import { currentMonth } from '@/lib/mockData';
@@ -13,6 +14,15 @@ import Loading from "@/components/Loading";
 import { useFeedback } from '@/contexts/FeedbackContext';
 
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false, deliveryRate: '' };
+
+/** Aujourd'hui à Paris, au format des dates de mission. */
+const todayStr = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
+
+const fmtJour = (d: string) =>
+  new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+
 const TABS_MAIN = ['Profils', 'Paie'] as const;
 
 export default function CleanersPage() {
@@ -27,6 +37,9 @@ export default function CleanersPage() {
   const [managing, setManaging] = useState<string | null>(null);
   const [manageForm, setManageForm] = useState({ name: '', email: '', phone: '', hourlyRate: '', password: '', canClean: true, canDeliver: false, deliveryRate: '', employmentType: 'auto' as 'auto' | 'cdi' });
   const [saving, setSaving] = useState(false);
+  // Transfert en bloc : l'intervenant qui reprend, et le travail en cours.
+  const [transfertVers, setTransfertVers] = useState('');
+  const [transfertEnCours, setTransfertEnCours] = useState(false);
 
   const month = currentMonth();
 
@@ -82,6 +95,32 @@ export default function CleanersPage() {
     await deleteCleanerDB(id);
     await load();
     toast('Cleaner supprimé.', 'success');
+  }
+
+  // ── Transférer toutes les missions à venir d'un intervenant ────────────────
+  // Arrêt maladie, congés, départ : on reprend sa semaine d'un geste plutôt que
+  // mission par mission à 6h du matin. Le périmètre exact et le recalcul de la
+  // paie sont décidés par le serveur (cf. lib/reassign.ts).
+  async function handleTransfert(source: CleanerRow, nombre: number) {
+    const cible = cleaners.find(c => c.id === transfertVers);
+    const motif = refusTransfert(source.id, transfertVers, nombre);
+    if (motif) { toast(motif, 'error'); return; }
+
+    const ok = await confirm({
+      title: `Transférer ${nombre} mission${nombre > 1 ? 's' : ''} ?`,
+      message: `${source.name} n'aura plus ces interventions, ${cible?.name ?? 'l’intervenant choisi'} les reprend. `
+        + `Les missions déjà terminées ou en cours ne bougent pas, et la paie est recalculée au taux de ${cible?.name ?? 'l’intervenant'}.`,
+      confirmLabel: 'Transférer',
+    });
+    if (!ok) return;
+
+    setTransfertEnCours(true);
+    const res = await reassignCleanerMissionsDB(source.id, transfertVers);
+    setTransfertEnCours(false);
+    if (res.error) { toast(res.error, 'error'); return; }
+    setTransfertVers('');
+    await load();
+    toast(`${res.count} mission${res.count > 1 ? 's' : ''} transférée${res.count > 1 ? 's' : ''}.`, 'success');
   }
 
   async function handleAddCleaner(e: React.FormEvent) {
@@ -295,6 +334,52 @@ export default function CleanersPage() {
                         </button>
                         <button onClick={() => setManaging(null)} className="px-5 py-2.5 rounded-xl text-sm font-medium border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
                       </div>
+                      {/* Reprendre la tournée de quelqu'un en un geste. On annonce
+                          le nombre et la période AVANT : un bouton qui déplace vingt
+                          missions sans le dire est un bouton qu'on n'ose pas cliquer. */}
+                      {(() => {
+                        const ap = apercuTransfert(
+                          missions.map(mi => ({ id: mi.id, status: mi.status, date: mi.date, cleanerId: mi.cleanerId })),
+                          cleaner.id, todayStr());
+                        const autres = cleaners.filter(c => c.id !== cleaner.id && c.status === 'active');
+                        return (
+                          <div className="pt-3 border-t" style={{ borderColor: '#F2EFE9' }}>
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#7A7068' }}>Transférer ses missions</p>
+                            {ap.nombre === 0 ? (
+                              <p className="text-xs" style={{ color: '#A8A09A' }}>Aucune mission à venir à transférer.</p>
+                            ) : (
+                              <>
+                                <p className="text-xs mb-2" style={{ color: '#7A7068' }}>
+                                  <strong style={{ color: '#1A1A1A' }}>{ap.nombre} mission{ap.nombre > 1 ? 's' : ''}</strong>
+                                  {ap.premiere && (
+                                    ap.derniere && ap.derniere !== ap.premiere
+                                      ? <> du {fmtJour(ap.premiere)} au {fmtJour(ap.derniere)}</>
+                                      : <> le {fmtJour(ap.premiere)}</>
+                                  )}. Les missions terminées ou en cours ne bougent pas.
+                                </p>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  <select value={transfertVers} onChange={e => setTransfertVers(e.target.value)}
+                                    className="flex-1 min-w-[180px] px-4 py-2.5 rounded-xl text-sm border appearance-none"
+                                    style={{ ...inputStyle, color: transfertVers ? '#1A1A1A' : '#A8A09A' }}>
+                                    <option value="">Qui reprend ces missions ?</option>
+                                    {autres.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                  </select>
+                                  <button onClick={() => handleTransfert(cleaner, ap.nombre)}
+                                    disabled={!transfertVers || transfertEnCours}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                                    style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                                    {transfertEnCours ? 'Transfert…' : 'Transférer'}
+                                  </button>
+                                </div>
+                                {autres.length === 0 && (
+                                  <p className="text-xs mt-2" style={{ color: '#A8A09A' }}>Aucun autre intervenant actif pour reprendre.</p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       <div className="flex flex-wrap gap-2 pt-3 border-t" style={{ borderColor: '#F2EFE9' }}>
                         <button onClick={() => handleToggleActive(cleaner.id, cleaner.status)} className="px-4 py-2 rounded-xl text-xs font-semibold border"
                           style={{ borderColor: isActive ? '#E8E4DC' : '#C9A84C', backgroundColor: isActive ? '#FAFAF8' : '#C9A84C12', color: isActive ? '#B85A50' : '#C9A84C' }}>

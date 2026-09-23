@@ -202,6 +202,49 @@ export async function notifyCleanerMissionUnassigned(missionId: string, cleanerI
   } catch (e) { console.error('notifyCleanerMissionUnassigned:', e); }
 }
 
+// A quinquies. L'admin transfère en bloc les missions d'un intervenant à un
+// autre (arrêt, congés, départ). LES DEUX doivent l'apprendre de nous : celui
+// qui perd sa semaine de travail comme celui qui hérite de vingt interventions.
+// Une seule notification chacun, jamais vingt.
+export async function notifyMissionsTransferees(
+  fromCleanerId: string, toCleanerId: string, nombre: number,
+  premiere?: string, derniere?: string,
+) {
+  try {
+    if (nombre <= 0) return;
+    const { data: cs } = await supabase.from('cleaners')
+      .select('id, name, user_id').in('id', [fromCleanerId, toCleanerId]);
+    const source = (cs ?? []).find(c => c.id === fromCleanerId);
+    const cible = (cs ?? []).find(c => c.id === toCleanerId);
+
+    const periode = premiere
+      ? (derniere && derniere !== premiere
+          ? ` du ${fmtDate(premiere)} au ${fmtDate(derniere)}`
+          : ` du ${fmtDate(premiere)}`)
+      : '';
+    const combien = `${nombre} mission${nombre > 1 ? 's' : ''}`;
+
+    const rows: NotifInput[] = [];
+    if (cible?.user_id) {
+      rows.push({
+        userId: cible.user_id, role: 'cleaner', title: 'Missions transférées',
+        message: `${combien}${periode} vous ${nombre > 1 ? 'ont' : 'a'} été transférée${nombre > 1 ? 's' : ''}`
+          + `${source?.name ? ` (auparavant ${source.name})` : ''}. Vérifiez votre planning.`,
+        type: 'mission_assigned',
+      });
+    }
+    if (source?.user_id) {
+      rows.push({
+        userId: source.user_id, role: 'cleaner', title: 'Missions retirées',
+        message: `${combien}${periode} ${nombre > 1 ? 'ne vous sont plus attribuées' : 'ne vous est plus attribuée'}`
+          + `${cible?.name ? ` : ${cible.name} les reprend` : ''}.`,
+        type: 'mission_unassigned',
+      });
+    }
+    await dispatch(rows);
+  } catch (e) { console.error('notifyMissionsTransferees:', e); }
+}
+
 // B. Nouvelle mission pour un cleaner (assignation) → cleaner
 export async function notifyCleanerNewMission(missionId: string) {
   try {

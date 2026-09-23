@@ -686,6 +686,29 @@ export async function assignCleanerToMissionsDB(missionIds: string[], cleanerId:
   for (const id of missionIds) await notifyCleanerNewMission(id);
 }
 
+// ── TRANSFERT EN BLOC D'UN INTERVENANT À UN AUTRE ──────────────────────────────
+// Un cleaner arrêté ou en congés : on reprend toutes ses missions à venir d'un
+// geste. Le périmètre et le recalcul de la paie sont décidés côté serveur —
+// cf. /api/missions action 'reassign' et lib/reassign.ts.
+
+/** Ce qui serait transféré, sans rien changer. À montrer AVANT d'agir. */
+export async function previewReassignCleanerDB(fromCleanerId: string): Promise<{
+  nombre: number; premiere?: string; derniere?: string;
+}> {
+  const res = await ecrireMission({ action: 'reassign', fromCleanerId, apercu: true });
+  if (res.error) { console.error('previewReassignCleanerDB:', res.error); return { nombre: 0 }; }
+  const apercu = res.data?.apercu as { nombre: number; premiere?: string; derniere?: string } | undefined;
+  return apercu ?? { nombre: 0 };
+}
+
+export async function reassignCleanerMissionsDB(
+  fromCleanerId: string, toCleanerId: string,
+): Promise<{ error: string | null; count: number }> {
+  const res = await ecrireMission({ action: 'reassign', fromCleanerId, toCleanerId });
+  if (res.error) return { error: res.error, count: 0 };
+  return { error: null, count: Number(res.data?.count) || 0 };
+}
+
 // ── TEMPS SUPPLÉMENTAIRE (cleaner → admin) ──────────────────────────────────────
 // Chaque ménage a une durée définie. Si l'appartement est très sale (photos « avant »
 // à l'appui), le cleaner peut demander du temps en plus. La demande reste « pending »
