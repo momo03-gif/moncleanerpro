@@ -141,7 +141,6 @@ export default function FacturationPage() {
       logement: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
       type: m.type,
       cleaner: m.cleanerName || '—',
-      minutes: Math.round((m.duration || 0) * 60),
       prix: m.price || 0,
       fourniture: fournitures[m.id] ?? null,
     })),
@@ -154,7 +153,7 @@ export default function FacturationPage() {
   const liveLines = lignes.map(l => ({
     id: l.fourniture ? undefined : l.missionId,
     date: l.date, label: l.label, type: l.type, apartment: l.apartment,
-    cleaner: l.cleaner, duration: l.duration,
+    cleaner: l.cleaner, qty: l.quantite,
     unitPrice: l.unitPrice, amount: l.amount,
   }));
   const totaux = totauxFacture(lignes);
@@ -261,8 +260,8 @@ export default function FacturationPage() {
     const fige = await chargerFournitures(selMissions.map(m => m.id), true);
     if (Object.keys(fige).length > 0) setFournitures(fige);
 
-    const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, duration, unitPrice }) =>
-      ({ date, label, type, amount, apartment, cleaner, duration, unitPrice }));
+    const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, qty, unitPrice }) =>
+      ({ date, label, type, amount, apartment, cleaner, qty, unitPrice }));
     const { saveInvoiceDB, getInvoicesDB } = await loadDb();
     const res = await saveInvoiceDB({ number: invoiceNo, partnerLabel: partner, partnerType, periodFrom: from, periodTo: to, total, lines });
     if (res.error) { setSavedMsg('Erreur : ' + res.error); return; }

@@ -14,6 +14,13 @@
 //  CE MODULE NE LIT RIEN : on lui donne les ménages et la fourniture de chacun,
 //  il rend les lignes. Les montants viennent du serveur (le prix d'un kit vit
 //  dans profit_config, fermée au navigateur).
+//
+//  AUCUNE DURÉE NE SORT D'ICI. Le temps passé par l'intervenant est une donnée
+//  interne (elle pilote la paie) : la facture est un document CLIENT, et un
+//  client qui lit « 47 min » discute le prix au lieu de la prestation. Ce qu'on
+//  facture, c'est un ménage, pas des minutes. La colonne annonce donc une
+//  QUANTITÉ — mention obligatoire sur une facture (art. L.441-9 du code de
+//  commerce) — et jamais un chrono.
 
 /** Ce qu'on sait d'un ménage au moment de le facturer. */
 export interface MenageAFacturer {
@@ -24,8 +31,6 @@ export interface MenageAFacturer {
   /** Type de mission, pour la colonne « Prestation ». */
   type: string;
   cleaner?: string;
-  /** Durée interne. Elle ne sort jamais vers le client, mais l'admin la voit. */
-  minutes?: number;
   /** Prix du ménage seul, hors fourniture. */
   prix: number;
   /** La fourniture de ce passage, si le logement en a une. */
@@ -41,7 +46,8 @@ export interface LigneFacture {
   type: string;
   apartment: string;
   cleaner: string;
-  duration: number;
+  /** Quantité facturée : 1 ménage, ou le nombre de kits d'une fourniture. */
+  quantite: number;
   unitPrice: number;
   amount: number;
   /** Vrai pour une ligne de marchandise : hors crédit d'impôt. */
@@ -68,7 +74,7 @@ export function lignesFacture(menages: MenageAFacturer[]): LigneFacture[] {
       type: m.type,
       apartment: logement,
       cleaner: m.cleaner || '—',
-      duration: m.minutes ? centimes(m.minutes / 60) : 0,
+      quantite: 1,
       unitPrice: centimes(m.prix),
       amount: centimes(m.prix),
     });
@@ -84,7 +90,7 @@ export function lignesFacture(menages: MenageAFacturer[]): LigneFacture[] {
         type: 'fourniture',
         apartment: logement,
         cleaner: '—',
-        duration: 0,
+        quantite: f.kits > 0 ? f.kits : 1,
         unitPrice: centimes(f.montant),
         amount: centimes(f.montant),
         fourniture: true,

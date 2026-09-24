@@ -4,7 +4,6 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import type { CompanyInfo, InvoiceLine } from '@/lib/types';
-import { formatDuration } from '@/lib/format';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -46,7 +45,7 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
   // les comptes anciens ne l ont pas encore renseignee — le bloc s adapte.
   clientAddress?: string; clientEmail?: string; clientPhone?: string;
   from: string; to: string;
-  lines: (InvoiceLine & { id?: string; qty?: number })[];
+  lines: (InvoiceLine & { id?: string })[];
   total: number;
   editable?: boolean;
   onAmount?: (id: string, v: string) => void;
@@ -175,10 +174,11 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
       </div>
 
       {/* ── TABLEAU DES PRESTATIONS ── */}
-      {/* Sur un DEVIS, Date et Durée ne portent aucune information (même date répétée
-          à chaque ligne, durée inconnue avant intervention) : on les remplace par la
-          quantité. Moins de colonnes = libellés qui ne se coupent plus sur 2 lignes,
-          donc des lignes plus courtes. */}
+      {/* La colonne annonce une QUANTITÉ, jamais une durée : le temps passé par
+          l'intervenant est interne (il pilote la paie), et ce document part au
+          client. Un DEVIS n'a en plus pas de Date utile — la même se répéterait
+          à chaque ligne — donc il s'en passe : moins de colonnes, des libellés
+          qui ne se coupent plus sur deux lignes. */}
       <div style={{ marginTop: s.gap, overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth: isDevis ? 380 : 480, borderCollapse: 'collapse' }}>
           <thead>
@@ -186,7 +186,7 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
               {!isDevis && <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 10 }}>Date</th>}
               <th style={{ ...th, textAlign: 'left', ...(isDevis ? { borderTopLeftRadius: 10 } : {}) }}>{isDevis ? 'Prestation' : 'Appartement / Chambre'}</th>
               {!isDevis && <th style={{ ...th, textAlign: 'left' }}>Prestation</th>}
-              <th style={{ ...th, textAlign: 'center' }}>{isDevis ? 'Qté' : 'Durée'}</th>
+              <th style={{ ...th, textAlign: 'center' }}>Qté</th>
               <th style={{ ...th, textAlign: 'right' }}>P.U.</th>
               <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 10 }}>Montant</th>
             </tr>
@@ -197,9 +197,7 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
                 {!isDevis && <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDateFR(l.date)}</td>}
                 <td style={{ ...td, fontWeight: 600, color: '#1A1A1A' }}>{l.apartment || l.label}</td>
                 {!isDevis && <td style={td}>{TYPE_LABEL[l.type] ?? l.type}</td>}
-                <td style={{ ...td, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                  {isDevis ? (l.qty ?? 1) : (l.duration ? formatDuration(Math.round(l.duration * 60)) : '—')}
-                </td>
+                <td style={{ ...td, textAlign: 'center', whiteSpace: 'nowrap' }}>{l.qty ?? 1}</td>
                 <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{l.unitPrice != null ? money(l.unitPrice) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap' }}>
                   {editable && onAmount && l.id ? (

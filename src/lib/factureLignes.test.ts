@@ -5,9 +5,9 @@ import {
 import { baseEligible } from './linge';
 
 const MENAGES: MenageAFacturer[] = [
-  { id: 'a', date: '2026-09-03', logement: 'Le Heritage 1', type: 'regular', cleaner: 'Awa', minutes: 45, prix: 20 },
+  { id: 'a', date: '2026-09-03', logement: 'Le Heritage 1', type: 'regular', cleaner: 'Awa', prix: 20 },
   {
-    id: 'b', date: '2026-09-05', logement: 'Le Cocon Savoir', type: 'regular', cleaner: 'Awa', minutes: 90, prix: 50,
+    id: 'b', date: '2026-09-05', logement: 'Le Cocon Savoir', type: 'regular', cleaner: 'Awa', prix: 50,
     fourniture: { montant: 9, libelle: 'Linge — 2 kits', kits: 2 },
   },
 ];
@@ -64,6 +64,21 @@ describe('Lignes de facture — ménage et fourniture séparés', () => {
   it('arrondit au centime — jamais 8,700000000000001 sur une facture', () => {
     const l = lignesFacture([{ ...MENAGES[0], prix: 2.9 * 3 }]);
     expect(l[0].amount).toBe(8.7);
+  });
+
+  it('facture des quantités, jamais des minutes', () => {
+    // Règle produit : le client ne doit pas pouvoir savoir combien de temps a
+    // duré son ménage. Un ménage = 1, une fourniture = son nombre de kits.
+    const l = lignesFacture(MENAGES);
+    expect(l[0].quantite).toBe(1);
+    expect(l[1].quantite).toBe(1);
+    expect(l[2].quantite).toBe(2);
+    expect(Object.keys(l[0])).not.toContain('duration');
+  });
+
+  it('une fourniture sans nombre de kits reste à 1, jamais à 0', () => {
+    const l = lignesFacture([{ ...MENAGES[0], fourniture: { montant: 4, libelle: 'Consommables', kits: 0 } }]);
+    expect(l[1].quantite).toBe(1);
   });
 
   it('rend une facture vide sans planter', () => {

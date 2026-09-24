@@ -366,7 +366,8 @@ export interface InvoiceLine {
   // Champs enrichis (facultatifs — absents sur les anciennes factures archivées)
   apartment?: string;
   cleaner?: string;
-  duration?: number;
+  /** Quantité facturée. JAMAIS une durée : voir l'entête de lib/factureLignes.ts. */
+  qty?: number;
   unitPrice?: number;
 }
 
