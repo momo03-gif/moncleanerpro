@@ -92,16 +92,34 @@ export const SEO_PAGES: SeoPage[] = [
           "Nous distinguons explicitement les recouches, plus rapides, et les chambres à blanc après départ, qui demandent une remise en état complète — puis nous calons le nombre d’intervenants sur le mix réel de la journée, pas sur une moyenne. Un planning bâti sur la moyenne tient quatre jours sur sept et échoue précisément les jours où l’établissement est plein.",
         ],
       },
+      {
+        h2: "Le petit-déjeuner, l'autre pic de la journée",
+        paragraphs: [
+          "On parle toujours des chambres, rarement de la salle de petit-déjeuner. C'est pourtant le seul espace où la totalité de vos clients se retrouve au même endroit dans la même heure, et le seul dont ils repartent avec une impression collective. Une salle reprise trop tard, des tables encore débarrassées à mi-service ou un buffet qui garde les traces du premier passage annulent le bénéfice de chambres impeccables.",
+          "La difficulté tient à la fenêtre : la salle se vide progressivement, la remise en état doit suivre le service sans le perturber, et l'espace doit être entièrement repris avant le créneau de nettoyage suivant. Nous traitons donc la salle en deux temps — un entretien continu pendant le service, sur les tables libérées et les abords du buffet, puis une reprise complète une fois le dernier client parti.",
+          "Le périmètre s'arrête où commence le vôtre : le réapprovisionnement du buffet, la manipulation des denrées et la plonge relèvent de votre équipe et de votre plan de maîtrise sanitaire. Nous traitons les surfaces, les sols, le mobilier et les points de contact.",
+        ],
+      },
+      {
+        h2: "Les parties communes se jugent au petit matin",
+        paragraphs: [
+          "Un hall d'hôtel encaisse toute la nuit : allées et venues, bagages, retours tardifs, intempéries rapportées sur les semelles. L'état dans lequel un client le découvre en descendant à sept heures pèse autant que sa chambre, parce que c'est la première image de la journée.",
+          "Nous calons donc la reprise des parties communes avant le début du petit-déjeuner et non « dans la matinée » : sols d'accueil, vitrage d'entrée, ascenseurs, sanitaires du rez-de-chaussée, abords extérieurs. Ce sont des espaces que l'on traite tôt ou que l'on traite mal.",
+        ],
+      },
     ],
     related: ['entreprise-nettoyage-lyon', 'nettoyage-fin-de-chantier-hotellerie', 'menage-conciergerie-lyon', 'nettoyage-vitres-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
-    updatedAt: '2026-08-09',
+    updatedAt: '2026-09-24',
     faq: [
       { q: 'Intervenez-vous tous les jours, week-ends compris ?', a: "Oui, nous adaptons la fréquence à votre taux d’occupation, y compris les week-ends et périodes de forte affluence." },
       { q: 'Pouvez-vous gérer le linge de l’hôtel ?', a: "Oui, le changement et la gestion du linge font partie de nos prestations hôtelières." },
       { q: "Comment gérez-vous les jours de forte occupation ?", a: "En dimensionnant l’équipe sur le mix réel de la journée — recouches et chambres à blanc n’ont pas la même durée — plutôt que sur une moyenne hebdomadaire. Un planning calé sur la moyenne échoue exactement les jours où l’hôtel est plein." },
       { q: "Vos intervenants connaissent-ils les standards hôteliers ?", a: "Ils travaillent sur un référentiel de contrôle de type gouvernante : dessous de lit, intérieurs de tiroirs et de minibar, joints de douche, dessus de tête de lit. Ce sont les points qu’un client inspecte, et ils ne figurent sur aucune check-list de nettoyage générique." },
       { q: "Intervenez-vous aussi pendant une rénovation ?", a: "Oui. La remise en état après travaux est une prestation distincte de l’entretien courant, avec sa propre méthode : voir notre page dédiée au nettoyage de fin de chantier hôtelier, qui traite la livraison par étages en site partiellement exploité." },
+      { q: "Traitez-vous la salle de petit-déjeuner ?", a: "Oui, en deux temps : un entretien continu pendant le service, sur les tables libérées et les abords du buffet, puis une reprise complète une fois le dernier client parti. C'est le seul espace où tous vos clients se retrouvent dans la même heure." },
+      { q: "Vous occupez-vous du buffet lui-même ?", a: "Non. Le réapprovisionnement, la manipulation des denrées et la plonge relèvent de votre équipe et de votre plan de maîtrise sanitaire. Nous traitons les surfaces, les sols, le mobilier et les points de contact." },
+      { q: "À quel moment reprenez-vous les parties communes ?", a: "Avant le début du petit-déjeuner, pas « dans la matinée ». Un hall encaisse toute la nuit, et l'état dans lequel un client le découvre en descendant pèse autant que sa chambre." },
     ],
   },
   // ── PAGE PILIER du cluster « Airbnb / courte durée » ──────────────────────
@@ -203,6 +221,7 @@ export const SEO_PAGES: SeoPage[] = [
       'menage-airbnb-villefranche-sur-saone',
       'menage-airbnb-anse',
       'nettoyage-hotel-lyon',
+      'menage-airbnb-ouest-lyonnais',
     ],
     relatedPosts: [
       'checklist-menage-airbnb-entre-voyageurs',
@@ -469,16 +488,34 @@ export const SEO_PAGES: SeoPage[] = [
           "En revanche, l’élimination des déchets d’activités de soins à risques infectieux relève d’une filière agréée, et la désinfection des dispositifs médicaux relève de vos protocoles internes et de votre responsabilité professionnelle. Une entreprise de nettoyage qui accepte tout sur ces sujets devrait vous alerter plutôt que vous rassurer.",
         ],
       },
+      {
+        h2: "Un établissement qui ne ferme jamais",
+        paragraphs: [
+          "C'est la contrainte qui distingue un EHPAD de tous les autres locaux professionnels : il n'y a pas de créneau vide. Les résidents sont chez eux vingt-quatre heures sur vingt-quatre, les soins occupent les matinées, les repas structurent la journée, les visites remplissent les après-midi. Un prestataire qui attend le moment où « il n'y aura personne » ne commencera jamais.",
+          "Nous découpons donc l'intervention par zones et par moments plutôt que par tâches. Les chambres se traitent après les soins du matin, une fois que le résident est levé et que l'équipe soignante a terminé. La salle à manger se reprend entre deux services, dans une fenêtre courte et connue. Les circulations, elles, se traitent en continu, par tronçons, pour qu'un couloir ne soit jamais entièrement impraticable.",
+          "Cela suppose de connaître le rythme de l'établissement et de s'y tenir. Un planning construit sur le papier, sans avoir vu une matinée réelle, se heurte au premier imprévu et finit par s'imposer aux équipes soignantes — ce qui est exactement l'inverse de ce qu'on attend d'un prestataire.",
+        ],
+      },
+      {
+        h2: "Entrer dans une chambre, c'est entrer chez quelqu'un",
+        paragraphs: [
+          "Une chambre d'EHPAD n'est pas une chambre d'hôtel : c'est le domicile du résident, souvent le dernier. Il y a ses meubles, ses photos, ses objets. On y frappe, on attend, on se présente, et on ne déplace pas ce qui est posé sans demander — même pour mieux nettoyer.",
+          "C'est une exigence de comportement autant que de méthode, et elle ne s'improvise pas : nos intervenants affectés à ces établissements sont stables, connus des équipes et des résidents. Une personne différente chaque semaine, dans un lieu où les repères comptent beaucoup, dégrade la prestation bien au-delà de la propreté.",
+        ],
+      },
     ],
     related: ['entreprise-nettoyage-lyon', 'nettoyage-cabinet-medical-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-vitres-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
-    updatedAt: '2026-08-09',
+    updatedAt: '2026-09-24',
     faq: [
       { q: 'Respectez-vous des protocoles d’hygiène spécifiques ?', a: "Oui, nous appliquons des protocoles stricts adaptés aux établissements accueillant du public sensible." },
       { q: 'Vos équipes sont-elles formées à ces environnements ?', a: "Nos intervenants sont formés et encadrés, avec un souci constant de discrétion et de régularité." },
       { q: "Vos intervenants sont-ils sensibilisés au public accueilli ?", a: "Oui, et cela va au-delà de l’hygiène. On ne réorganise pas les affaires d’un résident, on remet chaque objet où il était, on frappe et on attend avant d’entrer. Un cadre déplacé de vingt centimètres peut désorienter durablement une personne âgée." },
       { q: "Prenez-vous en charge les DASRI ?", a: "Non. Les déchets d’activités de soins à risques infectieux relèvent d’une filière agréée avec sa traçabilité propre. Notre périmètre couvre les locaux, les surfaces, le mobilier et les sanitaires." },
       { q: "Comment assurez-vous la continuité en cas d’absence ?", a: "Le remplacement est organisé en interne, avec les consignes écrites de l’établissement et du secteur concerné. Sur un lieu de vie, un intervenant qui découvre les lieux sans consigne est un risque, pas seulement une baisse de qualité." },
+      { q: "Comment intervenez-vous alors que l'établissement ne ferme jamais ?", a: "En découpant par zones et par moments, pas par tâches : les chambres après les soins du matin, la salle à manger entre deux services, les circulations en continu et par tronçons pour qu'un couloir ne soit jamais entièrement impraticable. Nous calons ce découpage sur le rythme réel de l'établissement, après l'avoir observé." },
+      { q: "Vos intervenants sont-ils les mêmes d'une semaine à l'autre ?", a: "Oui, et c'est essentiel ici. Une chambre est le domicile du résident : on y frappe, on se présente, on ne déplace pas ses objets sans demander. Dans un lieu où les repères comptent, une personne différente chaque semaine dégrade la prestation bien au-delà de la propreté." },
+      { q: "Vous adaptez-vous aux imprévus du quotidien ?", a: "Oui, c'est la règle plutôt que l'exception dans un établissement de ce type. Notre organisation prévoit qu'une zone puisse être reportée sans que le reste du passage s'effondre, et sans que le planning ne s'impose aux équipes soignantes." },
     ],
   },
   // ── PAGE PILIER du cluster « fin de chantier » ────────────────────────────
@@ -780,8 +817,27 @@ export const SEO_PAGES: SeoPage[] = [
           "Il y a aussi les situations plus difficiles, et elles sont fréquentes : un logement resté fermé plusieurs mois, une succession à vider et à préparer, un retour après une hospitalisation longue, ou simplement une maison devenue trop grande à entretenir. Nous intervenons dans ces cas sans jugement et avec discrétion — c’est une part réelle de notre activité, et il n’y a rien d’exceptionnel à faire appel à quelqu’un.",
         ],
       },
+      {
+        h2: "L'ordre dans lequel on procède fait la moitié du résultat",
+        paragraphs: [
+          "Un grand ménage raté l'est presque toujours pour la même raison : on a travaillé dans le désordre. On lave un sol, puis on dépoussière une étagère au-dessus, et tout redescend. On nettoie une vitre, puis on ponce une trace sur le rebord. On passe l'aspirateur, puis on vide un placard sur le tapis qu'on vient de faire.",
+          "La règle est simple et ne change jamais : du haut vers le bas, du sec vers l'humide, et pièce par pièce terminée plutôt que tâche par tâche sur tout le logement. Concrètement, on commence par les points hauts — dessus de meubles, luminaires, encadrements, gorges de moulures — on vide et on traite les rangements, on reprend les surfaces et les vitres, et les sols arrivent en dernier.",
+          "La cuisine et les salles d'eau font exception : elles demandent des temps de pose. On applique, on laisse agir pendant qu'on traite autre chose, puis on revient. Vouloir frotter immédiatement, c'est faire deux fois le travail et abîmer les surfaces — le produit fait le travail, à condition qu'on lui en laisse le temps.",
+        ],
+      },
+      {
+        h2: "Ce qui fait vraiment varier l'ampleur du travail",
+        list: [
+          "Le nombre de salles d'eau et de points d'eau, plus déterminant que la surface au sol",
+          "L'état des rangements : un placard à vider et à traiter n'a rien à voir avec un placard à essuyer",
+          "L'électroménager à reprendre de fond : four, réfrigérateur, hotte, lave-linge",
+          "La quantité de vitrage, en particulier les baies et les vérandas",
+          "La présence d'animaux, qui change le traitement des textiles et des sols",
+          "L'ancienneté du dernier nettoyage en profondeur, qui conditionne tout le reste",
+        ],
+      },
     ],
-    updatedAt: '2026-08-09',
+    updatedAt: '2026-09-24',
     related: ['nettoyage-fin-de-bail-lyon', 'menage-domicile-lyon', 'credit-impot-menage-domicile', 'nettoyage-vitres-lyon'],
     faq: [
       { q: 'Le grand ménage est-il ponctuel ou régulier ?', a: "Les deux : nous réalisons des grands ménages ponctuels comme des prestations récurrentes selon vos besoins." },
@@ -789,6 +845,9 @@ export const SEO_PAGES: SeoPage[] = [
       { q: "Quelle différence avec un ménage classique ?", a: "Le périmètre, pas l’intensité. Un grand ménage traite ce qu’un entretien courant ne touche jamais : intérieur des placards et du four, dessous et arrière des meubles, points hauts, plinthes, détartrage complet, textiles en profondeur." },
       { q: "Combien de temps faut-il prévoir ?", a: "Cela dépend de la surface et surtout de l’état de départ, qui pèse davantage. Un appartement de taille moyenne se traite généralement sur une journée ; un logement resté fermé longtemps ou une maison demandent plusieurs intervenants ou plusieurs jours. La durée estimée figure au devis." },
       { q: "Intervenez-vous avant un état des lieux de sortie ?", a: "Oui, c’est l’une des demandes les plus fréquentes, et le moment se cale juste avant le rendez-vous. Le logement doit être vide ou presque pour que tout soit accessible : un grand ménage réalisé autour des meubles restants n’a pas le même résultat." },
+      { q: "Dans quel ordre procédez-vous ?", a: "Du haut vers le bas, du sec vers l'humide, et pièce par pièce terminée plutôt que tâche par tâche. Points hauts d'abord, rangements ensuite, surfaces et vitres, sols en dernier. Travailler dans le désordre, c'est faire redescendre la poussière sur ce qu'on vient de laver." },
+      { q: "Pourquoi laisser agir les produits ?", a: "Parce que c'est le produit qui fait le travail, pas la force. En cuisine et en salle d'eau, on applique, on laisse le temps de pose, on traite autre chose, puis on revient. Frotter immédiatement revient à faire deux fois le travail et à abîmer les surfaces." },
+      { q: "Qu'est-ce qui fait varier l'ampleur d'un grand ménage ?", a: "Le nombre de points d'eau davantage que la surface, l'état des rangements, l'électroménager à reprendre de fond, la quantité de vitrage, la présence d'animaux, et surtout l'ancienneté du dernier nettoyage en profondeur. C'est pourquoi l'estimation se fait sur le logement réel et non sur un forfait." },
     ],
   },
   {
@@ -828,16 +887,37 @@ export const SEO_PAGES: SeoPage[] = [
           "Nous les traitons donc comme prioritaires, y compris sur le suivi des consommables : signaler un stock en fin de course avant la rupture fait partie du passage. C’est un détail qui ne coûte rien et qui évite la seule situation où un contrat d’entretien devient visible — quand il manque quelque chose.",
         ],
       },
+      {
+        h2: "Le flex office a changé ce qu'il faut nettoyer",
+        paragraphs: [
+          "Un plateau de bureaux ne se remplit plus de la même façon qu'il y a cinq ans. Avec le télétravail et les postes non attribués, l'occupation varie fortement d'un jour à l'autre : le mardi est plein, le vendredi est vide, et une partie des bureaux ne sert pas du tout certaines semaines. Un contrat qui applique la même prestation à tout le plateau, tous les jours, paie donc du nettoyage là où personne n'est passé — et en manque là où tout le monde s'est concentré.",
+          "Les zones qui souffrent ont changé, elles aussi. Les postes partagés concentrent les contacts : clavier, souris, accoudoirs, réglages de siège passent de main en main sans que personne ne s'en occupe. Les salles de réunion, devenues le vrai lieu de travail collectif, s'enchaînent toute la journée — table, télécommande, écran tactile, chaises. Les casiers et les espaces de dépôt, eux, n'existaient pas dans les contrats d'avant.",
+          "Nous construisons donc la prestation par zone et non en bloc : un socle quotidien sur les circulations, les sanitaires et les espaces communs, une fréquence propre aux salles de réunion et aux postes partagés, et une rotation sur les zones peu occupées. C'est la même enveloppe, mieux placée.",
+        ],
+      },
+      {
+        h2: "Ce que nous demandons pour bien faire notre travail",
+        list: [
+          "Un accès convenu et stable, qui ne dépende pas de la présence de quelqu'un",
+          "Un interlocuteur identifié côté client, pour arbitrer sans passer par trois personnes",
+          "Le plan d'occupation réel des zones, même approximatif — il vaut mieux qu'une moyenne",
+          "Les contraintes de vos équipes : salles à ne pas ouvrir, bureaux sensibles, matériel à ne pas déplacer",
+          "Un point régulier, court, plutôt qu'un bilan annuel où tout remonte d'un coup",
+        ],
+      },
     ],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
-    updatedAt: '2026-08-09',
-    related: ['prix-nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon'],
+    updatedAt: '2026-09-24',
+    related: ['prix-nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-de-nuit-lyon', 'nettoyage-agence-bancaire-lyon', 'nettoyage-lyon-part-dieu'],
     faq: [
       { q: 'Intervenez-vous en dehors des heures de bureau ?', a: "Oui, la plupart de nos prestations en entreprise se font tôt le matin ou en soirée, hors présence des équipes." },
       { q: 'Proposez-vous un contrat régulier ?', a: "Oui, nous mettons en place un planning régulier adapté à vos locaux, avec un interlocuteur dédié et un suivi qualité." },
       { q: "Que comprend exactement un passage ?", a: "Un socle traité à chaque fois — sols de circulation, sanitaires, points de contact, corbeilles, point café, salles de réunion utilisées — et des postes périodiques à fréquence définie : vitrages intérieurs, points hauts, moquette en profondeur, luminaires. Les deux listes figurent au contrat." },
       { q: "Gérez-vous les consommables sanitaires ?", a: "Le réassort et le suivi peuvent être inclus. Nous signalons de toute façon un stock en fin de course avant la rupture : un distributeur vide est ce qui rend un contrat d’entretien visible, et jamais en bien." },
       { q: "Intervenez-vous en présence des équipes ?", a: "Nous le déconseillons. Un nettoyage réalisé en journée contourne les postes occupés et saute les bureaux fermés : une partie des surfaces reste intacte semaine après semaine. Tôt le matin ou en soirée, le coût est identique et le résultat sans commune mesure." },
+      { q: "Faut-il nettoyer tout le plateau tous les jours ?", a: "Rarement, et c'est le premier poste d'économie mal utilisé. Avec des postes non attribués et du télétravail, l'occupation varie beaucoup d'un jour à l'autre. Nous conseillons un socle quotidien sur circulations, sanitaires et espaces communs, une fréquence propre aux salles de réunion et aux postes partagés, et une rotation sur les zones peu occupées." },
+      { q: "Traitez-vous les postes de travail partagés ?", a: "Oui, et ils méritent une attention particulière : clavier, souris, accoudoirs et réglages de siège passent de main en main sans que personne ne s'en occupe. C'est un point de contact typique du flex office, absent des contrats conçus pour des bureaux attribués." },
+      { q: "Qu'attendez-vous de notre côté pour bien travailler ?", a: "Un accès stable qui ne dépende pas d'une présence, un interlocuteur identifié pour arbitrer, et vos contraintes réelles : salles à ne pas ouvrir, bureaux sensibles, matériel à ne pas déplacer. Un point court et régulier vaut mieux qu'un bilan annuel où tout remonte d'un coup." },
     ],
   },
   {
@@ -878,16 +958,37 @@ export const SEO_PAGES: SeoPage[] = [
           "Le bon réflexe n’est pas de prendre le devis le plus cher, mais de comparer les temps de passage annoncés et le détail du périmètre. Deux devis sans ces éléments ne sont tout simplement pas comparables.",
         ],
       },
+      {
+        h2: "Les sous-sols, parkings et locaux vélos, absents de presque tous les contrats",
+        paragraphs: [
+          "Regardez un contrat d'entretien de copropriété : il décrit le hall, les escaliers, les paliers, parfois les abords. Le sous-sol y figure rarement, alors que c'est par là que la plupart des résidents entrent et sortent chaque jour. Le résultat est connu — un hall impeccable et un parking que personne n'a traité depuis des années.",
+          "Ces espaces salissent différemment. Un parking accumule de la poussière de freinage, grise et grasse, qui se colle au sol et aux plinthes, des traces d'huile, du sable rapporté par les pneus, et des toiles d'araignée dans les angles. Un local vélos ajoute la terre des pneus et l'humidité. Un local poubelles concentre, lui, tous les écoulements.",
+          "Ils demandent donc un traitement mécanisé et périodique plutôt qu'un balayage hebdomadaire : quelques passages en profondeur par an, avec le matériel adapté, valent mieux qu'un coup de balai régulier qui déplace la poussière sans jamais l'enlever. Nous les chiffrons séparément pour que le conseil syndical voie ce qu'il achète, et puisse l'arbitrer en connaissance de cause.",
+        ],
+      },
+      {
+        h2: "Ce qui revient le plus souvent en assemblée générale",
+        list: [
+          "Le local poubelles et les abords des points de collecte, jamais assez suivis",
+          "Les vitrages de hall, comptés dans un forfait au mètre carré de sol et donc sous-dimensionnés",
+          "Les sous-sols et parkings, absents du contrat mais utilisés tous les jours",
+          "Les traces sur les portes palières et les boîtes aux lettres, qui se voient plus que le sol",
+          "Les abords extérieurs après un épisode de vent ou de pluie",
+        ],
+      },
     ],
-    related: ['entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-fin-de-chantier-lyon'],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-fin-de-chantier-lyon', 'nettoyage-eglise-lieu-de-culte-lyon', 'nettoyage-lyon-confluence'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
-    updatedAt: '2026-08-09',
+    updatedAt: '2026-09-24',
     faq: [
       { q: 'Travaillez-vous avec les syndics et gestionnaires ?', a: "Oui, nous intervenons pour des syndics professionnels comme pour des copropriétés en gestion bénévole, avec un contrat régulier." },
       { q: 'Gérez-vous la sortie des poubelles ?', a: "Oui, la sortie et la rentrée des conteneurs ainsi que l’entretien du local poubelles peuvent être inclus dans la prestation." },
       { q: "Quelle fréquence choisir pour notre immeuble ?", a: "Elle dépend du passage réel, pas du nombre de lots. Un immeuble ouvert sur rue avec des commerces se salit bien plus vite qu’une résidence fermée sur cour de taille double. Nous proposons une fréquence après avoir vu l’immeuble." },
       { q: "Comment comparer deux devis de nettoyage ?", a: "Sur le temps de passage annoncé et le détail du périmètre, pas sur le montant seul. Un devis nettement moins cher correspond presque toujours à moins de temps sur place : cela ne se voit pas les premières semaines, puis les postes secondaires sautent." },
       { q: "La sortie des bacs est-elle comprise ?", a: "Elle se cadre explicitement au contrat, avec le lavage périodique des bacs et la désinfection du local. C’est le poste qui génère le plus de réclamations en copropriété, et celui que les contrats couvrent le plus mal." },
+      { q: "Le parking et le sous-sol sont-ils compris ?", a: "Rarement dans un contrat standard, et c'est une anomalie : c'est par là que la plupart des résidents entrent chaque jour. Nous les chiffrons séparément, avec un traitement mécanisé et périodique — quelques passages en profondeur par an valent mieux qu'un balayage hebdomadaire qui déplace la poussière sans l'enlever." },
+      { q: "Pourquoi un parking se nettoie-t-il différemment ?", a: "Parce que sa salissure n'est pas la même : poussière de freinage, grise et grasse, qui se colle au sol et aux plinthes, traces d'huile, sable rapporté par les pneus, toiles d'araignée dans les angles. Un local vélos y ajoute la terre et l'humidité." },
+      { q: "Comment présenter cela au conseil syndical ?", a: "En séparant les postes dans le devis plutôt qu'en annonçant un forfait global. Un conseil syndical qui voit ce qu'il achète peut arbitrer — augmenter la fréquence du local poubelles, espacer les sous-sols — au lieu de subir un prix unique qu'il ne peut que refuser ou accepter." },
     ],
   },
   {
@@ -927,16 +1028,37 @@ export const SEO_PAGES: SeoPage[] = [
           "En revanche, tout ce qui suppose une nacelle, une plateforme élévatrice ou un travail sur corde relève d’une entreprise spécialisée et habilitée. Nous ne le proposons pas, et nous vous le disons au devis plutôt que de le découvrir sur place. Une entreprise qui accepte un vitrage de grande hauteur sans mentionner les moyens d’accès vous engage dans un risque qui n’est pas le vôtre à porter.",
         ],
       },
+      {
+        h2: "Quand laver ses vitres, et à quelle fréquence",
+        paragraphs: [
+          "La question revient à chaque devis, et la réponse dépend de l'exposition bien plus que du calendrier. Une façade sur rue passante se salit plusieurs fois plus vite qu'une façade sur cour : elle reçoit les projections de la chaussée, la pollution et la poussière remise en suspension par la circulation. Une vitre plein sud garde les traces beaucoup plus visiblement, parce que le soleil rasant révèle le moindre voile.",
+          "Le printemps concentre les difficultés : pollen, pluies chargées et poussière de reprise de chantier arrivent en même temps. C'est aussi la saison où l'on nous demande le plus souvent une intervention juste avant une période de pluie annoncée — ce qui est un contresens, puisqu'une vitre propre reste propre sous la pluie, et qu'une vitre sale l'est encore plus après.",
+          "En pratique, nous calons des fréquences différentes selon les faces d'un même bâtiment plutôt qu'un rythme uniforme. Une vitrine commerciale demande un passage très fréquent, un vitrage de hall un rythme intermédiaire, et une façade sur cour beaucoup moins. C'est plus juste, et cela coûte moins cher qu'un rythme unique calé sur la face la plus exposée.",
+        ],
+      },
+      {
+        h2: "Ce qui abîme un vitrage définitivement",
+        list: [
+          "Un grattoir mal utilisé sur un verre trempé ou un film de protection solaire : les rayures sont irréversibles",
+          "Un produit acide sur des menuiseries aluminium anodisées ou des joints anciens",
+          "L'eau chargée en calcaire laissée à sécher sur un vitrage exposé au soleil",
+          "Le sable et la poussière de chantier essuyés à sec, qui rayent la surface à la première passe",
+          "Un nettoyage de vitre sans traitement du cadre : la saleté du rebord redescend dès la première pluie",
+        ],
+      },
     ],
     related: ['nettoyage-bureaux-lyon', 'nettoyage-commerce-lyon', 'nettoyage-copropriete-lyon', 'entreprise-nettoyage-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
-    updatedAt: '2026-08-09',
+    updatedAt: '2026-09-24',
     faq: [
       { q: 'Nettoyez-vous les vitres en hauteur ?', a: "Nous traitons les vitres accessibles en sécurité ; pour les grandes hauteurs nécessitant du matériel spécifique, nous vous orientons vers la solution adaptée." },
       { q: 'Intervenez-vous pour les commerces ?', a: "Oui, nous nettoyons régulièrement les vitrines et façades vitrées de commerces et de bureaux, en ponctuel ou en contrat régulier." },
       { q: "Pourquoi mes vitres gardent-elles des traces ?", a: "Presque toujours pour trois raisons : trop de produit non rincé, une eau calcaire séchée à l’air libre, ou une surface exposée au soleil qui sèche avant d’être raclée. La réponse est la méthode — mouilleur, raclette en un geste continu, bords essuyés à la microfibre." },
       { q: "Nettoyez-vous les vitres en hauteur ?", a: "Uniquement ce qui est accessible en sécurité depuis l’intérieur ou depuis le sol. Tout ce qui nécessite une nacelle ou un travail sur corde relève d’une entreprise habilitée : nous le signalons au devis plutôt que sur place." },
       { q: "À quelle fréquence faire nettoyer une vitrine ?", a: "Sur un axe passant, au moins deux fois par semaine. Une vitrine accumule en quelques jours les traces de mains, les projections du caniveau et le film gras de la circulation — et tout se voit à contre-jour en fin de journée, quand les passants regardent." },
+      { q: "À quelle fréquence faut-il laver ses vitres ?", a: "Cela dépend de l'exposition plus que du calendrier. Une façade sur rue passante se salit bien plus vite qu'une façade sur cour, et une vitre plein sud montre davantage les traces. Nous calons des fréquences différentes selon les faces d'un même bâtiment : c'est plus juste, et moins coûteux qu'un rythme unique calé sur la face la plus exposée." },
+      { q: "Faut-il attendre la fin des pluies pour faire laver ses vitres ?", a: "Non, c'est un contresens fréquent. Une vitre propre reste propre sous la pluie ; une vitre sale l'est encore plus après, parce que la pluie redépose la saleté accumulée sur le cadre et le rebord. Le traitement du cadre fait d'ailleurs partie de la prestation, sans quoi tout redescend au premier orage." },
+      { q: "Le printemps est-il une période particulière ?", a: "Oui, pollen, pluies chargées et poussière de reprise de chantier arrivent en même temps. C'est la période où les demandes se concentrent, et où il vaut mieux s'y prendre à l'avance." },
     ],
   },
   {
@@ -989,7 +1111,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: "Faut-il nettoyer toute la surface à chaque passage ?", a: "Rarement, et ce n’est pas le plus efficace. La salissure entre par la porte : traiter intensivement la zone d’entrée à chaque passage et le fond du magasin plus espacé donne un résultat perçu bien meilleur, à temps égal." },
       { q: "Mon local sent le renfermé, que faire ?", a: "C’est presque toujours identifiable : réserve mal ventilée, poubelle jamais lavée, siphon asséché ou textile humide. L’équipe sur place ne le perçoit plus, c’est pour cela que nous le signalons. Ce n’est pas une fatalité et cela se traite." },
     ],
-    related: ['nettoyage-vitres-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-restaurant-lyon'],
+    related: ['nettoyage-vitres-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-restaurant-lyon', 'nettoyage-salon-de-the-lyon', 'nettoyage-vieux-lyon'],
   },
   {
     slug: 'nettoyage-restaurant-lyon',
@@ -1043,7 +1165,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: "Prenez-vous en charge les conduits d’extraction ?", a: "Non. Le dégraissage des conduits et systèmes d’extraction relève d’entreprises certifiées, avec l’attestation correspondante. Nous le disons au devis plutôt que de vous laisser le découvrir." },
       { q: "Pourquoi ma salle paraît terne malgré un nettoyage quotidien ?", a: "Parce que l’aérosol gras de cuisson se dépose en couche invisible sur les luminaires, le haut des murs et les dossiers de chaises, puis capte la poussière. Un lavage des sols n’y change rien : il faut un dégraissage périodique des surfaces hautes, quelques fois par an." },
     ],
-    related: ['nettoyage-commerce-lyon', 'nettoyage-vitres-lyon', 'nettoyage-fin-de-chantier-lyon'],
+    related: ['nettoyage-commerce-lyon', 'nettoyage-vitres-lyon', 'nettoyage-fin-de-chantier-lyon', 'nettoyage-salon-de-the-lyon'],
   },
   {
     slug: 'nettoyage-cabinet-medical-lyon',
@@ -1156,7 +1278,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: "Dois-je être présent ?", a: "Pour le premier passage, c’est utile : cela permet d’indiquer vos priorités et ce qu’on ne touche pas. Ensuite, la plupart de nos clients nous confient un accès et ne sont pas là — un compte rendu vous informe de ce qui a été fait." },
       { q: 'Le ménage régulier ouvre-t-il droit au crédit d’impôt ?', a: "Oui. L’entretien du domicile relève des services à la personne : 50 % du montant sont pris en charge, et l’avance immédiate les déduit directement de votre règlement — vous n’avancez pas cette moitié. C’est sur une prestation récurrente que l’avantage pèse le plus, puisqu’il s’applique à chaque passage de l’année." },
     ],
-    related: ['credit-impot-menage-domicile', 'aide-menagere-domicile-lyon', 'grand-menage-lyon', 'nettoyage-vitres-lyon'],
+    related: ['credit-impot-menage-domicile', 'aide-menagere-domicile-lyon', 'grand-menage-lyon', 'nettoyage-vitres-lyon', 'nettoyage-croix-rousse', 'nettoyage-lyon-6-tete-dor'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
   },
   // ── Pilier générique : la requête la plus large du métier ────────────────────
@@ -1216,7 +1338,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
-    related: ['meilleure-entreprise-nettoyage-lyon', 'contrat-nettoyage-entreprise-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-hotel-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-entrepot-lyon'],
+    related: ['meilleure-entreprise-nettoyage-lyon', 'contrat-nettoyage-entreprise-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-hotel-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-entrepot-lyon', 'nettoyage-de-nuit-lyon', 'nettoyage-lyon-part-dieu', 'nettoyage-ecole-creche-lyon'],
     updatedAt: '2026-08-31',
     faq: [
       { q: 'Sur quel secteur intervenez-vous ?', a: "Lyon et l'ensemble de la métropole, ainsi que le Beaujolais jusqu'à Villefranche-sur-Saône et Anse. Pour les chantiers importants, nous nous déplaçons sur toute la France." },
@@ -1239,7 +1361,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'meilleure entreprise de nettoyage Lyon',
     eyebrow: 'Comparer avant de choisir',
     h1: 'Meilleure entreprise de nettoyage à Lyon : comment trancher',
-    title: "Meilleure entreprise de nettoyage à Lyon : la grille — MonCleanerPro",
+    title: "Meilleure entreprise de nettoyage à Lyon",
     description: "Comment reconnaître la meilleure entreprise de nettoyage à Lyon pour votre besoin : critères vérifiables, points de contrôle administratifs, questions à poser.",
     intro:
       "Il n’existe pas de meilleure entreprise de nettoyage dans l’absolu, et méfiez-vous de celle qui prétend l’être. Il existe en revanche une entreprise mieux adaptée que les autres à votre bâtiment, à vos horaires et à votre niveau d’exigence — et un petit nombre de critères qui permettent de la reconnaître avant de signer, plutôt qu’au troisième mois. Cette page donne cette grille, avec les vérifications que vous pouvez faire vous-même, et elle dit honnêtement où nous nous situons, y compris ce pour quoi nous ne sommes pas le bon choix.",
@@ -1701,7 +1823,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
-    related: ['entreprise-nettoyage-lyon', 'nettoyage-bureaux-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-copropriete-lyon'],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-bureaux-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-de-nuit-lyon', 'nettoyage-ecole-creche-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-09-13',
     faq: [
@@ -1764,7 +1886,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
-    related: ['entreprise-nettoyage-lyon', 'nettoyage-commerce-lyon', 'nettoyage-vitres-lyon', 'contrat-nettoyage-entreprise-lyon'],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-commerce-lyon', 'nettoyage-vitres-lyon', 'contrat-nettoyage-entreprise-lyon', 'nettoyage-studio-yoga-pilates-lyon'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-09-13',
     faq: [
@@ -2255,7 +2377,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Mon immeuble n’a pas d’ascenseur, est-ce un problème ?', a: "Non, mais cela se prévoit. Le portage du matériel dans les immeubles anciens des coteaux pèse sur la durée réelle du passage : nous en tenons compte au devis plutôt que de le découvrir sur place." },
       { q: 'Quelle fréquence pour une copropriété ?', a: "Cela dépend du nombre de lots et du passage. Un petit collectif se tient avec un passage hebdomadaire ; une résidence avec beaucoup de circulation demande deux à trois passages. Nous proposons une fréquence après avoir vu l’immeuble, pas avant." },
     ],
-    related: ['nettoyage-copropriete-lyon', 'nettoyage-rillieux-la-pape', 'nettoyage-neuville-sur-saone', 'nettoyage-villeurbanne'],
+    related: ['nettoyage-copropriete-lyon', 'nettoyage-rillieux-la-pape', 'nettoyage-neuville-sur-saone', 'nettoyage-villeurbanne', 'nettoyage-croix-rousse'],
     updatedAt: '2026-08-09',
   },
   {
@@ -2510,7 +2632,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Prenez-vous les sièges d’entreprise et espaces d’accueil ?', a: "Oui, avec une intervention hors présence : avant l’arrivée des équipes ou après leur départ. Un hall d’accueil se juge dans les premières secondes d’une visite client." },
       { q: 'Proposez-vous une remise en état avant une réception ou une vente ?', a: "Oui, en prestation ponctuelle : grand ménage complet avant un événement, une séance photo ou une mise en vente. C’est une intervention plus longue et plus détaillée que l’entretien courant." },
     ],
-    related: ['menage-domicile-lyon', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon', 'grand-menage-lyon'],
+    related: ['menage-domicile-lyon', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon', 'grand-menage-lyon', 'nettoyage-lyon-6-tete-dor'],
     updatedAt: '2026-08-09',
   },
   {
@@ -2561,7 +2683,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'À quelle fréquence nettoyer la vitrine ?', a: "Sur un axe passant, deux fois par semaine au minimum. Une vitrine se marque en quelques jours — traces de mains, projections du caniveau, film gras de la circulation — et tout se voit à contre-jour en fin de journée." },
       { q: 'Entretenez-vous les copropriétés de Tassin ?', a: "Oui, halls, cages d’escalier et parties communes, en passages réguliers, pour les syndics comme pour les copropriétés en gestion bénévole." },
     ],
-    related: ['nettoyage-commerce-lyon', 'nettoyage-ecully', 'nettoyage-sainte-foy-les-lyon', 'nettoyage-cabinet-medical-lyon'],
+    related: ['nettoyage-commerce-lyon', 'nettoyage-ecully', 'nettoyage-sainte-foy-les-lyon', 'nettoyage-cabinet-medical-lyon', 'menage-airbnb-ouest-lyonnais'],
     updatedAt: '2026-08-09',
   },
   {
@@ -2662,7 +2784,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Travaillez-vous avec les syndics du secteur ?', a: "Oui, nous entretenons les parties communes pour des syndics professionnels comme pour des copropriétés en gestion bénévole, avec un suivi transparent." },
       { q: 'Intervenez-vous après des travaux ?', a: "Oui, la remise en état après rénovation est l’un de nos savoir-faire à Villeurbanne, où le parc ancien est très rénové. Nous avons une page dédiée au nettoyage de fin de chantier sur la commune." },
     ],
-    related: ['nettoyage-fin-de-chantier-villeurbanne', 'nettoyage-copropriete-lyon', 'menage-airbnb-lyon', 'nettoyage-bureaux-lyon'],
+    related: ['nettoyage-fin-de-chantier-villeurbanne', 'nettoyage-copropriete-lyon', 'menage-airbnb-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-lyon-part-dieu'],
   },
   {
     slug: 'nettoyage-oullins-pierre-benite',
@@ -2979,7 +3101,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Puis-je faire évoluer la fréquence selon les saisons ?', a: "Oui. Beaucoup de nos clients passent à un rythme allégé l’été et renforcent à la rentrée, ou ajoutent un grand ménage avant les fêtes. La prestation courante et les postes de fond se règlent séparément." },
       { q: 'Travaillez-vous aussi les parties communes de ma résidence ?', a: "Oui, l’entretien des parties communes de copropriété est une prestation distincte, contractée avec le syndic. Les deux coexistent sans difficulté sur la même adresse." },
     ],
-    related: ['menage-domicile-lyon', 'grand-menage-lyon', 'nettoyage-ecully', 'nettoyage-vitres-lyon'],
+    related: ['menage-domicile-lyon', 'grand-menage-lyon', 'nettoyage-ecully', 'nettoyage-vitres-lyon', 'nettoyage-vieux-lyon'],
   },
   {
     slug: 'nettoyage-saint-genis-laval',
@@ -4539,7 +4661,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'crédit d’impôt ménage à domicile',
     eyebrow: 'Avantage fiscal',
     h1: 'Crédit d’impôt ménage à domicile : 50 % pris en charge',
-    title: 'Crédit d’impôt ménage à domicile — 50 % déduits | MonCleanerPro',
+    title: "Crédit d’impôt ménage à domicile — MonCleanerPro",
     description: "Ménage à domicile : 50 % du montant pris en charge par l’État, déduits immédiatement de votre règlement. Conditions, plafond, démarches. Estimation gratuite.",
     intro:
       "Faire entretenir son logement par une entreprise déclarée ouvre droit à un crédit d’impôt de 50 % au titre des services à la personne. Ce n’est pas une réduction commerciale ni une promotion : c’est l’article 199 sexdecies du code général des impôts, et il s’applique aussi bien aux foyers imposables qu’à ceux qui ne le sont pas. Avec l’avance immédiate mise en place par l’URSSAF, cette moitié n’est même plus à avancer : elle est déduite de ce que vous réglez, au moment où vous le réglez. Cette page explique ce que couvre le dispositif, ce qu’il ne couvre pas, et ce qu’il vous reste à faire pour en bénéficier chez nous.",
@@ -4615,8 +4737,8 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'avance immédiate crédit d’impôt ménage',
     eyebrow: 'Avance immédiate',
     h1: 'Avance immédiate : ne réglez que la moitié, tout de suite',
-    title: 'Avance immédiate crédit d’impôt ménage — comment ça marche | MonCleanerPro',
-    description: "L’avance immédiate de l’URSSAF déduit les 50 % du crédit d’impôt de votre règlement, sans attendre l’année suivante. Fonctionnement, inscription, cas particuliers.",
+    title: "Avance immédiate du crédit d’impôt ménage",
+    description: "L’avance immédiate URSSAF déduit les 50 % du crédit d’impôt de votre règlement, sans attendre l’année suivante. Fonctionnement et inscription.",
     intro:
       "Pendant longtemps, le crédit d’impôt services à la personne avait un défaut de trésorerie : il fallait payer la totalité, puis attendre la déclaration de revenus et le versement du fisc, parfois plus d’un an après. L’avance immédiate a supprimé ce décalage. Vous réglez la moitié de la prestation, l’URSSAF verse l’autre moitié, et il n’y a plus rien à récupérer nulle part. Voici comment le mécanisme fonctionne concrètement, ce qu’on vous demande une seule fois, et les quelques situations où il ne s’applique pas.",
     highlights: [
@@ -4681,7 +4803,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'aide ménagère à domicile Lyon',
     eyebrow: 'Aide à domicile',
     h1: 'Aide ménagère à domicile à Lyon',
-    title: 'Aide ménagère à domicile à Lyon — 50 % pris en charge | MonCleanerPro',
+    title: "Aide ménagère à domicile à Lyon — MonCleanerPro",
     description: "Aide ménagère à domicile à Lyon : entretien régulier, intervenant attitré, 50 % du montant pris en charge par le crédit d’impôt. Estimation gratuite sous 24h.",
     intro:
       "Une aide ménagère, ce n’est pas seulement quelqu’un qui nettoie : c’est quelqu’un qui passe régulièrement chez vous, qui connaît votre logement et sur qui vous devez pouvoir compter. La régularité et la confiance comptent ici davantage que la performance ponctuelle. MonCleanerPro intervient à Lyon et dans la métropole auprès de particuliers, de personnes âgées et de familles, avec un intervenant attitré, un cadre professionnel — et la moitié du montant prise en charge au titre des services à la personne.",
@@ -4815,7 +4937,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'prix ménage à domicile Lyon',
     eyebrow: 'Prix & devis',
     h1: 'Prix d’un ménage à domicile à Lyon',
-    title: 'Prix d’un ménage à domicile à Lyon — ce qui le fait varier | MonCleanerPro',
+    title: "Prix d’un ménage à domicile à Lyon",
     description: "Ce qui fait varier le prix d’un ménage à domicile à Lyon : surface, fréquence, état initial, linge. Et pourquoi la comparaison se fait après crédit d’impôt.",
     intro:
       "Un tarif affiché en ligne ne vous apprendrait presque rien : un studio entretenu toutes les semaines et une maison remise à niveau après six mois sans passage n’ont pas le même contenu de prestation, et pas la même durée. Ce qui est utile, c’est de comprendre ce qui fait bouger le devis, ce que vous pouvez actionner pour le réduire, et surtout comment comparer honnêtement deux propositions — parce que la moitié prise en charge par le crédit d’impôt change complètement le classement des offres.",
@@ -4888,7 +5010,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'repassage à domicile Lyon',
     eyebrow: 'Linge & repassage',
     h1: 'Repassage à domicile à Lyon',
-    title: 'Repassage à domicile à Lyon — 50 % pris en charge | MonCleanerPro',
+    title: "Repassage à domicile à Lyon — MonCleanerPro",
     description: "Repassage à domicile à Lyon, seul ou avec le ménage : linge plié ou sur cintre, textiles délicats respectés. 50 % pris en charge. Estimation gratuite.",
     intro:
       "Le repassage est la tâche que les gens abandonnent en premier et récupèrent en dernier. Elle s’accumule discrètement, occupe un soir entier une fois par quinzaine, et ne se rattrape jamais vraiment. C’est aussi un vrai savoir-faire : un chemisier en viscose et une chemise en coton ne se traitent ni à la même température ni dans le même ordre. Nous intervenons à Lyon et dans la métropole, en complément d’un ménage régulier ou comme prestation à part entière — avec la moitié du montant prise en charge au titre des services à la personne.",
@@ -4954,7 +5076,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'ménage colocation Lyon',
     eyebrow: 'Colocation & coliving',
     h1: 'Ménage en colocation à Lyon',
-    title: 'Ménage en colocation à Lyon — parties communes entretenues | MonCleanerPro',
+    title: "Ménage en colocation à Lyon — MonCleanerPro",
     description: "Ménage de colocation et de coliving à Lyon : parties communes, chambres, rotation des locataires. Fin des tours de ménage jamais tenus. Estimation gratuite.",
     intro:
       "Dans une colocation, le ménage est le premier sujet de tension et le dernier à être réglé. Le tableau des tours tient trois semaines, puis quelqu’un part en stage, quelqu’un d’autre estime avoir déjà fait sa part, et la cuisine devient un terrain de négociation permanent. Faire intervenir un prestataire ne règle pas seulement la propreté : cela retire un sujet de conflit d’une relation qui n’a pas besoin de ça. MonCleanerPro entretient colocations et coliving à Lyon, en distinguant clairement les parties communes des chambres privatives.",
@@ -5022,7 +5144,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Airbnb Villeurbanne',
     eyebrow: 'Villeurbanne',
     h1: 'Nettoyage Airbnb à Villeurbanne',
-    title: 'Nettoyage Airbnb à Villeurbanne — ménage entre voyageurs | MonCleanerPro',
+    title: "Ménage Airbnb à Villeurbanne — MonCleanerPro",
     description: "Ménage Airbnb à Villeurbanne : Gratte-Ciel, Charpennes, Tonkin, La Doua. Rotation le jour même, linge fourni, contrôle photo. Devis sous 24h.",
     intro:
       "Villeurbanne loue toute l’année, et pas au même public selon le quartier : des séjours d’affaires autour de Charpennes à dix minutes de la Part-Dieu, des familles qui viennent voir un étudiant du côté de la Doua, des visiteurs hospitaliers, et une clientèle de week-end attirée par des nuitées plus abordables qu’en presqu’île. Cette diversité change le travail de ménage bien plus qu’on ne le croit — la durée d’un séjour détermine l’état dans lequel on retrouve un logement. Nous intervenons sur toute la commune, avec la contrainte que tout le monde connaît ici : se garer.",
@@ -5082,7 +5204,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Airbnb Vénissieux',
     eyebrow: 'Vénissieux',
     h1: 'Nettoyage Airbnb à Vénissieux',
-    title: 'Nettoyage Airbnb à Vénissieux — ménage entre voyageurs | MonCleanerPro',
+    title: "Ménage Airbnb à Vénissieux — MonCleanerPro",
     description: "Ménage Airbnb à Vénissieux : séjours longs, grands logements, accès facile. Rotation fiable, linge géré, compte rendu photo. Devis sous 24h.",
     intro:
       "La location courte durée à Vénissieux ne ressemble pas à celle de l’hypercentre lyonnais, et c’est une bonne nouvelle pour qui sait s’y prendre. Les séjours y sont plus longs — déplacements professionnels, missions sur chantier, familles de patients, personnes en mutation — dans un parc de logements plus grands et à des nuitées plus abordables. Cela change deux choses au ménage : ce qu’on trouve en arrivant, et le poids qu’il pèse dans la rentabilité de l’annonce.",
@@ -5141,7 +5263,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Airbnb Décines',
     eyebrow: 'Décines-Charpieu',
     h1: 'Nettoyage Airbnb à Décines-Charpieu',
-    title: 'Nettoyage Airbnb à Décines — soirs de match et concerts | MonCleanerPro',
+    title: "Ménage Airbnb à Décines-Charpieu",
     description: "Ménage Airbnb à Décines-Charpieu : pics de réservation les soirs de match et de concert au stade, rotations groupées le lendemain. Devis sous 24h.",
     intro:
       "Décines a une particularité qu’aucune autre commune de la métropole ne partage : son calendrier de réservations est en grande partie dicté par celui du Groupama Stadium. Un match, un concert, un événement, et des dizaines de logements se remplissent la même nuit — puis se vident tous le lendemain matin, à la même heure. Cette concentration est une aubaine pour le taux d’occupation et un casse-tête pour le ménage, parce qu’elle transforme une journée ordinaire en pic à absorber.",
@@ -5200,7 +5322,7 @@ export const SEO_PAGES: SeoPage[] = [
     keyword: 'nettoyage Airbnb ouest lyonnais',
     eyebrow: 'Ouest lyonnais',
     h1: 'Nettoyage Airbnb dans l’ouest lyonnais',
-    title: 'Nettoyage Airbnb ouest lyonnais — Écully, Tassin, Sainte-Foy | MonCleanerPro',
+    title: "Ménage Airbnb dans l’Ouest lyonnais",
     description: "Ménage Airbnb dans l’ouest lyonnais : Écully, Tassin, Sainte-Foy, Charbonnières, Craponne. Maisons, extérieurs, standing. Devis sous 24h.",
     intro:
       "L’ouest lyonnais loue autre chose que le reste de la métropole : des maisons avec jardin, de grands appartements, des biens de standing loués à la semaine plutôt qu’à la nuit. Écully, Tassin-la-Demi-Lune, Sainte-Foy-lès-Lyon, Charbonnières-les-Bains, Craponne et Francheville accueillent une clientèle d’affaires — écoles de commerce, sièges d’entreprises du Techlid — et des familles en séjour prolongé. Le niveau d’exigence y est supérieur, la tolérance à l’approximation quasi nulle, et les extérieurs font partie de ce que le voyageur juge.",
@@ -5266,6 +5388,361 @@ export const SEO_PAGES: SeoPage[] = [
     related: ['menage-airbnb-lyon', 'menage-conciergerie-lyon', 'menage-location-courte-duree-lyon', 'nettoyage-ecully', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon'],
     relatedPosts: ['linge-location-courte-duree', 'checklist-menage-airbnb-entre-voyageurs'],
     updatedAt: '2026-09-08',
+  },
+  // ── Verticales de ménage RÉCURRENT (cluster « entreprises ») ───────────────
+  // Chacune vise une requête métier précise. La règle du cluster tient : un
+  // angle propre, jamais le gabarit d'à côté avec le nom du commerce changé.
+  {
+    slug: 'nettoyage-salon-de-the-lyon',
+    cluster: 'entreprises',
+    keyword: 'nettoyage salon de thé Lyon',
+    eyebrow: 'Salon de thé & café',
+    h1: 'Nettoyage de salon de thé et de café à Lyon',
+    title: "Nettoyage de salon de thé à Lyon — MonCleanerPro",
+    description: "Entretien de salons de thé, cafés et coffee shops à Lyon : passage avant ouverture, vitrine, zone machine, sols sucrés, terrasse. Devis sous 24h.",
+    intro:
+      "Un salon de thé n’est pas un restaurant en plus petit. Il n’y a pas de cuisine chaude complète, mais une machine qui tourne du matin au soir, une vitrine de pâtisserie exposée au regard, des sols qui deviennent collants avant midi et une salle où les clients s’installent longtemps. MonCleanerPro entretient les salons de thé, cafés et coffee shops lyonnais avec un passage calé avant l’ouverture, pour que la première personne qui pousse la porte trouve une salle nette — pas une salle en train d’être faite.",
+    highlights: [
+      { title: 'Passage avant ouverture', text: "Nous intervenons avant votre mise en place, pas pendant le service. Un client qui entre ne doit jamais croiser une serpillière." },
+      { title: 'Autour de la machine', text: "Comptoir, bac de marc, plan de travail, sol sous machine : la zone la plus salissante de l’établissement, traitée en priorité." },
+      { title: 'Vitrine et présentoirs', text: "Vitrage de la vitrine réfrigérée, plateaux, cloches : ce que le client regarde avant même de commander." },
+      { title: 'Sols sucrés', text: "Le sucre et le lait collent au sol et aux pieds de table. Ils demandent un détergent adapté, pas un simple passage à l’eau." },
+      { title: 'Salle et assises', text: "Tables, dessous de tables, banquettes et chaises : une salle où l’on reste une heure se juge au détail." },
+      { title: 'Terrasse', text: "Sol, mobilier et abords de terrasse entretenus selon la saison, sur la même intervention." },
+    ],
+    includes: [
+      'Nettoyage de la salle : sols, tables, dessous de tables, assises',
+      'Comptoir, plan de travail et zone machine, sol compris',
+      'Vitrine réfrigérée, présentoirs et surfaces vitrées',
+      'Sanitaires clients : désinfection complète et réassort',
+      'Points de contact : poignées, interrupteurs, terminal de paiement',
+      'Sortie des déchets et entretien du local poubelles',
+      'Terrasse et abords extérieurs selon la saison',
+      'Vitrine extérieure et bas de devanture',
+    ],
+    sections: [
+      {
+        h2: 'La machine salit plus que tout le reste',
+        paragraphs: [
+          "C’est le point que les contrats génériques sous-estiment systématiquement. Autour d’une machine qui tourne toute la journée, le marc gicle, le lait éclabousse, la vapeur projette — et tout cela retombe sur le comptoir, sur le mur derrière, et surtout au sol, où le mélange sucre-lait-marc sèche en une pellicule que l’eau seule n’enlève pas.",
+          "Nous traitons donc cette zone comme un poste à part, avec son propre produit et son propre temps : dessous et arrière de machine, plinthe, pied de comptoir, grille d’écoulement, bac à marc. Un passage qui se contente de la surface visible du comptoir laisse chaque jour une couche de plus, et au bout de quelques semaines le sol est marqué pour de bon.",
+          "En revanche, l’hygiène de la machine elle-même reste chez vous : rinçage des buses, nettoyage des groupes, détartrage. Ce sont des opérations qui engagent la garantie du matériel et la qualité de ce que vous servez — elles relèvent de votre équipe, pas d’un prestataire de nettoyage.",
+        ],
+      },
+      {
+        h2: 'Un client qui reste une heure regarde beaucoup plus',
+        paragraphs: [
+          "C’est la différence de fond avec une brasserie ou une boutique. Dans un salon de thé, les gens s’installent, travaillent, discutent. Ils ont le temps de voir le dessous de la table, le pied de la chaise, la plinthe, la trace sur la vitre, la poussière sur l’étagère de décoration. Rien de tout cela n’apparaît lors d’un passage rapide, et tout cela finit dans les commentaires en ligne.",
+          "Notre passage inclut donc explicitement les zones basses et les surfaces que personne ne nettoie spontanément : dessous et piétements de tables, barreaux de chaises, assises de banquettes, plinthes de la salle, rebords de fenêtre, étagères de décoration. Ce sont quelques minutes de plus, et c’est exactement ce qui sépare une salle propre d’une salle qui a l’air propre depuis l’entrée.",
+        ],
+      },
+      {
+        h2: 'Finir avant que vous ne commenciez',
+        paragraphs: [
+          "Un salon de thé ouvre tôt, et la mise en place commence encore plus tôt. Notre passage doit donc être terminé quand votre équipe arrive, sinon deux personnes se gênent dans le même mètre carré au moment où le temps manque le plus.",
+          "Nous intervenons avant l’arrivée de votre équipe, avec un accès convenu, et nous laissons l’établissement prêt à recevoir : sols secs, salle remise en ordre, sanitaires réapprovisionnés. Le soir, quand l’organisation s’y prête mieux, le passage se fait après la fermeture selon le même principe.",
+        ],
+      },
+      {
+        h2: 'Ce que nous ne faisons pas',
+        list: [
+          "Le nettoyage et le détartrage de la machine, qui engagent votre matériel et ce que vous servez",
+          "La plonge et tout ce qui touche aux denrées et à la vaisselle en service",
+          "Le dégraissage des conduits et caissons d’extraction, qui relève d’une entreprise spécialisée",
+          "Votre plan de maîtrise sanitaire, que nous appuyons sans jamais nous y substituer",
+        ],
+      },
+    ],
+    related: ['nettoyage-commerce-lyon', 'nettoyage-restaurant-lyon', 'entreprise-nettoyage-lyon', 'contrat-nettoyage-entreprise-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon', 'changer-entreprise-nettoyage-sans-coupure'],
+    updatedAt: '2026-09-24',
+    faq: [
+      { q: 'Intervenez-vous avant l’ouverture ?', a: "Oui, c’est le créneau le plus courant : nous terminons avant l’arrivée de votre équipe, avec un accès convenu, et nous laissons la salle prête à recevoir — sols secs, salle en ordre, sanitaires réapprovisionnés. Un passage après la fermeture est possible quand votre organisation s’y prête mieux." },
+      { q: 'Nettoyez-vous la machine à café ?', a: "Non. Le rinçage des buses, le nettoyage des groupes et le détartrage engagent la garantie du matériel et la qualité de ce que vous servez : ils restent chez votre équipe. Nous traitons en revanche toute la zone autour — comptoir, arrière, plinthe, sol, bac à marc — qui est la plus salissante de l’établissement." },
+      { q: 'Traitez-vous la vitrine réfrigérée et les présentoirs ?', a: "Oui, le vitrage de la vitrine, les plateaux et les cloches font partie du passage. C’est ce que le client regarde avant même de commander, et une trace de doigt s’y voit immédiatement." },
+      { q: 'Pouvez-vous entretenir la terrasse ?', a: "Oui, sol, mobilier et abords sont inclus sur demande, avec une fréquence qui suit la saison. En été, la terrasse demande souvent plus d’attention que la salle." },
+      { q: 'À quelle fréquence faut-il passer ?', a: "Un établissement ouvert tous les jours demande un passage quotidien sur la salle, les sanitaires et la zone machine, complété par des postes de fond en rotation — vitrine extérieure, plinthes, luminaires, mobilier en profondeur. Nous calons cette rotation avec vous plutôt que de tout faire à moitié chaque jour." },
+      { q: 'Et le local poubelles ?', a: "La sortie des déchets et l’entretien du local sont inclus si vous le souhaitez, avec un calage sur les jours de collecte. C’est un poste qui pèse peu dans le devis et beaucoup dans le voisinage." },
+    ],
+  },
+  {
+    slug: 'nettoyage-studio-yoga-pilates-lyon',
+    cluster: 'entreprises',
+    keyword: 'nettoyage studio yoga pilates Lyon',
+    eyebrow: 'Yoga, pilates & studios',
+    h1: 'Nettoyage de studio de yoga et de pilates à Lyon',
+    title: "Nettoyage de studio de yoga et pilates à Lyon",
+    description: "Entretien de studios de yoga, pilates et danse à Lyon : sols pieds nus, tapis et matériel partagés, odeurs, créneaux entre deux cours. Devis sous 24h.",
+    intro:
+      "Dans un studio de yoga ou de pilates, le sol n’est pas un sol : c’est une surface de contact avec la peau. On y marche pieds nus, on s’y allonge, on y pose son visage. Cela disqualifie d’emblée la méthode d’une salle de sport classique — un produit qui laisse un film, une odeur de désinfectant ou une trace glissante y serait immédiatement remarqué, et mal. MonCleanerPro entretient les studios lyonnais avec un protocole pensé pour cet usage : des sols traités pour être touchés, du matériel partagé désinfecté sans l’abîmer, et des odeurs traitées à la source.",
+    highlights: [
+      { title: 'Des sols qu’on touche', text: "Parquet, liège, linoléum ou sol souple : nettoyés sans film résiduel, sans excès d’eau et sans odeur persistante." },
+      { title: 'Le matériel partagé', text: "Tapis, briques, sangles, ballons, petit matériel : désinfectés avec des produits compatibles mousse, PVC et textile." },
+      { title: 'Entre deux cours', text: "Les studios enchaînent les créneaux. Nous nous calons sur votre planning, pas sur une heure théorique." },
+      { title: 'Les odeurs à la source', text: "On ne masque pas une odeur avec un parfum : on traite les textiles, les vestiaires et la ventilation." },
+      { title: 'Vestiaires et sanitaires', text: "Casiers, bancs, sanitaires et miroirs : les pièces où le studio se juge quand le cours est fini." },
+      { title: 'Miroirs et vitrages', text: "Grands miroirs traités sans trace ni voile — dans un studio, ils occupent tout un mur." },
+    ],
+    includes: [
+      'Sols de pratique traités selon le revêtement, sans film ni excès d’eau',
+      'Désinfection du matériel partagé compatible avec les matériaux',
+      'Tapis de sol et accessoires en mousse, PVC ou textile',
+      'Miroirs muraux et surfaces vitrées sans trace',
+      'Vestiaires, casiers, bancs et patères',
+      'Sanitaires et douches : désinfection complète et réassort',
+      'Points de contact : poignées, interrupteurs, rampes, accueil',
+      'Aération et traitement des odeurs à la source',
+    ],
+    sections: [
+      {
+        h2: 'On y marche pieds nus, et ça change tout le protocole',
+        paragraphs: [
+          "C’est la contrainte qui structure tout le reste. Un sol de studio est en contact direct avec la peau, le visage et les mains pendant une heure. Un produit qui laisse un film gras rend le sol glissant — dangereux sur une posture en appui. Un produit trop parfumé devient insupportable quand on respire au ras du sol. Un produit mal rincé laisse une sensation collante sous les pieds que tout le monde remarque et que personne n’ose dire.",
+          "Nous employons donc des détergents neutres, dosés pour ne pas laisser de résidu, avec un rinçage réel et une quantité d’eau adaptée au revêtement. Le parquet et le liège, fréquents dans les studios lyonnais installés en ancien, ne supportent pas l’eau stagnante : ils se traitent à la frange essorée, jamais au seau généreux.",
+          "Le résultat recherché n’est pas un sol qui brille, c’est un sol neutre : sans film, sans odeur, sans adhérence anormale. C’est exactement l’inverse de ce que produit un protocole de salle de sport, pensé pour des chaussures.",
+        ],
+      },
+      {
+        h2: 'Désinfecter du matériel partagé sans le détruire',
+        paragraphs: [
+          "Tapis, briques, sangles, ballons, cerceaux, petit matériel de pilates : ce sont les vrais points de contact d’un studio, et ils passent de main en main plusieurs fois par jour. Ils demandent une désinfection régulière — mais leurs matériaux ne la supportent pas tous de la même façon.",
+          "Une mousse traitée à l’alcool durcit puis craquelle. Un revêtement PVC blanchit sous un produit trop agressif. Une sangle textile garde l’humidité si on la sature. Nous employons donc des produits compatibles avec chaque matériau, appliqués en quantité maîtrisée, avec un temps de séchage réel avant remise à disposition — parce qu’un tapis rangé humide développe une odeur en deux jours.",
+          "Quand les appareils sont plus lourds — reformers, chaises, barils — nous traitons les surfaces de contact et les parties accessibles. La maintenance mécanique, les sangles de charge et les réglages restent du ressort de votre fournisseur : ce sont des éléments de sécurité, pas des surfaces.",
+        ],
+      },
+      {
+        h2: 'Une odeur ne se masque pas, elle se traite',
+        paragraphs: [
+          "Un studio qui sent mauvais perd des élèves sans qu’aucun ne le dise. Et l’odeur ne vient presque jamais du sol : elle vient des textiles qui ont gardé l’humidité, des tapis rangés trop vite, des casiers fermés sur des affaires mouillées, des siphons de douche peu utilisés et d’une ventilation qui ne tourne pas assez.",
+          "Nous traitons ces sources une par une plutôt que de vaporiser un parfum d’ambiance qui, au mieux, recouvre le problème deux heures. Le séchage du matériel avant rangement, l’ouverture et l’entretien des casiers, le suivi des siphons et une aération réelle entre les créneaux règlent la question durablement — et sans ajouter une odeur de plus dans une pièce où l’on respire volontairement.",
+        ],
+      },
+      {
+        h2: 'Se caler sur un planning de cours',
+        paragraphs: [
+          "Un studio enchaîne les créneaux, souvent avec dix ou quinze minutes d’écart. Un prestataire qui arrive « dans la matinée » ne peut pas travailler. Nous partons donc de votre planning réel : un passage complet avant le premier cours ou après le dernier, et, si vous le souhaitez, une remise en état courte entre deux créneaux — sols de pratique et matériel uniquement.",
+          "C’est aussi ce qui permet de distinguer clairement ce qui relève du quotidien et ce qui relève des postes de fond : miroirs, vestiaires en profondeur, plinthes et points hauts se traitent en rotation, sur les créneaux où le studio est vide.",
+        ],
+      },
+    ],
+    related: ['nettoyage-salle-de-sport-lyon', 'entreprise-nettoyage-lyon', 'nettoyage-commerce-lyon', 'contrat-nettoyage-entreprise-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-24',
+    faq: [
+      { q: 'En quoi est-ce différent d’une salle de sport ?', a: "Par le contact avec la peau. On pratique pieds nus, allongé, le visage près du sol : un produit qui laisse un film rend le sol glissant, un produit parfumé devient insupportable quand on respire au ras du sol. Nous visons un sol neutre — sans film, sans odeur, sans adhérence anormale — là où un protocole de salle de sport est pensé pour des chaussures." },
+      { q: 'Pouvez-vous nettoyer un parquet ou un sol en liège ?', a: "Oui, et c’est fréquent dans les studios installés en ancien. Ces revêtements ne supportent pas l’eau stagnante : ils se traitent à la frange essorée, avec un détergent neutre et un rinçage réel, jamais au seau généreux." },
+      { q: 'Désinfectez-vous les tapis et le petit matériel ?', a: "Oui, avec des produits compatibles avec chaque matériau. Une mousse traitée à l’alcool durcit puis craquelle, un PVC blanchit sous un produit agressif, une sangle textile garde l’humidité. Nous respectons aussi un temps de séchage avant remise à disposition : un tapis rangé humide sent mauvais en deux jours." },
+      { q: 'Intervenez-vous sur les reformers et les appareils ?', a: "Nous traitons les surfaces de contact et les parties accessibles. La maintenance mécanique, les sangles de charge et les réglages restent du ressort de votre fournisseur : ce sont des éléments de sécurité, pas des surfaces à nettoyer." },
+      { q: 'Comment traitez-vous les odeurs ?', a: "À la source, pas au parfum d’ambiance. Séchage du matériel avant rangement, ouverture et entretien des casiers, suivi des siphons de douche peu utilisés, aération réelle entre les créneaux. Ajouter une odeur dans une pièce où l’on travaille la respiration serait le pire des réflexes." },
+      { q: 'Pouvez-vous passer entre deux cours ?', a: "Oui, sous forme d’une remise en état courte limitée aux sols de pratique et au matériel. Le passage complet, lui, se fait avant le premier cours ou après le dernier, et les postes de fond — miroirs, vestiaires en profondeur, plinthes, points hauts — tournent sur les créneaux vides." },
+    ],
+  },
+  {
+    slug: 'nettoyage-agence-bancaire-lyon',
+    cluster: 'entreprises',
+    keyword: 'nettoyage agence bancaire Lyon',
+    eyebrow: 'Banque & assurance',
+    h1: 'Nettoyage d’agence bancaire et d’assurance à Lyon',
+    title: "Nettoyage d’agence bancaire à Lyon — MonCleanerPro",
+    description: "Entretien d’agences bancaires et d’assurance à Lyon : accès sous alarme, intervenants déclarés, sas automates, confidentialité. Devis sous 24h.",
+    intro:
+      "Une agence bancaire est un bureau comme un autre pendant la journée, et tout sauf un bureau ordinaire une fois la grille baissée. L’accès est tracé, l’alarme conditionne l’heure d’arrivée, les intervenants sont nommément connus, et il y a dans les corbeilles des documents qu’aucun prestataire ne doit trier. MonCleanerPro entretient les agences bancaires et d’assurance lyonnaises dans ce cadre-là : une équipe stable et déclarée, des horaires arrêtés à l’avance, et des règles claires sur ce que nous touchons et ce que nous ne touchons pas.",
+    highlights: [
+      { title: 'Intervenants déclarés', text: "Une équipe nommément connue de votre siège, stable dans le temps, jamais un remplaçant improvisé la veille." },
+      { title: 'Accès et alarme', text: "Procédure d’accès convenue, plage horaire arrêtée, ouverture et remise en service selon votre protocole." },
+      { title: 'Sas automates', text: "Le seul espace ouvert en continu : sol, écrans tactiles, claviers et points de contact traités à part." },
+      { title: 'Confidentialité', text: "Nous ne trions pas, ne rangeons pas et ne jetons pas ce qui traîne sur un bureau. Les corbeilles à confidentiels ne sont pas touchées." },
+      { title: 'Façade et vitrophanie', text: "Vitrine, marquage adhésif et bas de façade : l’image de l’agence se joue d’abord depuis le trottoir." },
+      { title: 'Plusieurs agences', text: "Un réseau d’agences suivi avec un interlocuteur unique et un rapport par site." },
+    ],
+    includes: [
+      'Espace accueil, guichets et postes clients',
+      'Bureaux d’entretien, salles de réunion et espaces confidentiels',
+      'Sas automates : sol, écrans, claviers, points de contact',
+      'Sanitaires du personnel et espace de pause',
+      'Vitrage intérieur, vitrophanie et vitrine côté rue',
+      'Sols traités selon le revêtement (moquette, dalles, carrelage)',
+      'Sortie des déchets non confidentiels',
+      'Rapport d’intervention par site et par passage',
+    ],
+    sections: [
+      {
+        h2: 'Un local sous alarme ne se nettoie pas comme un bureau',
+        paragraphs: [
+          "C’est la première chose à caler, avant même de parler de prestation. Une agence impose une heure d’arrivée et une heure de sortie, une procédure d’ouverture et de remise en service de l’alarme, et une liste d’intervenants connue de votre côté. Un prestataire qui envoie « quelqu’un » parce que l’habituel est absent ne fait pas seulement mal son travail : il met l’agence en défaut.",
+          "Nous travaillons donc avec une équipe stable et déclarée sur chaque site, et nous annonçons tout changement à l’avance plutôt que de le découvrir sur place. Quand un remplacement est inévitable, il passe par la même procédure d’habilitation que le titulaire — sinon il n’a pas lieu et nous décalons le passage.",
+          "Cette contrainte a une conséquence que peu de prestataires assument : nous ne prenons pas d’agence que nous ne pouvons pas servir avec une équipe régulière. Un site tenu par une personne différente chaque semaine est un site mal tenu, doublé d’un risque que vous n’avez pas à porter.",
+        ],
+      },
+      {
+        h2: 'Le sas automates, seul espace public en continu',
+        paragraphs: [
+          "C’est la partie de l’agence que vos clients utilisent le plus, souvent quand elle est fermée, et c’est celle qui se dégrade le plus vite. Le sol y reçoit tout ce que la rue apporte, les écrans tactiles et les claviers concentrent les contacts, et les tickets, gobelets et prospectus s’y accumulent sans que personne ne soit là pour le voir.",
+          "Nous le traitons comme un poste distinct, avec sa propre fréquence — souvent supérieure à celle du reste de l’agence. En hiver, le sel et l’humidité apportés par les semelles blanchissent les sols et s’accumulent au pied des automates : c’est une salissure qui demande un traitement spécifique, pas un passage de plus.",
+          "Les écrans et claviers sont désinfectés avec un produit et un support compatibles, sans projection sur les fentes et les lecteurs. Nous n’intervenons en revanche jamais à l’intérieur des équipements ni sur leurs abords techniques : cela relève de votre mainteneur.",
+        ],
+      },
+      {
+        h2: 'Ce que nous ne touchons pas, et pourquoi',
+        paragraphs: [
+          "Dans une agence, un bureau n’est jamais vide. Il y a des dossiers en cours, des documents clients, des impressions oubliées. La règle est simple et ne souffre aucune exception : nous nettoyons autour, nous ne rangeons pas, nous ne déplaçons pas et nous ne jetons rien qui ressemble à un document.",
+          "Les corbeilles à confidentiels ne sont pas vidées par nos intervenants : elles relèvent de votre filière de destruction, avec sa propre traçabilité. Seuls les déchets ordinaires — gobelets, emballages, corbeilles classiques — sont évacués. Une entreprise de nettoyage qui vous propose de s’occuper « de tout » sur ce point vous propose en réalité une faille.",
+          "La même logique vaut pour les espaces sensibles : salle des coffres, réserve, locaux techniques. Nous n’y intervenons que si votre protocole le prévoit explicitement, accompagnés si nécessaire, et jamais parce que la porte était ouverte ce soir-là.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'contrat-nettoyage-entreprise-lyon', 'nettoyage-vitres-lyon'],
+    relatedPosts: ['changer-entreprise-nettoyage-sans-coupure', 'choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-24',
+    faq: [
+      { q: 'Vos intervenants sont-ils toujours les mêmes ?', a: "Oui, une équipe stable et nommément déclarée par site. Tout changement est annoncé à l’avance, et un remplaçant passe par la même procédure d’habilitation que le titulaire. Si ce n’est pas possible, nous décalons le passage plutôt que d’envoyer quelqu’un qui n’est pas déclaré." },
+      { q: 'Comment gérez-vous l’alarme et les accès ?', a: "Selon votre protocole : plage horaire arrêtée, procédure d’ouverture et de remise en service, et traçabilité des passages. C’est le premier point que nous calons, avant même de parler de la prestation." },
+      { q: 'Videz-vous les corbeilles à confidentiels ?', a: "Non, jamais. Elles relèvent de votre filière de destruction et de sa propre traçabilité. Nous évacuons uniquement les déchets ordinaires. Un prestataire qui propose de s’occuper « de tout » sur ce point vous propose une faille." },
+      { q: 'Touchez-vous aux documents sur les bureaux ?', a: "Non. Nous nettoyons autour, sans ranger, sans déplacer et sans jeter ce qui ressemble à un document. La règle ne souffre aucune exception, y compris quand cela complique le travail." },
+      { q: 'Traitez-vous l’espace automates ?', a: "Oui, comme un poste distinct, avec une fréquence souvent supérieure au reste de l’agence : c’est le seul espace utilisé en continu. Écrans et claviers sont désinfectés avec un produit et un support compatibles, sans projection sur les fentes et les lecteurs — l’intérieur des équipements relevant de votre mainteneur." },
+      { q: 'Pouvez-vous suivre plusieurs agences ?', a: "Oui, avec un interlocuteur unique et un rapport par site et par passage. C’est ce qui permet à un responsable réseau de savoir ce qui a été fait où, sans avoir à appeler chaque agence." },
+    ],
+  },
+  {
+    slug: 'nettoyage-de-nuit-lyon',
+    cluster: 'entreprises',
+    keyword: 'nettoyage de nuit Lyon',
+    eyebrow: 'Interventions de nuit',
+    h1: 'Nettoyage de nuit à Lyon',
+    title: "Nettoyage de nuit à Lyon — MonCleanerPro",
+    description: "Nettoyage de nuit et en soirée à Lyon : bureaux, commerces, agences et locaux qui ne peuvent pas être libérés en journée. Devis gratuit sous 24h.",
+    intro:
+      "Certains locaux ne peuvent pas être nettoyés pendant qu’ils fonctionnent. Un plateau de bureaux occupé, une surface de vente ouverte, une agence qui reçoit du public : y faire passer une équipe en pleine activité, c’est déranger tout le monde et mal travailler. MonCleanerPro intervient de nuit et en soirée à Lyon, avec ce que cela suppose réellement — des intervenants habitués à travailler seuls, une procédure d’accès et d’alarme, et un compte rendu écrit, puisque personne n’est là pour constater le travail au moment où il se fait.",
+    highlights: [
+      { title: 'Le local vous appartient', text: "Aucune gêne, aucun contournement de poste : l’équipe travaille sur un local libéré, donc elle le fait complètement." },
+      { title: 'Accès et alarme', text: "Procédure convenue, plage horaire arrêtée, ouverture et remise en service selon votre protocole." },
+      { title: 'Travail isolé encadré', text: "Un intervenant seul la nuit relève d’une organisation précise : point de départ, point de fin, remontée en cas d’anomalie." },
+      { title: 'Rapport écrit', text: "Personne n’est là pour voir. Le compte rendu remplace le contact, avec photos quand c’est utile." },
+      { title: 'Tôt le matin aussi', text: "Quand le besoin le permet, un passage avant l’ouverture coûte moins cher et rend le même service. Nous le disons." },
+      { title: 'Grosses surfaces', text: "Autolaveuse, décapage et remise en état des sols se font de nuit, parce qu’ils sont impossibles en journée." },
+    ],
+    includes: [
+      'Bureaux, open spaces et salles de réunion, locaux libérés',
+      'Surfaces de vente et galeries après fermeture',
+      'Agences et locaux recevant du public',
+      'Remise en état de sols : autolaveuse, décapage, protection',
+      'Sanitaires, espaces de pause et points de contact',
+      'Vitrage intérieur et surfaces vitrées',
+      'Sortie des déchets et gestion des conteneurs',
+      'Rapport d’intervention après chaque passage',
+    ],
+    sections: [
+      {
+        h2: 'Quand la nuit se justifie — et quand elle ne sert à rien',
+        paragraphs: [
+          "Autant le dire franchement : une intervention de nuit coûte plus cher qu’un passage en journée, et elle ne se justifie pas partout. Elle a du sens quand le local ne peut pas être libéré autrement : plateau occupé en continu, surface de vente ouverte toute la journée, agence recevant du public, ou opération lourde — décapage, remise en état de sols — impossible en présence de qui que ce soit.",
+          "Elle n’en a aucun quand un passage tôt le matin ou en début de soirée suffirait. Beaucoup d’entreprises demandent une prestation de nuit par habitude, alors que leurs locaux sont vides dès dix-neuf heures : la contrainte est la même pour elles, le coût ne l’est pas.",
+          "Nous posons donc la question avant de chiffrer, et nous proposons le créneau le moins cher qui rend le service attendu. Vendre une prestation de nuit à qui n’en a pas besoin, c’est se faire remercier au premier arbitrage budgétaire.",
+        ],
+      },
+      {
+        h2: 'Travailler seul la nuit, ce que ça impose',
+        paragraphs: [
+          "Un intervenant qui nettoie un plateau à deux heures du matin est un travailleur isolé. Ce n’est pas un détail d’organisation : en cas de malaise ou d’accident, personne ne passe dans le couloir. Cela suppose une procédure simple mais réellement appliquée — un point de départ signalé, un point de fin confirmé, et une remontée immédiate en cas d’anomalie sur le site.",
+          "Cela suppose aussi de choisir les bonnes personnes. Travailler de nuit, seul, dans des locaux vides, ne convient pas à tout le monde, et ce n’est pas un poste où l’on met le dernier arrivé. Nous affectons des intervenants qui le font par choix et qui connaissent le site, avec une stabilité que nous tenons dans la durée.",
+          "Enfin, une anomalie constatée la nuit — fuite, porte forcée, alarme technique, dégât des eaux — doit vous parvenir tout de suite, pas dans le rapport du lendemain matin. La consigne de remontée immédiate fait partie de la prestation, et pas comme une ligne de contrat.",
+        ],
+      },
+      {
+        h2: 'Ce que la nuit fait perdre, et comment on le compense',
+        paragraphs: [
+          "En journée, quelqu’un croise l’intervenant et signale le problème du jour : la salle de réunion à refaire après un séminaire, la tache sur la moquette, le distributeur qui fuit. La nuit, ce contact disparaît entièrement, et c’est le vrai coût caché d’une prestation nocturne mal organisée : plus personne ne se parle, et le mécontentement remonte trois mois plus tard, d’un coup.",
+          "Nous le compensons par un compte rendu systématique après chaque passage — ce qui a été fait, ce qui a été constaté, ce qui demande une décision de votre part — et par un point régulier avec un interlocuteur identifié. Le rapport ne remplace pas une conversation, mais il évite que l’absence de conversation ne passe pour de la satisfaction.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'entreprise-nettoyage-lyon', 'contrat-nettoyage-entreprise-lyon', 'nettoyage-agence-bancaire-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon', 'changer-entreprise-nettoyage-sans-coupure'],
+    updatedAt: '2026-09-24',
+    faq: [
+      { q: 'Ai-je vraiment besoin d’une prestation de nuit ?', a: "Pas toujours, et nous le disons avant de chiffrer. La nuit se justifie quand le local ne peut pas être libéré autrement, ou pour une opération lourde comme un décapage de sols. Si vos locaux sont vides dès dix-neuf heures, un passage en soirée rend le même service pour moins cher." },
+      { q: 'Vos intervenants travaillent-ils seuls ?', a: "Selon la taille du site. Quand c’est le cas, il s’agit d’un travail isolé, encadré par une procédure réellement appliquée : départ signalé, fin confirmée, remontée immédiate en cas d’anomalie. Nous affectons des personnes qui ont choisi ce créneau et qui connaissent le site." },
+      { q: 'Que se passe-t-il si un problème est constaté la nuit ?', a: "Il vous est remonté immédiatement, pas dans le rapport du lendemain : fuite, porte forcée, alarme technique, dégât des eaux. C’est une consigne de terrain, pas une ligne de contrat." },
+      { q: 'Comment savoir ce qui a été fait si personne n’est présent ?', a: "Par un compte rendu après chaque passage — ce qui a été fait, ce qui a été constaté, ce qui demande une décision de votre part — et par un point régulier avec un interlocuteur identifié. C’est ce qui remplace le contact quotidien que la nuit fait disparaître." },
+      { q: 'Gérez-vous l’ouverture et l’alarme ?', a: "Oui, selon votre protocole : plage horaire arrêtée, procédure d’ouverture et de remise en service, traçabilité des passages. C’est le premier point calé, avant la prestation elle-même." },
+      { q: 'Faites-vous les remises en état de sols de nuit ?', a: "Oui, décapage, protection et remise en état à l’autolaveuse se font de nuit : ce sont des opérations impossibles en présence de personnel ou de public, et qui demandent un temps de séchage." },
+    ],
+  },
+  {
+    slug: 'nettoyage-eglise-lieu-de-culte-lyon',
+    cluster: 'entreprises',
+    keyword: 'nettoyage église lieu de culte Lyon',
+    eyebrow: 'Lieux de culte & salles paroissiales',
+    h1: 'Nettoyage d’église et de lieu de culte à Lyon',
+    title: "Nettoyage d’église et de lieu de culte à Lyon",
+    description: "Entretien d’églises, lieux de culte et salles paroissiales à Lyon : grands volumes, points hauts, sols en pierre, remise en état après événement.",
+    intro:
+      "Un lieu de culte pose un problème d’entretien que peu de bâtiments partagent : de très grands volumes, une hauteur sous plafond que personne n’atteint, des matériaux anciens et fragiles, et un usage qui alterne de longues périodes calmes avec des affluences concentrées. Dans la plupart des paroisses et des associations lyonnaises, l’entretien courant est assuré par des bénévoles — et il l’est bien. MonCleanerPro intervient là où ce fonctionnement atteint ses limites : les points hauts, les sols anciens, les grands volumes et les remises en état après un événement.",
+    highlights: [
+      { title: 'En complément des bénévoles', text: "Nous ne remplaçons pas l’équipe qui fait l’entretien courant : nous prenons ce qu’elle ne peut pas faire." },
+      { title: 'Points hauts et volumes', text: "Corniches, luminaires, tribunes, dessus de mobilier : la poussière y est hors de portée et redescend en permanence." },
+      { title: 'Sols anciens', text: "Pierre, dalles, tomettes et parquets d’époque : traités selon le matériau, jamais à grande eau ni au produit acide." },
+      { title: 'Après un événement', text: "Mariage, obsèques, concert, temps fort : remise en état complète avant la célébration suivante." },
+      { title: 'Salles paroissiales', text: "Salles d’activité, cuisines associatives et sanitaires, qui relèvent d’un entretien plus classique et plus régulier." },
+      { title: 'Un périmètre clair', text: "Nous ne touchons ni au mobilier liturgique, ni aux objets d’art, ni aux orgues, ni aux vitraux." },
+    ],
+    includes: [
+      'Nettoyage des sols de nef, bas-côtés et circulations selon le matériau',
+      'Dépoussiérage des bancs, chaises et mobilier courant',
+      'Points hauts accessibles en sécurité : corniches, luminaires, tribunes',
+      'Sanitaires, entrées, porches et abords immédiats',
+      'Salles paroissiales, salles d’activité et cuisines associatives',
+      'Remise en état après mariage, obsèques, concert ou temps fort',
+      'Grand nettoyage saisonnier avant les grandes fêtes',
+      'Vitrages accessibles depuis le sol, hors vitraux',
+    ],
+    sections: [
+      {
+        h2: 'Un très grand volume utilisé par intermittence',
+        paragraphs: [
+          "C’est ce qui rend l’entretien d’un lieu de culte contre-intuitif. Le bâtiment est peu utilisé au regard de sa taille, donc on le croit peu salissant. En réalité, un volume de cette hauteur se comporte comme un piège à poussière : elle s’accumule sur tout ce qui est en hauteur, reste invisible depuis le sol, et redescend en continu sur les bancs, les sols et le mobilier. Un entretien hebdomadaire au niveau du sol ne l’empêchera jamais.",
+          "La bonne réponse n’est donc pas d’augmenter la fréquence du passage courant, mais d’ajouter des interventions périodiques qui traitent ce que le passage courant ne peut pas atteindre — deux à quatre fois par an selon le bâtiment, avec le matériel qui permet de travailler en hauteur en sécurité.",
+          "C’est aussi le calendrier qui commande : une intervention de fond avant les grandes fêtes, quand l’édifice reçoit le plus de monde, vaut mieux que quatre passages répartis au hasard de l’année.",
+        ],
+      },
+      {
+        h2: 'Les bénévoles font le courant, nous faisons le reste',
+        paragraphs: [
+          "Dans la majorité des paroisses et des associations, une équipe de bénévoles entretient le lieu chaque semaine, et le fait avec un soin qu’aucun prestataire n’égalera — parce que c’est leur lieu. Nous ne cherchons pas à prendre leur place, et nous le disons franchement plutôt que de vendre un contrat global dont personne n’a besoin.",
+          "Ce qu’une équipe bénévole ne peut raisonnablement pas assurer, en revanche, est identifiable : tout ce qui demande de monter, tout ce qui demande du matériel professionnel, tout ce qui se fait dans un temps court sous contrainte de date, et tout ce qui représente un volume physique important. C’est exactement le périmètre que nous proposons.",
+          "Pour beaucoup de lieux, cela se traduit par quelques interventions par an plutôt qu’un contrat régulier. C’est une réponse honnête à un budget qui est, le plus souvent, celui d’une association.",
+        ],
+      },
+      {
+        h2: 'Les sols anciens ne supportent pas la méthode standard',
+        paragraphs: [
+          "Pierre calcaire, dalles funéraires, tomettes, parquets d’époque : ces sols ont plusieurs siècles et se dégradent définitivement avec un mauvais produit. La pierre calcaire est attaquée par tout ce qui est acide, y compris des détartrants courants. Une dalle poreuse absorbe ce qu’on lui applique et le garde. Un parquet ancien se gorge d’eau et travaille.",
+          "Nous adaptons donc le produit et la quantité d’eau au matériau, et nous procédons par essai sur une zone discrète avant de traiter une surface entière. Sur un sol dont nous ne sommes pas certains, nous préférons un entretien minimal à un traitement irréversible.",
+        ],
+      },
+      {
+        h2: 'Ce que nous ne touchons pas',
+        list: [
+          "Le mobilier liturgique, les objets de culte et tout ce qui relève du sacré",
+          "Les objets d’art, statues, peintures, dorures et éléments classés : ils relèvent d’un restaurateur, pas d’une entreprise de nettoyage",
+          "Les orgues et les instruments",
+          "Les vitraux, dont le nettoyage et la restauration sont un métier à part entière",
+          "Les interventions en hauteur nécessitant un travail sur cordes ou un échafaudage",
+        ],
+      },
+    ],
+    related: ['entreprise-nettoyage-lyon', 'nettoyage-copropriete-lyon', 'grand-menage-lyon', 'nettoyage-vitres-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-09-24',
+    faq: [
+      { q: 'Faut-il un contrat régulier pour une église ?', a: "Le plus souvent, non. Quand une équipe de bénévoles assure l’entretien courant, quelques interventions par an suffisent : les points hauts, les sols en profondeur, et une remise en état avant les grandes fêtes. C’est une réponse honnête à un budget d’association, et nous préférons le dire plutôt que de proposer un contrat global." },
+      { q: 'Nettoyez-vous les vitraux ?', a: "Non. Le nettoyage et la restauration des vitraux sont un métier à part entière, avec ses propres spécialistes. Nous traitons les vitrages ordinaires accessibles depuis le sol, rien de plus." },
+      { q: 'Touchez-vous au mobilier liturgique et aux objets de culte ?', a: "Non, jamais, pas plus qu’aux objets d’art, statues, dorures, peintures, éléments classés ou instruments. Ces éléments relèvent d’un restaurateur. Notre périmètre couvre les sols, les volumes, le mobilier courant et les locaux annexes." },
+      { q: 'Comment traitez-vous un sol en pierre ancienne ?', a: "Avec un produit adapté au matériau et une quantité d’eau maîtrisée, après essai sur une zone discrète. La pierre calcaire est attaquée par tout ce qui est acide, y compris des détartrants courants, et une dalle poreuse garde ce qu’on lui applique. Sur un sol dont nous ne sommes pas certains, nous préférons un entretien minimal à un traitement irréversible." },
+      { q: 'Intervenez-vous après un mariage ou des obsèques ?', a: "Oui, la remise en état entre deux célébrations est une demande fréquente, souvent dans un délai court. Sols, bancs, entrées, sanitaires et abords sont repris pour que le lieu soit prêt à recevoir." },
+      { q: 'Entretenez-vous les salles paroissiales ?', a: "Oui, et c’est un entretien plus classique : salles d’activité, cuisine associative, sanitaires. Ce sont des locaux très utilisés, qui relèvent d’une fréquence régulière, à la différence de l’édifice lui-même." },
+      { q: 'Montez-vous en hauteur ?', a: "Uniquement là où le travail peut être réalisé en sécurité avec nos moyens. Les interventions nécessitant un échafaudage ou un travail sur cordes sortent de notre périmètre déclaré." },
+    ],
   },
 ];
 
