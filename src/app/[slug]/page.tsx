@@ -258,9 +258,14 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
       </section>
 
       {/* Maillage interne : pages liées (curatées) */}
+      {/* Le libellé suit le cluster. Sur une page commune, les liens voisins sont
+          des communes : annoncer « à voir aussi sur ce sujet » décrirait mal un
+          voisinage géographique, et c'est ce lien-là que le visiteur local suit. */}
       <section className="max-w-5xl mx-auto px-5 pb-16 md:pb-20">
         <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
-          {p.cluster ? 'À voir aussi sur ce sujet' : 'Nos autres prestations à Lyon'}
+          {p.cluster === 'communes'
+            ? 'Nos secteurs d’intervention autour de Lyon'
+            : p.cluster ? 'À voir aussi sur ce sujet' : 'Nos autres prestations à Lyon'}
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {others.map(o => (
