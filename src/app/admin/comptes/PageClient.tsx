@@ -11,6 +11,7 @@ import {
 } from '@/lib/db';
 import type { Mission, Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
+import { generatePassword, buildAccessMessage, copyToClipboard, APP_LOGIN_URL } from '@/lib/partnerAccess';
 import { currentMonth } from '@/lib/mockData';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
@@ -357,6 +358,27 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
   );
 }
 
+// ── Une ligne « libellé : valeur » avec copie en un clic. ────────────────────────
+// La valeur reste sélectionnable au doigt : sur un mobile où le presse-papiers
+// est refusé, l'admin doit pouvoir la lire et la recopier à la main.
+function CopyRow({ label, value, onCopy }: {
+  label: string;
+  value: string;
+  onCopy: (label: string, value: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: '#FAFAF8' }}>
+      <span className="text-xs w-40 shrink-0" style={{ color: '#A8A09A' }}>{label}</span>
+      <span className="text-sm flex-1 min-w-[140px] break-all font-medium select-all" style={{ color: '#1A1A1A' }}>{value}</span>
+      <button onClick={() => onCopy(label, value)} aria-label={`Copier : ${label}`}
+        className="px-3 py-1.5 rounded-lg text-xs font-medium border inline-flex items-center gap-1.5"
+        style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+        <Icon name="copy" size={13} /> Copier
+      </button>
+    </div>
+  );
+}
+
 // ── Fiche d'un compte partenaire : coordonnées + actions d'administration. ────────
 function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0, sites = [], recentMissions = [] }: {
   account: PartnerAccount;
@@ -367,10 +389,12 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
   sites?: Apartment[];
   recentMissions?: Mission[];
 }) {
-  const [mode, setMode] = useState<'view' | 'edit' | 'password' | 'contrat'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'acces' | 'contrat'>('view');
   const [showDetail, setShowDetail] = useState(false);
   const [form, setForm] = useState({ name: account.name, email: account.email, phone: account.phone, address: account.address });
   const [password, setPassword] = useState('');
+  // Mot de passe en clair, connu uniquement tant que l'écran reste ouvert.
+  const [clearPassword, setClearPassword] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -447,13 +471,34 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
     setMode('view'); flash('Coordonnées enregistrées');
   }
 
-  async function savePassword() {
-    if (password.length < 6) { flash('6 caractères minimum'); return; }
+  // Définit le mot de passe ET le garde en clair à l'écran : c'est le seul
+  // moment où il est lisible (la base ne stocke qu'un hash bcrypt). Sans ça,
+  // l'admin devrait le retaper de mémoire dans le message au partenaire.
+  async function savePassword(value: string) {
+    if (value.length < 6) { flash('6 caractères minimum'); return; }
     setBusy(true);
-    const { error } = await setPartnerPasswordDB(account.kind, account.id, password);
+    const { error } = await setPartnerPasswordDB(account.kind, account.id, value);
     setBusy(false);
     if (error) { flash(error); return; }
-    setPassword(''); setMode('view'); flash('Mot de passe réinitialisé');
+    setClearPassword(value);
+    setPassword('');
+    flash('Mot de passe enregistré');
+  }
+
+  // Mot de passe provisoire tiré au sort, enregistré dans la foulée.
+  async function regenerate() {
+    await savePassword(generatePassword());
+  }
+
+  // Copie d'un champ isolé (lien, identifiant, mot de passe).
+  async function copyField(label: string, value: string) {
+    flash(await copyToClipboard(value) ? `${label} copié` : 'Copie impossible — sélectionnez le texte');
+  }
+
+  // Copie du message complet, prêt à coller dans un email ou un SMS.
+  async function copyAll() {
+    const text = buildAccessMessage({ name: account.name, email: account.email, password: clearPassword });
+    flash(await copyToClipboard(text) ? 'Accès copiés' : 'Copie impossible — sélectionnez le texte');
   }
 
   async function toggleSuspend() {
@@ -560,11 +605,43 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
         </div>
       )}
 
-      {mode === 'password' && (
-        <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2" style={{ borderColor: '#F2EFE9' }}>
-          <input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Nouveau mot de passe" className="flex-1 min-w-[180px] px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-          <button disabled={busy} onClick={savePassword} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Définir</button>
-          <button onClick={() => { setMode('view'); setPassword(''); }} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+      {/* Accès du partenaire : lien, identifiant, mot de passe — copiables en un clic. */}
+      {mode === 'acces' && (
+        <div className="mt-3 pt-3 border-t grid gap-2" style={{ borderColor: '#F2EFE9' }}>
+          <CopyRow label="Lien de l’application" value={APP_LOGIN_URL} onCopy={copyField} />
+          <CopyRow label="Identifiant" value={account.email} onCopy={copyField} />
+          {clearPassword ? (
+            <CopyRow label="Mot de passe" value={clearPassword} onCopy={copyField} />
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: '#FAFAF8' }}>
+              <span className="text-xs w-40 shrink-0" style={{ color: '#A8A09A' }}>Mot de passe</span>
+              <span className="text-xs flex-1 min-w-[140px]" style={{ color: '#7A7068' }}>
+                Chiffré en base : personne ne peut le relire. Générez-en un nouveau pour le transmettre.
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <button disabled={busy} onClick={copyAll}
+              className="px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+              <Icon name="copy" size={14} /> Copier les accès
+            </button>
+            <button disabled={busy} onClick={regenerate}
+              className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+              {busy ? 'Enregistrement…' : clearPassword ? 'Regénérer' : 'Générer un mot de passe'}
+            </button>
+            <button onClick={() => { setMode('view'); setPassword(''); }} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Fermer</button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="…ou choisir un mot de passe" className="flex-1 min-w-[180px] px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+            <button disabled={busy} onClick={() => savePassword(password)} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Définir</button>
+          </div>
+
+          <p className="text-xs" style={{ color: '#A8A09A' }}>
+            Générer ou définir un mot de passe remplace immédiatement l’ancien : le partenaire devra utiliser le nouveau.
+            Il n’est lisible que tant que cet écran reste ouvert.
+          </p>
         </div>
       )}
 
@@ -599,7 +676,7 @@ function AccountCard({ account, onUpdate, onDelete, hoursThisMonth, revenue = 0,
         <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: '#F2EFE9' }}>
           <button onClick={() => setShowDetail(d => !d)} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: showDetail ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>Détail</button>
           <button onClick={() => setMode('edit')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Modifier</button>
-          <button onClick={() => setMode('password')} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Mot de passe</button>
+          <button onClick={() => setMode('acces')} className="px-3 py-1.5 rounded-lg text-xs font-medium border inline-flex items-center gap-1.5" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}><Icon name="copy" size={13} /> Accès</button>
           <button onClick={ouvrirContrat} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>Contrat</button>
           <button disabled={busy} onClick={toggleSuspend} className="px-3 py-1.5 rounded-lg text-xs font-medium border" style={{ borderColor: '#E8E4DC', color: suspended ? '#5A8A6A' : '#C48A2A' }}>
             {suspended ? 'Réactiver' : 'Suspendre'}

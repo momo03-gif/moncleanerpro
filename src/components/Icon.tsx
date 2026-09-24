@@ -12,7 +12,7 @@ export type IconName =
   | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play'
   | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking' | 'wrench'
   | 'clock' | 'timer' | 'pin' | 'chevronDown' | 'chevronRight' | 'camera' | 'phone' | 'arrowUp' | 'arrowDown'
-  | 'search' | 'lock' | 'star';
+  | 'search' | 'lock' | 'star' | 'copy';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -181,6 +181,10 @@ const PATHS: Record<IconName, React.ReactNode> = {
   </>),
   arrowUp: (<>
     <path d="M12 19V5M6 11l6-6 6 6" />
+  </>),
+  copy: (<>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5" />
   </>),
 };
 
