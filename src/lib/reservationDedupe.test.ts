@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chevauchements, dedupeStays, doublonsSejours } from './reservationDedupe';
+import { chevauchements, dedupeStays, departCredible, doublonsSejours } from './reservationDedupe';
 import type { Reservation } from './types';
 
 const sejour = (id: string, extra: Partial<Reservation> = {}): Reservation =>
@@ -140,5 +140,42 @@ describe('chevauchements — deux voyageurs ne peuvent pas être là en même te
 
   it('rien à signaler sur un planning sain', () => {
     expect(chevauchements([s('a'), s('b', { checkIn: '2026-10-05', checkOut: '2026-10-09' })])).toEqual([]);
+  });
+});
+
+describe('departCredible — ne jamais nettoyer un logement encore occupé', () => {
+  it('un départ au milieu de l’occupation d’un autre calendrier est refusé', () => {
+    // Le cas réel : Airbnb ferme 27→28 pour un séjour Booking qui va au 29.
+    expect(departCredible(
+      { feedId: 'airbnb', date: '2026-09-28' },
+      [{ feedId: 'booking', checkIn: '2026-09-27', checkOut: '2026-09-29' }],
+    )).toBe(false);
+  });
+
+  it('le départ à la FIN de l’occupation la plus longue est retenu', () => {
+    expect(departCredible(
+      { feedId: 'booking', date: '2026-09-29' },
+      [{ feedId: 'airbnb', checkIn: '2026-09-27', checkOut: '2026-09-28' }],
+    )).toBe(true);
+  });
+
+  it('deux lignes du MÊME calendrier ne s’arbitrent pas entre elles', () => {
+    // Sinon un flux qui exporte des périodes larges effacerait les rotations
+    // qu'il contient lui-même.
+    expect(departCredible(
+      { feedId: 'booking', date: '2026-09-29' },
+      [{ feedId: 'booking', checkIn: '2026-09-28', checkOut: '2026-10-02' }],
+    )).toBe(true);
+  });
+
+  it('une rotation le même jour reste un départ', () => {
+    expect(departCredible(
+      { feedId: 'a', date: '2026-09-29' },
+      [{ feedId: 'b', checkIn: '2026-09-29', checkOut: '2026-10-02' }],
+    )).toBe(true);
+  });
+
+  it('sans autre calendrier, le départ est toujours crédible', () => {
+    expect(departCredible({ feedId: 'a', date: '2026-09-29' }, [])).toBe(true);
   });
 });

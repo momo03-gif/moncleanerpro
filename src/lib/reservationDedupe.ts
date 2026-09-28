@@ -150,3 +150,38 @@ export function chevauchements(reservations: Reservation[]): {
   }
   return out.sort((x, y) => x.a.checkIn.localeCompare(y.a.checkIn));
 }
+
+/** Une occupation du logement, telle qu'un calendrier la décrit. */
+export interface Occupation {
+  feedId?: string;
+  checkIn: string;
+  checkOut: string;
+}
+
+/**
+ * Un départ est-il crédible, sachant ce que disent les AUTRES calendriers ?
+ *
+ * Deux calendriers décrivent souvent le même séjour avec des bornes
+ * différentes : Airbnb ferme les dates vendues sur Booking, mais s'arrête
+ * parfois une nuit trop tôt. Prendre la borne la plus courte, c'est envoyer
+ * l'intervenant pendant que le voyageur est encore là — la pire erreur
+ * possible, bien pire qu'un ménage oublié.
+ *
+ * La règle : un départ annoncé STRICTEMENT à l'intérieur d'une occupation
+ * décrite par un AUTRE calendrier n'est pas un départ. Le vrai se produira à la
+ * fin de la période la plus longue.
+ *
+ * « Un autre calendrier » compte : deux lignes du MÊME flux qui se contredisent
+ * sont une incohérence de la plateforme, qu'on n'arbitre pas — sinon un flux
+ * qui exporte des périodes larges effacerait les rotations qu'il contient.
+ */
+export function departCredible(
+  depart: { feedId?: string; date: string },
+  occupations: Occupation[],
+): boolean {
+  return !occupations.some(o =>
+    o.feedId !== depart.feedId          // un autre calendrier, pas le même
+    && o.checkIn < depart.date          // l'occupation a commencé avant
+    && depart.date < o.checkOut,        // et ne se termine pas ce jour-là
+  );
+}

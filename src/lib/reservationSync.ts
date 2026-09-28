@@ -14,6 +14,7 @@ import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { detectPlatform } from './icalUrl';
+import { departCredible, type Occupation } from './reservationDedupe';
 import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
@@ -445,14 +446,47 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   // flux Booking. Les doublons d'une même date sont fusionnés plus bas, et la
   // mission naît en `pending` : le faux positif se referme d'un clic, le ménage
   // manqué se découvre par un voyageur devant un logement sale.
-  const { data: departures } = await db
+  const { data: toutesDepartures } = await db
     .from('reservations')
-    .select('id, airbnb_id, partner_id, check_out, check_out_time')
+    .select('id, feed_id, airbnb_id, partner_id, check_in, check_out, check_out_time')
     .or(FILTRE_OCCUPATION)
     .is('mission_id', null)
     .gte('check_out', today)
     .lte('check_out', horizon)
     .order('check_out');
+
+  // ── On ne nettoie pas un logement qu'un AUTRE calendrier dit encore occupé ──
+  // Deux calendriers décrivent souvent le même séjour avec des bornes
+  // différentes : Airbnb ferme les dates vendues sur Booking, mais s'arrête
+  // parfois une nuit trop tôt. Retenir la borne la plus courte, c'est envoyer
+  // l'intervenant pendant que le voyageur est encore là — bien pire qu'un
+  // ménage oublié. On a besoin de TOUTES les occupations du logement pour en
+  // juger, y compris celles qui portent déjà leur ménage.
+  const { data: occupationsBrutes } = await db
+    .from('reservations')
+    .select('feed_id, airbnb_id, check_in, check_out')
+    .or(FILTRE_OCCUPATION)
+    .gte('check_out', today)
+    .lte('check_in', horizon);
+
+  const occupationsParLogement = new Map<string, Occupation[]>();
+  for (const o of occupationsBrutes ?? []) {
+    const liste = occupationsParLogement.get(o.airbnb_id) ?? [];
+    liste.push({ feedId: o.feed_id ?? undefined, checkIn: o.check_in, checkOut: o.check_out });
+    occupationsParLogement.set(o.airbnb_id, liste);
+  }
+
+  const departures = (toutesDepartures ?? []).filter(d => {
+    const ok = departCredible(
+      { feedId: d.feed_id ?? undefined, date: d.check_out },
+      occupationsParLogement.get(d.airbnb_id) ?? [],
+    );
+    if (!ok) {
+      console.warn('materialize: depart ignore, logement encore occupe selon un autre calendrier',
+        { reservation: d.id, date: d.check_out });
+    }
+    return ok;
+  });
 
   const result: MaterializeResult = { created: 0, refreshed: 0, realigned: 0, details: [] };
   // Pas de départ à traiter ne veut pas dire rien à faire : les arrivées
