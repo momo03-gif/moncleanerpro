@@ -31,6 +31,12 @@ export interface CalendarCell {
   missionTime?: string;    // heure prévue du ménage
   cleanerName?: string;    // intervenant assigné (vide = pas encore assigné)
   delivery?: boolean;      // une livraison est prévue ce jour (jamais un ménage)
+  // Quelle plateforme occupe la nuit. Un hôte qui vend sur Airbnb ET sur
+  // Booking ne peut pas se souvenir de qui a réservé quoi : sans cette
+  // information, il doit rouvrir les deux extranets pour répondre à un
+  // voyageur ou corriger une date. Plusieurs plateformes le même jour = ses
+  // calendriers se contredisent, et ça se voit alors sur la case.
+  platforms?: string[];
 }
 
 export interface CalendarRow {
@@ -79,11 +85,16 @@ export function buildCalendar(
     const cells = days.map<CalendarCell>(day => {
       const arrivalStay = stays.find(r => r.checkIn === day);
       const departureStay = stays.find(r => r.checkOut === day);
-      const occupied = stays.some(r => r.checkIn <= day && r.checkOut > day);
+      const occupantes = stays.filter(r => r.checkIn <= day && r.checkOut > day);
+      const occupied = occupantes.length > 0;
       const mission = aptMenages.find(m => m.date === day);
+      const platforms = Array.from(new Set(
+        occupantes.map(r => r.platform).filter(Boolean) as string[],
+      )).sort();
       return {
         day,
         occupied,
+        platforms: platforms.length ? platforms : undefined,
         arrival: !!arrivalStay,
         departure: !!departureStay,
         turnover: !!arrivalStay && !!departureStay,

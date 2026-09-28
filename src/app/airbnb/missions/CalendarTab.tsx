@@ -54,6 +54,18 @@ function firstName(full: string): string {
   return full.trim().split(/\s+/)[0];
 }
 
+// Qui occupe la nuit. Un hôte qui vend sur Airbnb ET sur Booking ne peut pas se
+// souvenir de qui a réservé quoi : sans ce repère il rouvre les deux extranets
+// pour répondre à un voyageur. Une initiale et une couleur suffisent — le nom
+// complet ne tiendrait pas dans une case de calendrier.
+const PLATEFORME_BADGE: Record<string, { lettre: string; classe: string; nom: string }> = {
+  airbnb:  { lettre: 'A', classe: 'bg-danger-soft text-danger', nom: 'Airbnb' },
+  booking: { lettre: 'B', classe: 'bg-info-soft text-info', nom: 'Booking' },
+  vrbo:    { lettre: 'V', classe: 'bg-warn-soft text-warn', nom: 'Vrbo / Abritel' },
+};
+const badgePlateforme = (p: string) =>
+  PLATEFORME_BADGE[p] ?? { lettre: p.charAt(0).toUpperCase(), classe: 'bg-surface-2 text-muted', nom: p };
+
 export default function CalendarTab({ apartments, reservations, missions }: {
   apartments: Apartment[];
   reservations: Reservation[];
@@ -187,7 +199,13 @@ export default function CalendarTab({ apartments, reservations, missions }: {
                     <span className="h-3 flex items-center gap-0.5 lg:hidden">
                       {cell.departure && <span className="text-warn"><Icon name="arrowDown" size={11} /></span>}
                       {cell.arrival && <span className="text-success"><Icon name="arrowUp" size={11} /></span>}
-                      {!cell.departure && !cell.arrival && cell.occupied && <span className="w-3 h-px bg-gold-line" />}
+                      {!cell.departure && !cell.arrival && cell.occupied && (
+                        cell.platforms?.length
+                          ? <span className={`text-[8px] leading-none font-bold px-1 rounded ${badgePlateforme(cell.platforms[0]).classe}`}>
+                              {badgePlateforme(cell.platforms[0]).lettre}
+                            </span>
+                          : <span className="w-3 h-px bg-gold-line" />
+                      )}
                     </span>
                     <span className={`lg:hidden w-2 h-2 rounded-full ${
                       cell.missionId ? (MISSION_DOT[cell.missionStatus ?? 'pending'] ?? 'bg-warn')
@@ -196,6 +214,25 @@ export default function CalendarTab({ apartments, reservations, missions }: {
 
                     {/* ── Grand écran : la place gagnée sert à renseigner ──── */}
                     <span className="hidden lg:flex flex-col gap-0.5 w-full text-left">
+                      {/* Qui occupe la nuit. Deux plateformes sur la même case
+                          veut dire que les calendriers se contredisent — un
+                          logement ne peut pas être vendu deux fois. */}
+                      {cell.platforms && cell.platforms.length > 0 && (
+                        <span className="flex items-center gap-0.5">
+                          {cell.platforms.map(p => {
+                            const b = badgePlateforme(p);
+                            return (
+                              <span key={p} title={b.nom}
+                                className={`text-[9px] leading-none font-bold px-1 py-0.5 rounded ${b.classe}`}>
+                                {b.lettre}
+                              </span>
+                            );
+                          })}
+                          {cell.platforms.length > 1 && (
+                            <span className="text-[9px] font-bold text-danger" title="Vos deux calendriers décrivent les mêmes nuits">!</span>
+                          )}
+                        </span>
+                      )}
                       {/* Mouvements, avec leur heure quand la plateforme la donne */}
                       {cell.departure && (
                         <span className="flex items-center gap-0.5 text-[10px] leading-tight text-warn">
@@ -242,6 +279,8 @@ export default function CalendarTab({ apartments, reservations, missions }: {
         <span className="flex items-center gap-1"><span className="inline-flex text-success"><Icon name="arrowUp" size={12} /></span> arrivée</span>
         <span className="flex items-center gap-1"><span className="inline-flex text-warn"><Icon name="arrowDown" size={12} /></span> départ</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gold-soft border border-gold-line inline-block" /> occupé</span>
+        <span className="flex items-center gap-1"><span className="text-[9px] font-bold px-1 py-0.5 rounded bg-danger-soft text-danger">A</span> Airbnb</span>
+        <span className="flex items-center gap-1"><span className="text-[9px] font-bold px-1 py-0.5 rounded bg-info-soft text-info">B</span> Booking</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warn inline-block" /> ménage à assigner</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gold inline-block" /> en cours</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block" /> fait</span>

@@ -45,6 +45,13 @@
   --color-warn: #8A6A1E;        /* 5.1:1 */
   --color-warn-soft: #FCF6E8;
   --color-warn-line: #EBD9A8;
+
+  /* Neutre informatif : sert à distinguer sans alerter — la plateforme qui
+     occupe une nuit, par exemple. Le vert dit déjà « fait » et le rouge
+     « problème » ; réutiliser l'un des deux ferait mentir la couleur. */
+  --color-info: #3F5B86;        /* 5.4:1 */
+  --color-info-soft: #EFF3F9;
+  --color-info-line: #C6D3E6;
 }
 
 /* Hauteur de l'en-tête partenaire, partagée entre le composant de navigation
