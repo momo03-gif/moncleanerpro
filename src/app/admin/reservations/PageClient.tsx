@@ -80,6 +80,21 @@ export default function AdminReservationsPage() {
     setSyncing(false);
   }
 
+  // ── Ordre de lecture de la liste ────────────────────────────────────────
+  // La base rend les réservations par date de départ DÉCROISSANTE : le séjour
+  // le plus lointain arrivait en tête et le départ de demain se retrouvait
+  // enterré sous tout le reste. C'est l'inverse de ce qu'on vient chercher ici.
+  // On remonte donc ce qui approche, du plus proche au plus lointain, et on
+  // renvoie le passé en dessous — récent d'abord, puisqu'on n'y descend que
+  // pour vérifier quelque chose.
+  const { upcoming, past } = useMemo(() => {
+    const up = reservations.filter(r => r.checkOut >= today)
+      .sort((a, b) => a.checkOut.localeCompare(b.checkOut) || (a.apartmentName ?? '').localeCompare(b.apartmentName ?? ''));
+    const old = reservations.filter(r => r.checkOut < today)
+      .sort((a, b) => b.checkOut.localeCompare(a.checkOut));
+    return { upcoming: up, past: old };
+  }, [reservations, today]);
+
   // Occupation par appartement (réservations confirmées uniquement).
   const occupancy = useMemo<AptOccupancy[]>(() => {
     const byApt = new Map<string, Reservation[]>();
@@ -187,7 +202,7 @@ export default function AdminReservationsPage() {
 
       {/* Réservations synchronisées (toutes plateformes) */}
       <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Réservations synchronisées</h2>
-      {reservations.length === 0 ? (
+      {upcoming.length === 0 && past.length === 0 ? (
         <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
           <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune réservation importée pour le moment.</p>
         </div>
@@ -200,10 +215,22 @@ export default function AdminReservationsPage() {
             <span className="col-span-2 text-center">Départ</span>
             <span className="col-span-2 text-right">Mission</span>
           </div>
-          {reservations.slice(0, 200).map(r => {
+          {[
+            ...upcoming.map(r => ({ r, passe: false })),
+            ...past.slice(0, 60).map(r => ({ r, passe: true })),
+          ].map(({ r, passe }, i, arr) => {
             const st = RES_STATUS[r.status] ?? RES_STATUS.confirmed;
+            // Repère visuel entre ce qui arrive et ce qui est derrière nous.
+            const debutPasse = passe && !arr[i - 1]?.passe;
             return (
-              <div key={r.id} className="grid grid-cols-12 items-center px-4 py-3 border-b last:border-0" style={{ borderColor: '#F2EFE9' }}>
+              <div key={r.id}>
+              {debutPasse && (
+                <div className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider border-b border-t"
+                  style={{ color: '#A8A09A', backgroundColor: '#FAFAF8', borderColor: '#F2EFE9' }}>
+                  Séjours terminés
+                </div>
+              )}
+              <div className="grid grid-cols-12 items-center px-4 py-3 border-b last:border-0" style={{ borderColor: '#F2EFE9', opacity: passe ? 0.55 : 1 }}>
                 <div className="col-span-4 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? '—'}</p>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
@@ -220,6 +247,7 @@ export default function AdminReservationsPage() {
                     <span className="text-[11px]" style={{ color: '#A8A09A' }}>—</span>
                   )}
                 </div>
+              </div>
               </div>
             );
           })}
