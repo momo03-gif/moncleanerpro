@@ -50,7 +50,12 @@ async function get<T>(path: string, apiKey: string, params: Record<string, strin
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) throw new Error('Clé Lodgify refusée.');
       if (res.status === 404) throw new Error('NOT_FOUND');   // signal interne : bascule v2 → v1
-      throw new Error(`Lodgify a répondu ${res.status}.`);
+      // Le code voyage avec l'erreur : un 400 signifie « ces paramètres-là ne
+      // conviennent pas », et l'appelant peut alors réessayer autrement plutôt
+      // que d'abandonner la synchronisation du logement.
+      const err = new Error(`Lodgify a répondu ${res.status}.`) as Error & { httpStatus?: number };
+      err.httpStatus = res.status;
+      throw err;
     }
     return (await res.json()) as T;
   } finally {
@@ -126,16 +131,41 @@ export async function fetchLodgifyReservations(
   propertyId: string,
   range: { from: string; to: string },
 ): Promise<ICalEvent[]> {
-  const rows: Record<string, unknown>[] = [];
-  for (let page = 1; page <= PAGES_MAX; page++) {
-    const data = await getWithFallback<unknown>(
-      '/v2/reservations/bookings', '/v1/reservation', creds.apiKey,
-      { propertyId, stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page, size: PAGE },
-    );
-    const lot = unwrap(data);
-    rows.push(...lot);
-    if (lot.length < PAGE) break;
+  // Deux façons de demander, essayées dans cet ordre. La première laisse
+  // Lodgify filtrer sur la date de départ — c'est la bonne, quand le compte
+  // l'accepte. La seconde ramène tout et nous filtrons nous-mêmes : plus
+  // d'appels, mais elle passe partout. Sans ce repli, un compte qui refuse le
+  // filtre précis se retrouvait sans aucune réservation.
+  const TENTATIVES = [
+    { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to },
+    { stayFilter: 'All' },
+  ];
+
+  let rows: Record<string, unknown>[] = [];
+  let derniere: Error | null = null;
+  for (const filtre of TENTATIVES) {
+    try {
+      const lues: Record<string, unknown>[] = [];
+      for (let page = 1; page <= PAGES_MAX; page++) {
+        const data = await getWithFallback<unknown>(
+          '/v2/reservations/bookings', '/v1/reservation', creds.apiKey,
+          { propertyId, ...filtre, page, size: PAGE },
+        );
+        const lot = unwrap(data);
+        lues.push(...lot);
+        if (lot.length < PAGE) break;
+      }
+      rows = lues;
+      derniere = null;
+      break;
+    } catch (e) {
+      // Un 400 dit « pas ces paramètres-là » : on tente la variante suivante.
+      // Toute autre erreur (clé refusée, panne) doit remonter telle quelle.
+      if ((e as { httpStatus?: number }).httpStatus !== 400) throw e;
+      derniere = e as Error;
+    }
   }
+  if (derniere) throw derniere;
 
   // Filet local sur le logement : le filtre `propertyId` n'est pas garanti
   // d'une version à l'autre, et importer les séjours d'un autre bien les
@@ -163,44 +193,71 @@ export async function fetchLodgifyReservations(
  * contact du voyageur de notre client. On rend le NOMBRE de lignes et le NOM
  * des champs de la première — de quoi comprendre la forme, rien sur les gens.
  */
+export interface SondeLodgify {
+  variante: string;
+  statut: number | 'ok';
+  lignes: number;
+  duLogement: number;
+  evenements: number;
+  dansPeriode: number;
+  champs: string[];
+}
+
+/**
+ * Essaie plusieurs façons de demander, et rend ce que chacune a donné.
+ *
+ * La documentation d'un éditeur décrit rarement ce que son API fait vraiment :
+ * « All » ignore silencieusement les bornes de période, « DepartureDate » est
+ * refusé par certains comptes. Plutôt que d'alterner les hypothèses à chaque
+ * échec, on les essaie toutes une fois et on lit le résultat.
+ *
+ * CE QU'ON NE REND PAS : les valeurs. Une réservation porte le nom et le
+ * contact du voyageur de notre client. On rend des COMPTES et le NOM des
+ * champs — de quoi comprendre la forme, rien sur les gens.
+ */
 export async function diagnoseLodgify(
   creds: LodgifyCredentials,
   propertyId: string,
   range: { from: string; to: string },
-): Promise<{
-  version: 'v2' | 'v1';
-  lignes: number;
-  champs: string[];
-  evenements: number;
-  horsPeriode: number;
-}> {
-  let version: 'v2' | 'v1' = 'v2';
-  let data: unknown;
-  try {
-    data = await get<unknown>('/v2/reservations/bookings', creds.apiKey, {
-      propertyId, stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page: 1, size: PAGE,
-    });
-  } catch (e) {
-    if ((e as Error)?.message !== 'NOT_FOUND') throw e;
-    version = 'v1';
-    data = await get<unknown>('/v1/reservation', creds.apiKey, {
-      propertyId, stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page: 1, size: PAGE,
-    });
+): Promise<SondeLodgify[]> {
+  const VARIANTES: { nom: string; params: Record<string, string | number | undefined> }[] = [
+    { nom: 'DepartureDate + période', params: { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to } },
+    { nom: 'ArrivalDate + période', params: { stayFilter: 'ArrivalDate', periodStart: range.from, periodEnd: range.to } },
+    { nom: 'Upcoming', params: { stayFilter: 'Upcoming' } },
+    { nom: 'All (page 1)', params: { stayFilter: 'All' } },
+    { nom: 'sans filtre', params: {} },
+  ];
+
+  const out: SondeLodgify[] = [];
+  const attendu = String(propertyId);
+
+  for (const v of VARIANTES) {
+    try {
+      const data = await get<unknown>('/v2/reservations/bookings', creds.apiKey, {
+        propertyId, ...v.params, page: 1, size: PAGE,
+      });
+      const rows = unwrap(data);
+      const duLogement = attendu
+        ? rows.filter(r => r.property_id === undefined || String(r.property_id) === attendu)
+        : rows;
+      let evenements: ICalEvent[] = [];
+      try { evenements = toEvents(duLogement.map(marquerBlocage), 'lodgify', LODGIFY_FIELDS, 'Lodgify'); } catch { /* 0 */ }
+      out.push({
+        variante: v.nom,
+        statut: 'ok',
+        lignes: rows.length,
+        duLogement: duLogement.length,
+        evenements: evenements.length,
+        dansPeriode: evenements.filter(e => e.end >= range.from && e.start <= range.to).length,
+        champs: rows.length > 0 ? Object.keys(rows[0]).slice(0, 40) : [],
+      });
+    } catch (e) {
+      out.push({
+        variante: v.nom,
+        statut: (e as { httpStatus?: number }).httpStatus ?? 0,
+        lignes: 0, duLogement: 0, evenements: 0, dansPeriode: 0, champs: [],
+      });
+    }
   }
-
-  const rows = unwrap(data);
-  // `toEvents` lève quand aucune ligne n'est lisible : ici on veut le chiffre,
-  // pas l'exception — c'est précisément ce qu'on cherche à mesurer.
-  let evenements: ICalEvent[] = [];
-  try { evenements = toEvents(rows, 'lodgify', LODGIFY_FIELDS, 'Lodgify'); } catch { evenements = []; }
-
-  const dansPeriode = evenements.filter(e => e.end >= range.from && e.start <= range.to);
-
-  return {
-    version,
-    lignes: rows.length,
-    champs: rows.length > 0 ? Object.keys(rows[0]).slice(0, 40) : [],
-    evenements: evenements.length,
-    horsPeriode: evenements.length - dansPeriode.length,
-  };
+  return out;
 }

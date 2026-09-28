@@ -85,9 +85,12 @@ export default function AdminReservationsPage() {
       });
       const d = await res.json().catch(() => ({}));
       setPms(p => ({ ...p, [feedId]: d.ok
-        ? `API ${d.diagnostic.version} · ${d.diagnostic.lignes} ligne(s) reçue(s) · `
-          + `${d.diagnostic.evenements} séjour(s) lisible(s) · ${d.diagnostic.horsPeriode} hors période`
-          + (d.diagnostic.champs.length ? ` · champs : ${d.diagnostic.champs.join(', ')}` : '')
+        ? (d.diagnostic as {
+            variante: string; statut: number | 'ok'; lignes: number;
+            duLogement: number; evenements: number; dansPeriode: number;
+          }[]).map(v => v.statut === 'ok'
+            ? `${v.variante} : ${v.lignes} reçue(s), ${v.duLogement} du logement, ${v.dansPeriode} dans la période`
+            : `${v.variante} : refusé (${v.statut})`).join(' | ')
         : (d.error ?? 'Diagnostic impossible.') }));
     } catch { setPms(p => ({ ...p, [feedId]: 'Diagnostic impossible.' })); }
   }
