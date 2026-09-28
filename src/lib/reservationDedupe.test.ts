@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   chevauchements, dedupeStays, departCredible, doublonsSejours,
-  estOccupation, estRefletDUnSejour, nuitsAFermerAilleurs,
+  estOccupation, estRefletDUnSejour, nuitsAFermerAilleurs, occupationsReelles,
   type OccupationSituee, type SejourVendu,
 } from './reservationDedupe';
 import type { Reservation } from './types';
@@ -304,5 +304,39 @@ describe('nuitsAFermerAilleurs — voir venir la double réservation', () => {
       [occ({ airbnbId: 'apt-2' })],
       plateformes,
     )).toEqual([]);
+  });
+});
+
+describe('occupationsReelles — le calendrier doit voir ce que le moteur décide', () => {
+  const r = (o: Record<string, unknown>) =>
+    ({ airbnbId: 'a1', status: 'blocked', platform: 'booking',
+       checkIn: '2026-09-28', checkOut: '2026-10-02', ...o }) as Reservation;
+
+  it('écarte un blocage qui recopie un séjour vendu ailleurs', () => {
+    // Booking ferme du 28 au 2 pour un séjour Airbnb du 1er au 2 : les nuits
+    // du 28 au 30 ne sont pas occupées, et le calendrier ne doit pas le dire.
+    const out = occupationsReelles([
+      r({}),
+      r({ status: 'confirmed', platform: 'airbnb', checkIn: '2026-10-01' }),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].platform).toBe('airbnb');
+  });
+
+  it('garde un blocage Booking qui ne recopie rien', () => {
+    // Booking n'étiquette pas ses séjours : seul signal disponible, on le garde.
+    expect(occupationsReelles([r({})])).toHaveLength(1);
+  });
+
+  it('ne confond pas deux séjours d’une même plateforme', () => {
+    const out = occupationsReelles([
+      r({ checkIn: '2026-09-27', checkOut: '2026-09-29' }),
+      r({ status: 'confirmed', checkIn: '2026-09-28' }),
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it('un blocage Airbnb n’occupe toujours pas', () => {
+    expect(occupationsReelles([r({ platform: 'airbnb' })])).toEqual([]);
   });
 });

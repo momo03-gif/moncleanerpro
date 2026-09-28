@@ -351,3 +351,40 @@ export function nuitsAFermerAilleurs(
 
   return out.sort((a, b) => a.du.localeCompare(b.du));
 }
+
+/**
+ * Les occupations RÉELLES d'un jeu de réservations, reflets écartés.
+ *
+ * `estOccupation` dit ce qui occupe ; celle-ci enlève en plus les périodes qui
+ * ne sont que le reflet d'un séjour vendu sur une autre plateforme. Sans ce
+ * second tri, un blocage plus large que le séjour qu'il recopie remplit des
+ * nuits libres : le calendrier affiche « occupé » mercredi alors que le
+ * voyageur arrive jeudi.
+ *
+ * C'est la vue que doivent partager TOUS les écrans. Le moteur appliquait déjà
+ * les deux règles pour créer les ménages ; les calendriers n'en appliquaient
+ * qu'une, et montraient donc autre chose que ce que le moteur décidait.
+ */
+export function occupationsReelles<T extends {
+  airbnbId?: string; status?: string; platform?: string; checkIn: string; checkOut: string;
+}>(reservations: T[]): T[] {
+  const occupations = reservations.filter(estOccupation);
+
+  // Les séjours VENDUS, par logement : ceux qu'une plateforme annonce comme des
+  // réservations, et qui font autorité sur les blocages d'en face.
+  const vendusParLogement = new Map<string, SejourVendu[]>();
+  for (const r of occupations) {
+    if (r.status !== 'confirmed') continue;
+    const k = r.airbnbId ?? '';
+    (vendusParLogement.get(k) ?? vendusParLogement.set(k, []).get(k)!)
+      .push({ platform: r.platform, checkIn: r.checkIn, checkOut: r.checkOut });
+  }
+
+  return occupations.filter(r =>
+    r.status === 'confirmed'
+    || !estRefletDUnSejour(
+      { platform: r.platform, checkIn: r.checkIn, checkOut: r.checkOut },
+      vendusParLogement.get(r.airbnbId ?? '') ?? [],
+    ),
+  );
+}

@@ -15,7 +15,7 @@
 // venait le nettoyer. La livraison est donc marquée à part.
 
 import type { Apartment, Mission, Reservation } from './types';
-import { estOccupation } from './reservationDedupe';
+import { occupationsReelles } from './reservationDedupe';
 import { serviceParts } from './service';
 
 export interface CalendarCell {
@@ -69,11 +69,12 @@ export function buildCalendar(
   count: number,
 ): CalendarRow[] {
   const days = dayRange(start, count);
-  // LA définition de l'occupation, partagée avec le moteur et les autres écrans.
-  // Filtrer sur « confirmé » laissait le calendrier vide pendant un séjour vendu
-  // sur Booking — qui n'étiquette pas ses séjours comme des réservations. La
-  // conciergerie voyait son logement libre alors qu'un voyageur y était.
-  const confirmed = reservations.filter(estOccupation);
+  // LA vue d'occupation, la même que celle sur laquelle le moteur décide des
+  // ménages. Deux tris, et il faut les deux : « confirmé » seul laissait le
+  // calendrier vide pendant un séjour vendu sur Booking, et garder tous les
+  // blocages remplissait des nuits libres avec le reflet, souvent plus large,
+  // d'un séjour vendu ailleurs.
+  const confirmed = occupationsReelles(reservations);
 
   return apartments.map(apt => {
     const stays = confirmed.filter(r => r.airbnbId === apt.id);
