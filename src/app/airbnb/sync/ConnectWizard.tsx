@@ -25,6 +25,10 @@ interface CheckResult {
   platform?: ReservationPlatform;
   total?: number;
   upcoming?: number;
+  /** Évènements que la synchro retiendra comme des séjours. */
+  reservations?: number;
+  /** Évènements écartés comme blocages de calendrier. */
+  blocked?: number;
   nextCheckOut?: string | null;
 }
 
@@ -232,7 +236,19 @@ export default function ConnectWizard({
                   {check.nextCheckOut
                     ? ` · prochain départ le ${new Date(check.nextCheckOut + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
                     : ''}
+                  {(check.blocked ?? 0) > 0 ? ` · ${check.blocked} blocage${(check.blocked ?? 0) > 1 ? 's' : ''} ignoré${(check.blocked ?? 0) > 1 ? 's' : ''}` : ''}
                 </p>
+                {/* Un calendrier qui ne contient QUE des blocages est la signature
+                    d'une panne silencieuse : le lien répond, on l'enregistre, et
+                    aucun ménage n'est jamais créé. On le dit ici plutôt que de
+                    laisser le partenaire le découvrir par un voyageur mécontent. */}
+                {(check.upcoming ?? 0) === 0 && (check.blocked ?? 0) > 0 && (
+                  <p className="text-[11px] mt-1.5 font-medium text-danger">
+                    Aucun séjour reconnu dans ce calendrier : ses {check.blocked} évènements sont tous lus
+                    comme des dates bloquées, donc aucun ménage ne sera créé. Prévenez-nous avant de
+                    continuer, nous vérifierons le format de ce calendrier.
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-xs text-danger">{check.error}</p>

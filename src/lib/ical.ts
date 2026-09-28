@@ -143,3 +143,40 @@ export function parseICal(raw: string): ICalEvent[] {
   }
   return events;
 }
+
+// Classe un évènement iCal : réservation réelle vs blocage de calendrier.
+// Airbnb exporte ses indisponibilités comme « Not available / Blocked » — celles-ci
+// ne doivent JAMAIS générer de mission de ménage.
+//
+// BOOKING.COM EST L'EXCEPTION, ET ELLE COÛTE CHER.
+// Son export natif intitule ses VRAIES réservations « CLOSED - Not available »,
+// exactement comme ses dates bloquées à la main : l'information n'existe pas dans
+// le flux, elle est indiscernable. Appliquer la règle commune revenait à jeter
+// 100 % des réservations Booking — aucun ménage créé, sans le moindre message
+// d'erreur, et un partenaire qui découvre le problème par un voyageur mécontent.
+//
+// On penche donc du côté qui crée la mission, parce que les deux erreurs ne
+// coûtent pas la même chose : une mission de trop est créée en `pending` et
+// s'annule d'un clic ; une mission manquante, c'est un voyageur qui entre dans
+// un logement sale. Sur un flux Booking, « closed » n'est donc plus un blocage.
+export function classifyEvent(
+  ev: ICalEvent,
+  inGroup = false,
+  platform?: string,
+): 'confirmed' | 'cancelled' | 'blocked' | 'tentative' {
+  if (ev.status === 'CANCELLED') return 'cancelled';
+  // Demande, option, séjour non payé : gardé en base, mais aucun ménage tant que
+  // ce n'est pas confirmé (materializeMissions ne lit que les « confirmed »).
+  if (ev.status === 'TENTATIVE') return 'tentative';
+  const s = (ev.summary ?? '').toLowerCase();
+  if (platform !== 'booking' && /not available|unavailable|blocked|closed|not avail/.test(s)) return 'blocked';
+  // Marqueur de « réservation croisée » : le PMS bloque les annonces sœurs d'une
+  // même maison (annonce entière ⇄ chambres) quand l'une d'elles est réservée.
+  //   SUMMARY:reserved
+  //   DESCRIPTION:reserved by hostaway cross reservations: 64245633,63913169
+  // Ce n'est pas une réservation de plus : c'est l'ombre de celle d'à côté. On ne
+  // l'ignore QUE si le logement est rattaché à un groupe — sinon la vraie
+  // réservation n'est sur aucun calendrier connecté et on perdrait le ménage.
+  if (inGroup && /cross reservations?/i.test(ev.description ?? '')) return 'blocked';
+  return 'confirmed';
+}

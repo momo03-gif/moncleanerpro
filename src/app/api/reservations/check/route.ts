@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseICal } from '@/lib/ical';
+import { classifyEvent, parseICal } from '@/lib/ical';
 import { normalizeIcalUrl, detectPlatform } from '@/lib/icalUrl';
 
 export const runtime = 'nodejs';
@@ -47,14 +47,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // On classe EXACTEMENT comme la synchro le fera. Ce contrôle comptait
+    // auparavant tous les évènements sans les trier : un calendrier dont la
+    // synchro allait tout écarter s'affichait « 12 réservations à venir ✓ », et
+    // le partenaire découvrait des semaines plus tard qu'aucun ménage n'avait
+    // été créé. Un contrôle qui ne dit pas la même chose que le traitement réel
+    // est pire que pas de contrôle du tout.
+    const platform = detectPlatform(url);
     const events = parseICal(text);
     const today = new Date().toLocaleDateString('en-CA');
-    const upcoming = events.filter(e => e.end >= today).sort((a, b) => a.end.localeCompare(b.end));
+    const classified = events.map(e => ({ ev: e, status: classifyEvent(e, false, platform) }));
+    const reservations = classified.filter(c => c.status === 'confirmed').map(c => c.ev);
+    const blocked = classified.filter(c => c.status === 'blocked').length;
+    const upcoming = reservations.filter(e => e.end >= today).sort((a, b) => a.end.localeCompare(b.end));
 
     return NextResponse.json({
       ok: true,
-      platform: detectPlatform(url),
+      platform,
       total: events.length,
+      // Ce que la synchro retiendra vraiment, et ce qu'elle écartera.
+      reservations: reservations.length,
+      blocked,
       upcoming: upcoming.length,
       nextCheckOut: upcoming[0]?.end ?? null,
     });

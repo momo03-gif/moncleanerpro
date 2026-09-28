@@ -12,7 +12,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { parseICal, type ICalEvent } from './ical';
+import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
@@ -41,27 +41,6 @@ function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
-}
-
-// Classe un évènement iCal : réservation réelle vs blocage de calendrier.
-// Airbnb/Booking exportent les indisponibilités comme « Not available / Blocked /
-// Closed » — celles-ci ne doivent JAMAIS générer de mission de ménage.
-function classifyEvent(ev: ICalEvent, inGroup = false): 'confirmed' | 'cancelled' | 'blocked' | 'tentative' {
-  if (ev.status === 'CANCELLED') return 'cancelled';
-  // Demande, option, séjour non payé : gardé en base, mais aucun ménage tant que
-  // ce n'est pas confirmé (materializeMissions ne lit que les « confirmed »).
-  if (ev.status === 'TENTATIVE') return 'tentative';
-  const s = (ev.summary ?? '').toLowerCase();
-  if (/not available|unavailable|blocked|closed|not avail/.test(s)) return 'blocked';
-  // Marqueur de « réservation croisée » : le PMS bloque les annonces sœurs d'une
-  // même maison (annonce entière ⇄ chambres) quand l'une d'elles est réservée.
-  //   SUMMARY:reserved
-  //   DESCRIPTION:reserved by hostaway cross reservations: 64245633,63913169
-  // Ce n'est pas une réservation de plus : c'est l'ombre de celle d'à côté. On ne
-  // l'ignore QUE si le logement est rattaché à un groupe — sinon la vraie
-  // réservation n'est sur aucun calendrier connecté et on perdrait le ménage.
-  if (inGroup && /cross reservations?/i.test(ev.description ?? '')) return 'blocked';
-  return 'confirmed';
 }
 
 // ── Maisons à annonces multiples ──────────────────────────────────────────────
@@ -273,7 +252,7 @@ export async function syncFeed(feed: {
     );
 
     for (const ev of events) {
-      const status = classifyEvent(ev, inGroup);
+      const status = classifyEvent(ev, inGroup, feed.platform);
       seenUids.add(ev.uid);
 
       // Ce qu'on peut joindre du voyageur, selon la source : le téléphone quand

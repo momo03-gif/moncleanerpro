@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseICal } from './ical';
+import { classifyEvent, parseICal, type ICalEvent } from './ical';
 
 // Robustesse du parseur iCal sur les variantes réelles des plateformes de
 // réservation. Chaque cas reflète un export concret (Airbnb, Booking, PMS…).
@@ -171,5 +171,46 @@ describe('parseICal — robustesse multi-plateformes', () => {
       'END:VEVENT',
     ].join('\r\n');
     expect(parseICal(ics)).toHaveLength(0);
+  });
+});
+
+// ── Réservation ou blocage ? ────────────────────────────────────────────────
+// Le cas Booking a coûté 100 % des ménages d'un partenaire : ses vraies
+// réservations sortent sous « CLOSED - Not available », le même intitulé que
+// ses dates bloquées. Ces tests figent la règle pour qu'elle ne se reperde pas.
+describe('classifyEvent — réservation réelle vs blocage de calendrier', () => {
+  const ev = (over: Partial<ICalEvent> = {}): ICalEvent => ({
+    uid: 'u1', start: '2026-09-29', end: '2026-10-02', ...over,
+  } as ICalEvent);
+
+  it('Airbnb : « Not available » est bien un blocage', () => {
+    expect(classifyEvent(ev({ summary: 'Airbnb (Not available)' }), false, 'airbnb')).toBe('blocked');
+  });
+
+  it('Booking : « CLOSED - Not available » est une RÉSERVATION', () => {
+    // C'est la correction. Booking n'a aucun autre intitulé pour ses séjours.
+    expect(classifyEvent(ev({ summary: 'CLOSED - Not available' }), false, 'booking')).toBe('confirmed');
+  });
+
+  it('Booking : un « CLOSED » seul compte aussi comme réservation', () => {
+    expect(classifyEvent(ev({ summary: 'CLOSED' }), false, 'booking')).toBe('confirmed');
+  });
+
+  it('sans plateforme connue, la règle prudente s’applique encore', () => {
+    expect(classifyEvent(ev({ summary: 'Blocked' }))).toBe('blocked');
+  });
+
+  it('un séjour annulé le reste, même chez Booking', () => {
+    expect(classifyEvent(ev({ summary: 'CLOSED', status: 'CANCELLED' }), false, 'booking')).toBe('cancelled');
+  });
+
+  it('une option non confirmée ne génère pas de ménage', () => {
+    expect(classifyEvent(ev({ summary: 'CLOSED', status: 'TENTATIVE' }), false, 'booking')).toBe('tentative');
+  });
+
+  it('réservation croisée d’un PMS : ignorée seulement dans un groupe', () => {
+    const cross = ev({ summary: 'reserved', description: 'reserved by hostaway cross reservations: 642, 639' });
+    expect(classifyEvent(cross, true)).toBe('blocked');
+    expect(classifyEvent(cross, false)).toBe('confirmed');
   });
 });
