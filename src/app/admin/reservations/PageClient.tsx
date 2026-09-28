@@ -54,6 +54,7 @@ export default function AdminReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+  const [syncFailed, setSyncFailed] = useState(false);
 
   const load = useCallback(async () => {
     const [a, r, f] = await Promise.all([getAirbnbs(), getAllReservations(), getAllReservationFeeds()]);
@@ -74,7 +75,18 @@ export default function AdminReservationsPage() {
     try {
       const res = await fetch('/api/reservations/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       const data = await res.json();
-      setSyncMsg(data.ok ? `${data.imported} réservation(s) importée(s) · ${data.missionsCreated} mission(s) créée(s).` : `Erreur : ${data.error}`);
+      // La route renvoie un échec PAR CALENDRIER. L'écran ne lisait que le
+      // total : un lien expiré affichait « 0 réservation importée » comme un
+      // succès, et personne ne savait qu'un flux était mort. On le dit.
+      if (!data.ok) setSyncMsg(`Erreur : ${data.error}`);
+      else {
+        const errs: string[] = data.errors ?? [];
+        setSyncMsg(
+          `${data.feeds} calendrier(s) · ${data.imported} réservation(s) importée(s) · ${data.missionsCreated} mission(s) créée(s).`
+          + (errs.length ? ` ⚠ ${errs.length} calendrier(s) en échec : ${errs.join(' · ')}` : ''),
+        );
+        setSyncFailed(errs.length > 0);
+      }
     } catch { setSyncMsg('Synchronisation impossible.'); }
     await load();
     setSyncing(false);
@@ -94,6 +106,24 @@ export default function AdminReservationsPage() {
       .sort((a, b) => b.checkOut.localeCompare(a.checkOut));
     return { upcoming: up, past: old };
   }, [reservations, today]);
+
+  // Calendriers : les pannes d'abord, puis par logement. Et le compte de flux
+  // par logement, parce qu'un logement qui en porte trois est la cause la plus
+  // fréquente de lignes qui se contredisent.
+  const { feedsTries, feedsEnEchec, feedsParLogement } = useMemo(() => {
+    const parLogement = new Map<string, number>();
+    for (const f of feeds) parLogement.set(f.airbnbId, (parLogement.get(f.airbnbId) ?? 0) + 1);
+    const tries = [...feeds].sort((a, b) => {
+      const ea = a.lastSyncStatus === 'error' ? 0 : 1;
+      const eb = b.lastSyncStatus === 'error' ? 0 : 1;
+      return ea - eb || (a.apartmentName ?? '').localeCompare(b.apartmentName ?? '');
+    });
+    return {
+      feedsTries: tries,
+      feedsEnEchec: feeds.filter(f => f.lastSyncStatus === 'error').length,
+      feedsParLogement: parLogement,
+    };
+  }, [feeds]);
 
   // Occupation par appartement (réservations confirmées uniquement).
   const occupancy = useMemo<AptOccupancy[]>(() => {
@@ -149,7 +179,14 @@ export default function AdminReservationsPage() {
           <Icon name="sync" size={16} /> {syncing ? 'Synchronisation...' : 'Synchroniser tout'}
         </button>
       </div>
-      {syncMsg && <p className="text-xs mb-4 px-3 py-2 rounded-lg" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>{syncMsg}</p>}
+      {syncMsg && (
+        <p className="text-xs mb-4 px-3 py-2 rounded-lg"
+          style={syncFailed
+            ? { backgroundColor: '#FDF3F2', color: '#8A3A31', border: '1px solid #E4B7B1' }
+            : { backgroundColor: '#F8F6F2', color: '#7A7068' }}>
+          {syncMsg}
+        </p>
+      )}
 
       {/* KPIs occupation */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -199,6 +236,52 @@ export default function AdminReservationsPage() {
           })}
         </div>
       )}
+
+      {/* ── Calendriers connectés ────────────────────────────────────────────
+          Ce que l'écran ne montrait nulle part : QUELS calendriers alimentent
+          QUEL logement, et lequel est en panne. Sans cette vue, un lien expiré
+          ou un logement portant trois calendriers qui se contredisent ne se
+          diagnostique qu'en base. Les flux en échec remontent en tête. */}
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Calendriers connectés</h2>
+        {feedsEnEchec > 0 && (
+          <span className="text-[11px] font-semibold" style={{ color: '#B85A50' }}>
+            {feedsEnEchec} en échec
+          </span>
+        )}
+      </div>
+      <div className="rounded-2xl border overflow-hidden mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        {feedsTries.length === 0 ? (
+          <p className="text-sm px-4 py-6 text-center" style={{ color: '#A8A09A' }}>Aucun calendrier connecté.</p>
+        ) : feedsTries.map(f => {
+          const enEchec = f.lastSyncStatus === 'error';
+          const multiple = (feedsParLogement.get(f.airbnbId) ?? 0) > 1;
+          return (
+            <div key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 border-b last:border-0" style={{ borderColor: '#F2EFE9' }}>
+              <span className="text-sm font-medium min-w-[140px]" style={{ color: '#1A1A1A' }}>{f.apartmentName ?? '—'}</span>
+              <span className="text-xs" style={{ color: '#7A7068' }}>{platformLabel(f.platform)}</span>
+              {multiple && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#C48A2A18', color: '#C48A2A' }}>
+                  plusieurs calendriers
+                </span>
+              )}
+              {!f.active && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#6B728018', color: '#6B7280' }}>inactif</span>
+              )}
+              <span className="flex-1" />
+              {enEchec ? (
+                <span className="text-[11px] font-semibold text-right" style={{ color: '#B85A50' }}>
+                  En échec{f.lastError ? ` — ${f.lastError}` : ''}
+                </span>
+              ) : (
+                <span className="text-[11px]" style={{ color: '#A8A09A' }}>
+                  {f.lastSyncAt ? `Synchronisé le ${fmtDate(f.lastSyncAt.slice(0, 10))}` : 'Jamais synchronisé'}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/* Réservations synchronisées (toutes plateformes) */}
       <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Réservations synchronisées</h2>
