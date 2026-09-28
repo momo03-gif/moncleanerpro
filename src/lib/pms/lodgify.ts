@@ -75,6 +75,13 @@ async function getWithFallback<T>(
   }
 }
 
+/** Les clés de premier niveau de la réponse — c'est là que vit la pagination. */
+function clesEnveloppe(payload: unknown): string[] {
+  if (Array.isArray(payload)) return ['(tableau à plat)'];
+  const obj = payload as Record<string, unknown> | null;
+  return obj && typeof obj === 'object' ? Object.keys(obj).slice(0, 20) : [];
+}
+
 /** Les listes de Lodgify arrivent tantôt à plat, tantôt enveloppées. */
 function unwrap(payload: unknown): Record<string, unknown>[] {
   if (Array.isArray(payload)) return payload as Record<string, unknown>[];
@@ -114,93 +121,113 @@ function marquerBlocage(row: Record<string, unknown>): Record<string, unknown> {
 const PAGE = 100;
 const PAGES_MAX = 10;   // 1 000 séjours sur 90 jours : au-delà, ce n'est plus un logement
 
+interface Candidate {
+  nom: string;
+  params: Record<string, string | number | undefined>;
+  /** Comment demander la page n (1 = première). Absent = pas de pagination. */
+  curseur?: (n: number) => Record<string, number>;
+}
+
+// Dans l'ordre de préférence : d'abord ce qui laisse Lodgify filtrer lui-même,
+// ensuite ce qui pagine, enfin l'appel minimal qui répond toujours — celui dont
+// on sait qu'il répond, même s'il ne voit que la première page.
+function candidates(range: { from: string; to: string }): Candidate[] {
+  const periode = { periodStart: range.from, periodEnd: range.to };
+  return [
+    { nom: 'DepartureDate + page', params: { stayFilter: 'DepartureDate', ...periode, size: PAGE }, curseur: n => ({ page: n }) },
+    { nom: 'All + page', params: { stayFilter: 'All', size: PAGE }, curseur: n => ({ page: n }) },
+    { nom: 'All + offset', params: { stayFilter: 'All', limit: PAGE }, curseur: n => ({ offset: (n - 1) * PAGE }) },
+    { nom: 'All + pageNumber', params: { stayFilter: 'All', pageSize: PAGE }, curseur: n => ({ pageNumber: n }) },
+    { nom: 'All, sans pagination', params: { stayFilter: 'All', ...periode, size: 200 } },
+  ];
+}
+
 /**
  * Réservations d'une propriété sur la période.
  *
- * `stayFilter` COMMANDE TOUT. Avec « All », Lodgify ignore `periodStart` et
- * `periodEnd` et rend la première page de tout l'historique du compte : on
- * recevait 100 lignes dont 99 passées, aucune réservation à venir, et pas la
- * moindre erreur pour le signaler. On filtre donc sur la DATE DE DÉPART —
- * c'est elle qui déclenche un ménage, et elle retient aussi les séjours en
- * cours, qu'un filtre « à venir » laisserait de côté.
+ * CE QUE LA VRAIE CLÉ A APPRIS, et qu'aucune documentation ne disait :
+ *  · `stayFilter: 'All'` fait IGNORER `periodStart`/`periodEnd` — on reçoit
+ *    l'historique du compte, presque entièrement passé ;
+ *  · une page est plafonnée à 100 lignes, triées du plus ANCIEN au plus
+ *    récent : sans pagination, un compte un peu ancien ne montre aucune
+ *    réservation à venir ;
+ *  · le filtre par date de départ, qui serait le bon, est refusé (400) par
+ *    certains comptes ;
+ *  · et le nom du curseur de page n'est pas le même partout.
  *
- * Et on pagine : la première page ne suffit pas dès qu'un compte a de l'espace.
+ * Aucune combinaison ne marche donc sur tous les comptes. Plutôt que d'en
+ * choisir une et d'espérer, on essaie les candidates sur UNE page et on retient
+ * celle qui rend le plus de séjours DANS LA PÉRIODE — un appel qui répond 200
+ * en ne rendant que du passé n'a pas « marché ». Puis on pagine celle-là.
  */
 export async function fetchLodgifyReservations(
   creds: LodgifyCredentials,
   propertyId: string,
   range: { from: string; to: string },
 ): Promise<ICalEvent[]> {
-  // Deux façons de demander, essayées dans cet ordre. La première laisse
-  // Lodgify filtrer sur la date de départ — c'est la bonne, quand le compte
-  // l'accepte. La seconde ramène tout et nous filtrons nous-mêmes : plus
-  // d'appels, mais elle passe partout. Sans ce repli, un compte qui refuse le
-  // filtre précis se retrouvait sans aucune réservation.
-  // La DERNIÈRE est l'appel exactement tel qu'il fonctionnait avant qu'on
-  // cherche mieux : sans `page`, avec les bornes, `size` à 200. Un repli doit
-  // finir par quelque chose de connu — sinon « on essaie autre chose » veut
-  // seulement dire « on échoue autrement ».
-  const TENTATIVES: Record<string, string | number | undefined>[] = [
-    { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page: 1, size: PAGE },
-    { stayFilter: 'All', page: 1, size: PAGE },
-    { stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200 },
-  ];
+  const attendu = String(propertyId);
 
-  let rows: Record<string, unknown>[] = [];
+  const utiles = (rows: Record<string, unknown>[]) => {
+    const duLogement = attendu
+      ? rows.filter(r => r.property_id === undefined || String(r.property_id) === attendu)
+      : rows;
+    let ev: ICalEvent[] = [];
+    try { ev = toEvents(duLogement.map(marquerBlocage), 'lodgify', LODGIFY_FIELDS, 'Lodgify'); } catch { ev = []; }
+    return ev.filter(e => e.end >= range.from && e.start <= range.to);
+  };
+
+  const lire = (filtre: Record<string, string | number | undefined>) => getWithFallback<unknown>(
+    '/v2/reservations/bookings', '/v1/reservation', creds.apiKey, { propertyId, ...filtre },
+  );
+
+  // ── 1. Laquelle de ces façons de demander rend vraiment quelque chose ? ────
+  let choisie: Candidate | null = null;
+  let premieres: Record<string, unknown>[] = [];
   let derniere: Error | null = null;
-  for (const filtre of TENTATIVES) {
+
+  for (const c of candidates(range)) {
     try {
-      const lues: Record<string, unknown>[] = [];
-      // On ne pagine que si la variante accepte `page` : sur celle qui n'en
-      // veut pas, insister ne ferait que répéter la première page.
-      const paginable = filtre.page !== undefined;
-      for (let page = 1; page <= (paginable ? PAGES_MAX : 1); page++) {
-        const data = await getWithFallback<unknown>(
-          '/v2/reservations/bookings', '/v1/reservation', creds.apiKey,
-          { propertyId, ...filtre, ...(paginable ? { page } : {}) },
-        );
-        const lot = unwrap(data);
-        lues.push(...lot);
-        if (lot.length < PAGE) break;
-      }
-      rows = lues;
-      derniere = null;
-      break;
+      const rows = unwrap(await lire({ ...c.params, ...(c.curseur ? c.curseur(1) : {}) }));
+      const score = utiles(rows).length;
+      // Une variante qui rend des séjours dans la période gagne tout de suite.
+      if (score > 0) { choisie = c; premieres = rows; break; }
+      // Sinon on garde la première qui répond : mieux vaut peu que rien.
+      if (!choisie) { choisie = c; premieres = rows; }
     } catch (e) {
-      // Un 400 dit « pas ces paramètres-là » : on tente la variante suivante.
-      // Toute autre erreur (clé refusée, panne) doit remonter telle quelle.
       if ((e as { httpStatus?: number }).httpStatus !== 400) throw e;
       derniere = e as Error;
     }
   }
-  if (derniere) throw derniere;
+  if (!choisie) throw derniere ?? new Error('Lodgify n’a accepté aucune de nos requêtes.');
 
-  // Filet local sur le logement : le filtre `propertyId` n'est pas garanti
-  // d'une version à l'autre, et importer les séjours d'un autre bien les
-  // collerait tous sur celui-ci.
-  const attendu = String(propertyId);
-  const duLogement = attendu
-    ? rows.filter(r => r.property_id === undefined || String(r.property_id) === attendu)
-    : rows;
+  // ── 2. Puis on la pagine, si elle porte un curseur ─────────────────────────
+  const rows = [...premieres];
+  if (choisie.curseur && premieres.length >= PAGE) {
+    const empreinte = (l: Record<string, unknown>[]) => String(l[0]?.id ?? '') + '|' + l.length;
+    let precedente = empreinte(premieres);
 
-  const events = toEvents(duLogement.map(marquerBlocage), 'lodgify', LODGIFY_FIELDS, 'Lodgify');
-  // Filet local sur la période, pour la même raison.
-  return events.filter(e => e.end >= range.from && e.start <= range.to);
+    for (let n = 2; n <= PAGES_MAX; n++) {
+      const lot = unwrap(await lire({ ...choisie.params, ...choisie.curseur(n) }));
+      // Un compte peut répondre 200 en IGNORANT le curseur : on relirait alors
+      // la même page dix fois. Deux pages identiques = il n'y a pas de suite.
+      if (lot.length === 0 || empreinte(lot) === precedente) break;
+      precedente = empreinte(lot);
+      rows.push(...lot);
+      if (lot.length < PAGE) break;
+    }
+  }
+
+  // Une même réservation peut revenir d'une page à l'autre si le tri bouge.
+  const vues = new Set<string>();
+  const uniques = rows.filter(r => {
+    const k = String(r.id ?? `${r.arrival}-${r.departure}`);
+    if (vues.has(k)) return false;
+    vues.add(k); return true;
+  });
+
+  return utiles(uniques);
 }
 
-/**
- * Ce que Lodgify a RÉPONDU, sans interprétation — pour diagnostic.
- *
- * Une synchro qui remonte zéro réservation sans erreur a trois causes
- * possibles, et rien ne permettait de les distinguer : la requête part sur la
- * mauvaise version d'API, Lodgify renvoie une enveloppe que `unwrap` ne
- * reconnaît pas, ou le filtre de période ne mord pas. On relit donc la réponse
- * brute et on rend de quoi trancher.
- *
- * CE QU'ON NE REND PAS : les valeurs. Une réservation porte le nom et le
- * contact du voyageur de notre client. On rend le NOMBRE de lignes et le NOM
- * des champs de la première — de quoi comprendre la forme, rien sur les gens.
- */
 export interface SondeLodgify {
   variante: string;
   statut: number | 'ok';
@@ -209,6 +236,8 @@ export interface SondeLodgify {
   evenements: number;
   dansPeriode: number;
   champs: string[];
+  /** Clés de premier niveau de la réponse : c'est là que vit la pagination. */
+  enveloppe: string[];
 }
 
 /**
@@ -231,10 +260,13 @@ export async function diagnoseLodgify(
   // Le TÉMOIN d'abord : l'appel dont on sait qu'il répondait. S'il échoue lui
   // aussi, le problème n'est pas le filtre mais le compte ou la clé — et sans
   // lui on conclurait à tort que telle ou telle variante est en cause.
+  // Exactement les candidates du connecteur, page 1, plus deux repères : le
+  // témoin dont on sait qu'il répond, et ArrivalDate pour comparer.
   const VARIANTES: { nom: string; params: Record<string, string | number | undefined> }[] = [
-    { nom: 'TÉMOIN All + période, sans page', params: { stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200 } },
-    { nom: 'All + page', params: { stayFilter: 'All', page: 1, size: PAGE } },
-    { nom: 'DepartureDate + période', params: { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, size: PAGE } },
+    ...candidates(range).map(c => ({
+      nom: c.nom,
+      params: { ...c.params, ...(c.curseur ? c.curseur(1) : {}) },
+    })),
     { nom: 'ArrivalDate + période', params: { stayFilter: 'ArrivalDate', periodStart: range.from, periodEnd: range.to, size: PAGE } },
     { nom: 'Upcoming', params: { stayFilter: 'Upcoming', size: PAGE } },
   ];
@@ -261,12 +293,13 @@ export async function diagnoseLodgify(
         evenements: evenements.length,
         dansPeriode: evenements.filter(e => e.end >= range.from && e.start <= range.to).length,
         champs: rows.length > 0 ? Object.keys(rows[0]).slice(0, 40) : [],
+        enveloppe: clesEnveloppe(data),
       });
     } catch (e) {
       out.push({
         variante: v.nom,
         statut: (e as { httpStatus?: number }).httpStatus ?? 0,
-        lignes: 0, duLogement: 0, evenements: 0, dansPeriode: 0, champs: [],
+        lignes: 0, duLogement: 0, evenements: 0, dansPeriode: 0, champs: [], enveloppe: [],
       });
     }
   }

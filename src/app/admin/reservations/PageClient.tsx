@@ -87,9 +87,10 @@ export default function AdminReservationsPage() {
       setPms(p => ({ ...p, [feedId]: d.ok
         ? (d.diagnostic as {
             variante: string; statut: number | 'ok'; lignes: number;
-            duLogement: number; evenements: number; dansPeriode: number;
+            duLogement: number; evenements: number; dansPeriode: number; enveloppe: string[];
           }[]).map(v => v.statut === 'ok'
             ? `${v.variante} : ${v.lignes} reçue(s), ${v.duLogement} du logement, ${v.dansPeriode} dans la période`
+              + (v.enveloppe.length ? ` [enveloppe : ${v.enveloppe.join(', ')}]` : '')
             : `${v.variante} : refusé (${v.statut})`).join(' | ')
         : (d.error ?? 'Diagnostic impossible.') }));
     } catch { setPms(p => ({ ...p, [feedId]: 'Diagnostic impossible.' })); }
