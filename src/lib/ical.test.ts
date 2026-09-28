@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
+import { detectPlatform } from './icalUrl';
 
 // Robustesse du parseur iCal sur les variantes réelles des plateformes de
 // réservation. Chaque cas reflète un export concret (Airbnb, Booking, PMS…).
@@ -212,5 +213,45 @@ describe('classifyEvent — réservation réelle vs blocage de calendrier', () =
     const cross = ev({ summary: 'reserved', description: 'reserved by hostaway cross reservations: 642, 639' });
     expect(classifyEvent(cross, true)).toBe('blocked');
     expect(classifyEvent(cross, false)).toBe('confirmed');
+  });
+});
+
+// ── Le cas réel qui a fait perdre des ménages ───────────────────────────────
+// Casa Sol, calendrier Booking, séjour du 27 au 29 exporté « CLOSED - Not
+// available ». Ce test rejoue la chaîne complète telle que la synchro la
+// parcourt : lien → plateforme → parsing → classement. C'est le maillon
+// « le lien est-il reconnu comme Booking » qui n'était couvert nulle part.
+describe('Chaîne complète : un séjour Booking doit produire un ménage', () => {
+  const ICS = [
+    'BEGIN:VCALENDAR',
+    'BEGIN:VEVENT',
+    'DTSTART;VALUE=DATE:20260927',
+    'DTEND;VALUE=DATE:20260929',
+    'SUMMARY:CLOSED - Not available',
+    'UID:1234567890@booking.com',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  it('un lien d’export Booking est reconnu comme « booking »', () => {
+    expect(detectPlatform('https://ical.booking.com/v1/export?t=abc-123')).toBe('booking');
+    expect(detectPlatform('https://admin.booking.com/hotel/hoteladmin/ical.html?t=abc')).toBe('booking');
+  });
+
+  it('le séjour est lu aux bonnes dates', () => {
+    const [e] = parseICal(ICS);
+    expect(e.start).toBe('2026-09-27');
+    expect(e.end).toBe('2026-09-29');   // le départ = la date du ménage
+  });
+
+  it('et il est classé RÉSERVATION, pas blocage', () => {
+    const platform = detectPlatform('https://ical.booking.com/v1/export?t=abc-123');
+    const [e] = parseICal(ICS);
+    expect(classifyEvent(e, false, platform)).toBe('confirmed');
+  });
+
+  it('le même séjour sur un calendrier Airbnb resterait un blocage', () => {
+    const [e] = parseICal(ICS);
+    expect(classifyEvent(e, false, detectPlatform('https://www.airbnb.fr/calendar/ical/123.ics?s=x'))).toBe('blocked');
   });
 });
