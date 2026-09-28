@@ -57,6 +57,23 @@ export default function AdminReservationsPage() {
   const [syncMsg, setSyncMsg] = useState('');
   const [syncFailed, setSyncFailed] = useState(false);
   const [forcage, setForcage] = useState<string | null>(null);
+  // Ce que la plateforme a réellement envoyé pour une ligne. Une réservation
+  // qui paraît fausse ne se diagnostique qu'en regardant la donnée brute ;
+  // jusqu'ici on relisait le code à la place.
+  const [detail, setDetail] = useState<Record<string, {
+    evenement: { uid?: string | null; summary?: string | null; start?: string | null; end?: string | null; status?: string | null };
+    calendrier: { label?: string | null; platform?: string | null; hote?: string | null };
+  } | 'chargement' | 'erreur'>>({});
+
+  async function voirDetail(id: string) {
+    if (detail[id]) { setDetail(d => { const n = { ...d }; delete n[id]; return n; }); return; }
+    setDetail(d => ({ ...d, [id]: 'chargement' }));
+    try {
+      const res = await fetch(`/api/reservations/detail?id=${encodeURIComponent(id)}`);
+      const data = await res.json().catch(() => ({}));
+      setDetail(d => ({ ...d, [id]: data.ok ? data : 'erreur' }));
+    } catch { setDetail(d => ({ ...d, [id]: 'erreur' })); }
+  }
 
   // Créer le ménage d'une réservation que la synchro n'a pas retenue. Booking
   // emploie le même intitulé pour une réservation et pour un blocage : quand le
@@ -379,6 +396,10 @@ export default function AdminReservationsPage() {
                 <div className="col-span-4 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{r.apartmentName ?? '—'}</p>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
+                  <button onClick={() => voirDetail(r.id)}
+                    className="ml-2 text-[10px] underline" style={{ color: '#A8A09A' }}>
+                    {detail[r.id] ? 'masquer' : 'd’où vient cette ligne ?'}
+                  </button>
                 </div>
                 <span className="col-span-2 text-xs" style={{ color: '#7A7068' }}>{platformLabel(r.platform)}</span>
                 <span className="col-span-2 text-center text-xs" style={{ color: '#7A7068' }}>{fmtDate(r.checkIn)}</span>
@@ -402,6 +423,25 @@ export default function AdminReservationsPage() {
                   )}
                 </div>
               </div>
+              {detail[r.id] && (
+                <div className="px-4 py-3 text-[11px] border-b" style={{ backgroundColor: '#FAFAF8', borderColor: '#F2EFE9', color: '#7A7068' }}>
+                  {detail[r.id] === 'chargement' ? 'Lecture…'
+                    : detail[r.id] === 'erreur' ? 'Détail indisponible.'
+                    : (() => {
+                      const d = detail[r.id] as Exclude<typeof detail[string], 'chargement' | 'erreur'>;
+                      return (
+                        <div className="grid gap-0.5">
+                          <p>Calendrier : <span style={{ color: '#1A1A1A' }}>{d.calendrier.label || d.calendrier.platform || '—'}</span>
+                            {d.calendrier.hote ? ` (${d.calendrier.hote})` : ''}</p>
+                          <p>Intitulé envoyé : <span className="font-medium" style={{ color: '#1A1A1A' }}>{d.evenement.summary || '(vide)'}</span></p>
+                          <p>Dates envoyées : <span style={{ color: '#1A1A1A' }}>{d.evenement.start} → {d.evenement.end}</span>
+                            {d.evenement.status ? ` · ${d.evenement.status}` : ''}</p>
+                          <p className="break-all">Identifiant : {d.evenement.uid || '—'}</p>
+                        </div>
+                      );
+                    })()}
+                </div>
+              )}
               </div>
             );
           })}
