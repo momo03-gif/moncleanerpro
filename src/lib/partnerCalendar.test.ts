@@ -167,3 +167,35 @@ describe('Une livraison ne remplit pas la case ménage', () => {
     expect(rows[0].cells[0].delivery).toBeUndefined();
   });
 });
+
+describe('Occupation : un séjour vendu sur Booking remplit aussi le calendrier', () => {
+  const apt = { id: 'a1', name: 'Casa Sol' } as Apartment;
+
+  it('une période fermée chez Booking occupe les cases', () => {
+    // Booking n'étiquette pas ses séjours comme des réservations : filtrer sur
+    // « confirmé » laissait le logement vide alors qu'un voyageur y était.
+    const rows = buildCalendar(
+      [apt],
+      [{ id: 'r1', airbnbId: 'a1', status: 'blocked', platform: 'booking',
+        checkIn: '2026-09-27', checkOut: '2026-09-29' } as Reservation],
+      [],
+      '2026-09-27',
+      3,
+    );
+    expect(rows[0].cells[0].occupied).toBe(true);
+    expect(rows[0].cells[2].departure).toBe(true);
+  });
+
+  it('un blocage Airbnb laisse le calendrier libre', () => {
+    // Là, « Not available » veut vraiment dire que le propriétaire garde son bien.
+    const rows = buildCalendar(
+      [apt],
+      [{ id: 'r1', airbnbId: 'a1', status: 'blocked', platform: 'airbnb',
+        checkIn: '2026-09-27', checkOut: '2026-09-29' } as Reservation],
+      [],
+      '2026-09-27',
+      3,
+    );
+    expect(rows[0].cells[0].occupied).toBe(false);
+  });
+});
