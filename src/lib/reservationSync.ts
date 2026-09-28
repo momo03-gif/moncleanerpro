@@ -13,6 +13,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
+import { detectPlatform } from './icalUrl';
 import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
@@ -226,6 +227,13 @@ export async function syncFeed(feed: {
   const db = getSupabaseAdmin();
   const today = parisToday();
 
+  // La plateforme est RELUE depuis le lien, pas reprise de la colonne. Cette
+  // colonne est écrite une fois, au branchement : un calendrier connecté avant
+  // que sa plateforme soit reconnue garde « ical » pour toujours, et toutes les
+  // règles qui en dépendent tombent à côté — c'est ainsi qu'un flux Booking peut
+  // continuer d'être lu avec les règles d'Airbnb. Le lien, lui, ne ment pas.
+  const platform = (feed.ical_url ? detectPlatform(feed.ical_url) : undefined) ?? feed.platform;
+
   try {
     // Deux sources possibles, une seule suite : le connecteur PMS renvoie la même
     // forme d'évènements que le parseur iCal, donc rien d'autre ne change ici.
@@ -252,7 +260,7 @@ export async function syncFeed(feed: {
     );
 
     for (const ev of events) {
-      const status = classifyEvent(ev, inGroup, feed.platform);
+      const status = classifyEvent(ev, inGroup, platform);
       seenUids.add(ev.uid);
 
       // Ce qu'on peut joindre du voyageur, selon la source : le téléphone quand
@@ -264,7 +272,7 @@ export async function syncFeed(feed: {
         feed_id: feed.id,
         airbnb_id: feed.airbnb_id,
         partner_id: feed.partner_id,
-        platform: feed.platform,
+        platform,
         external_uid: ev.uid,
         guest_name: ev.summary ?? null,
         status,
