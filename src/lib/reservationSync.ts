@@ -14,7 +14,7 @@ import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { detectPlatform } from './icalUrl';
-import { departCredible, type Occupation } from './reservationDedupe';
+import { departCredible, estRefletDUnSejour, type Occupation, type SejourVendu } from './reservationDedupe';
 import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
@@ -448,7 +448,7 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   // manqué se découvre par un voyageur devant un logement sale.
   const { data: toutesDepartures } = await db
     .from('reservations')
-    .select('id, feed_id, airbnb_id, partner_id, check_in, check_out, check_out_time')
+    .select('id, feed_id, airbnb_id, partner_id, platform, status, check_in, check_out, check_out_time')
     .or(FILTRE_OCCUPATION)
     .is('mission_id', null)
     .gte('check_out', today)
@@ -464,19 +464,44 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   // juger, y compris celles qui portent déjà leur ménage.
   const { data: occupationsBrutes } = await db
     .from('reservations')
-    .select('feed_id, airbnb_id, check_in, check_out')
+    .select('feed_id, airbnb_id, platform, status, check_in, check_out')
     .or(FILTRE_OCCUPATION)
     .gte('check_out', today)
     .lte('check_in', horizon);
 
   const occupationsParLogement = new Map<string, Occupation[]>();
+  // Les séjours réellement VENDUS, par logement : ceux qu'une plateforme
+  // annonce comme des réservations, pas comme des dates fermées.
+  const vendusParLogement = new Map<string, SejourVendu[]>();
   for (const o of occupationsBrutes ?? []) {
     const liste = occupationsParLogement.get(o.airbnb_id) ?? [];
     liste.push({ feedId: o.feed_id ?? undefined, checkIn: o.check_in, checkOut: o.check_out });
     occupationsParLogement.set(o.airbnb_id, liste);
+
+    if (o.status === 'confirmed') {
+      const v = vendusParLogement.get(o.airbnb_id) ?? [];
+      v.push({ platform: o.platform ?? undefined, checkIn: o.check_in, checkOut: o.check_out });
+      vendusParLogement.set(o.airbnb_id, v);
+    }
   }
 
   const departures = (toutesDepartures ?? []).filter(d => {
+    // 1) Deux plateformes sur un même logement se ferment mutuellement les
+    //    dates vendues. Un blocage qui recouvre un séjour vendu AILLEURS n'est
+    //    pas un second séjour : c'est le même, vu depuis l'autre plateforme.
+    //    Sans cette règle, chaque réservation produirait deux ménages.
+    if (d.status !== 'confirmed' && estRefletDUnSejour(
+      { platform: d.platform ?? undefined, checkIn: d.check_in, checkOut: d.check_out },
+      vendusParLogement.get(d.airbnb_id) ?? [],
+    )) {
+      console.warn('materialize: periode ignoree, reflet d un sejour vendu sur une autre plateforme',
+        { reservation: d.id, date: d.check_out });
+      return false;
+    }
+
+    // 2) Et on ne nettoie jamais une date qu'un AUTRE calendrier dit encore
+    //    occupée : la borne la plus courte enverrait l'intervenant chez un
+    //    voyageur encore présent.
     const ok = departCredible(
       { feedId: d.feed_id ?? undefined, date: d.check_out },
       occupationsParLogement.get(d.airbnb_id) ?? [],

@@ -153,18 +153,33 @@ export default function AdminReservationsPage() {
     };
   }, [feeds]);
 
-  // Occupation par appartement (réservations confirmées uniquement).
+  // ── Occupation par appartement ──────────────────────────────────────────
+  // Même définition que le moteur : un séjour confirmé, OU une période fermée
+  // d'un flux Booking — Booking emploie le même intitulé pour un séjour vendu
+  // et pour une date fermée. Le bandeau ne lisait que les « confirmées » : il
+  // annonçait un logement libre pendant que le moteur, lui, le savait occupé et
+  // lui créait un ménage. Deux écrans du même produit ne peuvent pas répondre
+  // différemment à « est-il occupé ? ».
+  //
+  // Le départ affiché est celui de l'occupation la plus LONGUE en cours : quand
+  // deux calendriers décrivent le même séjour avec des bornes différentes,
+  // annoncer la plus courte enverrait l'intervenant chez un voyageur encore là.
   const occupancy = useMemo<AptOccupancy[]>(() => {
+    const estOccupation = (r: Reservation) =>
+      r.status === 'confirmed' || (r.status === 'blocked' && r.platform === 'booking');
+
     const byApt = new Map<string, Reservation[]>();
     for (const r of reservations) {
-      if (r.status !== 'confirmed') continue;
+      if (!estOccupation(r)) continue;
       const list = byApt.get(r.airbnbId) ?? [];
       list.push(r);
       byApt.set(r.airbnbId, list);
     }
     return apartments.map(apt => {
       const list = (byApt.get(apt.id) ?? []).sort((a, b) => a.checkOut.localeCompare(b.checkOut));
-      const current = list.find(r => r.checkIn <= today && today < r.checkOut);
+      const enCours = list.filter(r => r.checkIn <= today && today < r.checkOut);
+      // La plus longue fait foi : c'est la dernière du tableau, trié par départ.
+      const current = enCours[enCours.length - 1];
       const nextDeparture = list.find(r => r.checkOut >= today);
       const nextArrival = list.map(r => r.checkIn).filter(d => d >= today).sort()[0];
       return { apt, occupied: !!current, currentCheckOut: current?.checkOut, nextDeparture, nextArrival };

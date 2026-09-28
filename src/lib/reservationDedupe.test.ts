@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { chevauchements, dedupeStays, departCredible, doublonsSejours } from './reservationDedupe';
+import {
+  chevauchements, dedupeStays, departCredible, doublonsSejours,
+  estRefletDUnSejour, type SejourVendu,
+} from './reservationDedupe';
 import type { Reservation } from './types';
 
 const sejour = (id: string, extra: Partial<Reservation> = {}): Reservation =>
@@ -177,5 +180,51 @@ describe('departCredible — ne jamais nettoyer un logement encore occupé', () 
 
   it('sans autre calendrier, le départ est toujours crédible', () => {
     expect(departCredible({ feedId: 'a', date: '2026-09-29' }, [])).toBe(true);
+  });
+});
+
+describe('estRefletDUnSejour — faire cohabiter deux plateformes', () => {
+  const vendu = (o: Partial<SejourVendu> = {}): SejourVendu =>
+    ({ platform: 'airbnb', checkIn: '2026-10-10', checkOut: '2026-10-15', ...o });
+
+  it('un blocage Booking qui recouvre un séjour vendu sur Airbnb est un reflet', () => {
+    expect(estRefletDUnSejour(
+      { platform: 'booking', checkIn: '2026-10-10', checkOut: '2026-10-15' },
+      [vendu()],
+    )).toBe(true);
+  });
+
+  it('même décalé d’une nuit, le reflet est reconnu', () => {
+    expect(estRefletDUnSejour(
+      { platform: 'booking', checkIn: '2026-10-10', checkOut: '2026-10-14' },
+      [vendu()],
+    )).toBe(true);
+  });
+
+  it('deux périodes de la MÊME plateforme sont deux séjours, pas un reflet', () => {
+    // Sinon la rotation entre les deux disparaît, et le ménage avec.
+    expect(estRefletDUnSejour(
+      { platform: 'booking', checkIn: '2026-09-27', checkOut: '2026-09-29' },
+      [vendu({ platform: 'booking', checkIn: '2026-09-28', checkOut: '2026-10-02' })],
+    )).toBe(false);
+  });
+
+  it('un blocage qui ne recouvre aucun séjour vendu n’est pas un reflet', () => {
+    expect(estRefletDUnSejour(
+      { platform: 'booking', checkIn: '2026-11-01', checkOut: '2026-11-05' },
+      [vendu()],
+    )).toBe(false);
+  });
+
+  it('une rotation le même jour n’est pas un recouvrement', () => {
+    expect(estRefletDUnSejour(
+      { platform: 'booking', checkIn: '2026-10-15', checkOut: '2026-10-18' },
+      [vendu()],
+    )).toBe(false);
+  });
+
+  it('sans aucun séjour vendu, rien n’est un reflet', () => {
+    expect(estRefletDUnSejour({ platform: 'booking', checkIn: '2026-10-10', checkOut: '2026-10-15' }, []))
+      .toBe(false);
   });
 });

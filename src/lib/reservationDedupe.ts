@@ -185,3 +185,46 @@ export function departCredible(
     && depart.date < o.checkOut,        // et ne se termine pas ce jour-là
   );
 }
+
+/** Une période fermée, candidate à n'être que le reflet d'un séjour vendu ailleurs. */
+export interface PeriodeFermee {
+  platform?: string;
+  checkIn: string;
+  checkOut: string;
+}
+
+/** Un séjour réellement vendu, avec la plateforme qui l'a vendu. */
+export interface SejourVendu {
+  platform?: string;
+  checkIn: string;
+  checkOut: string;
+}
+
+/**
+ * Cette période fermée n'est-elle que le REFLET d'un séjour vendu ailleurs ?
+ *
+ * C'est la règle qui fait cohabiter deux plateformes sur un même logement, et
+ * c'est ainsi que travaillent les gestionnaires de canaux. Quand un voyageur
+ * réserve sur Airbnb, le calendrier Booking se ferme automatiquement sur les
+ * mêmes nuits — et inversement. Ce blocage n'est pas un second séjour : c'est
+ * le même, vu depuis l'autre plateforme.
+ *
+ * Le critère est la PLATEFORME. Un blocage qui recouvre un séjour vendu par
+ * une AUTRE plateforme est son reflet, et ne doit produire ni occupation ni
+ * ménage. Deux périodes d'une MÊME plateforme, en revanche, décrivent deux
+ * séjours distincts qui s'enchaînent : les confondre effacerait la rotation
+ * entre les deux, et c'est un ménage perdu.
+ *
+ * Un départ et une arrivée le même jour ne se recouvrent pas : la comparaison
+ * porte sur l'intervalle [arrivée, départ[.
+ */
+export function estRefletDUnSejour(
+  periode: PeriodeFermee,
+  sejoursVendus: SejourVendu[],
+): boolean {
+  return sejoursVendus.some(s =>
+    s.platform !== periode.platform          // vendu par une AUTRE plateforme
+    && s.checkIn < periode.checkOut
+    && periode.checkIn < s.checkOut,
+  );
+}
