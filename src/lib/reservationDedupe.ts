@@ -102,3 +102,51 @@ export function doublonsSejours(reservations: Reservation[]): {
   }
   return out.sort((a, b) => a.checkOut.localeCompare(b.checkOut));
 }
+
+/**
+ * Les séjours qui se CHEVAUCHENT sur un même logement.
+ *
+ * Un logement ne peut pas héberger deux voyageurs en même temps : deux séjours
+ * qui se recouvrent sont donc forcément une anomalie — le plus souvent deux
+ * calendriers qui décrivent les mêmes nuits avec des bornes différentes, ou un
+ * flux qui exporte des périodes d'indisponibilité plutôt que des séjours.
+ *
+ * C'est le signal que `doublonsSejours` ne voit pas : lui ne rapproche que des
+ * dates STRICTEMENT identiques, et deux bornes décalées d'un jour lui échappent.
+ *
+ * Un départ et une arrivée le MÊME JOUR ne sont pas un chevauchement : c'est la
+ * rotation normale de la courte durée, et c'est précisément ce qui déclenche un
+ * ménage. La comparaison se fait donc sur l'intervalle [arrivée, départ[.
+ */
+export function chevauchements(reservations: Reservation[]): {
+  airbnbId: string; apartmentName?: string;
+  a: { checkIn: string; checkOut: string; platform?: string; status: string };
+  b: { checkIn: string; checkOut: string; platform?: string; status: string };
+}[] {
+  const parLogement = new Map<string, Reservation[]>();
+  for (const r of reservations) {
+    if (r.status === 'cancelled' || !r.airbnbId || !r.checkIn || !r.checkOut) continue;
+    (parLogement.get(r.airbnbId) ?? parLogement.set(r.airbnbId, []).get(r.airbnbId)!).push(r);
+  }
+
+  const out = [];
+  for (const [airbnbId, rs] of parLogement) {
+    const tries = [...rs].sort((x, y) => x.checkIn.localeCompare(y.checkIn));
+    for (let i = 0; i < tries.length; i++) {
+      for (let j = i + 1; j < tries.length; j++) {
+        const a = tries[i], b = tries[j];
+        // Trié par arrivée : dès que b commence après la fin de a, aucun des
+        // suivants ne peut chevaucher a non plus.
+        if (b.checkIn >= a.checkOut) break;
+        if (a.checkIn >= b.checkOut) continue;
+        out.push({
+          airbnbId,
+          apartmentName: a.apartmentName ?? b.apartmentName,
+          a: { checkIn: a.checkIn, checkOut: a.checkOut, platform: a.platform, status: a.status },
+          b: { checkIn: b.checkIn, checkOut: b.checkOut, platform: b.platform, status: b.status },
+        });
+      }
+    }
+  }
+  return out.sort((x, y) => x.a.checkIn.localeCompare(y.a.checkIn));
+}

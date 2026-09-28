@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dedupeStays, doublonsSejours } from './reservationDedupe';
+import { chevauchements, dedupeStays, doublonsSejours } from './reservationDedupe';
 import type { Reservation } from './types';
 
 const sejour = (id: string, extra: Partial<Reservation> = {}): Reservation =>
@@ -105,5 +105,40 @@ describe('doublonsSejours — dire d’où vient le doublon', () => {
   it('ignore les annulées — elles ne comptent nulle part', () => {
     expect(doublonsSejours([sejour('a', { status: 'cancelled' }), sejour('b', { status: 'cancelled' })]))
       .toEqual([]);
+  });
+});
+
+describe('chevauchements — deux voyageurs ne peuvent pas être là en même temps', () => {
+  const s = (id: string, o: Partial<Reservation> = {}): Reservation => ({
+    id, airbnbId: 'apt-1', apartmentName: 'Casa Sol', status: 'confirmed',
+    checkIn: '2026-09-27', checkOut: '2026-09-29', platform: 'booking', ...o,
+  } as Reservation);
+
+  it('signale deux séjours qui se recouvrent', () => {
+    // Le cas réel : 27→29 et 28→02 partagent la nuit du 28.
+    const c = chevauchements([s('a'), s('b', { checkIn: '2026-09-28', checkOut: '2026-10-02' })]);
+    expect(c).toHaveLength(1);
+    expect(c[0].apartmentName).toBe('Casa Sol');
+  });
+
+  it('un départ et une arrivée le même jour ne sont PAS un chevauchement', () => {
+    // C'est la rotation normale en courte durée — et ce qui déclenche un ménage.
+    expect(chevauchements([s('a'), s('b', { checkIn: '2026-09-29', checkOut: '2026-10-02' })])).toEqual([]);
+  });
+
+  it('deux séjours identiques se signalent aussi', () => {
+    expect(chevauchements([s('a'), s('b')])).toHaveLength(1);
+  });
+
+  it('deux logements différents ne se comparent jamais', () => {
+    expect(chevauchements([s('a'), s('b', { airbnbId: 'apt-2' })])).toEqual([]);
+  });
+
+  it('une réservation annulée ne crée pas de faux conflit', () => {
+    expect(chevauchements([s('a'), s('b', { checkIn: '2026-09-28', status: 'cancelled' })])).toEqual([]);
+  });
+
+  it('rien à signaler sur un planning sain', () => {
+    expect(chevauchements([s('a'), s('b', { checkIn: '2026-10-05', checkOut: '2026-10-09' })])).toEqual([]);
   });
 });

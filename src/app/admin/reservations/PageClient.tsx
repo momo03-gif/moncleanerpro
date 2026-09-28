@@ -8,6 +8,7 @@ import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
 // partenaire désignent toujours une source de la même façon.
 import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
+import { chevauchements } from '@/lib/reservationDedupe';
 import Loading from "@/components/Loading";
 
 const RES_STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -127,6 +128,12 @@ export default function AdminReservationsPage() {
       .sort((a, b) => b.checkOut.localeCompare(a.checkOut));
     return { upcoming: up, past: old };
   }, [reservations, today]);
+
+  // Séjours impossibles : deux voyageurs ne peuvent pas occuper le même
+  // logement en même temps. C'est le signal le plus net qu'un calendrier
+  // exporte des périodes d'indisponibilité au lieu de séjours, ou qu'un
+  // logement porte un flux de trop — et il ne se voyait nulle part.
+  const conflits = useMemo(() => chevauchements(reservations), [reservations]);
 
   // Calendriers : les pannes d'abord, puis par logement. Et le compte de flux
   // par logement, parce qu'un logement qui en porte trois est la cause la plus
@@ -255,6 +262,28 @@ export default function AdminReservationsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Séjours qui se chevauchent — anomalie, jamais un cas normal. */}
+      {conflits.length > 0 && (
+        <div className="rounded-2xl border p-4 mb-6" style={{ borderColor: '#E4B7B1', backgroundColor: '#FDF3F2' }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#8A3A31' }}>
+            {conflits.length} séjour{conflits.length > 1 ? 's' : ''} impossible{conflits.length > 1 ? 's' : ''}
+          </p>
+          <p className="text-xs mb-3" style={{ color: '#8A3A31' }}>
+            Un logement ne peut pas héberger deux voyageurs en même temps. Ces nuits sont décrites deux fois :
+            un des calendriers exporte des périodes d’indisponibilité plutôt que des séjours, ou ce logement porte un flux de trop.
+          </p>
+          <div className="space-y-1.5">
+            {conflits.slice(0, 10).map((c, i) => (
+              <p key={i} className="text-xs" style={{ color: '#7A3028' }}>
+                <span className="font-semibold">{c.apartmentName ?? '—'}</span>
+                {' : '}{platformLabel(c.a.platform)} {fmtDate(c.a.checkIn)}→{fmtDate(c.a.checkOut)}
+                {' recouvre '}{platformLabel(c.b.platform)} {fmtDate(c.b.checkIn)}→{fmtDate(c.b.checkOut)}
+              </p>
+            ))}
+          </div>
         </div>
       )}
 
