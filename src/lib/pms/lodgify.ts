@@ -23,6 +23,9 @@ export interface LodgifyCredentials {
   apiSecret?: string;   // inutilisé — même forme que les autres connecteurs
 }
 
+// `is_unavailable` est ce que l'iCal de Booking ne dit jamais : Lodgify, lui,
+// distingue un séjour vendu d'une simple fermeture de calendrier. On le lit
+// comme un statut, ce qui évite de créer un ménage pour une date bloquée.
 const LODGIFY_FIELDS: FieldNames = {
   id: ['id', 'bookingId'],
   arrival: ['arrival', 'date_arrival', 'arrivalDate', 'checkIn'],
@@ -89,21 +92,61 @@ export async function listLodgifyProperties(creds: LodgifyCredentials): Promise<
   })).filter(p => Number.isFinite(p.id));
 }
 
-/** Réservations d'une propriété sur la période. */
+/**
+ * Lodgify porte l'indisponibilité dans un BOOLÉEN (`is_unavailable`), là où la
+ * normalisation ne sait lire qu'un statut texte. On traduit.
+ *
+ * C'est ce que l'iCal de Booking ne dit jamais : une ligne fermée y ressemble
+ * trait pour trait à un séjour vendu. Passer par le logiciel de la conciergerie
+ * rend cette distinction — et donc évite de planifier un ménage pour une date
+ * que le propriétaire s'est simplement réservée.
+ */
+function marquerBlocage(row: Record<string, unknown>): Record<string, unknown> {
+  return row.is_unavailable === true ? { ...row, status: 'blocked' } : row;
+}
+
+// Lodgify plafonne une page à 100 lignes, quoi qu'on demande.
+const PAGE = 100;
+const PAGES_MAX = 10;   // 1 000 séjours sur 90 jours : au-delà, ce n'est plus un logement
+
+/**
+ * Réservations d'une propriété sur la période.
+ *
+ * `stayFilter` COMMANDE TOUT. Avec « All », Lodgify ignore `periodStart` et
+ * `periodEnd` et rend la première page de tout l'historique du compte : on
+ * recevait 100 lignes dont 99 passées, aucune réservation à venir, et pas la
+ * moindre erreur pour le signaler. On filtre donc sur la DATE DE DÉPART —
+ * c'est elle qui déclenche un ménage, et elle retient aussi les séjours en
+ * cours, qu'un filtre « à venir » laisserait de côté.
+ *
+ * Et on pagine : la première page ne suffit pas dès qu'un compte a de l'espace.
+ */
 export async function fetchLodgifyReservations(
   creds: LodgifyCredentials,
   propertyId: string,
   range: { from: string; to: string },
 ): Promise<ICalEvent[]> {
-  const data = await getWithFallback<unknown>(
-    '/v2/reservations/bookings', '/v1/reservation', creds.apiKey,
-    { propertyId, stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200 },
-  );
+  const rows: Record<string, unknown>[] = [];
+  for (let page = 1; page <= PAGES_MAX; page++) {
+    const data = await getWithFallback<unknown>(
+      '/v2/reservations/bookings', '/v1/reservation', creds.apiKey,
+      { propertyId, stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page, size: PAGE },
+    );
+    const lot = unwrap(data);
+    rows.push(...lot);
+    if (lot.length < PAGE) break;
+  }
 
-  const rows = unwrap(data);
-  const events = toEvents(rows, 'lodgify', LODGIFY_FIELDS, 'Lodgify');
-  // Filet local : le nom des paramètres de période peut différer d'une version
-  // à l'autre, on borne donc la période nous-mêmes.
+  // Filet local sur le logement : le filtre `propertyId` n'est pas garanti
+  // d'une version à l'autre, et importer les séjours d'un autre bien les
+  // collerait tous sur celui-ci.
+  const attendu = String(propertyId);
+  const duLogement = attendu
+    ? rows.filter(r => r.property_id === undefined || String(r.property_id) === attendu)
+    : rows;
+
+  const events = toEvents(duLogement.map(marquerBlocage), 'lodgify', LODGIFY_FIELDS, 'Lodgify');
+  // Filet local sur la période, pour la même raison.
   return events.filter(e => e.end >= range.from && e.start <= range.to);
 }
 
@@ -135,13 +178,13 @@ export async function diagnoseLodgify(
   let data: unknown;
   try {
     data = await get<unknown>('/v2/reservations/bookings', creds.apiKey, {
-      propertyId, stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200,
+      propertyId, stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page: 1, size: PAGE,
     });
   } catch (e) {
     if ((e as Error)?.message !== 'NOT_FOUND') throw e;
     version = 'v1';
     data = await get<unknown>('/v1/reservation', creds.apiKey, {
-      propertyId, stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200,
+      propertyId, stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page: 1, size: PAGE,
     });
   }
 
