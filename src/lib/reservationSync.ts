@@ -28,6 +28,14 @@ import { shouldRealign } from './missionDefaults';
 // d'aujourd'hui jusqu'à J+90 (au-delà, les calendriers évoluent encore trop).
 const HORIZON_DAYS = 90;
 
+// Ce qui compte comme une OCCUPATION du logement, pour PostgREST. Un séjour
+// confirmé, ou une période fermée d'un flux Booking — puisque Booking emploie
+// le même intitulé pour un séjour vendu et pour une date fermée. La règle est
+// écrite ici une fois : deux définitions qui divergent annuleraient des
+// ménages que l'autre vient de créer.
+const FILTRE_OCCUPATION = 'status.eq.confirmed,and(status.eq.blocked,platform.eq.booking)';
+
+
 // Heure de ménage par défaut quand le départ ne porte pas d'heure (cas iCal courant).
 const DEFAULT_CHECKOUT_TIME = '11:00';
 
@@ -358,7 +366,7 @@ async function handleCancelledReservationMission(missionId: string) {
   const { count } = await db.from('reservations')
     .select('id', { count: 'exact', head: true })
     .eq('mission_id', missionId)
-    .eq('status', 'confirmed');
+    .or(FILTRE_OCCUPATION);
   if ((count ?? 0) > 0) return;
 
   const { data: m } = await db.from('missions')
@@ -421,11 +429,26 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   const today = parisToday();
   const horizon = addDays(today, HORIZON_DAYS);
 
-  // Départs confirmés, dans l'horizon, sans mission encore créée.
+  // ── Ce qui fait un ménage : une FIN D'OCCUPATION ──────────────────────────
+  // Longtemps on n'a lu que les séjours « confirmés ». C'était confondre
+  // l'étiquette et le fait : peu importe que le calendrier appelle une période
+  // « réservation » ou « blocage », un logement occupé jusqu'au 29 se libère
+  // le 29, et il faut y passer.
+  //
+  // La distinction garde son sens là où elle est fiable. Airbnb dit vraiment
+  // « Not available » pour une date que le propriétaire s'est réservée, et lui
+  // créer un ménage serait absurde. Booking, lui, emploie le même intitulé pour
+  // un séjour vendu et pour une date fermée : sa fin de période est le seul
+  // signal disponible, et l'ignorer c'est manquer le ménage.
+  //
+  // On retient donc les départs confirmés, PLUS la fin des périodes fermées des
+  // flux Booking. Les doublons d'une même date sont fusionnés plus bas, et la
+  // mission naît en `pending` : le faux positif se referme d'un clic, le ménage
+  // manqué se découvre par un voyageur devant un logement sale.
   const { data: departures } = await db
     .from('reservations')
     .select('id, airbnb_id, partner_id, check_out, check_out_time')
-    .eq('status', 'confirmed')
+    .or(FILTRE_OCCUPATION)
     .is('mission_id', null)
     .gte('check_out', today)
     .lte('check_out', horizon)
