@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { listSmoobuApartments } from '@/lib/pms/smoobu';
-import { listHostawayListings } from '@/lib/pms/hostaway';
-import { listBeds24Properties } from '@/lib/pms/beds24';
-import { listLodgifyProperties } from '@/lib/pms/lodgify';
 import { findPms, supportsApi } from '@/lib/pms/registry';
-import { REST_CONNECTORS } from '@/lib/pms/catalog';
+import { PMS_LISTERS } from '@/lib/pms/catalog';
 
 export const runtime = 'nodejs';
-
-// Un « lister » par logiciel : il rend les logements du compte pour que la
-// conciergerie désigne celui qui correspond au nôtre. Ajouter un éditeur =
-// une ligne ici, une dans PMS_FETCHERS (reservationSync) et une dans le registre.
-type Lister = (c: { apiKey: string; apiSecret?: string }) => Promise<{ id: number | string; name: string }[]>;
-
-const PMS_LISTERS: Record<string, Lister> = {
-  smoobu: listSmoobuApartments,
-  hostaway: listHostawayListings,
-  beds24: listBeds24Properties,
-  lodgify: listLodgifyProperties,
-  // Les connecteurs déclaratifs apportent leur « lister » avec eux.
-  ...Object.fromEntries(Object.entries(REST_CONNECTORS).map(([id, c]) => [id, c.list as Lister])),
-};
 
 // Connexion d'un logement à l'API du PMS de la conciergerie.
 //

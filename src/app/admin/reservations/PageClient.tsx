@@ -65,6 +65,27 @@ export default function AdminReservationsPage() {
     calendrier: { label?: string | null; platform?: string | null; hote?: string | null };
   } | 'chargement' | 'erreur'>>({});
 
+  // Quel logement du logiciel est rattaché à cette connexion. Un identifiant
+  // PMS ne ressemble à rien pour un humain : quand le bien porte un nom
+  // différent des deux côtés, on rattache le mauvais sans s'en apercevoir, et
+  // la synchro remonte zéro réservation sans la moindre erreur.
+  const [pms, setPms] = useState<Record<string, {
+    rattache: string; trouve: boolean; logements: { id: string; name: string }[];
+  } | 'chargement' | string>>({});
+
+  async function voirLogementsPms(feedId: string) {
+    if (pms[feedId]) { setPms(p => { const n = { ...p }; delete n[feedId]; return n; }); return; }
+    setPms(p => ({ ...p, [feedId]: 'chargement' }));
+    try {
+      const res = await fetch('/api/reservations/pms-properties', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setPms(p => ({ ...p, [feedId]: data.ok ? data : (data.error ?? 'Lecture impossible.') }));
+    } catch { setPms(p => ({ ...p, [feedId]: 'Lecture impossible.' })); }
+  }
+
   async function voirDetail(id: string) {
     if (detail[id]) { setDetail(d => { const n = { ...d }; delete n[id]; return n; }); return; }
     setDetail(d => ({ ...d, [id]: 'chargement' }));
@@ -347,6 +368,12 @@ export default function AdminReservationsPage() {
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#6B728018', color: '#6B7280' }}>inactif</span>
               )}
               <span className="flex-1" />
+              {f.connectionKind === 'api' && (
+                <button onClick={() => voirLogementsPms(f.id)}
+                  className="text-[11px] underline" style={{ color: '#A8A09A' }}>
+                  {pms[f.id] ? 'masquer' : 'quel logement ?'}
+                </button>
+              )}
               {enEchec ? (
                 <span className="text-[11px] font-semibold text-right" style={{ color: '#B85A50' }}>
                   En échec{f.lastError ? ` — ${f.lastError}` : ''}
@@ -355,6 +382,32 @@ export default function AdminReservationsPage() {
                 <span className="text-[11px]" style={{ color: '#A8A09A' }}>
                   {f.lastSyncAt ? `Synchronisé le ${fmtDate(f.lastSyncAt.slice(0, 10))}` : 'Jamais synchronisé'}
                 </span>
+              )}
+              {pms[f.id] && (
+                <div className="w-full mt-2 text-[11px]">
+                  {pms[f.id] === 'chargement' ? <span style={{ color: '#A8A09A' }}>Lecture du logiciel…</span>
+                    : typeof pms[f.id] === 'string' ? <span style={{ color: '#B85A50' }}>{pms[f.id] as string}</span>
+                    : (() => {
+                      const d = pms[f.id] as { rattache: string; trouve: boolean; logements: { id: string; name: string }[] };
+                      return (
+                        <>
+                          {!d.trouve && (
+                            <p className="font-semibold mb-1" style={{ color: '#B85A50' }}>
+                              L’identifiant enregistré ne correspond à aucun logement de ce compte : la connexion pointe dans le vide.
+                            </p>
+                          )}
+                          <ul className="grid gap-0.5">
+                            {d.logements.map(l => (
+                              <li key={l.id} style={{ color: l.id === d.rattache ? '#1A1A1A' : '#A8A09A' }}>
+                                {l.id === d.rattache ? '● ' : '○ '}{l.name}
+                                {l.id === d.rattache ? ' — rattaché' : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      );
+                    })()}
+                </div>
               )}
             </div>
           );

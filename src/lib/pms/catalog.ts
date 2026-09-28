@@ -30,6 +30,10 @@
 
 import { defineRestPms, basicAuth, type RestPmsDescriptor } from './rest';
 import type { FieldNames } from './normalize';
+import { listSmoobuApartments } from './smoobu';
+import { listHostawayListings } from './hostaway';
+import { listBeds24Properties } from './beds24';
+import { listLodgifyProperties } from './lodgify';
 
 // La plupart des éditeurs nomment leurs champs de la même famille de façons.
 // normalize.ts accepte déjà les variantes ; on part de ce socle commun.
@@ -216,3 +220,23 @@ export function restConnector(id: string) {
 export function isUnverifiedPms(id: string | null | undefined): boolean {
   return !!id && REST_CONNECTORS[id]?.descriptor.verified === false;
 }
+
+// ── Lister les logements d'un compte PMS ──────────────────────────────────────
+// Un « lister » par logiciel : il rend les logements du compte pour que la
+// conciergerie désigne celui qui correspond au nôtre — et, après coup, pour
+// qu'on puisse vérifier lequel a été rattaché. Défini ici plutôt que dans une
+// route : deux copies finiraient par ne plus couvrir les mêmes éditeurs.
+// Ajouter un éditeur = une ligne ici, une dans PMS_FETCHERS (reservationSync)
+// et une dans le registre.
+export type PmsLister = (
+  c: { apiKey: string; apiSecret?: string },
+) => Promise<{ id: number | string; name: string }[]>;
+
+export const PMS_LISTERS: Record<string, PmsLister> = {
+  smoobu: listSmoobuApartments,
+  hostaway: listHostawayListings,
+  beds24: listBeds24Properties,
+  lodgify: listLodgifyProperties,
+  // Les connecteurs déclaratifs apportent leur « lister » avec eux.
+  ...Object.fromEntries(Object.entries(REST_CONNECTORS).map(([id, c]) => [id, c.list as PmsLister])),
+};
