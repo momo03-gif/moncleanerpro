@@ -73,6 +73,25 @@ export default function AdminReservationsPage() {
     rattache: string; trouve: boolean; logements: { id: string; name: string }[];
   } | 'chargement' | string>>({});
 
+  // Ce que l'éditeur répond vraiment. Une synchro vide SANS erreur ne se
+  // diagnostique pas depuis l'extérieur : il faut le nombre de lignes rendues
+  // et leur forme.
+  async function diagnostiquer(feedId: string) {
+    setPms(p => ({ ...p, [feedId]: 'chargement' }));
+    try {
+      const res = await fetch('/api/reservations/pms-properties', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedId, diagnostic: true }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setPms(p => ({ ...p, [feedId]: d.ok
+        ? `API ${d.diagnostic.version} · ${d.diagnostic.lignes} ligne(s) reçue(s) · `
+          + `${d.diagnostic.evenements} séjour(s) lisible(s) · ${d.diagnostic.horsPeriode} hors période`
+          + (d.diagnostic.champs.length ? ` · champs : ${d.diagnostic.champs.join(', ')}` : '')
+        : (d.error ?? 'Diagnostic impossible.') }));
+    } catch { setPms(p => ({ ...p, [feedId]: 'Diagnostic impossible.' })); }
+  }
+
   async function voirLogementsPms(feedId: string) {
     if (pms[feedId]) { setPms(p => { const n = { ...p }; delete n[feedId]; return n; }); return; }
     setPms(p => ({ ...p, [feedId]: 'chargement' }));
@@ -369,10 +388,16 @@ export default function AdminReservationsPage() {
               )}
               <span className="flex-1" />
               {f.connectionKind === 'api' && (
-                <button onClick={() => voirLogementsPms(f.id)}
-                  className="text-[11px] underline" style={{ color: '#A8A09A' }}>
-                  {pms[f.id] ? 'masquer' : 'quel logement ?'}
-                </button>
+                <>
+                  <button onClick={() => voirLogementsPms(f.id)}
+                    className="text-[11px] underline" style={{ color: '#A8A09A' }}>
+                    {pms[f.id] ? 'masquer' : 'quel logement ?'}
+                  </button>
+                  <button onClick={() => diagnostiquer(f.id)}
+                    className="text-[11px] underline" style={{ color: '#A8A09A' }}>
+                    que répond le logiciel ?
+                  </button>
+                </>
               )}
               {enEchec ? (
                 <span className="text-[11px] font-semibold text-right" style={{ color: '#B85A50' }}>

@@ -106,3 +106,58 @@ export async function fetchLodgifyReservations(
   // à l'autre, on borne donc la période nous-mêmes.
   return events.filter(e => e.end >= range.from && e.start <= range.to);
 }
+
+/**
+ * Ce que Lodgify a RÉPONDU, sans interprétation — pour diagnostic.
+ *
+ * Une synchro qui remonte zéro réservation sans erreur a trois causes
+ * possibles, et rien ne permettait de les distinguer : la requête part sur la
+ * mauvaise version d'API, Lodgify renvoie une enveloppe que `unwrap` ne
+ * reconnaît pas, ou le filtre de période ne mord pas. On relit donc la réponse
+ * brute et on rend de quoi trancher.
+ *
+ * CE QU'ON NE REND PAS : les valeurs. Une réservation porte le nom et le
+ * contact du voyageur de notre client. On rend le NOMBRE de lignes et le NOM
+ * des champs de la première — de quoi comprendre la forme, rien sur les gens.
+ */
+export async function diagnoseLodgify(
+  creds: LodgifyCredentials,
+  propertyId: string,
+  range: { from: string; to: string },
+): Promise<{
+  version: 'v2' | 'v1';
+  lignes: number;
+  champs: string[];
+  evenements: number;
+  horsPeriode: number;
+}> {
+  let version: 'v2' | 'v1' = 'v2';
+  let data: unknown;
+  try {
+    data = await get<unknown>('/v2/reservations/bookings', creds.apiKey, {
+      propertyId, stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200,
+    });
+  } catch (e) {
+    if ((e as Error)?.message !== 'NOT_FOUND') throw e;
+    version = 'v1';
+    data = await get<unknown>('/v1/reservation', creds.apiKey, {
+      propertyId, stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200,
+    });
+  }
+
+  const rows = unwrap(data);
+  // `toEvents` lève quand aucune ligne n'est lisible : ici on veut le chiffre,
+  // pas l'exception — c'est précisément ce qu'on cherche à mesurer.
+  let evenements: ICalEvent[] = [];
+  try { evenements = toEvents(rows, 'lodgify', LODGIFY_FIELDS, 'Lodgify'); } catch { evenements = []; }
+
+  const dansPeriode = evenements.filter(e => e.end >= range.from && e.start <= range.to);
+
+  return {
+    version,
+    lignes: rows.length,
+    champs: rows.length > 0 ? Object.keys(rows[0]).slice(0, 40) : [],
+    evenements: evenements.length,
+    horsPeriode: evenements.length - dansPeriode.length,
+  };
+}

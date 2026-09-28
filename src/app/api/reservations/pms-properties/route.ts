@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exigerAdmin } from '@/lib/apiGuard';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { PMS_LISTERS } from '@/lib/pms/catalog';
+import { diagnoseLodgify } from '@/lib/pms/lodgify';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
   const { refus } = await exigerAdmin();
   if (refus) return refus;
 
-  let body: { feedId?: string } = {};
+  let body: { feedId?: string; diagnostic?: boolean } = {};
   try { body = await req.json(); } catch { /* corps vide → refusé plus bas */ }
   const feedId = (body.feedId ?? '').trim();
   if (!feedId) return NextResponse.json({ error: 'Connexion manquante.' }, { status: 400 });
@@ -40,6 +41,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         error: 'Cette connexion est un lien iCal : elle ne pointe pas un logement du logiciel.',
       }, { status: 400 });
+    }
+
+    // ── Diagnostic : ce que l'éditeur a RÉPONDU, sans interprétation ────────
+    // Une synchro qui ne remonte rien SANS erreur ne se diagnostique pas depuis
+    // l'extérieur : il faut voir combien de lignes l'API a rendues et sous
+    // quelle forme. On ne rend jamais les valeurs — une réservation porte le
+    // nom et le contact du voyageur de notre client.
+    if (body.diagnostic) {
+      if (feed.platform !== 'lodgify') {
+        return NextResponse.json({ error: `Diagnostic non écrit pour ${feed.platform}.` }, { status: 400 });
+      }
+      const aujourdhui = new Date().toLocaleDateString('en-CA');
+      const dans90 = new Date(Date.now() + 90 * 86400000).toLocaleDateString('en-CA');
+      const d = await diagnoseLodgify(
+        { apiKey: feed.api_key, apiSecret: feed.api_secret ?? undefined },
+        String(feed.external_property_id ?? ''),
+        { from: aujourdhui, to: dans90 },
+      );
+      return NextResponse.json({ ok: true, diagnostic: d });
     }
 
     const lister = PMS_LISTERS[feed.platform];
