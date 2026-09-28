@@ -8,6 +8,7 @@ import {
   updateReservationFeed, deleteReservationFeed, countReservationsForFeed,
 } from '@/lib/db';
 import { getStayDuplicatesForPartner } from '@/lib/db/reservations';
+import { chevauchements } from '@/lib/reservationDedupe';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, ReservationFeed, Reservation } from '@/lib/types';
 import { platformLabel } from '@/lib/pms/registry';
@@ -43,6 +44,21 @@ export default function AirbnbSyncPage() {
   // trop est branché, chaque import les recrée — donc on le dit.
   const [doublons, setDoublons] = useState<{ apartmentName?: string; checkIn: string; checkOut: string; plateformes: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Un séjour reçu deux fois par DEUX plateformes est le fonctionnement normal
+  // d'un logement vendu sur les deux : celle qui n'a pas vendu se ferme sur les
+  // dates de l'autre, et nous écartons ce reflet. Seul le doublon d'une MÊME
+  // plateforme est une anomalie à corriger.
+  const doublonsReels = useMemo(
+    () => doublons.filter(d => new Set(d.plateformes).size <= 1),
+    [doublons],
+  );
+
+  // Deux calendriers qui ne disent pas la même chose sur les mêmes nuits. Ce
+  // n'est pas un doublon, c'est une CONTRADICTION : un logement ne peut pas
+  // héberger deux voyageurs à la fois, et c'est le signe avant-coureur d'une
+  // double réservation. C'est l'alerte qui vaut le plus pour un hôte.
+  const contradictions = useMemo(() => chevauchements(reservations), [reservations]);
   const [tab, setTab] = useState<'feeds' | 'reservations'>('feeds');
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
@@ -183,28 +199,59 @@ export default function AirbnbSyncPage() {
         );
       })()}
 
-      {/* Deux calendriers d'un même logement qui décrivent les mêmes nuits : le
-          séjour arrive deux fois, et les départs se comptent double. Les écrans
-          le corrigent à l'affichage, mais le flux en trop reste à débrancher. */}
-      {doublons.length > 0 && (
-        <div className="rounded-2xl border border-warn-line bg-warn-soft px-4 py-3 mb-4">
-          <p className="text-xs font-semibold text-warn">
-            {doublons.length} séjour{doublons.length > 1 ? 's' : ''} reçu{doublons.length > 1 ? 's' : ''} deux fois
+      {/* La contradiction passe avant tout le reste : c'est la seule qui puisse
+          coûter une double réservation. On l'annonce comme une alerte, jamais
+          comme une garantie — l'iCal ne sait que LIRE les calendriers, il ne
+          peut rien empêcher côté plateformes. */}
+      {contradictions.length > 0 && (
+        <div className="rounded-2xl border border-danger-line bg-danger-soft px-4 py-3 mb-4">
+          <p className="text-xs font-semibold text-danger">
+            Vos calendriers ne disent pas la même chose
           </p>
-          <p className="text-[11px] mt-1 text-warn">
-            Deux calendriers décrivent les mêmes nuits pour un même logement. Vos
-            compteurs sont corrigés automatiquement, mais gardez un seul de ces
-            calendriers pour que la synchronisation cesse de les dédoubler.
+          <p className="text-[11px] mt-1 text-danger">
+            Sur ces nuits, deux calendriers décrivent des séjours qui se
+            chevauchent — un logement ne peut pas héberger deux voyageurs en même
+            temps. Vérifiez sur les plateformes avant qu’une réservation n’arrive
+            par-dessus une autre.
           </p>
           <ul className="mt-2 space-y-0.5">
-            {doublons.slice(0, 5).map(d => (
+            {contradictions.slice(0, 5).map((c, i) => (
+              <li key={i} className="text-[11px] text-danger">
+                {c.apartmentName ?? 'Logement'} — {c.a.checkIn} → {c.a.checkOut}
+                {' recouvre '}{c.b.checkIn} → {c.b.checkOut}
+              </li>
+            ))}
+            {contradictions.length > 5 && (
+              <li className="text-[11px] text-danger">… et {contradictions.length - 5} autre{contradictions.length - 5 > 1 ? 's' : ''}</li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Un séjour reçu deux fois n'a pas le même sens selon d'où il vient.
+          Entre DEUX plateformes, c'est normal : celle qui n'a pas vendu se
+          ferme sur les dates de l'autre, et nous écartons ce reflet. Conseiller
+          d'en débrancher une serait un mauvais conseil à qui vend sur les deux.
+          Deux flux de la MÊME plateforme, en revanche, sont un doublon réel. */}
+      {doublonsReels.length > 0 && (
+        <div className="rounded-2xl border border-warn-line bg-warn-soft px-4 py-3 mb-4">
+          <p className="text-xs font-semibold text-warn">
+            {doublonsReels.length} séjour{doublonsReels.length > 1 ? 's' : ''} reçu{doublonsReels.length > 1 ? 's' : ''} deux fois
+          </p>
+          <p className="text-[11px] mt-1 text-warn">
+            Un même logement reçoit les mêmes nuits par deux calendriers de la même
+            plateforme. Gardez-en un seul : le second n'apporte rien et dédouble vos
+            compteurs.
+          </p>
+          <ul className="mt-2 space-y-0.5">
+            {doublonsReels.slice(0, 5).map(d => (
               <li key={`${d.apartmentName}-${d.checkIn}`} className="text-[11px] text-warn">
                 {d.apartmentName ?? 'Logement'} — du {d.checkIn} au {d.checkOut}
                 {d.plateformes.length > 1 && <> · {d.plateformes.join(' + ')}</>}
               </li>
             ))}
-            {doublons.length > 5 && (
-              <li className="text-[11px] text-warn">… et {doublons.length - 5} autre{doublons.length - 5 > 1 ? 's' : ''}</li>
+            {doublonsReels.length > 5 && (
+              <li className="text-[11px] text-warn">… et {doublonsReels.length - 5} autre{doublonsReels.length - 5 > 1 ? 's' : ''}</li>
             )}
           </ul>
         </div>

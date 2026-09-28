@@ -14,6 +14,7 @@ import { missionStatusCfg, missionStatusLabel } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import { formatHour } from '@/lib/format';
 import Icon from '@/components/Icon';
+import { estOccupation } from '@/lib/reservationDedupe';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
 import ChecklistPanel from '@/components/ChecklistPanel';
 import SuppliesPanel from '@/components/SuppliesPanel';
@@ -114,7 +115,10 @@ export default function LogementDetailClient() {
   const calMonth = now.getMonth();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const firstWeekday = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // lundi = 0
-  const confirmedRes = reservations.filter(r => r.status === 'confirmed');
+  // Même définition de l'occupation que le moteur et que l'écran admin :
+  // une période fermée chez Booking occupe le logement, sans quoi le
+  // calendrier afficherait « libre » pendant un séjour vendu là-bas.
+  const confirmedRes = reservations.filter(estOccupation);
   const arrSet = new Set(confirmedRes.map(r => r.checkIn));
   const depSet = new Set(confirmedRes.map(r => r.checkOut));
   const pad = (n: number) => String(n).padStart(2, '0');

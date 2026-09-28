@@ -228,3 +228,126 @@ export function estRefletDUnSejour(
     && periode.checkIn < s.checkOut,
   );
 }
+
+/**
+ * Cette ligne décrit-elle une OCCUPATION du logement ?
+ *
+ * LA définition, valable pour tous les écrans et pour le moteur. Elle a vécu
+ * dispersée — le moteur créait un ménage là où l'écran annonçait « libre » —
+ * et deux réponses différentes à « est-il occupé ? » dans le même produit,
+ * c'est un ménage envoyé chez un voyageur ou un logement livré sale.
+ *
+ * Un séjour confirmé en est une. Une période fermée d'un flux BOOKING aussi :
+ * Booking emploie le même intitulé pour un séjour vendu et pour une date
+ * fermée, sa période est donc le seul signal dont on dispose. Un blocage
+ * Airbnb, lui, veut vraiment dire « le propriétaire garde son logement ».
+ *
+ * ⚠️ `FILTRE_OCCUPATION` dans `reservationSync.ts` exprime la MÊME règle en
+ * PostgREST, pour filtrer côté base. Les deux doivent bouger ensemble.
+ */
+export function estOccupation(r: { status?: string; platform?: string }): boolean {
+  return r.status === 'confirmed' || (r.status === 'blocked' && r.platform === 'booking');
+}
+
+/** Une occupation située, avec sa plateforme — pour comparer les calendriers entre eux. */
+export interface OccupationSituee {
+  airbnbId: string;
+  apartmentName?: string;
+  platform?: string;
+  checkIn: string;
+  checkOut: string;
+}
+
+/** Des nuits vendues sur une plateforme, que l'autre n'a pas fermées. */
+export interface ANotifierAFermer {
+  airbnbId: string;
+  apartmentName?: string;
+  /** La plateforme qui continue de vendre ces nuits. */
+  plateformeAFermer: string;
+  /** Celle qui a déjà vendu le séjour. */
+  vendueSur: string;
+  /** Première nuit à fermer, et matin de libération. */
+  du: string;
+  au: string;
+}
+
+const JOUR = 86400000;
+const versJour = (iso: string) => new Date(iso + 'T00:00:00Z').getTime();
+const versIso = (t: number) => new Date(t).toISOString().slice(0, 10);
+
+/**
+ * Les nuits qu'une plateforme continue de vendre alors qu'une autre les a déjà
+ * réservées.
+ *
+ * C'EST LE RISQUE QUI COÛTE LE PLUS CHER À UN HÔTE. Quand un logement est
+ * commercialisé sur Airbnb et sur Booking, chaque vente doit fermer le
+ * calendrier d'en face. Si la fermeture n'arrive pas — synchronisation
+ * interrompue, lien expiré, fermeture manuelle oubliée — la seconde plateforme
+ * vend les mêmes nuits, et deux voyageurs se présentent à la même porte.
+ *
+ * L'iCal ne sait que LIRE : on ne peut pas fermer les dates à sa place. On peut
+ * en revanche le voir venir, et c'est déjà beaucoup. On compare donc nuit par
+ * nuit ce que chaque calendrier déclare, et on rend les trous.
+ *
+ * `plateformesParLogement` dit quelles plateformes sont réellement connectées
+ * pour ce logement : sans cette liste, on réclamerait de fermer un calendrier
+ * qui n'existe pas.
+ */
+export function nuitsAFermerAilleurs(
+  occupations: OccupationSituee[],
+  plateformesParLogement: Map<string, string[]>,
+): ANotifierAFermer[] {
+  const parLogement = new Map<string, OccupationSituee[]>();
+  for (const o of occupations) {
+    if (!o.airbnbId || !o.checkIn || !o.checkOut || o.checkOut <= o.checkIn) continue;
+    (parLogement.get(o.airbnbId) ?? parLogement.set(o.airbnbId, []).get(o.airbnbId)!).push(o);
+  }
+
+  const out: ANotifierAFermer[] = [];
+
+  for (const [airbnbId, liste] of parLogement) {
+    const plateformes = plateformesParLogement.get(airbnbId) ?? [];
+    if (plateformes.length < 2) continue;   // une seule plateforme : rien à fermer ailleurs
+
+    for (const cible of plateformes) {
+      // Les nuits que la plateforme CIBLE déclare déjà occupées.
+      const couvertes = new Set<string>();
+      for (const o of liste) {
+        if (o.platform !== cible) continue;
+        for (let t = versJour(o.checkIn); t < versJour(o.checkOut); t += JOUR) couvertes.add(versIso(t));
+      }
+
+      // Les nuits vendues ailleurs, et que la cible ne couvre pas.
+      const trous = new Map<string, string>();   // nuit → plateforme vendeuse
+      for (const o of liste) {
+        if (!o.platform || o.platform === cible) continue;
+        for (let t = versJour(o.checkIn); t < versJour(o.checkOut); t += JOUR) {
+          const nuit = versIso(t);
+          if (!couvertes.has(nuit)) trous.set(nuit, o.platform);
+        }
+      }
+      if (trous.size === 0) continue;
+
+      // Nuits consécutives d'une même origine = une seule alerte : « bloquez du
+      // 27 au 29 » se lit, « bloquez le 27, le 28 » se subit.
+      const nuits = [...trous.keys()].sort();
+      let debut = nuits[0];
+      let precedent = nuits[0];
+      const nom = liste.find(o => o.apartmentName)?.apartmentName;
+      const pousser = (fin: string) => out.push({
+        airbnbId, apartmentName: nom,
+        plateformeAFermer: cible, vendueSur: trous.get(debut)!,
+        du: debut, au: versIso(versJour(fin) + JOUR),
+      });
+
+      for (const nuit of nuits.slice(1)) {
+        const contigu = versJour(nuit) === versJour(precedent) + JOUR;
+        if (!contigu || trous.get(nuit) !== trous.get(debut)) { pousser(precedent); debut = nuit; }
+        precedent = nuit;
+      }
+      pousser(precedent);
+    }
+  }
+
+  return out.sort((a, b) => a.du.localeCompare(b.du));
+}

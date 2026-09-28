@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   chevauchements, dedupeStays, departCredible, doublonsSejours,
-  estRefletDUnSejour, type SejourVendu,
+  estOccupation, estRefletDUnSejour, nuitsAFermerAilleurs,
+  type OccupationSituee, type SejourVendu,
 } from './reservationDedupe';
 import type { Reservation } from './types';
 
@@ -226,5 +227,82 @@ describe('estRefletDUnSejour — faire cohabiter deux plateformes', () => {
   it('sans aucun séjour vendu, rien n’est un reflet', () => {
     expect(estRefletDUnSejour({ platform: 'booking', checkIn: '2026-10-10', checkOut: '2026-10-15' }, []))
       .toBe(false);
+  });
+});
+
+describe('estOccupation — une seule définition pour tout le produit', () => {
+  it('un séjour confirmé occupe le logement', () => {
+    expect(estOccupation({ status: 'confirmed', platform: 'airbnb' })).toBe(true);
+  });
+
+  it('une période fermée chez Booking occupe aussi', () => {
+    // Booking emploie le même intitulé pour un séjour vendu et une date fermée.
+    expect(estOccupation({ status: 'blocked', platform: 'booking' })).toBe(true);
+  });
+
+  it('un blocage Airbnb n’occupe pas : le propriétaire garde son logement', () => {
+    expect(estOccupation({ status: 'blocked', platform: 'airbnb' })).toBe(false);
+  });
+
+  it('une réservation annulée n’occupe jamais', () => {
+    expect(estOccupation({ status: 'cancelled', platform: 'booking' })).toBe(false);
+  });
+
+  it('une option non confirmée n’occupe pas', () => {
+    expect(estOccupation({ status: 'tentative', platform: 'booking' })).toBe(false);
+  });
+});
+
+describe('nuitsAFermerAilleurs — voir venir la double réservation', () => {
+  const plateformes = new Map([['apt-1', ['airbnb', 'booking']]]);
+  const occ = (o: Partial<OccupationSituee> = {}): OccupationSituee => ({
+    airbnbId: 'apt-1', apartmentName: 'Casa Sol', platform: 'booking',
+    checkIn: '2026-09-27', checkOut: '2026-09-29', ...o,
+  });
+
+  it('réclame de fermer l’autre plateforme quand elle ne couvre pas les nuits vendues', () => {
+    const a = nuitsAFermerAilleurs([occ()], plateformes);
+    expect(a).toHaveLength(1);
+    expect(a[0].plateformeAFermer).toBe('airbnb');
+    expect(a[0].vendueSur).toBe('booking');
+    expect(a[0].du).toBe('2026-09-27');
+    expect(a[0].au).toBe('2026-09-29');   // libre le matin du 29
+  });
+
+  it('ne réclame rien quand l’autre plateforme a bien fermé', () => {
+    expect(nuitsAFermerAilleurs(
+      [occ(), occ({ platform: 'airbnb' })],
+      plateformes,
+    )).toEqual([]);
+  });
+
+  it('ne réclame que les nuits réellement découvertes', () => {
+    // Airbnb ferme 27→28 : il reste la nuit du 28 à fermer.
+    const a = nuitsAFermerAilleurs(
+      [occ(), occ({ platform: 'airbnb', checkOut: '2026-09-28' })],
+      plateformes,
+    );
+    expect(a).toHaveLength(1);
+    expect(a[0].du).toBe('2026-09-28');
+    expect(a[0].au).toBe('2026-09-29');
+  });
+
+  it('regroupe les nuits consécutives en une seule alerte', () => {
+    const a = nuitsAFermerAilleurs([occ({ checkOut: '2026-10-02' })], plateformes);
+    expect(a).toHaveLength(1);
+    expect(a[0].du).toBe('2026-09-27');
+    expect(a[0].au).toBe('2026-10-02');
+  });
+
+  it('se tait quand une seule plateforme est connectée', () => {
+    // Rien à fermer ailleurs : il n'y a pas d'ailleurs.
+    expect(nuitsAFermerAilleurs([occ()], new Map([['apt-1', ['booking']]]))).toEqual([]);
+  });
+
+  it('ne mélange pas deux logements', () => {
+    expect(nuitsAFermerAilleurs(
+      [occ({ airbnbId: 'apt-2' })],
+      plateformes,
+    )).toEqual([]);
   });
 });

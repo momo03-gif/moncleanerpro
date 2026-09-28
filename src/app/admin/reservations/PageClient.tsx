@@ -8,7 +8,7 @@ import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
 // partenaire désignent toujours une source de la même façon.
 import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
-import { chevauchements } from '@/lib/reservationDedupe';
+import { chevauchements, estOccupation } from '@/lib/reservationDedupe';
 import Loading from "@/components/Loading";
 
 const RES_STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -165,9 +165,6 @@ export default function AdminReservationsPage() {
   // deux calendriers décrivent le même séjour avec des bornes différentes,
   // annoncer la plus courte enverrait l'intervenant chez un voyageur encore là.
   const occupancy = useMemo<AptOccupancy[]>(() => {
-    const estOccupation = (r: Reservation) =>
-      r.status === 'confirmed' || (r.status === 'blocked' && r.platform === 'booking');
-
     const byApt = new Map<string, Reservation[]>();
     for (const r of reservations) {
       if (!estOccupation(r)) continue;

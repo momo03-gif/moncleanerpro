@@ -14,14 +14,17 @@ import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { detectPlatform } from './icalUrl';
-import { departCredible, estRefletDUnSejour, type Occupation, type SejourVendu } from './reservationDedupe';
+import {
+  departCredible, estRefletDUnSejour, nuitsAFermerAilleurs,
+  type Occupation, type OccupationSituee, type SejourVendu,
+} from './reservationDedupe';
 import { fetchSmoobuReservations } from './pms/smoobu';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
 import { fetchLodgifyReservations } from './pms/lodgify';
 import { REST_CONNECTORS } from './pms/catalog';
 import { memoryTokenStore, type TokenStore, type PmsCallOptions } from './pms/rest';
-import { notifyPartnerCreatedMission, notifyAdminsSync } from './notifications';
+import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync } from './notifications';
 import { parseAirbnbDescription } from './guestContact';
 import { shouldRealign } from './missionDefaults';
 
@@ -684,6 +687,7 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     result.details.push({ reservationId: first.id, missionId: mission.id, airbnbId: targetAirbnbId, date });
   }
 
+  await alerterDatesAFermer(today, horizon);
   result.refreshed = await refreshNextArrivals(today, horizon);
   result.realigned = await refreshMissionDefaults(today, horizon);
   return result;
@@ -733,6 +737,87 @@ export async function forcerMenagePourReservation(
   return missionId
     ? { ok: true, missionId }
     : { ok: false, error: "Le ménage n'a pas pu être créé — le départ est peut-être hors de l'horizon de 90 jours." };
+}
+
+/**
+ * Prévient l'hôte quand une plateforme continue de vendre des nuits qu'une
+ * autre a déjà réservées.
+ *
+ * Deux voyageurs devant la même porte, c'est ce qui coûte le plus cher à une
+ * conciergerie — et l'iCal ne sait que LIRE : nous ne pouvons pas fermer les
+ * dates à sa place, seulement le voir venir. L'alerte part donc au fil de la
+ * synchronisation, pendant qu'il est encore temps d'aller fermer le calendrier
+ * d'en face à la main.
+ *
+ * On ne prévient qu'UNE fois par période : la synchro tourne deux fois par
+ * jour, et une alerte répétée deux fois par jour cesse d'être lue au bout de
+ * trois jours. La trace se garde dans les notifications déjà envoyées.
+ */
+// Même formatage que la notification : l'empreinte anti-répétition cherche ces
+// dates dans le message déjà envoyé, elle doit donc les écrire à l'identique.
+const fmtDateFr = (iso: string) =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+async function alerterDatesAFermer(today: string, horizon: string): Promise<void> {
+  const db = getSupabaseAdmin();
+
+  const { data: occ } = await db.from('reservations')
+    .select('airbnb_id, partner_id, platform, check_in, check_out, airbnbs(name)')
+    .or(FILTRE_OCCUPATION)
+    .gte('check_out', today)
+    .lte('check_in', horizon);
+  if (!occ || occ.length === 0) return;
+
+  // Quelles plateformes alimentent réellement chaque logement : sans cette
+  // liste, on réclamerait de fermer un calendrier qui n'est pas connecté.
+  const { data: feeds } = await db.from('reservation_feeds')
+    .select('airbnb_id, platform').eq('active', true);
+  const plateformesParLogement = new Map<string, string[]>();
+  for (const f of feeds ?? []) {
+    const l = plateformesParLogement.get(f.airbnb_id) ?? [];
+    if (f.platform && !l.includes(f.platform)) l.push(f.platform);
+    plateformesParLogement.set(f.airbnb_id, l);
+  }
+
+  const partnerParLogement = new Map<string, string>();
+  const occupations: OccupationSituee[] = (occ as unknown as {
+    airbnb_id: string; partner_id: string | null; platform: string | null;
+    check_in: string; check_out: string; airbnbs: { name?: string } | null;
+  }[]).map(o => {
+    if (o.partner_id) partnerParLogement.set(o.airbnb_id, o.partner_id);
+    return {
+      airbnbId: o.airbnb_id,
+      apartmentName: o.airbnbs?.name,
+      platform: o.platform ?? undefined,
+      checkIn: o.check_in,
+      checkOut: o.check_out,
+    };
+  });
+
+  for (const a of nuitsAFermerAilleurs(occupations, plateformesParLogement)) {
+    const partnerId = partnerParLogement.get(a.airbnbId);
+    if (!partnerId) continue;
+
+    // Mêmes bornes, même plateforme à fermer, même logement : déjà dit. On
+    // cherche les DATES dans le message — elles identifient la période sans
+    // ambiguïté, là où un nom de logement peut manquer. Sans ce garde-fou,
+    // l'hôte recevrait la même alerte deux fois par jour jusqu'au séjour.
+    const empreinte = `du ${fmtDateFr(a.du)} au ${fmtDateFr(a.au)}`;
+    const { count } = await db.from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', partnerId)
+      .eq('type', 'sync')
+      .ilike('title', `%${a.plateformeAFermer}%`)
+      .ilike('message', `%${empreinte}%`)
+      .gte('created_at', new Date(Date.now() - 60 * 86400000).toISOString());
+    if ((count ?? 0) > 0) continue;
+
+    await notifyPartnerDatesAFermer(
+      partnerId, a.apartmentName ?? 'Votre logement',
+      a.plateformeAFermer, a.vendueSur, a.du, a.au,
+    );
+    console.warn('sync: nuits vendues ailleurs non fermees', { logement: a.airbnbId, empreinte });
+  }
 }
 
 async function refreshMissionDefaults(today: string, horizon: string): Promise<number> {

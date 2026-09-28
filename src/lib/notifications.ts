@@ -140,6 +140,38 @@ export async function notifyHotelRequestDecision(hotelUserId: string, accepted: 
   } catch (e) { console.error('notifyHotelRequestDecision:', e); }
 }
 
+// A bis. Des nuits vendues sur une plateforme que l'autre n'a pas fermées.
+//
+// C'est le risque qui coûte le plus cher à un hôte : deux voyageurs devant la
+// même porte. L'iCal ne sait que LIRE les calendriers — nous ne pouvons pas
+// fermer les dates à sa place, seulement le voir venir. La notification part
+// donc DÈS l'arrivée de la réservation, pendant qu'il est encore temps
+// d'aller fermer l'autre calendrier à la main.
+//
+// Formulée comme une alerte, jamais comme une garantie : promettre d'empêcher
+// une double réservation serait promettre ce qu'on ne peut pas tenir.
+export async function notifyPartnerDatesAFermer(
+  partnerUserId: string,
+  logement: string,
+  plateformeAFermer: string,
+  vendueSur: string,
+  du: string,
+  au: string,
+) {
+  if (!partnerUserId) return;
+  try {
+    const nom = (p: string) => p.charAt(0).toUpperCase() + p.slice(1);
+    await dispatch([{
+      userId: partnerUserId, role: 'airbnb',
+      title: `À bloquer sur ${nom(plateformeAFermer)}`,
+      message: `${logement} est réservé sur ${nom(vendueSur)} du ${fmtDate(du)} au ${fmtDate(au)}, `
+        + `mais ${nom(plateformeAFermer)} ne bloque pas ces nuits et peut encore les vendre. `
+        + `Bloquez-les pour éviter une double réservation.`,
+      type: 'sync',
+    }]);
+  } catch (e) { console.error('notifyPartnerDatesAFermer:', e); }
+}
+
 // A bis. Alerte de SYNCHRONISATION → admins (changement de date sur mission assignée,
 // flux en panne, réservation annulée alors que la mission est assignée).
 export async function notifyAdminsSync(title: string, message: string, missionId?: string | null) {
