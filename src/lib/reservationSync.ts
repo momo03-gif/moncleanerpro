@@ -607,6 +607,52 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   return result;
 }
 
+/**
+ * Force le ménage d'UNE réservation, quel que soit ce que le calendrier en dit.
+ *
+ * POURQUOI CE BOUTON EXISTE
+ * Certaines plateformes n'exportent pas des séjours mais des périodes
+ * d'indisponibilité : Booking intitule « CLOSED » aussi bien une réservation
+ * qu'une date bloquée, et un même bloc peut recouvrir deux séjours d'affilée.
+ * Aucune règle automatique ne peut trancher à tous les coups — l'information
+ * n'est pas dans le flux. Plutôt que de deviner, on laisse l'exploitant dire
+ * « celle-ci est un vrai départ », puisque lui le sait.
+ *
+ * On rebascule la réservation en `confirmed` et on relance la matérialisation :
+ * prix, durée, arrivée suivante, regroupement des chambres et garde-fou
+ * anti-doublon sont ceux de la synchro, sans rien réimplémenter. Une synchro
+ * ultérieure peut reclasser la ligne en « bloqué » — le ménage, lui, reste :
+ * seule une réservation DISPARUE du calendrier annule sa mission.
+ */
+export async function forcerMenagePourReservation(
+  reservationId: string,
+): Promise<{ ok: boolean; missionId?: string; error?: string }> {
+  const db = getSupabaseAdmin();
+
+  const { data: r } = await db.from('reservations')
+    .select('id, check_out, mission_id').eq('id', reservationId).single();
+  if (!r) return { ok: false, error: 'Réservation introuvable.' };
+  if (r.mission_id) return { ok: false, error: 'Un ménage est déjà rattaché à cette réservation.' };
+
+  const { error } = await db.from('reservations')
+    .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+    .eq('id', reservationId);
+  if (error) return { ok: false, error: error.message };
+
+  const res = await materializeMissions();
+  const cree = res.details.find(d => d.reservationId === reservationId);
+
+  // Le ménage a pu être rattaché à une mission existante de la même date par le
+  // garde-fou anti-doublon : on relit la ligne plutôt que de conclure à l'échec.
+  const { data: apres } = await db.from('reservations')
+    .select('mission_id').eq('id', reservationId).single();
+  const missionId = cree?.missionId ?? apres?.mission_id ?? undefined;
+
+  return missionId
+    ? { ok: true, missionId }
+    : { ok: false, error: "Le ménage n'a pas pu être créé — le départ est peut-être hors de l'horizon de 90 jours." };
+}
+
 async function refreshMissionDefaults(today: string, horizon: string): Promise<number> {
   const db = getSupabaseAdmin();
 

@@ -55,6 +55,27 @@ export default function AdminReservationsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [syncFailed, setSyncFailed] = useState(false);
+  const [forcage, setForcage] = useState<string | null>(null);
+
+  // Créer le ménage d'une réservation que la synchro n'a pas retenue. Booking
+  // emploie le même intitulé pour une réservation et pour un blocage : quand le
+  // calendrier ne permet pas de trancher, c'est l'exploitant qui tranche.
+  async function creerMenage(reservationId: string) {
+    setForcage(reservationId); setSyncMsg('');
+    try {
+      const res = await fetch('/api/reservations/mission', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservationId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setSyncFailed(!data.ok);
+      setSyncMsg(data.ok ? 'Ménage créé et rattaché à la réservation.' : `Erreur : ${data.error ?? 'création impossible'}`);
+    } catch {
+      setSyncFailed(true); setSyncMsg('Création impossible pour le moment.');
+    }
+    await load();
+    setForcage(null);
+  }
 
   const load = useCallback(async () => {
     const [a, r, f] = await Promise.all([getAirbnbs(), getAllReservations(), getAllReservationFeeds()]);
@@ -326,8 +347,17 @@ export default function AdminReservationsPage() {
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#5A8A6A' }}><Icon name="check" size={13} /> Créée</span>
                   ) : r.status === 'confirmed' ? (
                     <span className="text-[11px]" style={{ color: '#C48A2A' }}>À venir</span>
-                  ) : (
+                  ) : passe || r.status === 'cancelled' ? (
                     <span className="text-[11px]" style={{ color: '#A8A09A' }}>—</span>
+                  ) : (
+                    // Ligne écartée par la synchro alors que le départ est à venir :
+                    // c'est exactement le cas où le calendrier ne sait pas dire si
+                    // c'est un séjour. On laisse l'exploitant le décider.
+                    <button onClick={() => creerMenage(r.id)} disabled={forcage === r.id}
+                      className="text-[11px] font-semibold px-2 py-1 rounded-lg border disabled:opacity-50"
+                      style={{ borderColor: '#C9A84C', color: '#1A1A1A' }}>
+                      {forcage === r.id ? 'Création…' : 'Créer le ménage'}
+                    </button>
                   )}
                 </div>
               </div>
