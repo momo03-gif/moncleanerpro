@@ -136,9 +136,14 @@ export async function fetchLodgifyReservations(
   // l'accepte. La seconde ramène tout et nous filtrons nous-mêmes : plus
   // d'appels, mais elle passe partout. Sans ce repli, un compte qui refuse le
   // filtre précis se retrouvait sans aucune réservation.
-  const TENTATIVES = [
-    { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to },
-    { stayFilter: 'All' },
+  // La DERNIÈRE est l'appel exactement tel qu'il fonctionnait avant qu'on
+  // cherche mieux : sans `page`, avec les bornes, `size` à 200. Un repli doit
+  // finir par quelque chose de connu — sinon « on essaie autre chose » veut
+  // seulement dire « on échoue autrement ».
+  const TENTATIVES: Record<string, string | number | undefined>[] = [
+    { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, page: 1, size: PAGE },
+    { stayFilter: 'All', page: 1, size: PAGE },
+    { stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200 },
   ];
 
   let rows: Record<string, unknown>[] = [];
@@ -146,10 +151,13 @@ export async function fetchLodgifyReservations(
   for (const filtre of TENTATIVES) {
     try {
       const lues: Record<string, unknown>[] = [];
-      for (let page = 1; page <= PAGES_MAX; page++) {
+      // On ne pagine que si la variante accepte `page` : sur celle qui n'en
+      // veut pas, insister ne ferait que répéter la première page.
+      const paginable = filtre.page !== undefined;
+      for (let page = 1; page <= (paginable ? PAGES_MAX : 1); page++) {
         const data = await getWithFallback<unknown>(
           '/v2/reservations/bookings', '/v1/reservation', creds.apiKey,
-          { propertyId, ...filtre, page, size: PAGE },
+          { propertyId, ...filtre, ...(paginable ? { page } : {}) },
         );
         const lot = unwrap(data);
         lues.push(...lot);
@@ -220,12 +228,15 @@ export async function diagnoseLodgify(
   propertyId: string,
   range: { from: string; to: string },
 ): Promise<SondeLodgify[]> {
+  // Le TÉMOIN d'abord : l'appel dont on sait qu'il répondait. S'il échoue lui
+  // aussi, le problème n'est pas le filtre mais le compte ou la clé — et sans
+  // lui on conclurait à tort que telle ou telle variante est en cause.
   const VARIANTES: { nom: string; params: Record<string, string | number | undefined> }[] = [
-    { nom: 'DepartureDate + période', params: { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to } },
-    { nom: 'ArrivalDate + période', params: { stayFilter: 'ArrivalDate', periodStart: range.from, periodEnd: range.to } },
-    { nom: 'Upcoming', params: { stayFilter: 'Upcoming' } },
-    { nom: 'All (page 1)', params: { stayFilter: 'All' } },
-    { nom: 'sans filtre', params: {} },
+    { nom: 'TÉMOIN All + période, sans page', params: { stayFilter: 'All', periodStart: range.from, periodEnd: range.to, size: 200 } },
+    { nom: 'All + page', params: { stayFilter: 'All', page: 1, size: PAGE } },
+    { nom: 'DepartureDate + période', params: { stayFilter: 'DepartureDate', periodStart: range.from, periodEnd: range.to, size: PAGE } },
+    { nom: 'ArrivalDate + période', params: { stayFilter: 'ArrivalDate', periodStart: range.from, periodEnd: range.to, size: PAGE } },
+    { nom: 'Upcoming', params: { stayFilter: 'Upcoming', size: PAGE } },
   ];
 
   const out: SondeLodgify[] = [];
@@ -234,7 +245,7 @@ export async function diagnoseLodgify(
   for (const v of VARIANTES) {
     try {
       const data = await get<unknown>('/v2/reservations/bookings', creds.apiKey, {
-        propertyId, ...v.params, page: 1, size: PAGE,
+        propertyId, ...v.params,
       });
       const rows = unwrap(data);
       const duLogement = attendu
