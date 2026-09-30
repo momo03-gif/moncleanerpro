@@ -200,7 +200,10 @@ export const PMS_LIST: PmsDefinition[] = [
     kind: 'pms',
     hosts: [/(^|\.)superhote\.com$/i],
     icalHelp: 'Superhote → Logement → Synchronisation → lien iCal.',
-    api: false,
+    api: {
+      fields: [{ name: 'apiKey', label: 'Clé API' }],
+      help: 'SuperHote → Paramètres → API. La clé appartient au compte de la conciergerie.',
+    },
   },
   {
     id: 'amenitiz',

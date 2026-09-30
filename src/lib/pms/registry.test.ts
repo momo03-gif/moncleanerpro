@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PMS_LIST, findPms, pmsWithApi, supportsApi, pmsSelectable, platformLabel, detectableSources } from './registry';
+import { isUnverifiedPms } from './catalog';
 
 describe('Registre des logiciels de gestion', () => {
   it('propose tous les logiciels courants, au moins en iCal', () => {
@@ -75,9 +76,14 @@ describe('Registre des logiciels de gestion', () => {
       const api = findPms(id)!.api;
       expect(api !== false && api.verified).toBe(false);
     }
+    // SuperHote : connecteur dédié écrit le 30/09/2026 (POST, clé dans le corps
+    // JSON). Sa documentation étant derrière un espace client, la forme des
+    // endpoints de lecture n'est pas confirmée — d'où `isUnverifiedPms`.
+    expect(supportsApi('superhote')).toBe(true);
+    expect(isUnverifiedPms('superhote')).toBe(true);
+
     // Ceux-là n'ont toujours aucune voie API praticable (OAuth partenaire, SOAP,
     // ou accès fermé) : l'iCal reste la seule réponse honnête.
-    expect(supportsApi('superhote')).toBe(false);
     expect(supportsApi('amenitiz')).toBe(false);
     expect(supportsApi('avantio')).toBe(false);
   });

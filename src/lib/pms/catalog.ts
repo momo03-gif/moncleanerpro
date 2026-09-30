@@ -34,6 +34,7 @@ import { listSmoobuApartments } from './smoobu';
 import { listHostawayListings } from './hostaway';
 import { listBeds24Properties } from './beds24';
 import { listLodgifyProperties } from './lodgify';
+import { listSuperhoteProperties } from './superhote';
 
 // La plupart des éditeurs nomment leurs champs de la même famille de façons.
 // normalize.ts accepte déjà les variantes ; on part de ce socle commun.
@@ -216,9 +217,17 @@ export function restConnector(id: string) {
   return REST_CONNECTORS[id];
 }
 
+// Connecteurs écrits à la main dont la forme n'a pas encore été confirmée sur
+// un vrai compte. Les déclaratifs portent `verified` dans leur descripteur ;
+// ceux-ci n'en ont pas, alors on les nomme. À retirer d'ici dès qu'une clé
+// réelle a fait remonter des réservations — c'est tout ce que « vérifié » veut
+// dire, et l'écran de connexion en dépend.
+const DEDIES_NON_VERIFIES = new Set(['superhote']);
+
 /** Un connecteur dont la forme n'a pas encore été confirmée par un vrai compte. */
 export function isUnverifiedPms(id: string | null | undefined): boolean {
-  return !!id && REST_CONNECTORS[id]?.descriptor.verified === false;
+  if (!id) return false;
+  return DEDIES_NON_VERIFIES.has(id) || REST_CONNECTORS[id]?.descriptor.verified === false;
 }
 
 // ── Lister les logements d'un compte PMS ──────────────────────────────────────
@@ -237,6 +246,7 @@ export const PMS_LISTERS: Record<string, PmsLister> = {
   hostaway: listHostawayListings,
   beds24: listBeds24Properties,
   lodgify: listLodgifyProperties,
+  superhote: listSuperhoteProperties,
   // Les connecteurs déclaratifs apportent leur « lister » avec eux.
   ...Object.fromEntries(Object.entries(REST_CONNECTORS).map(([id, c]) => [id, c.list as PmsLister])),
 };
