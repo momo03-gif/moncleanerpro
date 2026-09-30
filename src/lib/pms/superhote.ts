@@ -25,24 +25,41 @@ import type { ICalEvent } from '../ical';
 interface Acces {
   nom: string;
   base: string;
-  /** En-têtes d'authentification, ou `null` quand la clé va dans le corps. */
-  entetes: ((cle: string) => Record<string, string>) | null;
+  /** En-têtes d'authentification. */
+  entetes?: (c: Cles) => Record<string, string>;
+  /** Paramètres d'authentification en query (GET) ou dans le corps (POST). */
+  params?: (c: Cles) => Record<string, string>;
+  methode: 'GET' | 'POST';
 }
 
-// Par ordre de probabilité. L'en-tête d'abord : c'est ce que « SH apiKey »
-// annonce, et c'est la forme d'une API de lecture. Le corps en dernier : c'est
-// celle du moteur de vente, dont on sait déjà qu'elle ne sait pas lire.
+/** Les deux clés que SuperHote affiche côte à côte dans Paramètres Utilisateur. */
+export interface Cles { apiKey: string; websiteKey?: string }
+
+const APP = 'https://app.superhote.com/api/v2';
+const APP1 = 'https://app.superhote.com/api';
+const API = 'https://api.superhote.com';
+
+// Par ordre de probabilité. L'en-tête d'abord — c'est ce que « SH apiKey »
+// annonce. Puis la clé en query, puis le COUPLE de clés : SuperHote en délivre
+// deux, et rien ne dit que la lecture s'ouvre avec une seule. La clé dans le
+// corps vient en dernier : c'est la forme du moteur de vente, dont on sait
+// qu'elle ne lit pas.
 const ACCES: Acces[] = [
-  { nom: 'app/api/v2 · SH-APIKEY', base: 'https://app.superhote.com/api/v2', entetes: c => ({ 'SH-APIKEY': c }) },
-  { nom: 'app/api · SH-APIKEY', base: 'https://app.superhote.com/api', entetes: c => ({ 'SH-APIKEY': c }) },
-  { nom: 'api/v2 · SH-APIKEY', base: 'https://api.superhote.com/v2', entetes: c => ({ 'SH-APIKEY': c }) },
-  { nom: 'api · SH-APIKEY', base: 'https://api.superhote.com', entetes: c => ({ 'SH-APIKEY': c }) },
-  { nom: 'app/api/v2 · Bearer', base: 'https://app.superhote.com/api/v2', entetes: c => ({ Authorization: `Bearer ${c}` }) },
-  { nom: 'app/api/v2 · X-API-KEY', base: 'https://app.superhote.com/api/v2', entetes: c => ({ 'X-API-KEY': c }) },
-  { nom: 'app/api/v2 · clé dans le corps', base: 'https://app.superhote.com/api/v2', entetes: null },
+  { nom: 'app/api/v2 · en-tête SH-APIKEY', base: APP, methode: 'GET', entetes: c => ({ 'SH-APIKEY': c.apiKey }) },
+  { nom: 'app/api · en-tête SH-APIKEY', base: APP1, methode: 'GET', entetes: c => ({ 'SH-APIKEY': c.apiKey }) },
+  { nom: 'api.superhote · en-tête SH-APIKEY', base: API, methode: 'GET', entetes: c => ({ 'SH-APIKEY': c.apiKey }) },
+  { nom: 'app/api/v2 · en-tête apikey', base: APP, methode: 'GET', entetes: c => ({ apikey: c.apiKey }) },
+  { nom: 'app/api/v2 · Bearer', base: APP, methode: 'GET', entetes: c => ({ Authorization: `Bearer ${c.apiKey}` }) },
+  { nom: 'app/api/v2 · Authorization brut', base: APP, methode: 'GET', entetes: c => ({ Authorization: c.apiKey }) },
+  { nom: 'app/api/v2 · X-API-KEY', base: APP, methode: 'GET', entetes: c => ({ 'X-API-KEY': c.apiKey }) },
+  { nom: 'app/api/v2 · clé en query', base: APP, methode: 'GET', params: c => ({ api_key: c.apiKey }) },
+  { nom: 'app/api/v2 · couple de clés en query', base: APP, methode: 'GET',
+    params: c => ({ api_key: c.apiKey, ...(c.websiteKey ? { website_key: c.websiteKey } : {}) }) },
+  { nom: 'app/api/v2 · couple de clés (POST)', base: APP, methode: 'POST',
+    params: c => ({ api_key: c.apiKey, ...(c.websiteKey ? { website_key: c.websiteKey } : {}) }) },
+  { nom: 'app/api/v2 · clé dans le corps (POST)', base: APP, methode: 'POST', params: c => ({ api_key: c.apiKey }) },
 ];
 
-// Chemins plausibles pour lister les logements, puis les réservations.
 const CHEMINS_LOGEMENTS = ['/properties', '/get-properties', '/rentals', '/listings', '/accommodations'];
 const CHEMINS_RESERVATIONS = ['/reservations', '/get-reservations', '/bookings', '/get-bookings'];
 
@@ -66,33 +83,31 @@ const SUPERHOTE_FIELDS: FieldNames = {
 async function appel(
   acces: Acces,
   chemin: string,
-  cle: string,
-  params: Record<string, string | undefined>,
+  cles: Cles,
+  filtres: Record<string, string | undefined>,
 ): Promise<unknown> {
   const controller = new AbortController();
-  // Court : une sonde enchaîne plusieurs tentatives, un timeout long les rendrait
-  // insupportables à l'écran de connexion.
+  // Court : une sonde enchaîne des tentatives, un timeout long rendrait l'écran
+  // de connexion insupportable.
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
-    const propres = Object.entries(params).filter(([, v]) => v !== undefined && v !== '') as [string, string][];
+    const propres = Object.entries({ ...(acces.params?.(cles) ?? {}), ...filtres })
+      .filter(([, v]) => v !== undefined && v !== '') as [string, string][];
+    const entetes = { ...(acces.entetes?.(cles) ?? {}), Accept: 'application/json' };
 
-    if (acces.entetes) {
+    if (acces.methode === 'GET') {
       const query = propres.length ? '?' + new URLSearchParams(propres).toString() : '';
-      const res = await fetch(`${acces.base}${chemin}${query}`, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: { ...acces.entetes(cle), Accept: 'application/json' },
-      });
-      return await lire(res);
+      return await lire(await fetch(`${acces.base}${chemin}${query}`, {
+        method: 'GET', signal: controller.signal, headers: entetes,
+      }));
     }
 
-    const res = await fetch(`${acces.base}${chemin}`, {
+    return await lire(await fetch(`${acces.base}${chemin}`, {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ api_key: cle, ...Object.fromEntries(propres) }),
-    });
-    return await lire(res);
+      headers: { ...entetes, 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(propres)),
+    }));
   } finally {
     clearTimeout(timer);
   }
@@ -124,40 +139,59 @@ function unwrap(payload: unknown): Record<string, unknown>[] {
 let accesRetenu: Acces | null = null;
 
 /**
- * Trouve une combinaison qui répond, et la retient.
+ * Trouve une combinaison qui répond, EN DEUX TEMPS.
  *
- * Une erreur d'AUTHENTIFICATION (401/403) sur une adresse est un renseignement :
- * elle prouve que l'adresse existe. On la garde donc en mémoire pour le message
- * d'erreur final, qui doit distinguer « cette API n'existe pas » de « cette clé
- * n'y donne pas droit » — deux problèmes, deux solutions.
+ * Croiser onze façons de s'authentifier avec cinq chemins ferait cinquante-cinq
+ * appels à chaque connexion — plusieurs minutes d'attente si les adresses ne
+ * répondent pas. On cherche donc d'abord l'AUTHENTIFICATION sur un seul chemin,
+ * puis on n'essaie les autres chemins qu'avec celle qui a mordu.
+ *
+ * Un 401/403 est un renseignement, pas un échec : il prouve que l'adresse
+ * existe et que seule la clé manque. Une adresse qui ne répond rien du tout n'a
+ * rien appris. Le message final distingue les deux — ce ne sont pas les mêmes
+ * suites.
  */
 async function sonder(
-  cle: string,
+  cles: Cles,
   chemins: string[],
-  params: Record<string, string | undefined>,
+  filtres: Record<string, string | undefined>,
 ): Promise<{ acces: Acces; chemin: string; lignes: Record<string, unknown>[] }> {
   const ordre = accesRetenu ? [accesRetenu, ...ACCES.filter(a => a !== accesRetenu)] : ACCES;
   let refusee = false;
+  const existantes: Acces[] = [];
 
+  // ── 1. Quelle authentification est acceptée ? ─────────────────────────────
   for (const acces of ordre) {
-    for (const chemin of chemins) {
+    try {
+      const lignes = unwrap(await appel(acces, chemins[0], cles, filtres));
+      if (lignes.length > 0) { accesRetenu = acces; return { acces, chemin: chemins[0], lignes }; }
+      // Répond 200 mais rien à cet endroit : l'accès est bon, le chemin non.
+      existantes.push(acces);
+    } catch (e) {
+      const code = (e as { httpStatus?: number }).httpStatus;
+      if (code === 401 || code === 403) { refusee = true; continue; }
+      // 404/400/405 : l'adresse existe peut-être, mais pas ce chemin. On la
+      // garde pour le second temps.
+      if (code !== undefined) existantes.push(acces);
+    }
+  }
+
+  // ── 2. Les autres chemins, avec les accès qui ont répondu ─────────────────
+  for (const acces of existantes) {
+    for (const chemin of chemins.slice(1)) {
       try {
-        const lignes = unwrap(await appel(acces, chemin, cle, params));
+        const lignes = unwrap(await appel(acces, chemin, cles, filtres));
         if (lignes.length > 0) { accesRetenu = acces; return { acces, chemin, lignes }; }
-      } catch (e) {
-        const code = (e as { httpStatus?: number }).httpStatus;
-        if (code === 401 || code === 403) { refusee = true; continue; }
-        if (code === undefined) continue;   // délai dépassé, réseau : on poursuit
-        // 404, 400, 405 : pas ce chemin-là.
-      }
+      } catch { /* chemin suivant */ }
     }
   }
 
   throw new Error(refusee
-    ? 'SuperHote a refusé cette clé sur toutes ses adresses : elle n’ouvre probablement '
-      + 'que le moteur de réservation, pas la lecture du planning. Le lien iCal reste la voie.'
-    : 'Aucune API de lecture SuperHote n’a répondu. Leur clé publique ne sert peut-être '
-      + 'qu’au moteur de réservation. Le lien iCal reste la voie.');
+    ? 'SuperHote a refusé cette clé. Vérifiez qu’il s’agit bien de la SH apiKey à jour '
+      + '(Paramètres Utilisateur) : si elle a été régénérée, l’ancienne ne vaut plus rien. '
+      + 'Si elle est à jour, c’est que cette clé n’ouvre pas la lecture du planning — '
+      + 'il faut alors demander à SuperHote un accès en lecture pour ce compte.'
+    : 'Aucune adresse de lecture SuperHote n’a répondu avec cette clé.');
 }
 
 export interface SuperhoteProperty { id: string; name: string }
@@ -166,7 +200,9 @@ export interface SuperhoteProperty { id: string; name: string }
 export async function listSuperhoteProperties(
   creds: SuperhoteCredentials,
 ): Promise<SuperhoteProperty[]> {
-  const { lignes } = await sonder(creds.apiKey, CHEMINS_LOGEMENTS, {});
+  const { lignes } = await sonder(
+    { apiKey: creds.apiKey, websiteKey: creds.apiSecret }, CHEMINS_LOGEMENTS, {},
+  );
   return lignes
     .map(p => ({
       // `property_key` est l'identifiant que SuperHote emploie dans ses propres
@@ -183,11 +219,11 @@ export async function fetchSuperhoteReservations(
   propertyId: string,
   range: { from: string; to: string },
 ): Promise<ICalEvent[]> {
-  const { lignes } = await sonder(creds.apiKey, CHEMINS_RESERVATIONS, {
-    property_key: propertyId,
-    start_date: range.from,
-    end_date: range.to,
-  });
+  const { lignes } = await sonder(
+    { apiKey: creds.apiKey, websiteKey: creds.apiSecret },
+    CHEMINS_RESERVATIONS,
+    { property_key: propertyId, start_date: range.from, end_date: range.to },
+  );
 
   // Filets locaux : rien ne garantit que les filtres soient honorés, et importer
   // les séjours d'un autre bien les collerait tous sur celui-ci.
@@ -203,19 +239,17 @@ export async function fetchSuperhoteReservations(
 
 /** Ce que chaque combinaison a répondu — pour figer la bonne, ou renoncer. */
 export async function diagnoseSuperhote(creds: SuperhoteCredentials): Promise<{
-  acces: string; chemin: string; statut: number | 'ok'; lignes: number;
+  acces: string; statut: number | 'ok'; lignes: number;
 }[]> {
-  const out: { acces: string; chemin: string; statut: number | 'ok'; lignes: number }[] = [];
+  const cles: Cles = { apiKey: creds.apiKey, websiteKey: creds.apiSecret };
+  const out: { acces: string; statut: number | 'ok'; lignes: number }[] = [];
   for (const acces of ACCES) {
-    for (const chemin of CHEMINS_LOGEMENTS) {
-      try {
-        const lignes = unwrap(await appel(acces, chemin, creds.apiKey, {}));
-        out.push({ acces: acces.nom, chemin, statut: 'ok', lignes: lignes.length });
-      } catch (e) {
-        out.push({ acces: acces.nom, chemin, statut: (e as { httpStatus?: number }).httpStatus ?? 0, lignes: 0 });
-      }
+    try {
+      const lignes = unwrap(await appel(acces, CHEMINS_LOGEMENTS[0], cles, {}));
+      out.push({ acces: acces.nom, statut: 'ok', lignes: lignes.length });
+    } catch (e) {
+      out.push({ acces: acces.nom, statut: (e as { httpStatus?: number }).httpStatus ?? 0, lignes: 0 });
     }
   }
-  // Ce qui a répondu d'abord : c'est la seule ligne qu'on lira vraiment.
-  return out.sort((a, b) => (b.lignes - a.lignes) || (a.statut === 'ok' ? -1 : 1));
+  return out;
 }

@@ -205,8 +205,14 @@ export const PMS_LIST: PmsDefinition[] = [
     // portaient que sur la forme POST + clé dans le corps : l'en-tête n'avait
     // jamais été essayé. Le connecteur sonde les deux et retient ce qui répond.
     api: {
-      fields: [{ name: 'apiKey', label: 'SH apiKey' }],
-      help: 'SuperHote → Paramètres Utilisateur → SH apiKey.',
+      // Les deux clés que SuperHote affiche côte à côte. La seconde est
+      // facultative : rien ne dit que la lecture l'exige, mais l'éditeur en
+      // délivre deux et il serait absurde de n'en essayer qu'une.
+      fields: [
+        { name: 'apiKey', label: 'SH apiKey' },
+        { name: 'apiSecret', label: 'Website key' },
+      ],
+      help: 'SuperHote → Paramètres Utilisateur : SH apiKey, et Website key juste en dessous.',
       verified: false,
     },
   },
