@@ -200,21 +200,19 @@ export const PMS_LIST: PmsDefinition[] = [
     kind: 'pms',
     hosts: [/(^|\.)superhote\.com$/i],
     icalHelp: 'Superhote → Logement → Synchronisation → lien iCal.',
-    // Le nom « SH apiKey » désigne un EN-TÊTE, donc probablement une API de
-    // lecture distincte du moteur de réservation. Les 404 du 30/09/2026 ne
-    // portaient que sur la forme POST + clé dans le corps : l'en-tête n'avait
-    // jamais été essayé. Le connecteur sonde les deux et retient ce qui répond.
-    api: {
-      // Les deux clés que SuperHote affiche côte à côte. La seconde est
-      // facultative : rien ne dit que la lecture l'exige, mais l'éditeur en
-      // délivre deux et il serait absurde de n'en essayer qu'une.
-      fields: [
-        { name: 'apiKey', label: 'SH apiKey' },
-        { name: 'apiSecret', label: 'Website key' },
-      ],
-      help: 'SuperHote → Paramètres Utilisateur : SH apiKey, et Website key juste en dessous.',
-      verified: false,
-    },
+    // ÉTABLI le 01/10/2026 en lisant leur propre application (bundle public
+    // `app.superhote.com/static/js/app.*.js`), après deux jours d'essais :
+    //   · leur API est bien `//app.superhote.com/api/v2` ;
+    //   · les endpoints de lecture existent — `/rentals`, `/bookings` ;
+    //   · mais ils s'authentifient par un JETON obtenu via `/user/login`
+    //     (`Authorization: Bearer <jwt>`, gardé en `id_token`), PAS par une
+    //     clé d'API : un 401 y déclenche une déconnexion.
+    // La « SH apiKey » sert aux intégrations externes, le « Website key » au
+    // moteur de réservation ; ni l'une ni l'autre n'ouvre /rentals. Y accéder
+    // supposerait de stocker le mot de passe SuperHote du client et de passer
+    // sa double authentification : on ne le fera pas.
+    // NE PAS réécrire de connecteur par clé — la réponse est dans leur code.
+    api: false,
   },
   {
     id: 'amenitiz',

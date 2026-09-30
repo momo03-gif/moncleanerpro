@@ -75,15 +75,14 @@ describe('Registre des logiciels de gestion', () => {
       const api = findPms(id)!.api;
       expect(api !== false && api.verified).toBe(false);
     }
-    // SuperHote : proposé, annoncé NON CONFIRMÉ. Les 404 du 30/09/2026 ne
-    // portaient que sur la forme POST + clé dans le corps ; l'en-tête que le
-    // nom « SH apiKey » désigne n'avait jamais été essayé. Le connecteur sonde.
-    expect(supportsApi('superhote')).toBe(true);
-    const sh = findPms('superhote')!.api;
-    expect(sh !== false && sh.verified).toBe(false);
+    // SuperHote : ÉTABLI en lisant son application publique. Ses endpoints de
+    // lecture (/rentals, /bookings) s'authentifient par un jeton de CONNEXION,
+    // pas par une clé d'API — aucune clé du client ne les ouvre. L'annoncer
+    // autrement ferait reperdre deux jours au suivant.
+    expect(supportsApi('superhote')).toBe(false);
 
-    // Ceux-là n'ont aucune voie API praticable (OAuth partenaire, SOAP, ou
-    // accès fermé) : l'iCal reste la seule réponse honnête.
+    // Ceux-là n'ont aucune voie API praticable (jeton de session, OAuth
+    // partenaire, SOAP, ou accès fermé).
     expect(supportsApi('amenitiz')).toBe(false);
     expect(supportsApi('avantio')).toBe(false);
   });

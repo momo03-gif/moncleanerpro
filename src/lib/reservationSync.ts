@@ -19,7 +19,6 @@ import {
   type Occupation, type OccupationSituee, type SejourVendu,
 } from './reservationDedupe';
 import { fetchSmoobuReservations } from './pms/smoobu';
-import { fetchSuperhoteReservations } from './pms/superhote';
 import { fetchHostawayReservations } from './pms/hostaway';
 import { fetchBeds24Reservations } from './pms/beds24';
 import { fetchLodgifyReservations } from './pms/lodgify';
@@ -190,7 +189,6 @@ const PMS_FETCHERS: Record<string, PmsFetcher> = {
   hostaway: fetchHostawayReservations,
   beds24: fetchBeds24Reservations,
   lodgify: fetchLodgifyReservations,
-  superhote: fetchSuperhoteReservations,
   // Connecteurs déclaratifs : même socle pour tous (cf. pms/catalog.ts). Ajouter
   // un éditeur n'exige plus de toucher à ce fichier.
   ...Object.fromEntries(

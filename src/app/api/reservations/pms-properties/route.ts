@@ -3,7 +3,6 @@ import { exigerAdmin } from '@/lib/apiGuard';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { PMS_LISTERS } from '@/lib/pms/catalog';
 import { diagnoseLodgify } from '@/lib/pms/lodgify';
-import { diagnoseSuperhote } from '@/lib/pms/superhote';
 
 export const runtime = 'nodejs';
 
@@ -50,12 +49,6 @@ export async function POST(req: NextRequest) {
     // quelle forme. On ne rend jamais les valeurs — une réservation porte le
     // nom et le contact du voyageur de notre client.
     if (body.diagnostic) {
-      if (feed.platform === 'superhote') {
-        const d = await diagnoseSuperhote({
-          apiKey: feed.api_key, apiSecret: feed.api_secret ?? undefined,
-        });
-        return NextResponse.json({ ok: true, diagnostic: d });
-      }
       if (feed.platform !== 'lodgify') {
         return NextResponse.json({ error: `Diagnostic non écrit pour ${feed.platform}.` }, { status: 400 });
       }
