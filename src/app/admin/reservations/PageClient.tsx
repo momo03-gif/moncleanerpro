@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getAirbnbs, getAllReservations, getAllReservationFeeds } from '@/lib/db';
+import { getAirbnbs, getAllReservations, getAllReservationFeeds, getPartnerAccountsDB } from '@/lib/db';
+import type { PartnerAccount } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
 // Nom des plateformes : lu dans le registre, pour que l'admin et l'espace
@@ -56,6 +57,48 @@ export default function AdminReservationsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [syncFailed, setSyncFailed] = useState(false);
+  const [partenaires, setPartenaires] = useState<PartnerAccount[]>([]);
+  // URL de réception d'un partenaire, demandée à la volée : le secret ne vit
+  // qu'en base, on ne le charge pas avec la page.
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [recus, setRecus] = useState<{ source: string; resultat: string; note?: string; recuLe: string; champs: string[] }[] | null>(null);
+
+  // Copie d'un texte, avec repli quand le navigateur refuse le presse-papiers
+  // (mobile, HTTP) : l'URL reste sélectionnable au doigt dans tous les cas.
+  async function copyField(quoi: string, valeur: string) {
+    try {
+      await navigator.clipboard.writeText(valeur);
+      setSyncFailed(false); setSyncMsg(`${quoi} copiée.`);
+    } catch {
+      setSyncFailed(true); setSyncMsg('Copie impossible — sélectionnez le texte.');
+    }
+  }
+
+  async function urlReception(partnerId: string) {
+    if (urls[partnerId]) { setUrls(u => { const n = { ...u }; delete n[partnerId]; return n; }); return; }
+    try {
+      const res = await fetch('/api/reservations/webhook-admin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'abonnement', partnerId, source: 'superhote' }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setUrls(u => ({ ...u, [partnerId]: d.ok
+        ? `${window.location.origin}/api/reservations/webhook/${d.secret}`
+        : (d.error ?? 'Génération impossible.') }));
+    } catch { setUrls(u => ({ ...u, [partnerId]: 'Génération impossible.' })); }
+  }
+
+  async function voirRecus() {
+    if (recus) { setRecus(null); return; }
+    try {
+      const res = await fetch('/api/reservations/webhook-admin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'evenements' }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setRecus(d.ok ? d.evenements : []);
+    } catch { setRecus([]); }
+  }
   const [forcage, setForcage] = useState<string | null>(null);
   // Ce que la plateforme a réellement envoyé pour une ligne. Une réservation
   // qui paraît fausse ne se diagnostique qu'en regardant la donnée brute ;
@@ -140,7 +183,10 @@ export default function AdminReservationsPage() {
   }
 
   const load = useCallback(async () => {
-    const [a, r, f] = await Promise.all([getAirbnbs(), getAllReservations(), getAllReservationFeeds()]);
+    const [a, r, f, p] = await Promise.all([
+      getAirbnbs(), getAllReservations(), getAllReservationFeeds(), getPartnerAccountsDB(),
+    ]);
+    setPartenaires(p.filter(x => x.kind === 'airbnb' && !!x.userId));
     setApartments(a); setReservations(r); setFeeds(f);
     setLoading(false);
   }, []);
@@ -356,6 +402,66 @@ export default function AdminReservationsPage() {
               </p>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Réception directe (webhook) ──────────────────────────────────────
+          Le logiciel du client nous appelle à la seconde où un voyageur
+          réserve, et il ANNONCE que c'est une réservation — ce qu'un lien iCal
+          ne dit jamais. Aucune clé à stocker : l'URL secrète suffit. */}
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Réception directe</h2>
+        <button onClick={voirRecus} className="text-[11px] underline" style={{ color: '#A8A09A' }}>
+          {recus ? 'masquer' : 'évènements reçus'}
+        </button>
+      </div>
+      <div className="rounded-2xl border overflow-hidden mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
+        {partenaires.length === 0 ? (
+          <p className="text-sm px-4 py-6 text-center" style={{ color: '#A8A09A' }}>Aucune conciergerie.</p>
+        ) : partenaires.map(p => (
+          <div key={p.id} className="px-4 py-3 border-b last:border-0" style={{ borderColor: '#F2EFE9' }}>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{p.name}</span>
+              <span className="flex-1" />
+              <button onClick={() => urlReception(p.userId!)}
+                className="text-[11px] underline" style={{ color: '#A8A09A' }}>
+                {urls[p.userId!] ? 'masquer' : 'son URL de réception'}
+              </button>
+            </div>
+            {urls[p.userId!] && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] flex-1 min-w-[220px] break-all select-all font-medium" style={{ color: '#1A1A1A' }}>
+                  {urls[p.userId!]}
+                </span>
+                <button onClick={() => copyField('URL de réception', urls[p.userId!])}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border inline-flex items-center gap-1.5"
+                  style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+                  <Icon name="copy" size={13} /> Copier
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {recus && (
+        <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
+          <p className="text-xs font-semibold mb-2" style={{ color: '#1A1A1A' }}>20 derniers évènements reçus</p>
+          {recus.length === 0 ? (
+            <p className="text-xs" style={{ color: '#A8A09A' }}>
+              Rien encore. Dès que le logiciel du client appellera, la forme de son message s’affichera ici.
+            </p>
+          ) : (
+            <div className="grid gap-1.5">
+              {recus.map((e, i) => (
+                <p key={i} className="text-[11px]" style={{ color: e.resultat === 'rattache' ? '#5A8A6A' : '#B85A50' }}>
+                  <span className="font-semibold">{e.source} · {e.resultat}</span>
+                  {e.note ? ` — ${e.note}` : ''}
+                  {e.champs.length ? <span style={{ color: '#A8A09A' }}> · champs : {e.champs.join(', ')}</span> : null}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
