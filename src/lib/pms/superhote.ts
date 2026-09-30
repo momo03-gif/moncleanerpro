@@ -107,16 +107,58 @@ async function premierQuiRepond(
   return { chemin: chemins[chemins.length - 1], lignes: [] };
 }
 
+/**
+ * La clé et l'adresse répondent-elles ? `get-availabilities` est le seul
+ * endpoint que SuperHote publie : il sert de TÉMOIN.
+ *
+ * Sans lui, un 404 sur nos chemins de lecture est illisible — il peut vouloir
+ * dire « ces noms n'existent pas », « cette clé n'a pas les droits » ou « cette
+ * adresse n'est pas la bonne », et ces trois-là n'appellent pas du tout la même
+ * correction. La leçon vient de Lodgify : un repli qui ne finit pas par un
+ * appel connu ne fait qu'échouer autrement.
+ */
+async function leTemoinRepond(creds: SuperhoteCredentials): Promise<boolean> {
+  const demain = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const apres = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  try {
+    await post<unknown>('/get-availabilities', {
+      api_key: creds.apiKey, start_date: demain, end_date: apres,
+      nbr_adults: 1, nbr_children: 0,
+    });
+    return true;
+  } catch (e) {
+    // Une clé refusée est une réponse en soi : l'endpoint existe bien.
+    return (e as Error).message === 'Clé SuperHote refusée.';
+  }
+}
+
 export interface SuperhoteProperty { id: string; name: string }
 
 /** Logements du compte — sert à relier « notre » logement au sien. */
 export async function listSuperhoteProperties(
   creds: SuperhoteCredentials,
 ): Promise<SuperhoteProperty[]> {
-  const { lignes } = await premierQuiRepond(
-    ['/get-properties', '/get-accommodations', '/get-logements', '/properties', '/get-rentals'],
-    { api_key: creds.apiKey },
-  );
+  let lignes: Record<string, unknown>[];
+  try {
+    ({ lignes } = await premierQuiRepond(
+      ['/get-properties', '/get-accommodations', '/get-logements', '/properties',
+       '/get-rentals', '/get-listings', '/get-apartments', '/get-property-list'],
+      { api_key: creds.apiKey },
+    ));
+  } catch (e) {
+    // Aucun de nos chemins n'a répondu : reste à savoir si le problème vient
+    // d'eux ou de la clé. Le témoin tranche, et le message le dit clairement —
+    // « SuperHote a répondu 404 » n'aide personne à décider quoi faire.
+    if (await leTemoinRepond(creds)) {
+      throw new Error(
+        'La clé et l’adresse de SuperHote sont bonnes, mais aucun de nos chemins de '
+        + 'lecture n’existe chez eux. Il nous faut le nom exact de l’endpoint qui liste '
+        + 'les logements, depuis leur documentation (espace client SuperHote). '
+        + 'En attendant, le lien iCal fonctionne.',
+      );
+    }
+    throw e;
+  }
 
   return lignes
     .map(p => ({
