@@ -69,7 +69,10 @@ REVOKE ALL ON webhook_subscriptions FROM anon, authenticated;
 
 -- Purge : un évènement de plus de 30 jours n'a plus de valeur de diagnostic, et
 -- il porte des données de voyageurs. À appeler depuis le cron existant.
+-- ⚠️ Délimiteur NOMMÉ (`$func$`) et non `$$` : l'éditeur SQL de Supabase coupe
+-- le script sur `$$` et le corps de la fonction repart alors comme une requête
+-- de premier niveau — « syntax error at or near DELETE ».
 CREATE OR REPLACE FUNCTION purge_webhook_events() RETURNS void
-LANGUAGE sql AS $$
+LANGUAGE sql AS $func$
   DELETE FROM webhook_events WHERE created_at < NOW() - INTERVAL '30 days';
-$$;
+$func$;
