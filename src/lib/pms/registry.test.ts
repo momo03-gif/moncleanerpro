@@ -75,14 +75,15 @@ describe('Registre des logiciels de gestion', () => {
       const api = findPms(id)!.api;
       expect(api !== false && api.verified).toBe(false);
     }
-    // SuperHote : VÉRIFIÉ sur un vrai compte le 30/09/2026. Ses identifiants
-    // (« SH apiKey », « Website key ») servent à embarquer son moteur de
-    // réservation, pas à lire un planning — huit chemins de lecture, tous en
-    // 404. L'iCal reste la seule voie, et l'annoncer autrement ferait perdre
-    // une journée au suivant.
-    // Ceux-là n'ont aucune voie API praticable (moteur de vente seul, OAuth
-    // partenaire, SOAP, ou accès fermé) : l'iCal reste la seule réponse honnête.
-    expect(supportsApi('superhote')).toBe(false);
+    // SuperHote : proposé, annoncé NON CONFIRMÉ. Les 404 du 30/09/2026 ne
+    // portaient que sur la forme POST + clé dans le corps ; l'en-tête que le
+    // nom « SH apiKey » désigne n'avait jamais été essayé. Le connecteur sonde.
+    expect(supportsApi('superhote')).toBe(true);
+    const sh = findPms('superhote')!.api;
+    expect(sh !== false && sh.verified).toBe(false);
+
+    // Ceux-là n'ont aucune voie API praticable (OAuth partenaire, SOAP, ou
+    // accès fermé) : l'iCal reste la seule réponse honnête.
     expect(supportsApi('amenitiz')).toBe(false);
     expect(supportsApi('avantio')).toBe(false);
   });
@@ -90,14 +91,17 @@ describe('Registre des logiciels de gestion', () => {
   it('dit la vérité sur ce qui est confirmé, et l’aligne sur les descripteurs', async () => {
     // Le registre est lu par le navigateur, le catalogue par le serveur. Les deux
     // portent le drapeau « confirmé » : s'ils divergent, l'écran ment.
-    const { REST_CONNECTORS } = await import('./catalog');
+    const { REST_CONNECTORS, isUnverifiedPms } = await import('./catalog');
     for (const pms of pmsWithApi()) {
       if (pms.api === false) continue;
       const connector = REST_CONNECTORS[pms.id];
       if (!connector) {
-        // Connecteur dédié (Smoobu, Hostaway, Beds24, Lodgify) : écrit contre la
-        // documentation de l'éditeur, donc confirmé par construction.
-        expect(pms.api.verified ?? true).toBe(true);
+        // Connecteur dédié. La plupart sont confirmés sur un vrai compte, mais
+        // pas tous : SuperHote est écrit sans documentation accessible. Ce qui
+        // compte est que le registre (lu par le navigateur) et le catalogue (lu
+        // par le serveur) disent LA MÊME CHOSE — sinon l'écran ment au client
+        // sur la fiabilité de ce qu'il branche.
+        expect(pms.api.verified ?? true).toBe(!isUnverifiedPms(pms.id));
         continue;
       }
       expect(pms.api.verified).toBe(connector.descriptor.verified);
