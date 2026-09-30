@@ -60,7 +60,15 @@ export async function POST(req: NextRequest) {
         try {
           const sejours = await fetchSuperhoteReservations({ apiKey }, l.id, { from: aujourdhui, to: horizon });
           const suivant = sejours.sort((a, b) => a.start.localeCompare(b.start))[0];
-          if (suivant) prochaine = `${suivant.start} → ${suivant.end}`;
+          // Une date ISO brute ne se lit pas d'un coup d'œil dans un tableau,
+          // et un séjour DÉJÀ COMMENCÉ affichait une date passée qui laissait
+          // croire à une donnée fausse. On dit ce qui se passe, en clair.
+          if (suivant) {
+            const court = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+            prochaine = suivant.start <= aujourdhui
+              ? `occupé jusqu'au ${court(suivant.end)}`
+              : `occupé du ${court(suivant.start)} au ${court(suivant.end)}`;
+          }
         } catch { /* un logement muet reste listé, sans repère */ }
         enrichis.push({ ...l, prochaine, dejaConnecte: deja.has(l.id) });
       }

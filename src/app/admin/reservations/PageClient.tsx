@@ -500,8 +500,8 @@ export default function AdminReservationsPage() {
                           return n;
                         })} />
                       <span className="text-xs font-medium w-24" style={{ color: '#1A1A1A' }}>nº {l.id}</span>
-                      <span className="text-[11px] w-44" style={{ color: '#A8A09A' }}>
-                        {l.dejaConnecte ? 'déjà connecté' : l.prochaine ? `occupé ${l.prochaine}` : 'aucune période à venir'}
+                      <span className="text-[11px] w-48 shrink-0" style={{ color: '#A8A09A' }}>
+                        {l.dejaConnecte ? 'déjà connecté' : l.prochaine ?? 'aucune période à venir'}
                       </span>
                       {coche && (
                         <>
