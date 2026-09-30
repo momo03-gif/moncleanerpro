@@ -200,19 +200,18 @@ export const PMS_LIST: PmsDefinition[] = [
     kind: 'pms',
     hosts: [/(^|\.)superhote\.com$/i],
     icalHelp: 'Superhote → Logement → Synchronisation → lien iCal.',
-    // ÉTABLI le 01/10/2026 en lisant leur propre application (bundle public
-    // `app.superhote.com/static/js/app.*.js`), après deux jours d'essais :
-    //   · leur API est bien `//app.superhote.com/api/v2` ;
-    //   · les endpoints de lecture existent — `/rentals`, `/bookings` ;
-    //   · mais ils s'authentifient par un JETON obtenu via `/user/login`
-    //     (`Authorization: Bearer <jwt>`, gardé en `id_token`), PAS par une
-    //     clé d'API : un 401 y déclenche une déconnexion.
-    // La « SH apiKey » sert aux intégrations externes, le « Website key » au
-    // moteur de réservation ; ni l'une ni l'autre n'ouvre /rentals. Y accéder
-    // supposerait de stocker le mot de passe SuperHote du client et de passer
-    // sa double authentification : on ne le fera pas.
-    // NE PAS réécrire de connecteur par clé — la réponse est dans leur code.
-    api: false,
+    // ÉTABLI le 01/10/2026 en lisant le bundle public de leur application.
+    // Leur API applicative (`/rentals`, `/bookings`) s'authentifie par un JETON
+    // DE CONNEXION : aucune clé client ne l'ouvre, inutile de réessayer.
+    // Mais deux endpoints suffisent, et ils sont ouverts :
+    //   · `get-availabilities` accepte la « SH apiKey » et rend les logements ;
+    //   · `get-not-available-dates` est PUBLIC et rend leurs périodes occupées.
+    // Le connecteur n'a donc besoin que de la SH apiKey.
+    api: {
+      fields: [{ name: 'apiKey', label: 'SH apiKey' }],
+      help: 'SuperHote → Paramètres Utilisateur → SH apiKey.',
+      verified: false,
+    },
   },
   {
     id: 'amenitiz',
