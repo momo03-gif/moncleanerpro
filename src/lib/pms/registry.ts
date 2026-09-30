@@ -200,10 +200,14 @@ export const PMS_LIST: PmsDefinition[] = [
     kind: 'pms',
     hosts: [/(^|\.)superhote\.com$/i],
     icalHelp: 'Superhote → Logement → Synchronisation → lien iCal.',
-    api: {
-      fields: [{ name: 'apiKey', label: 'Clé API' }],
-      help: 'SuperHote → Paramètres → API. La clé appartient au compte de la conciergerie.',
-    },
+    // VÉRIFIÉ le 30/09/2026 sur un vrai compte (conciergerie de 14 logements) :
+    // les identifiants que SuperHote délivre — « SH apiKey » et « Website key »,
+    // dans Paramètres Utilisateur — servent à EMBARQUER leur moteur de
+    // réservation dans un site web. Ils ne donnent aucune lecture : leur API
+    // publique couvre les disponibilités et la CRÉATION de séjours, plus des
+    // webhooks sortants. Huit chemins de lecture essayés, tous en 404.
+    // Ne pas réécrire de connecteur ici sans un endpoint de lecture documenté.
+    api: false,
   },
   {
     id: 'amenitiz',
