@@ -40,6 +40,27 @@ export interface SuperhoteCredentials {
   apiSecret?: string;   // inutilisé — même forme que les autres connecteurs
 }
 
+/**
+ * Le message de SuperHote, extrait de sa réponse d'erreur.
+ *
+ * Il l'écrit en clair (`{"msg":{"api_key":["The selected api key is invalid."]}}`)
+ * et c'est exactement ce que l'exploitant a besoin de lire : « 400 » tout seul
+ * l'envoie chercher pendant une heure ce qu'une phrase lui aurait dit.
+ */
+function detail(texte: string): string {
+  try {
+    const msg = (JSON.parse(texte) as { msg?: unknown }).msg;
+    if (typeof msg === 'string') return ` — ${msg}`;
+    if (msg && typeof msg === 'object') {
+      const lignes = Object.values(msg as Record<string, unknown>)
+        .flatMap(v => (Array.isArray(v) ? v : [v]))
+        .filter(v => typeof v === 'string');
+      if (lignes.length) return ` — ${lignes.join(' ')}`;
+    }
+  } catch { /* pas du JSON : on s'en tient au code */ }
+  return '.';
+}
+
 async function post<T>(chemin: string, corps: Record<string, unknown>): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -50,11 +71,16 @@ async function post<T>(chemin: string, corps: Record<string, unknown>): Promise<
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(corps),
     });
+    // SuperHote explique ses refus dans le corps de la réponse — « The selected
+    // api key is invalid », par exemple. Ne rendre que le code HTTP oblige à
+    // deviner ce qui, chez eux, est écrit noir sur blanc.
+    const texte = await res.text();
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) throw new Error('Clé SuperHote refusée.');
-      throw new Error(`SuperHote a répondu ${res.status}.`);
+      throw new Error(`SuperHote a répondu ${res.status}${detail(texte)}`);
     }
-    return (await res.json()) as T;
+    try { return JSON.parse(texte) as T; }
+    catch { throw new Error('SuperHote a renvoyé une réponse illisible.'); }
   } finally {
     clearTimeout(timer);
   }
@@ -86,6 +112,12 @@ export async function listSuperhoteProperties(
     '/get-availabilities',
     { api_key: creds.apiKey, start_date: jour(demain), end_date: jour(apres), nbr_adults: 1, nbr_children: 0 },
   );
+
+  if (data.status === 'error') {
+    throw new Error('SuperHote a refusé cette clé. Vérifiez qu’il s’agit bien de la '
+      + '« SH apiKey » (Paramètres Utilisateur) et non de la « Website key », '
+      + 'et qu’elle n’a pas été régénérée depuis.');
+  }
 
   const restrictions = data.restrictions ?? {};
   const ids = Object.keys(restrictions);
