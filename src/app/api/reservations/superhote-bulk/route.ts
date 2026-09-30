@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     action?: 'lister' | 'connecter';
     partnerId?: string;
     apiKey?: string;
-    choix?: { rentalId: string; nom: string }[];
+    // `airbnbId` = rattacher à un logement EXISTANT. Sans lui, on en crée un.
+    choix?: { rentalId: string; nom: string; airbnbId?: string }[];
   } = {};
   try { body = await req.json(); } catch { /* corps vide → refusé plus bas */ }
 
@@ -89,16 +90,31 @@ export async function POST(req: NextRequest) {
         .eq('external_property_id', rentalId).maybeSingle();
       if (existant) { rates.push(`${nom} : déjà connecté`); continue; }
 
-      const { data: apt, error: errApt } = await db.from('airbnbs').insert({
-        name: nom,
-        address: '',
-        partner_id: partnerId,
-        partner_name: partenaire?.name ?? null,
-      }).select('id').single();
-      if (errApt || !apt) { rates.push(`${nom} : ${errApt?.message ?? 'création impossible'}`); continue; }
+      // Le plus souvent, le logement existe DÉJÀ chez nous : c'est un bien
+      // qu'on nettoie depuis des mois. En créer un second le dédoublerait dans
+      // le planning, et les ménages se répartiraient entre les deux.
+      let airbnbId = (c.airbnbId ?? '').trim();
+
+      if (airbnbId) {
+        const { data: verif } = await db.from('airbnbs')
+          .select('id, partner_id').eq('id', airbnbId).maybeSingle();
+        if (!verif || verif.partner_id !== partnerId) {
+          rates.push(`${nom} : ce logement n'appartient pas à cette conciergerie`);
+          continue;
+        }
+      } else {
+        const { data: apt, error: errApt } = await db.from('airbnbs').insert({
+          name: nom,
+          address: '',
+          partner_id: partnerId,
+          partner_name: partenaire?.name ?? null,
+        }).select('id').single();
+        if (errApt || !apt) { rates.push(`${nom} : ${errApt?.message ?? 'création impossible'}`); continue; }
+        airbnbId = apt.id;
+      }
 
       const { error: errFeed } = await db.from('reservation_feeds').insert({
-        airbnb_id: apt.id,
+        airbnb_id: airbnbId,
         partner_id: partnerId,
         platform: 'superhote',
         connection_kind: 'api',

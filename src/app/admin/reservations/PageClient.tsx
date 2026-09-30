@@ -73,7 +73,10 @@ export default function AdminReservationsPage() {
   const [shPour, setShPour] = useState<PartnerAccount | null>(null);
   const [shCle, setShCle] = useState('');
   const [shListe, setShListe] = useState<{ id: string; name: string; prochaine: string | null; dejaConnecte: boolean }[] | null>(null);
-  const [shChoix, setShChoix] = useState<Record<string, string>>({});
+  // Par logement SuperHote coché : le logement de CHEZ NOUS auquel le
+  // rattacher. Vide = en créer un nouveau. Le rattachement est le cas normal —
+  // ces biens sont nettoyés depuis des mois, ils existent déjà.
+  const [shChoix, setShChoix] = useState<Record<string, { nom: string; airbnbId: string }>>({});
   const [shBusy, setShBusy] = useState(false);
 
   async function shLister() {
@@ -93,7 +96,8 @@ export default function AdminReservationsPage() {
 
   async function shConnecter() {
     if (!shPour?.userId) return;
-    const choix = Object.entries(shChoix).map(([rentalId, nom]) => ({ rentalId, nom }));
+    const choix = Object.entries(shChoix)
+      .map(([rentalId, v]) => ({ rentalId, nom: v.nom, airbnbId: v.airbnbId }));
     if (choix.length === 0) return;
     setShBusy(true);
     try {
@@ -464,8 +468,9 @@ export default function AdminReservationsPage() {
         <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
           <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>SuperHote — {shPour.name}</p>
           <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>
-            SuperHote ne donne pas le nom de ses logements, seulement des numéros. La prochaine période
-            occupée est affichée pour vous aider à les reconnaître.
+            SuperHote ne donne pas le nom de ses logements, seulement des numéros — sa prochaine période
+            occupée est affichée pour aider à le reconnaître. Rattachez-le à un logement que vous avez
+            déjà : en créer un second dédoublerait le planning.
           </p>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -491,7 +496,7 @@ export default function AdminReservationsPage() {
                       <input type="checkbox" disabled={l.dejaConnecte} checked={coche}
                         onChange={e => setShChoix(c => {
                           const n = { ...c };
-                          if (e.target.checked) n[l.id] = l.name; else delete n[l.id];
+                          if (e.target.checked) n[l.id] = { nom: l.name, airbnbId: '' }; else delete n[l.id];
                           return n;
                         })} />
                       <span className="text-xs font-medium w-24" style={{ color: '#1A1A1A' }}>nº {l.id}</span>
@@ -499,9 +504,22 @@ export default function AdminReservationsPage() {
                         {l.dejaConnecte ? 'déjà connecté' : l.prochaine ? `occupé ${l.prochaine}` : 'aucune période à venir'}
                       </span>
                       {coche && (
-                        <input value={shChoix[l.id]} onChange={e => setShChoix(c => ({ ...c, [l.id]: e.target.value }))}
-                          placeholder="Nom du logement chez vous"
-                          className="flex-1 min-w-[180px] px-2 py-1 rounded-lg text-xs border" style={inputStyle} />
+                        <>
+                          <select value={shChoix[l.id].airbnbId}
+                            onChange={e => setShChoix(c => ({ ...c, [l.id]: { ...c[l.id], airbnbId: e.target.value } }))}
+                            className="flex-1 min-w-[200px] px-2 py-1 rounded-lg text-xs border" style={inputStyle}>
+                            <option value="">— Créer un nouveau logement —</option>
+                            {apartments
+                              .filter(a => a.partnerId === shPour?.userId)
+                              .map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          </select>
+                          {!shChoix[l.id].airbnbId && (
+                            <input value={shChoix[l.id].nom}
+                              onChange={e => setShChoix(c => ({ ...c, [l.id]: { ...c[l.id], nom: e.target.value } }))}
+                              placeholder="Nom du nouveau logement"
+                              className="min-w-[160px] px-2 py-1 rounded-lg text-xs border" style={inputStyle} />
+                          )}
+                        </>
                       )}
                     </div>
                   );
