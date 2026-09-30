@@ -11,6 +11,7 @@ import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
 import { chevauchements, occupationsReelles } from '@/lib/reservationDedupe';
 import Loading from "@/components/Loading";
+import ConnectWizard from '@/app/airbnb/sync/ConnectWizard';
 
 const RES_STATUS: Record<string, { label: string; color: string; bg: string }> = {
   confirmed: { label: 'Confirmée', color: '#5A8A6A', bg: '#5A8A6A15' },
@@ -58,6 +59,11 @@ export default function AdminReservationsPage() {
   const [syncMsg, setSyncMsg] = useState('');
   const [syncFailed, setSyncFailed] = useState(false);
   const [partenaires, setPartenaires] = useState<PartnerAccount[]>([]);
+  // Connecter un calendrier POUR un partenaire. L'assistant vivait seulement
+  // dans l'espace de la conciergerie — or beaucoup ne savent pas s'en servir,
+  // et c'est l'exploitant qui branche à leur place. Les routes l'autorisaient
+  // déjà (canManageFeed laisse passer un admin) : il ne manquait que l'écran.
+  const [connecterPour, setConnecterPour] = useState<PartnerAccount | null>(null);
   // URL de réception d'un partenaire, demandée à la volée : le secret ne vit
   // qu'en base, on ne le charge pas avec la page.
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -405,6 +411,23 @@ export default function AdminReservationsPage() {
         </div>
       )}
 
+      {/* ── Connecter un calendrier pour une conciergerie ───────────────────── */}
+      {connecterPour && (
+        <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
+          <p className="text-sm font-semibold mb-3" style={{ color: '#1A1A1A' }}>
+            Connecter un calendrier pour {connecterPour.name}
+          </p>
+          <ConnectWizard
+            apartments={apartments.filter(a => a.partnerId === connecterPour.userId)}
+            feeds={feeds.filter(f => f.partnerId === connecterPour.userId)}
+            partnerId={connecterPour.userId!}
+            partnerName={connecterPour.name}
+            onDone={() => { setConnecterPour(null); load(); }}
+            onCancel={() => setConnecterPour(null)}
+          />
+        </div>
+      )}
+
       {/* ── Réception directe (webhook) ──────────────────────────────────────
           Le logiciel du client nous appelle à la seconde où un voyageur
           réserve, et il ANNONCE que c'est une réservation — ce qu'un lien iCal
@@ -423,6 +446,11 @@ export default function AdminReservationsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{p.name}</span>
               <span className="flex-1" />
+              <button onClick={() => setConnecterPour(p)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                style={{ borderColor: '#C9A84C', color: '#1A1A1A' }}>
+                Connecter un calendrier
+              </button>
               <button onClick={() => urlReception(p.userId!)}
                 className="text-[11px] underline" style={{ color: '#A8A09A' }}>
                 {urls[p.userId!] ? 'masquer' : 'son URL de réception'}
