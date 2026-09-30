@@ -55,12 +55,26 @@ const ACCES: Acces[] = [
   { nom: 'app/api/v2 · clé en query', base: APP, methode: 'GET', params: c => ({ api_key: c.apiKey }) },
   { nom: 'app/api/v2 · couple de clés en query', base: APP, methode: 'GET',
     params: c => ({ api_key: c.apiKey, ...(c.websiteKey ? { website_key: c.websiteKey } : {}) }) },
+  // Les endpoints du moteur de réservation s'adressent à un SITE, pas à un
+  // compte : c'est la Website key qu'ils attendent, seule.
+  { nom: 'app/api/v2 · website_key seule (GET)', base: APP, methode: 'GET',
+    params: (c): Record<string, string> => (c.websiteKey ? { website_key: c.websiteKey } : { api_key: c.apiKey }) },
+  { nom: 'app/api/v2 · website_key seule (POST)', base: APP, methode: 'POST',
+    params: (c): Record<string, string> => (c.websiteKey ? { website_key: c.websiteKey } : { api_key: c.apiKey }) },
   { nom: 'app/api/v2 · couple de clés (POST)', base: APP, methode: 'POST',
     params: c => ({ api_key: c.apiKey, ...(c.websiteKey ? { website_key: c.websiteKey } : {}) }) },
   { nom: 'app/api/v2 · clé dans le corps (POST)', base: APP, methode: 'POST', params: c => ({ api_key: c.apiKey }) },
 ];
 
-const CHEMINS_LOGEMENTS = ['/properties', '/get-properties', '/rentals', '/listings', '/accommodations'];
+// Le lien du moteur de réservation d'un client se lit
+// `app.superhote.com/#/get-available-rentals/…`. Une page qui affiche des
+// logements doit bien les LISTER quelque part : ce nom de route est donc le
+// meilleur indice qu'on ait sur l'endpoint correspondant, et il vient de
+// SuperHote lui-même plutôt que de nos suppositions. On le met en tête.
+const CHEMINS_LOGEMENTS = [
+  '/get-available-rentals', '/get-rentals', '/available-rentals',
+  '/properties', '/get-properties', '/rentals', '/listings', '/accommodations',
+];
 const CHEMINS_RESERVATIONS = ['/reservations', '/get-reservations', '/bookings', '/get-bookings'];
 
 export interface SuperhoteCredentials {
