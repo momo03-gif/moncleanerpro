@@ -58,3 +58,21 @@ describe('SuperHote — périodes occupées converties en séjours', () => {
     expect(enSejours([{ startDate: '2026-05-07', endDate: '2026-05-07' }], 1, plage)).toHaveLength(0);
   });
 });
+
+describe('Fermetures longue durée — jamais des séjours', () => {
+  const nuits = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+
+  it('reconnaît le marqueur de logement inactif de SuperHote', () => {
+    // Relevé sur un vrai compte : 39 logements sur 75 portent exactement ça.
+    // Le prendre pour un séjour créerait 39 ménages fantômes le même jour.
+    expect(nuits('2010-01-01', '2026-10-01')).toBeGreaterThan(90);
+  });
+
+  it('laisse passer une location au mois, qui est un vrai séjour', () => {
+    expect(nuits('2026-10-01', '2026-10-31')).toBeLessThanOrEqual(90);
+  });
+
+  it('laisse passer un séjour ordinaire', () => {
+    expect(nuits('2026-10-06', '2026-10-09')).toBe(3);
+  });
+});

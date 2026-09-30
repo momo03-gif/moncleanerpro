@@ -72,7 +72,7 @@ export default function AdminReservationsPage() {
   // liste, on coche, on branche.
   const [shPour, setShPour] = useState<PartnerAccount | null>(null);
   const [shCle, setShCle] = useState('');
-  const [shListe, setShListe] = useState<{ id: string; name: string; prochaine: string | null; dejaConnecte: boolean }[] | null>(null);
+  const [shListe, setShListe] = useState<{ id: string; name: string; prochaine: string | null; inactif: boolean; dejaConnecte: boolean }[] | null>(null);
   // Par logement SuperHote coché : le logement de CHEZ NOUS auquel le
   // rattacher. Vide = en créer un nouveau. Le rattachement est le cas normal —
   // ces biens sont nettoyés depuis des mois, ils existent déjà.
@@ -469,8 +469,9 @@ export default function AdminReservationsPage() {
           <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>SuperHote — {shPour.name}</p>
           <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>
             SuperHote ne donne pas le nom de ses logements, seulement des numéros — sa prochaine période
-            occupée est affichée pour aider à le reconnaître. Rattachez-le à un logement que vous avez
-            déjà : en créer un second dédoublerait le planning.
+            occupée est affichée pour aider à le reconnaître, et ceux qui ne tournent plus sont signalés
+            inactifs et repoussés en bas. Rattachez chacun à un logement que vous avez déjà : en créer un
+            second dédoublerait le planning.
           </p>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -501,7 +502,9 @@ export default function AdminReservationsPage() {
                         })} />
                       <span className="text-xs font-medium w-24" style={{ color: '#1A1A1A' }}>nº {l.id}</span>
                       <span className="text-[11px] w-48 shrink-0" style={{ color: '#A8A09A' }}>
-                        {l.dejaConnecte ? 'déjà connecté' : l.prochaine ?? 'aucune période à venir'}
+                        {l.dejaConnecte ? 'déjà connecté'
+                          : l.inactif ? 'inactif — aucun séjour sur 4 mois'
+                          : l.prochaine ?? 'libre'}
                       </span>
                       {coche && (
                         <>

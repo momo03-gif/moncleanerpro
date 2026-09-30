@@ -57,8 +57,15 @@ export async function POST(req: NextRequest) {
       const enrichis = [];
       for (const l of logements) {
         let prochaine: string | null = null;
+        // Un logement sans aucun séjour à venir sur quatre mois ne tourne pas.
+        // Sur un vrai compte, 39 biens sur 75 sont dans ce cas — SuperHote les
+        // marque par un blocage « 2010-01-01 → aujourd'hui », que le connecteur
+        // écarte déjà. Les signaler évite de chercher les siens parmi des
+        // logements qui n'existent plus que dans leur base.
+        let inactif = true;
         try {
           const sejours = await fetchSuperhoteReservations({ apiKey }, l.id, { from: aujourdhui, to: horizon });
+          inactif = sejours.length === 0;
           const suivant = sejours.sort((a, b) => a.start.localeCompare(b.start))[0];
           // Une date ISO brute ne se lit pas d'un coup d'œil dans un tableau,
           // et un séjour DÉJÀ COMMENCÉ affichait une date passée qui laissait
@@ -70,10 +77,16 @@ export async function POST(req: NextRequest) {
               : `occupé du ${court(suivant.start)} au ${court(suivant.end)}`;
           }
         } catch { /* un logement muet reste listé, sans repère */ }
-        enrichis.push({ ...l, prochaine, dejaConnecte: deja.has(l.id) });
+        enrichis.push({ ...l, prochaine, inactif, dejaConnecte: deja.has(l.id) });
       }
 
-      return NextResponse.json({ ok: true, logements: enrichis });
+      // Ceux qui tournent d'abord : c'est parmi eux que sont les nôtres.
+      enrichis.sort((a, b) => Number(a.inactif) - Number(b.inactif));
+      return NextResponse.json({
+        ok: true,
+        logements: enrichis,
+        actifs: enrichis.filter(l => !l.inactif).length,
+      });
     }
 
     // ── Connecter les logements cochés ────────────────────────────────────
