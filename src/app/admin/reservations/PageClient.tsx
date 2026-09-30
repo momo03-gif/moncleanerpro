@@ -11,6 +11,7 @@ import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
 import { chevauchements, occupationsReelles } from '@/lib/reservationDedupe';
 import Loading from "@/components/Loading";
+import { inputStyle } from '@/lib/ui';
 import ConnectWizard from '@/app/airbnb/sync/ConnectWizard';
 
 const RES_STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -64,6 +65,53 @@ export default function AdminReservationsPage() {
   // et c'est l'exploitant qui branche à leur place. Les routes l'autorisaient
   // déjà (canManageFeed laisse passer un admin) : il ne manquait que l'écran.
   const [connecterPour, setConnecterPour] = useState<PartnerAccount | null>(null);
+
+  // ── Branchement SuperHote en lot ─────────────────────────────────────────
+  // Une conciergerie a quatorze biens chez nous et soixante-quinze dans son
+  // logiciel : les connecter un par un, c'est quatorze fois le meme ecran. On
+  // liste, on coche, on branche.
+  const [shPour, setShPour] = useState<PartnerAccount | null>(null);
+  const [shCle, setShCle] = useState('');
+  const [shListe, setShListe] = useState<{ id: string; name: string; prochaine: string | null; dejaConnecte: boolean }[] | null>(null);
+  const [shChoix, setShChoix] = useState<Record<string, string>>({});
+  const [shBusy, setShBusy] = useState(false);
+
+  async function shLister() {
+    if (!shPour?.userId || !shCle.trim()) return;
+    setShBusy(true); setSyncMsg('');
+    try {
+      const res = await fetch('/api/reservations/superhote-bulk', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'lister', partnerId: shPour.userId, apiKey: shCle.trim() }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (d.ok) { setShListe(d.logements); setShChoix({}); }
+      else { setSyncFailed(true); setSyncMsg(d.error ?? 'Lecture impossible.'); }
+    } catch { setSyncFailed(true); setSyncMsg('Lecture impossible.'); }
+    setShBusy(false);
+  }
+
+  async function shConnecter() {
+    if (!shPour?.userId) return;
+    const choix = Object.entries(shChoix).map(([rentalId, nom]) => ({ rentalId, nom }));
+    if (choix.length === 0) return;
+    setShBusy(true);
+    try {
+      const res = await fetch('/api/reservations/superhote-bulk', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'connecter', partnerId: shPour.userId, apiKey: shCle.trim(), choix }),
+      });
+      const d = await res.json().catch(() => ({}));
+      const rates: string[] = d.rates ?? [];
+      setSyncFailed(!d.ok || rates.length > 0);
+      setSyncMsg(d.ok
+        ? `${(d.connectes ?? []).length} logement(s) connecte(s).`
+          + (rates.length ? ` ATTENTION ${rates.join(' - ')}` : '')
+        : (d.error ?? 'Connexion impossible.'));
+      if (d.ok) { setShPour(null); setShListe(null); setShCle(''); await load(); }
+    } catch { setSyncFailed(true); setSyncMsg('Connexion impossible.'); }
+    setShBusy(false);
+  }
   // URL de réception d'un partenaire, demandée à la volée : le secret ne vit
   // qu'en base, on ne le charge pas avec la page.
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -411,6 +459,69 @@ export default function AdminReservationsPage() {
         </div>
       )}
 
+      {/* ── SuperHote : tout brancher d'un coup ──────────────────────────────── */}
+      {shPour && (
+        <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>SuperHote — {shPour.name}</p>
+          <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>
+            SuperHote ne donne pas le nom de ses logements, seulement des numéros. La prochaine période
+            occupée est affichée pour vous aider à les reconnaître.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <input value={shCle} onChange={e => setShCle(e.target.value)} placeholder="SH apiKey"
+              className="flex-1 min-w-[220px] px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+            <button disabled={shBusy || !shCle.trim()} onClick={shLister}
+              className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+              {shBusy ? 'Lecture…' : 'Lister ses logements'}
+            </button>
+            <button onClick={() => { setShPour(null); setShListe(null); }}
+              className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Fermer</button>
+          </div>
+
+          {shListe && (
+            <>
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#E8E4DC', maxHeight: 420, overflowY: 'auto' }}>
+                {shListe.map(l => {
+                  const coche = shChoix[l.id] !== undefined;
+                  return (
+                    <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b last:border-0"
+                      style={{ borderColor: '#F2EFE9', opacity: l.dejaConnecte ? 0.5 : 1 }}>
+                      <input type="checkbox" disabled={l.dejaConnecte} checked={coche}
+                        onChange={e => setShChoix(c => {
+                          const n = { ...c };
+                          if (e.target.checked) n[l.id] = l.name; else delete n[l.id];
+                          return n;
+                        })} />
+                      <span className="text-xs font-medium w-24" style={{ color: '#1A1A1A' }}>nº {l.id}</span>
+                      <span className="text-[11px] w-44" style={{ color: '#A8A09A' }}>
+                        {l.dejaConnecte ? 'déjà connecté' : l.prochaine ? `occupé ${l.prochaine}` : 'aucune période à venir'}
+                      </span>
+                      {coche && (
+                        <input value={shChoix[l.id]} onChange={e => setShChoix(c => ({ ...c, [l.id]: e.target.value }))}
+                          placeholder="Nom du logement chez vous"
+                          className="flex-1 min-w-[180px] px-2 py-1 rounded-lg text-xs border" style={inputStyle} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-3 mt-3">
+                <button disabled={shBusy || Object.keys(shChoix).length === 0} onClick={shConnecter}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  {shBusy ? 'Connexion…' : `Connecter ${Object.keys(shChoix).length} logement(s)`}
+                </button>
+                <span className="text-[11px]" style={{ color: '#A8A09A' }}>
+                  Un logement est créé chez vous pour chaque case cochée.
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── Connecter un calendrier pour une conciergerie ───────────────────── */}
       {connecterPour && (
         <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
@@ -446,10 +557,15 @@ export default function AdminReservationsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{p.name}</span>
               <span className="flex-1" />
-              <button onClick={() => setConnecterPour(p)}
+              <button onClick={() => { setShPour(p); setShListe(null); }}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
                 style={{ borderColor: '#C9A84C', color: '#1A1A1A' }}>
-                Connecter un calendrier
+                Brancher SuperHote
+              </button>
+              <button onClick={() => setConnecterPour(p)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border"
+                style={{ borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+                Autre calendrier
               </button>
               <button onClick={() => urlReception(p.userId!)}
                 className="text-[11px] underline" style={{ color: '#A8A09A' }}>
