@@ -14,6 +14,8 @@ import * as Sentry from '@sentry/nextjs';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { detectPlatform } from './icalUrl';
+import { serviceParts } from './service';
+import type { MissionService } from './types';
 import {
   departCredible, estRefletDUnSejour, nuitsAFermerAilleurs,
   type Occupation, type OccupationSituee, type SejourVendu,
@@ -571,18 +573,28 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     const { key: targetAirbnbId, date, group, deps } = bucket;
     const first = deps[0];
 
-    // Garde-fou anti-doublon : si un ménage auto existe déjà pour CE bien à CETTE
-    // date (logement avec 2 calendriers exportant le même séjour sous deux UID,
-    // ou chambres d'une même maison), on ne recrée pas — on rattache.
-    const { data: dup } = await db
+    // Garde-fou anti-doublon : un ménage existe déjà pour CE bien à CETTE date,
+    // on ne recrée pas — on rattache.
+    //
+    // Il ne regardait que les ménages AUTOMATIQUES, et c'était un trou : quand
+    // l'exploitant avait créé le passage à la main — parce que la synchro ne
+    // voyait pas encore le départ — la synchro en ajoutait un second le jour où
+    // elle le voyait enfin. Deux ménages le même jour sur le même logement,
+    // deux intervenants envoyés, et personne pour comprendre pourquoi.
+    //
+    // Un ménage à la main vaut un ménage : la journée est couverte, point. On
+    // écarte seulement les livraisons, qui ne nettoient pas (cf. serviceParts).
+    const { data: dupBrut } = await db
       .from('missions')
-      .select('id')
+      .select('id, service')
       .eq('airbnb_id', targetAirbnbId)
       .eq('date_from', date)
-      .eq('auto_synced', true)
       .neq('status', 'cancelled')
-      .limit(1);
-    if (dup && dup.length > 0) {
+      .limit(10);
+    const dup = (dupBrut ?? [])
+      .filter(m => serviceParts(m.service as MissionService | null).cleaning)
+      .slice(0, 1);
+    if (dup.length > 0) {
       for (const d of deps) {
         await db.from('reservations')
           .update({ mission_id: dup[0].id, mission_created_at: new Date().toISOString() })
