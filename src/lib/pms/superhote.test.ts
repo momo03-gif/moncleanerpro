@@ -59,20 +59,32 @@ describe('SuperHote — périodes occupées converties en séjours', () => {
   });
 });
 
-describe('Fermetures longue durée — jamais des séjours', () => {
+describe('Fermetures — reconnues à leur date de début, pas à leur durée', () => {
+  const DEBUT_ABERRANT = '2015-01-01';
+  const NUITS_MAX = 730;
   const nuits = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+  const retenu = (a: string, b: string) => a >= DEBUT_ABERRANT && nuits(a, b) <= NUITS_MAX;
 
-  it('reconnaît le marqueur de logement inactif de SuperHote', () => {
+  it('écarte le marqueur de logement inactif de SuperHote', () => {
     // Relevé sur un vrai compte : 39 logements sur 75 portent exactement ça.
-    // Le prendre pour un séjour créerait 39 ménages fantômes le même jour.
-    expect(nuits('2010-01-01', '2026-10-01')).toBeGreaterThan(90);
+    expect(retenu('2010-01-01', '2026-10-01')).toBe(false);
   });
 
-  it('laisse passer une location au mois, qui est un vrai séjour', () => {
-    expect(nuits('2026-10-01', '2026-10-31')).toBeLessThanOrEqual(90);
+  it('GARDE une longue location de 139 nuits', () => {
+    // 14 septembre → 31 janvier, cas réel. Un seuil de durée l'aurait jetée, et
+    // avec elle le ménage de fin de bail — le plus gros de l'année.
+    expect(retenu('2026-09-14', '2027-01-31')).toBe(true);
   });
 
-  it('laisse passer un séjour ordinaire', () => {
-    expect(nuits('2026-10-06', '2026-10-09')).toBe(3);
+  it('garde une location au mois', () => {
+    expect(retenu('2026-10-01', '2026-10-31')).toBe(true);
+  });
+
+  it('garde un séjour ordinaire', () => {
+    expect(retenu('2026-10-06', '2026-10-09')).toBe(true);
+  });
+
+  it('écarte tout de même une période de plus de deux ans', () => {
+    expect(retenu('2026-01-01', '2029-01-01')).toBe(false);
   });
 });

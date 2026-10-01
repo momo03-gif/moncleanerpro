@@ -134,13 +134,23 @@ export async function listSuperhoteProperties(
 /** Une période pendant laquelle le logement n'est pas disponible. */
 interface Periode { startDate?: string; endDate?: string }
 
-// Au-delà de cette durée, une période n'est plus un séjour mais une FERMETURE.
-// Relevé sur un vrai compte : 39 logements sur 75 portent un blocage
-// « 2010-01-01 → aujourd'hui » — 6 117 nuits — qui est la façon dont SuperHote
-// marque un bien inactif. Les prendre pour des séjours créerait trente-neuf
-// ménages fantômes le même jour, tous sur des logements qui ne tournent pas.
-// Trois mois laissent passer une location au mois, qui existe vraiment.
-const NUITS_MAX_SEJOUR = 90;
+// CE QUI N'EST PAS UN SÉJOUR, ET COMMENT ON LE RECONNAÎT.
+//
+// 39 logements sur 75, sur un vrai compte, portent une période
+// « 2010-01-01 → aujourd'hui » : c'est ainsi que SuperHote marque un bien
+// inactif. Prise pour un séjour, elle créerait trente-neuf ménages fantômes le
+// même jour.
+//
+// On les reconnaît à leur DATE DE DÉBUT, pas à leur durée. Un premier seuil
+// écartait tout ce qui dépassait 90 nuits — il aurait jeté une vraie location
+// de 139 nuits (14 septembre → 31 janvier) et, avec elle, le ménage de fin de
+// bail, qui est le plus gros de l'année. Une longue location est un séjour
+// comme un autre : quelqu'un en part, il faut y passer.
+//
+// Reste un garde-fou de durée, mais très large : au-delà de deux ans, aucune
+// location saisonnière n'a de sens, et c'est forcément une fermeture.
+const DEBUT_ABERRANT = '2015-01-01';
+const NUITS_MAX_SEJOUR = 730;
 
 const nuitsEntre = (debut: string, fin: string) =>
   Math.round((Date.parse(fin) - Date.parse(debut)) / 86400000);
@@ -171,7 +181,7 @@ export async function fetchSuperhoteReservations(
   return (data.dates ?? [])
     .filter((p): p is Required<Periode> => !!p.startDate && !!p.endDate && p.endDate > p.startDate)
     // Une fermeture n'est pas un séjour : personne n'en part, donc aucun ménage.
-    .filter(p => nuitsEntre(p.startDate, p.endDate) <= NUITS_MAX_SEJOUR)
+    .filter(p => p.startDate >= DEBUT_ABERRANT && nuitsEntre(p.startDate, p.endDate) <= NUITS_MAX_SEJOUR)
     // L'horizon est borné ici : leur réponse couvre parfois plusieurs années.
     .filter(p => p.endDate >= range.from && p.startDate <= range.to)
     .map(p => ({
