@@ -38,6 +38,18 @@ function rowToApartment(a: any): Apartment {
     beds: a.beds ?? undefined,
     sofaBeds: a.sofa_beds ?? undefined,
     notes: a.notes ?? undefined,
+    // Fiche d'accueil (migration_fiche_logement.sql). Colonnes absentes tant
+    // qu'elle n'est pas jouée : tout reste `undefined`, rien ne casse.
+    wifiSsid: a.wifi_ssid ?? undefined,
+    wifiPassword: a.wifi_password ?? undefined,
+    wifiSecurity: a.wifi_security ?? undefined,
+    checkinTime: a.checkin_time ?? undefined,
+    checkoutTime: a.checkout_time ?? undefined,
+    poubelles: a.poubelles ?? undefined,
+    parking: a.parking ?? undefined,
+    equipements: a.equipements ?? undefined,
+    consignesDepart: a.consignes_depart ?? undefined,
+    aProximite: a.a_proximite ?? undefined,
     accessVideoUrl: a.access_video_url ?? undefined,
     accessVideoPath: a.access_video_path ?? undefined,
     // Maison à annonces multiples : rattachement chambre → annonce entière, et
@@ -225,6 +237,53 @@ export async function createAirbnb(fields: {
   });
   if (error) { console.error('createAirbnb error:', error.code, error.message); return null; }
   return data?.id ?? null;
+}
+
+/** Les champs de la fiche d'accueil, remplis par la conciergerie. */
+export interface ChampsFiche {
+  wifiSsid?: string; wifiPassword?: string; wifiSecurity?: string;
+  checkinTime?: string; checkoutTime?: string;
+  poubelles?: string; parking?: string; equipements?: string;
+  consignesDepart?: string; aProximite?: string;
+}
+
+/** Les colonnes correspondantes. Une valeur vide efface, elle ne garde pas. */
+export function colonnesFiche(f: ChampsFiche): Record<string, string | null> {
+  const v = (x?: string) => (x ?? '').trim() || null;
+  return {
+    wifi_ssid: v(f.wifiSsid),
+    wifi_password: v(f.wifiPassword),
+    wifi_security: v(f.wifiSecurity),
+    checkin_time: v(f.checkinTime),
+    checkout_time: v(f.checkoutTime),
+    poubelles: v(f.poubelles),
+    parking: v(f.parking),
+    equipements: v(f.equipements),
+    consignes_depart: v(f.consignesDepart),
+    a_proximite: v(f.aProximite),
+  };
+}
+
+/**
+ * Enregistre la fiche d'accueil d'un logement.
+ *
+ * Écriture à part de `updateAirbnb` : la conciergerie remplit sa fiche depuis
+ * son propre espace, sans toucher au tarif, à la durée ni au linge — des champs
+ * qui ne lui appartiennent pas.
+ */
+export async function saveFicheLogement(
+  airbnbId: string, champs: ChampsFiche,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('airbnbs')
+    .update(colonnesFiche(champs)).eq('id', airbnbId);
+  if (error) {
+    console.error('saveFicheLogement:', error.code, error.message);
+    // 42703 = colonne absente : la migration n'a pas été jouée.
+    return { error: error.code === '42703'
+      ? 'La fiche d’accueil n’est pas encore activée : exécutez migration_fiche_logement.sql.'
+      : error.message };
+  }
+  return { error: null };
 }
 
 export async function updateAirbnb(id: string, fields: {

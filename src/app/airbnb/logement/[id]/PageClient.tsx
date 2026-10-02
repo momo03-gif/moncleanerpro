@@ -193,6 +193,18 @@ export default function LogementDetailClient() {
           <p className="text-xs px-3 py-2 rounded-xl mt-3 bg-surface-2 text-muted">{apt.notes}</p>
         )}
 
+        {/* Fiche d'accueil : ce que le voyageur trouve en arrivant. Elle vit à
+            part parce qu'elle s'imprime et sort de l'écran — c'est le seul
+            document de cet espace qui finit posé sur une table. */}
+        <button onClick={() => router.push(`/airbnb/logement/${apt.id}/fiche`)}
+          className="mt-4 w-full rounded-xl border border-line bg-card px-4 py-3 text-left active:scale-[0.99] transition-transform">
+          <p className="text-sm font-semibold text-ink">Fiche d’accueil</p>
+          <p className="text-xs mt-0.5 text-muted">
+            Wifi, horaires, poubelles — à imprimer et poser dans le logement.
+            {!apt.wifiSsid && ' Pas encore remplie.'}
+          </p>
+        </button>
+
         {/* Vidéo d'accès (facultative) : le propriétaire peut expliquer comment
             s'y rendre / trouver la clé. Le cleaner la verra sur sa mission. */}
         <div id="panel-video" className={`mt-4 rounded-xl ${openPanel === 'video' ? 'ring-2 ring-gold' : ''}`}>

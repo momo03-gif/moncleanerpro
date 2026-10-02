@@ -289,6 +289,20 @@ export interface Apartment {
   // Fichier dans Storage ; ici on ne garde que l'URL publique + le chemin.
   accessVideoUrl?: string;
   accessVideoPath?: string;
+
+  // ── Fiche d'accueil, remplie par la conciergerie ──────────────────────────
+  // Ce qu'un voyageur demande vingt fois par semaine. Le wifi sert à produire
+  // un QR que le téléphone comprend : un scan, et il est connecté.
+  wifiSsid?: string;
+  wifiPassword?: string;
+  wifiSecurity?: 'WPA' | 'WEP' | 'nopass';
+  checkinTime?: string;
+  checkoutTime?: string;
+  poubelles?: string;
+  parking?: string;
+  equipements?: string;
+  consignesDepart?: string;
+  aProximite?: string;
 }
 
 export interface Payment {
