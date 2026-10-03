@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { annexe } from './db/shared';
 import { compressImage } from './imageCompress';
 import type { Repair, RepairStatus } from './types';
 
@@ -49,48 +50,30 @@ function rowToRepair(r: Record<string, unknown>): Repair {
 }
 
 // Jointure du site pour afficher « quel appartement » sans requête supplémentaire.
-const SELECT = '*, airbnbs(name, address)';
 
 /** Toutes les réparations d'un partenaire (son espace). Ouvertes d'abord. */
-export async function getRepairsForPartnerDB(partnerId: string): Promise<Repair[]> {
-  const { data, error } = await supabase
-    .from('repairs').select(SELECT)
-    .eq('partner_id', partnerId)
-    .order('status', { ascending: true })          // 'done' > 'open' → ouvertes en tête
-    .order('created_at', { ascending: false });
-  if (error) { console.error('getRepairsForPartnerDB:', error.message); return []; }
-  return (data ?? []).map(rowToRepair);
+export async function getRepairsForPartnerDB(_partnerId: string): Promise<Repair[]> {
+  // La conciergerie est celle de la session.
+  try { return ((await annexe('repairs-partner')).data ?? []).map(rowToRepair); }
+  catch (e) { console.error('getRepairsForPartnerDB:', e); return []; }
 }
 
 /** Toutes les réparations (admin). */
 export async function getAllRepairsDB(): Promise<Repair[]> {
-  const { data, error } = await supabase
-    .from('repairs').select(SELECT)
-    .order('status', { ascending: true })
-    .order('created_at', { ascending: false });
-  if (error) { console.error('getAllRepairsDB:', error.message); return []; }
-  return (data ?? []).map(rowToRepair);
+  try { return ((await annexe('repairs-all')).data ?? []).map(rowToRepair); }
+  catch (e) { console.error('getAllRepairsDB:', e); return []; }
 }
 
 /** Réparations d'un site donné (fiche logement admin / partenaire). */
 export async function getRepairsForApartmentDB(airbnbId: string): Promise<Repair[]> {
-  const { data, error } = await supabase
-    .from('repairs').select(SELECT)
-    .eq('airbnb_id', airbnbId)
-    .order('status', { ascending: true })
-    .order('created_at', { ascending: false });
-  if (error) { console.error('getRepairsForApartmentDB:', error.message); return []; }
-  return (data ?? []).map(rowToRepair);
+  try { return ((await annexe('repairs-apartment', { airbnbId })).data ?? []).map(rowToRepair); }
+  catch (e) { console.error('getRepairsForApartmentDB:', e); return []; }
 }
 
 /** Réparations créées depuis une mission donnée (rapport cleaner). */
 export async function getRepairsForMissionDB(missionId: string): Promise<Repair[]> {
-  const { data, error } = await supabase
-    .from('repairs').select(SELECT)
-    .eq('mission_id', missionId)
-    .order('created_at', { ascending: false });
-  if (error) { console.error('getRepairsForMissionDB:', error.message); return []; }
-  return (data ?? []).map(rowToRepair);
+  try { return ((await annexe('repairs-mission', { missionId })).data ?? []).map(rowToRepair); }
+  catch (e) { console.error('getRepairsForMissionDB:', e); return []; }
 }
 
 export interface NewRepair {
@@ -110,26 +93,21 @@ export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | n
   const description = r.description.trim();
   if (!description) return { repair: null, error: 'Description requise.' };
 
-  const { data: apt } = await supabase
-    .from('airbnbs').select('partner_id').eq('id', r.airbnbId).maybeSingle();
+  // Le serveur reprend le propriétaire du SITE et vérifie le droit de signaler
+  // (admin, ou cleaner depuis sa mission).
+  let repair: Repair;
+  try {
+    const res = await annexe('repair-create', {
+      airbnbId: r.airbnbId, missionId: r.missionId, description,
+      createdBy: r.createdBy, photos: (r.photos ?? []).slice(0, MAX_REPAIR_PHOTOS),
+    });
+    repair = rowToRepair(res.data);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Enregistrement impossible.';
+    console.error('createRepairDB:', message);
+    return { repair: null, error: message };
+  }
 
-  const { data, error } = await supabase.from('repairs').insert({
-    airbnb_id: r.airbnbId,
-    partner_id: apt?.partner_id ?? null,
-    mission_id: r.missionId ?? null,
-    description,
-    status: 'open',
-    created_by: r.createdBy ?? null,
-    created_role: r.createdRole ?? null,
-    photos: (r.photos ?? []).slice(0, MAX_REPAIR_PHOTOS),
-  }).select(SELECT).single();
-
-  if (error) { console.error('createRepairDB:', error.message); return { repair: null, error: error.message }; }
-
-  // Alerte WhatsApp au propriétaire du compte, si (et seulement si) il l'a
-  // activée. Volontairement « best-effort » et non attendue : un dégât est
-  // enregistré même si Meta est indisponible, et le destinataire est résolu
-  // côté serveur à partir du logement — jamais depuis le navigateur.
   if (typeof window !== 'undefined') {
     fetch('/api/whatsapp/repair', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -137,34 +115,22 @@ export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | n
     }).catch(() => { /* silencieux : la réparation est déjà créée */ });
   }
 
-  return { repair: rowToRepair(data), error: null };
+  return { repair, error: null };
 }
 
 /** Marque une réparation comme faite (propriétaire ou admin). */
 export async function resolveRepairDB(id: string, resolvedBy?: string, note?: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('repairs').update({
-    status: 'done',
-    resolved_by: resolvedBy ?? null,
-    resolved_note: note?.trim() || null,
-    resolved_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }).eq('id', id);
-  if (error) console.error('resolveRepairDB:', error.message);
-  return { error: error?.message ?? null };
+  try { await annexe('repair-resolve', { id, resolvedBy, note }); return { error: null }; }
+  catch (e) { const m = e instanceof Error ? e.message : 'Enregistrement impossible.'; console.error('resolveRepairDB:', m); return { error: m }; }
 }
 
 /** Rouvre une réparation clôturée par erreur. */
 export async function reopenRepairDB(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('repairs').update({
-    status: 'open', resolved_by: null, resolved_note: null, resolved_at: null,
-    updated_at: new Date().toISOString(),
-  }).eq('id', id);
-  if (error) console.error('reopenRepairDB:', error.message);
-  return { error: error?.message ?? null };
+  try { await annexe('repair-reopen', { id }); return { error: null }; }
+  catch (e) { const m = e instanceof Error ? e.message : 'Enregistrement impossible.'; console.error('reopenRepairDB:', m); return { error: m }; }
 }
 
 export async function deleteRepairDB(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('repairs').delete().eq('id', id);
-  if (error) console.error('deleteRepairDB:', error.message);
-  return { error: error?.message ?? null };
+  try { await annexe('repair-delete', { id }); return { error: null }; }
+  catch (e) { const m = e instanceof Error ? e.message : 'Suppression impossible.'; console.error('deleteRepairDB:', m); return { error: m }; }
 }

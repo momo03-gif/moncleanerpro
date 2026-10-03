@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useId } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -14,7 +14,6 @@ import { alertUser } from '@/lib/alert';
 // supabase (~222 Ko) du chemin critique de chaque page. Le temps réel reste
 // intact — il est juste branché une fois la page interactive.
 const loadNotifApi = () => import('@/lib/notifications');
-const loadSupabase = () => import('@/lib/supabase');
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -86,11 +85,7 @@ export default function NotificationBell({ light = false, align = 'right' }: { l
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [pushBusy, setPushBusy] = useState(false);
   const firstLoad = useRef(true);
-  // Identifiant unique par instance : évite la collision de canaux temps réel
-  // quand la cloche est rendue plusieurs fois (ex. sidebar admin desktop + mobile).
-  // useId() est stable, unique et SSR-safe (pas d'impureté au render, pas de
-  // divergence d'hydratation contrairement à Math.random()).
-  const channelId = useRef(useId().replace(/:/g, ''));
+  // Plusieurs cloches (menu bureau + mobile) partagent un seul abonnement : cf. lib/notifsLive.ts.
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -111,17 +106,11 @@ export default function NotificationBell({ light = false, align = 'right' }: { l
     let cleanup = () => {};
     (async () => {
       try {
-        const { supabase } = await loadSupabase();
-        const ch = supabase
-          .channel(`notif-${user.id}-${channelId.current}`)
-          .on('postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-            () => {
-              if (!firstLoad.current) alertUser();
-              load();
-            })
-          .subscribe();
-        cleanup = () => { try { supabase.removeChannel(ch); } catch { /* ignore */ } };
+        const { ecouterNotifications } = await import('@/lib/notifsLive');
+        cleanup = ecouterNotifications(user.id, () => {
+          if (!firstLoad.current) alertUser();
+          load();
+        });
       } catch (e) {
         console.error('notif realtime:', e);
       }

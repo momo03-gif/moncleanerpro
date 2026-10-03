@@ -103,28 +103,22 @@ export default function AdminSidebar() {
 
   // TEMPS RÉEL, comme la cloche : une nouvelle demande de devis fait monter le
   // compteur sur l'entrée du menu sans recharger la page, avec le même signal
-  // sonore. On écoute la table `notifications` (déjà publiée en temps réel) et on
-  // ne réagit qu'aux demandes de devis — inutile de publier une table de plus.
+  // sonore. On écoute l'arrivée des notifications (cf. lib/notifsLive.ts) et on
+  // ne réagit qu'aux demandes de devis.
   useEffect(() => {
     if (user?.role !== 'admin' || !user.id) return;
     const userId = user.id;
     let cleanup = () => {};
     (async () => {
       try {
-        const [{ supabase }, { getDevisPendingCountDB }] = await Promise.all([
-          import('@/lib/supabase'), import('@/lib/devis'),
+        const [{ ecouterNotifications }, { getDevisPendingCountDB }] = await Promise.all([
+          import('@/lib/notifsLive'), import('@/lib/devis'),
         ]);
-        const ch = supabase
-          .channel(`devis-pending-${userId}`)
-          .on('postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-            payload => {
-              if ((payload.new as { type?: string })?.type !== 'devis_request') return;
-              alertUser();
-              getDevisPendingCountDB().then(setDevisPending).catch(() => {});
-            })
-          .subscribe();
-        cleanup = () => { try { supabase.removeChannel(ch); } catch { /* ignore */ } };
+        cleanup = ecouterNotifications(userId, type => {
+          if (type !== 'devis_request') return;
+          alertUser();
+          getDevisPendingCountDB().then(setDevisPending).catch(() => {});
+        });
       } catch (e) {
         console.error('devis pending realtime:', e);
       }

@@ -106,6 +106,13 @@ export async function generateRecurringMissions(horizonDays = 180): Promise<{ cr
   const { data: cls } = await supabase.from('cleaners').select('id, name, hourly_rate');
   const rateOf = new Map((cls ?? []).map((c: any) => [c.id, Number(c.hourly_rate) || 0]));
   const nameOf = new Map((cls ?? []).map((c: any) => [c.id, c.name]));
+  // Client propriétaire de chaque site : sans lui, le ménage n'apparaissait pas
+  // dans l'espace du client, qui ne recevait pas non plus le « ménage terminé ».
+  const siteIds = Array.from(new Set(recs.map((r: any) => r.airbnb_id).filter(Boolean)));
+  const { data: sites } = siteIds.length
+    ? await supabase.from('airbnbs').select('id, partner_id').in('id', siteIds)
+    : { data: [] as { id: string; partner_id: string | null }[] };
+  const partnerOf = new Map((sites ?? []).map((a: any) => [a.id, a.partner_id ?? null]));
 
   let created = 0;
   for (const r of recs) {
@@ -133,6 +140,7 @@ export async function generateRecurringMissions(horizonDays = 180): Promise<{ cr
       source: r.airbnb_id ? 'airbnb' : 'hotel',
       service: r.service || 'cleaning',
       airbnb_id: r.airbnb_id || null,
+      partner_id: r.airbnb_id ? (partnerOf.get(r.airbnb_id) ?? null) : null,
       property_name: linked ? null : (r.property_name || null),
       address: linked ? null : (r.address || null),
       address_lat: r.address_lat ?? null,

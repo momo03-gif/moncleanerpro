@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { annexe } from './db/shared';
 import type { AppNotification } from './types';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -33,54 +33,39 @@ function rowToNotif(r: Record<string, unknown>): AppNotification {
 // `type` est nullable en base : un simple NOT IN écarterait aussi les lignes sans
 // type (en SQL, NULL NOT IN (...) vaut NULL, donc faux). On garde explicitement
 // les types absents, sinon d'anciennes notifications disparaîtraient de la cloche.
-const BELL_HIDDEN_TYPES = ['devis_request'];
-const HIDDEN_FILTER = `type.is.null,type.not.in.(${BELL_HIDDEN_TYPES.join(',')})`;
+// Filtre appliqué côté serveur (cf. lib/annexes.ts, FILTRE_CLOCHE).
 
-export async function getNotificationsDB(userId: string, limit = 40): Promise<AppNotification[]> {
-  const { data } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', userId)
-    .or(HIDDEN_FILTER)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  return (data ?? []).map(rowToNotif);
+export async function getNotificationsDB(_userId: string, limit = 40): Promise<AppNotification[]> {
+  // Uniquement les notifications de l'utilisateur connecté (session, côté serveur).
+  try { return ((await annexe('notifs', { limit })).data ?? []).map(rowToNotif); }
+  catch { return []; }
 }
 
-export async function getUnreadCountDB(userId: string): Promise<number> {
-  const { count } = await supabase
-    .from('notifications')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('read', false)
-    .or(HIDDEN_FILTER);
-  return count ?? 0;
+export async function getUnreadCountDB(_userId: string): Promise<number> {
+  try { return Number((await annexe('notifs-unread')).count) || 0; }
+  catch { return 0; }
 }
 
 export async function markNotificationReadDB(id: string) {
-  await supabase.from('notifications').update({ read: true }).eq('id', id);
+  try { await annexe('notif-read', { id }); } catch { /* sans gravité */ }
 }
 
-export async function markAllNotificationsReadDB(userId: string) {
-  await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
+export async function markAllNotificationsReadDB(_userId: string) {
+  try { await annexe('notifs-read-all'); } catch { /* sans gravité */ }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 //  ABONNEMENTS PUSH
 // ════════════════════════════════════════════════════════════════════════════
 
-export async function savePushSubscriptionDB(userId: string, role: string, sub: PushSubscriptionJSON, deviceType: string) {
+export async function savePushSubscriptionDB(_userId: string, _role: string, sub: PushSubscriptionJSON, deviceType: string) {
   if (!sub.endpoint) return;
-  await supabase.from('push_subscriptions').upsert({
-    user_id: userId,
-    role,
-    endpoint: sub.endpoint,
-    subscription: sub,
-    device_type: deviceType,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'endpoint' });
+  // Rattaché à l'utilisateur de la SESSION : on ne peut plus abonner le
+  // téléphone de quelqu'un d'autre à ses notifications.
+  try { await annexe('push-save', { subscription: sub, deviceType }); }
+  catch (e) { console.error('savePushSubscriptionDB:', e); }
 }
 
 export async function deletePushSubscriptionDB(endpoint: string) {
-  await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+  try { await annexe('push-delete', { endpoint }); } catch { /* sans gravité */ }
 }

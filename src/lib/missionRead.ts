@@ -43,6 +43,18 @@ function sans(rows: Ligne[], champs: string[], champsLogement: string[] = []): L
 const pourCleaner = (rows: Ligne[]) => sans(rows, INTERNES_CLEANER, ['client_price', 'estimated_cleaning_minutes']);
 const pourPartenaire = (rows: Ligne[]) => sans(rows, INTERNES_PARTENAIRE, ['estimated_cleaning_minutes']);
 
+/** Logements (et sites) d'une conciergerie : c'est le LOGEMENT qui fait foi. */
+export async function logementsDuPartenaire(db: SupabaseClient, userId: string): Promise<string[]> {
+  const { data } = await db.from('airbnbs').select('id').eq('partner_id', userId);
+  return (data ?? []).map(a => a.id as string);
+}
+
+/** Filtre PostgREST : missions rattachées à la conciergerie OU situées sur un de ses logements. */
+export async function filtrePartenaire(db: SupabaseClient, userId: string): Promise<string> {
+  const ids = await logementsDuPartenaire(db, userId);
+  return ids.length ? `partner_id.eq.${userId},airbnb_id.in.(${ids.join(',')})` : `partner_id.eq.${userId}`;
+}
+
 export async function idCleanerDeUtilisateur(db: SupabaseClient, userId: string): Promise<string | null> {
   const { data } = await db.from('cleaners').select('id').eq('user_id', userId).maybeSingle();
   return (data?.id as string | undefined) ?? null;
@@ -112,8 +124,10 @@ export async function lirePourSession(
 
     case 'partner': {
       if (session.role !== 'airbnb') return null;
+      // Rattachées à elle OU sur un de ses logements : des ménages créés sans
+      // partner_id (récurrences, création admin) restent ainsi visibles.
       const { data, error } = await db.from('missions').select(MISSION_SELECT)
-        .eq('partner_id', session.id).order('date_from', { ascending: false });
+        .or(await filtrePartenaire(db, session.id)).order('date_from', { ascending: false });
       if (error) throw new Error(error.message);
       return pourPartenaire(data ?? []);
     }
@@ -182,7 +196,11 @@ export async function lirePourSession(
       if (error) throw new Error(error.message);
       if (!data) return null;
       if (admin) return data;
-      if (session.role === 'airbnb' && data.partner_id === session.id) return pourPartenaire([data])[0];
+      if (session.role === 'airbnb') {
+        const aSoi = data.partner_id === session.id
+          || (!!data.airbnb_id && (await logementsDuPartenaire(db, session.id)).includes(data.airbnb_id as string));
+        if (aSoi) return pourPartenaire([data])[0];
+      }
       if (session.role === 'cleaner') {
         const cid = await idCleanerDeUtilisateur(db, session.id);
         if (cid && data.cleaner_id === cid) return pourCleaner([data])[0];

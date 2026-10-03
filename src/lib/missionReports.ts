@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { annexe } from './db/shared';
 import type { MissionReport } from './types';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -40,48 +40,29 @@ export interface OpenIncident {
   updatedAt?: string;
 }
 
+// Incidents signalés (dégâts…) — tableau de bord admin. La lecture se fait par
+// le serveur ; elle demandait autrefois des colonnes inexistantes
+// (missions.property / missions.date) et revenait donc toujours vide.
 export async function getOpenIncidentsDB(): Promise<OpenIncident[]> {
-  const { data, error } = await supabase
-    .from('mission_reports')
-    .select('mission_id, issues, updated_at, missions(property, date, status)')
-    .not('issues', 'is', null)
-    .order('updated_at', { ascending: false });
-  if (error) { console.error('getOpenIncidentsDB:', error.message); return []; }
-  return (data ?? []).map((r: any) => ({
-    missionId: r.mission_id,
-    issues: r.issues,
-    property: r.missions?.property,
-    date: r.missions?.date,
-    status: r.missions?.status,
-    updatedAt: r.updated_at,
-  }));
+  try { return (await annexe('incidents')).data ?? []; }
+  catch (e) { console.error('getOpenIncidentsDB:', e); return []; }
 }
 
+
+
 export async function getMissionReportDB(missionId: string): Promise<MissionReport | null> {
-  const { data, error } = await supabase
-    .from('mission_reports')
-    .select('*')
-    .eq('mission_id', missionId)
-    .maybeSingle();
-  if (error) { console.error('getMissionReportDB:', error.message); return null; }
-  return data ? rowToReport(data) : null;
+  try {
+    const data = (await annexe('report', { missionId })).data;
+    return data ? rowToReport(data) : null;
+  } catch (e) { console.error('getMissionReportDB:', e); return null; }
 }
 
 export async function saveMissionReportDB(report: MissionReport): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('mission_reports').upsert({
-    mission_id: report.missionId,
-    consumables: report.consumables ?? [],
-    consumables_note: report.consumablesNote || null,
-    issues: report.issues || null,
-    // Localisation gardée seulement si le constat existe : une chambre cochée
-    // sans texte n'a aucun sens à afficher côté hôte.
-    issues_unit: (report.issues && report.issuesUnit) || null,
-    lost_found: report.lostFound || null,
-    lost_found_unit: (report.lostFound && report.lostFoundUnit) || null,
-    note: report.note || null,
-    submitted_by: report.submittedBy || null,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'mission_id' });
-  if (error) console.error('saveMissionReportDB:', error.message);
-  return { error: error?.message ?? null };
+  // Réservé à l'admin et au cleaner de la mission (vérifié côté serveur).
+  try { await annexe('report-save', { report }); return { error: null }; }
+  catch (e) {
+    const message = e instanceof Error ? e.message : 'Enregistrement impossible.';
+    console.error('saveMissionReportDB:', message);
+    return { error: message };
+  }
 }

@@ -22,3 +22,9 @@ export async function getServer(url: string): Promise<any> {
 export function trimTime(t: string | null | undefined): string {
   return (t ?? '').substring(0, 5);
 }
+
+// Photos, rapports, réparations, cloche, abonnements push : par le serveur
+// (cf. lib/annexes.ts). Lève une erreur si la route refuse.
+export async function annexe(op: string, body: Record<string, unknown> = {}): Promise<any> {
+  return postServer('/api/annexes', { op, ...body });
+}

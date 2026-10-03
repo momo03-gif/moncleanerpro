@@ -13,6 +13,7 @@ import {
   notifyMissionCompleted, notifyMissionWithdrawn, notifyExtraTimeRequested, notifyExtraTimeResolved,
   notifyAdminsMissionRequested, notifyCleanerRequestDecision,
 } from './notificationEvents';
+import { logementsDuPartenaire, filtrePartenaire } from './missionRead';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Écritures sur `missions`, côté SERVEUR (service_role).
@@ -356,7 +357,7 @@ const ACTIONS: Record<string, Action> = {
       partner_rating: rating,
       partner_rating_comment: str(b.comment)?.trim() || null,
       partner_rated_at: new Date().toISOString(),
-    }).eq('id', missionId).eq('partner_id', s.id).select('id');
+    }).eq('id', missionId).or(await filtrePartenaire(db, s.id)).select('id');
     if (error) { console.error('missions/rate:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Mission introuvable.', 403);
     return ok();
@@ -368,7 +369,7 @@ const ACTIONS: Record<string, Action> = {
     const f = (b.fields ?? {}) as Record<string, unknown>;
     if (!missionId) return ko('Mission manquante.');
     const { data: row } = await db.from('missions')
-      .select('id, status, partner_id, created_by, cleaner_id, service, mission_duration_minutes, apartment_default_duration_snapshot')
+      .select('id, status, partner_id, airbnb_id, created_by, cleaner_id, service, mission_duration_minutes, apartment_default_duration_snapshot')
       .eq('id', missionId).maybeSingle();
     if (!row) return ko('Mission introuvable.', 404);
 
@@ -377,7 +378,9 @@ const ACTIONS: Record<string, Action> = {
     if (clos && !estAdmin) {
       return ko(`Cette mission est ${row.status === 'done' ? 'terminée' : 'annulée'} et ne peut plus être modifiée.`);
     }
-    if (!estAdmin && row.created_by !== s.id && row.partner_id !== s.id) {
+    const surSonLogement = s.role === 'airbnb' && !!row.airbnb_id
+      && (await logementsDuPartenaire(db, s.id)).includes(row.airbnb_id as string);
+    if (!estAdmin && row.created_by !== s.id && row.partner_id !== s.id && !surSonLogement) {
       return ko("Vous n'êtes pas autorisé à modifier cette mission.", 403);
     }
 
@@ -549,6 +552,13 @@ const ACTIONS: Record<string, Action> = {
     const { rate, deliveryRate } = cleanerId ? await taux(db, cleanerId) : { rate: 0, deliveryRate: 0 };
     const gain = cleanerId ? computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes }) : 0;
     const coveredUnits = str(f.coveredUnits);
+    // Mission sur un logement : le client est le PROPRIÉTAIRE du logement, pas
+    // ce que dit le formulaire.
+    let partnerId = str(f.partnerId) ?? null;
+    if (linked) {
+      const { data: apt } = await db.from('airbnbs').select('partner_id').eq('id', str(f.airbnbId)!).maybeSingle();
+      partnerId = (apt?.partner_id as string | null) ?? null;
+    }
 
     const { data, error } = await db.from('missions').insert({
       type: str(f.type) ?? 'regular',
@@ -556,7 +566,7 @@ const ACTIONS: Record<string, Action> = {
       service,
       delivery_instructions: str(f.deliveryInstructions) ?? null,
       airbnb_id: str(f.airbnbId) ?? null,
-      partner_id: str(f.partnerId) ?? null,
+      partner_id: partnerId,
       created_by: s.id,
       created_by_role: 'admin',
       property_name: linked ? null : (str(f.propertyName) ?? null),
@@ -643,11 +653,15 @@ const ACTIONS: Record<string, Action> = {
     if (!dateFrom) return ko('Date manquante.');
     const cleanerId = str(f.cleanerId) ?? null;
     const { rate } = cleanerId ? await taux(db, cleanerId) : { rate: 0 };
+    const aptIds = apts.map(a => str(a.airbnbId)).filter((x): x is string => !!x);
+    const { data: proprios } = await db.from('airbnbs').select('id, partner_id').in('id', aptIds);
+    const proprioDe = new Map((proprios ?? []).map(a => [a.id as string, (a.partner_id as string | null) ?? null]));
 
     const rows = apts.filter(a => str(a.airbnbId)).map(a => {
       const minutes = Math.max(0, Number(a.durationMinutes) || 0);
       return {
-        type: 'regular', source: 'airbnb', airbnb_id: str(a.airbnbId), partner_id: str(a.partnerId) ?? null,
+        type: 'regular', source: 'airbnb', airbnb_id: str(a.airbnbId),
+        partner_id: proprioDe.get(str(a.airbnbId) ?? '') ?? null,
         created_by: s.id, created_by_role: 'admin', property_name: null, address: null,
         date_from: dateFrom, time_from: str(f.timeFrom) ?? null, time_to: null,
         hours_worked: heures(minutes), mission_duration_minutes: minutes,

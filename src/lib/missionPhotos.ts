@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { getServerDb } from './serverDb';
+import { annexe } from './db/shared';
 import { compressImage } from './imageCompress';
 import type { MissionPhoto, MissionPhotoKind } from './types';
 
@@ -30,13 +32,8 @@ function rowToPhoto(r: Record<string, unknown>): MissionPhoto {
 
 // Toutes les photos d'une mission, anciennes en premier (avant puis après à l'affichage).
 export async function getMissionPhotosDB(missionId: string): Promise<MissionPhoto[]> {
-  const { data, error } = await supabase
-    .from('mission_photos')
-    .select('*')
-    .eq('mission_id', missionId)
-    .order('created_at', { ascending: true });
-  if (error) { console.error('getMissionPhotosDB:', error.message); return []; }
-  return (data ?? []).map(rowToPhoto);
+  try { return ((await annexe('photos', { missionId })).data ?? []).map(rowToPhoto); }
+  catch (e) { console.error('getMissionPhotosDB:', e); return []; }
 }
 
 /**
@@ -47,14 +44,11 @@ export async function getMissionPhotosDB(missionId: string): Promise<MissionPhot
  */
 export async function getMissionPhotosForMissionsDB(missionIds: string[]): Promise<Map<string, MissionPhoto[]>> {
   if (missionIds.length === 0) return new Map();
-  const { data, error } = await supabase
-    .from('mission_photos')
-    .select('*')
-    .in('mission_id', missionIds)
-    .order('created_at', { ascending: true });
-  if (error) { console.error('getMissionPhotosForMissionsDB:', error.message); return new Map(); }
+  let rows: Record<string, unknown>[] = [];
+  try { rows = (await annexe('photos-missions', { missionIds })).data ?? []; }
+  catch (e) { console.error('getMissionPhotosForMissionsDB:', e); return new Map(); }
   const byMission = new Map<string, MissionPhoto[]>();
-  for (const photo of (data ?? []).map(rowToPhoto)) {
+  for (const photo of rows.map(rowToPhoto)) {
     const list = byMission.get(photo.missionId);
     if (list) list.push(photo); else byMission.set(photo.missionId, [photo]);
   }
@@ -63,11 +57,8 @@ export async function getMissionPhotosForMissionsDB(missionIds: string[]): Promi
 
 // Nombre de photos d'une mission (pour appliquer la limite avant upload).
 export async function countMissionPhotosDB(missionId: string): Promise<number> {
-  const { count } = await supabase
-    .from('mission_photos')
-    .select('id', { count: 'exact', head: true })
-    .eq('mission_id', missionId);
-  return count ?? 0;
+  try { return Number((await annexe('photos-count', { missionId })).count) || 0; }
+  catch { return 0; }
 }
 
 // Compresse puis téléverse une photo, et enregistre sa référence.
@@ -98,30 +89,27 @@ export async function uploadMissionPhotoDB(params: {
     .upload(path, compressed, { contentType: compressed.type || 'image/jpeg', upsert: false });
   if (upErr) { console.error('uploadMissionPhotoDB storage:', upErr.message); return { error: upErr.message }; }
 
-  const { data: pub } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path);
-  const url = pub.publicUrl;
-
-  const { data, error } = await supabase.from('mission_photos').insert({
-    mission_id: missionId,
-    kind,
-    url,
-    storage_path: path,
-    uploaded_by: userId ?? null,
-  }).select('*').single();
-
-  if (error) {
-    // Rollback du fichier orphelin si l'insertion de la référence échoue.
+  // La référence est enregistrée par le serveur, qui vérifie que la mission
+  // est bien celle du cleaner (ou de l'admin) et recalcule l'URL publique.
+  void userId;
+  try {
+    const res = await annexe('photo-add', { missionId, kind, path });
+    return { error: null, photo: rowToPhoto(res.data) };
+  } catch (e) {
+    // Rollback du fichier orphelin si l'enregistrement de la référence échoue.
     await supabase.storage.from(PHOTOS_BUCKET).remove([path]);
-    console.error('uploadMissionPhotoDB insert:', error.message);
-    return { error: error.message };
+    const message = e instanceof Error ? e.message : 'Enregistrement impossible.';
+    console.error('uploadMissionPhotoDB:', message);
+    return { error: message };
   }
-  return { error: null, photo: rowToPhoto(data) };
 }
 
 // Purge des photos expirées (> PHOTO_RETENTION_DAYS) : fichiers du bucket +
 // références en base. Utilisé par le cron. Renvoie le nombre supprimé.
 export async function deleteExpiredMissionPhotosDB(retentionDays = PHOTO_RETENTION_DAYS): Promise<{ deleted: number; error: string | null }> {
   const cutoff = new Date(Date.now() - retentionDays * 86400000).toISOString();
+  // Appelé par le cron (serveur) : service_role, la table n'est plus publique.
+  const supabase = getServerDb();
 
   const { data, error } = await supabase
     .from('mission_photos')

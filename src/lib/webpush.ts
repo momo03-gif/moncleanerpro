@@ -1,5 +1,4 @@
 import webpush from 'web-push';
-import { supabase } from './supabase';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { isApnsConfigured, sendApns, type ApnsEnvironment } from './apns';
 
@@ -40,6 +39,8 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
 async function sendWebPush(userId: string, payload: PushPayload): Promise<void> {
   if (!ensureConfigured()) return;
 
+  // La table n'est plus lisible publiquement : service_role (code serveur).
+  const supabase = getSupabaseAdmin();
   const { data } = await supabase
     .from('push_subscriptions')
     .select('endpoint, subscription')
