@@ -4,6 +4,7 @@
 import { supabase } from '../supabase';
 import { clusterApartments } from '../zones';
 import type { Apartment } from '../types';
+import { postServer } from './shared';
 
 function rowToApartment(a: any): Apartment {
   return {
@@ -125,39 +126,14 @@ export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]>
 // Les missions DÉJÀ ASSIGNÉES ne sont pas touchées — la durée pilote la paie du
 // cleaner, on ne la modifie pas dans son dos une fois qu'il l'a acceptée.
 export async function recalcGroupMissionsDB(houseId: string): Promise<{ updated: number; skipped: number }> {
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-
-  const { data: house } = await supabase.from('airbnbs')
-    .select('group_tiers, client_price, estimated_cleaning_minutes').eq('id', houseId).single();
-  const tiers = house?.group_tiers as Record<string, { price?: number; minutes?: number }> | null;
-  if (!tiers) return { updated: 0, skipped: 0 };
-
-  const { data: rooms } = await supabase.from('airbnbs').select('id').eq('parent_airbnb_id', houseId);
-  const total = (rooms ?? []).length;
-  if (total === 0) return { updated: 0, skipped: 0 };
-
-  const { data: missions } = await supabase.from('missions')
-    .select('id, covered_unit_names, whole_property, cleaner_id, status, price, mission_duration_minutes')
-    .eq('airbnb_id', houseId).gte('date_from', today).neq('status', 'cancelled').neq('status', 'done');
-
-  let updated = 0, skipped = 0;
-  for (const m of missions ?? []) {
-    if (m.cleaner_id) { skipped++; continue; }
-    const count = m.whole_property
-      ? total
-      : Math.min(Math.max((m.covered_unit_names as string[] | null)?.length ?? total, 1), total);
-    const t = tiers[String(count)];
-    if (!t) continue;
-    const price = t.price ?? (Number(house?.client_price) || 0);
-    const minutes = t.minutes ?? (Number(house?.estimated_cleaning_minutes) || 60);
-    if (Number(m.price) === price && Number(m.mission_duration_minutes) === minutes) continue;
-    const { error } = await supabase.from('missions').update({
-      price, mission_duration_minutes: minutes,
-      hours_worked: Math.round((minutes / 60) * 100) / 100,
-    }).eq('id', m.id);
-    if (!error) updated++;
+  // Écrit des prix : côté serveur (cf. lib/missionActions.ts, 'recalc-group').
+  try {
+    const d = await postServer('/api/missions', { action: 'recalc-group', houseId });
+    return { updated: Number(d.updated) || 0, skipped: Number(d.skipped) || 0 };
+  } catch (e) {
+    console.error('recalcGroupMissionsDB:', e);
+    return { updated: 0, skipped: 0 };
   }
-  return { updated, skipped };
 }
 
 // ── Contact de secours : colonnes optionnelles ────────────────────────────────

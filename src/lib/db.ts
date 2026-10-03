@@ -1,10 +1,7 @@
 import { supabase } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
-import { computeCleanerGain, computeMissionGain, billableHotelPrice } from './pay';
-import { canCleanerDoService } from './service';
 import { clusterApartments } from './zones';
-import { getBlockingFormationsDB } from './formation';
-import { distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR, GPS_REQUIRED_ERROR, type GeoPoint } from './geo';
+import type { GeoPoint } from './geo';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified,
   notifyMissionCancelled, notifyMissionCompleted, notifyMissionWithdrawn,
@@ -256,16 +253,12 @@ function stripInternalForPartner(m: Mission): Mission {
  * ménages, même en forgeant un identifiant de mission.
  */
 export async function rateMissionDB(
-  missionId: string, partnerId: string, rating: number, comment?: string,
+  missionId: string, _partnerId: string, rating: number, comment?: string,
 ): Promise<{ error: string | null }> {
+  // Le partenaire est celui de la SESSION (côté serveur), pas celui annoncé ici.
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { error: 'Note attendue entre 1 et 5.' };
-  const { error } = await supabase.from('missions').update({
-    partner_rating: rating,
-    partner_rating_comment: comment?.trim() || null,
-    partner_rated_at: new Date().toISOString(),
-  }).eq('id', missionId).eq('partner_id', partnerId);
-  if (error) console.error('rateMissionDB:', error.code, error.message);
-  return { error: error?.message ?? null };
+  const res = await ecrireMission({ action: 'rate', missionId, rating, comment });
+  return { error: res.error };
 }
 
 // Missions ouvertes aux cleaners. On exclut celles DÉJÀ demandées par quelqu'un :
@@ -291,104 +284,39 @@ export async function createAirbnbMissionDB(fields: {
   dateFrom: string; timeFrom: string; instructions?: string; price?: number;
   nextArrival?: string; nextArrivalTime?: string;
 }): Promise<{ error: string | null }> {
-  // Durée de nettoyage par défaut reprise de l'appartement (base du gain cleaner,
-  // calculé plus tard à l'assignation d'un cleaner par l'admin).
-  const { data: apt } = await supabase
-    .from('airbnbs').select('estimated_cleaning_minutes').eq('id', fields.airbnbId).single();
-  const defaultMinutes = apt?.estimated_cleaning_minutes != null ? Number(apt.estimated_cleaning_minutes) : 60;
-
-  const { data, error } = await supabase.from('missions').insert({
-    type: 'regular',
-    source: 'airbnb',
-    partner_id: fields.partnerId,
-    created_by: fields.partnerId,
-    created_by_role: 'airbnb',
-    airbnb_id: fields.airbnbId,
-    date_from: fields.dateFrom,
-    time_from: fields.timeFrom || null,
-    instructions: fields.instructions || null,
-    price: fields.price ?? 0,  // prix CLIENT repris depuis la fiche appartement (facturation)
-    mission_duration_minutes: defaultMinutes,
-    apartment_default_duration_snapshot: defaultMinutes,
-    next_arrival: fields.nextArrival || null,
-    next_arrival_time: fields.nextArrivalTime || null,
-    status: 'pending',
-  }).select('id').single();
-  if (error) {
-    console.error('createAirbnbMissionDB error:', error);
-    return { error: error.message };
-  }
+  // Prix et durée sont repris de la fiche logement par le serveur ; le logement
+  // doit appartenir à la conciergerie connectée.
+  const res = await ecrireMission({
+    action: 'create-airbnb', airbnbId: fields.airbnbId, dateFrom: fields.dateFrom, timeFrom: fields.timeFrom,
+    instructions: fields.instructions, nextArrival: fields.nextArrival, nextArrivalTime: fields.nextArrivalTime,
+  });
+  if (res.error) return { error: res.error };
   // Notif admin : nouvelle mission créée par un partenaire
-  await notifyPartnerCreatedMission(fields.partnerName ?? 'Un partenaire Airbnb', fields.dateFrom, fields.timeFrom, data?.id);
+  await notifyPartnerCreatedMission(fields.partnerName ?? 'Un partenaire Airbnb', fields.dateFrom, fields.timeFrom, res.data?.id as string | undefined);
   return { error: null };
 }
 
-export async function acceptMissionDB(missionId: string, userId: string): Promise<{ error: string | null }> {
-  // userId is users.id — resolve to cleaners.id (FK constraint)
-  const { data: cleanerRow } = await supabase.from('cleaners').select('id, name, can_clean, can_deliver').eq('user_id', userId).single();
-  if (!cleanerRow) return { error: 'Cleaner introuvable.' };
-
-  // Garde-fou prestation : le cleaner doit savoir réaliser le service de la mission
-  // (nettoyage et/ou livraison). Empêche un « nettoyage seul » de prendre une livraison.
-  const { data: missionRow } = await supabase.from('missions').select('service').eq('id', missionId).single();
-  if (!canCleanerDoService(cleanerRow, (missionRow?.service as MissionService) ?? 'cleaning')) {
-    return { error: "Cette mission requiert une prestation que tu n'effectues pas." };
-  }
-
-  // Blocage formation (LOT 7bis) : une formation obligatoire « à faire » empêche
-  // d'accepter une nouvelle mission tant qu'elle n'est pas terminée.
-  const blocking = await getBlockingFormationsDB(cleanerRow.id);
-  if (blocking.length > 0) {
-    return { error: 'Termine ta formation obligatoire pour débloquer tes missions.' };
-  }
-
-  // Le cleaner ne s'assigne PLUS la mission : il la demande, l'admin valide.
-  // La mission reste en 'pending' — on ne détourne aucun statut existant.
-  // Premier arrivé, premier servi : si quelqu'un a déjà demandé, on refuse la
-  // seconde demande plutôt que de l'écraser en silence.
-  const { data: current } = await supabase.from('missions')
-    .select('pending_cleaner_id, pending_cleaner_name, status').eq('id', missionId).single();
-  if (current?.status !== 'pending') return { error: 'Cette mission n’est plus disponible.' };
-  if (current?.pending_cleaner_id && current.pending_cleaner_id !== cleanerRow.id) {
-    return { error: `Déjà demandée par ${current.pending_cleaner_name ?? 'un autre cleaner'}.` };
-  }
-
-  const { error } = await supabase.from('missions').update({
-    pending_cleaner_id: cleanerRow.id,
-    pending_cleaner_name: cleanerRow.name,
-    pending_requested_at: new Date().toISOString(),
-  }).eq('id', missionId);
-  if (!error) {
-    try {
-      const { notifyAdminsMissionRequested } = await import('./notifications');
-      await notifyAdminsMissionRequested(missionId, cleanerRow.name);
-    } catch (e) { console.error('notify mission requested:', e); }
-  }
-  return { error: error?.message ?? null };
+export async function acceptMissionDB(missionId: string, _userId: string): Promise<{ error: string | null }> {
+  // Le cleaner ne s'assigne pas la mission : il la DEMANDE, l'admin valide.
+  // Prestation, formation obligatoire et « premier arrivé » : vérifiés côté serveur.
+  const res = await ecrireMission({ action: 'request', missionId });
+  if (res.error) return { error: res.error };
+  try {
+    const { notifyAdminsMissionRequested } = await import('./notifications');
+    await notifyAdminsMissionRequested(missionId, String(res.data?.cleanerName ?? 'Un cleaner'));
+  } catch (e) { console.error('notify mission requested:', e); }
+  return { error: null };
 }
 
 // Décision de l'admin sur une demande de mission.
 export async function decideMissionRequestDB(missionId: string, approve: boolean): Promise<{ error: string | null }> {
-  const { data: m } = await supabase.from('missions')
-    .select('pending_cleaner_id, pending_cleaner_name').eq('id', missionId).single();
-  if (!m?.pending_cleaner_id) return { error: 'Aucune demande sur cette mission.' };
-
-  const patch: Record<string, unknown> = {
-    pending_cleaner_id: null, pending_cleaner_name: null, pending_requested_at: null,
-  };
-  if (approve) {
-    patch.cleaner_id = m.pending_cleaner_id;
-    patch.cleaner_name = m.pending_cleaner_name;
-    patch.status = 'assigned';
-  }
-  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
-  if (!error) {
-    try {
-      const { notifyCleanerRequestDecision } = await import('./notifications');
-      await notifyCleanerRequestDecision(missionId, m.pending_cleaner_id as string, approve);
-    } catch (e) { console.error('notify request decision:', e); }
-  }
-  return { error: error?.message ?? null };
+  const res = await ecrireMission({ action: 'decide-request', missionId, approve });
+  if (res.error) return { error: res.error };
+  try {
+    const { notifyCleanerRequestDecision } = await import('./notifications');
+    await notifyCleanerRequestDecision(missionId, res.data?.cleanerId as string, approve);
+  } catch (e) { console.error('notify request decision:', e); }
+  return { error: null };
 }
 
 export async function createMissionDB(fields: {
@@ -406,67 +334,11 @@ export async function createMissionDB(fields: {
   // la synchro — une mission créée à la main doit être indiscernable des autres.
   coveredUnits?: string; wholeProperty?: boolean; coveredUnitNames?: string[];
 }): Promise<{ error: string | null }> {
-  // cleanerId from the form is already cleaners.id (from the cleaner dropdown)
-  const cleanerIdToStore: string | null = fields.cleanerId || null;
-  // Quand la mission est liée à un appartement, on ne duplique pas
-  // nom/adresse : ils sont récupérés depuis la fiche appartement (join).
-  const linked = !!fields.airbnbId;
-
-  // Paiement cleaner selon la prestation : ménage = taux horaire × durée / 60 ;
-  // livraison = montant fixe par livraison (indépendant du prix client).
-  const minutes = Number(fields.missionDurationMinutes) || 0;
-  const rate = Number(fields.cleanerHourlyRate) || 0;
-  const deliveryRate = Number(fields.cleanerDeliveryRate) || 0;
-  const gain = cleanerIdToStore
-    ? computeMissionGain({ service: fields.service, hourlyRate: rate, deliveryRate, durationMinutes: minutes })
-    : 0;
-
-  const { data, error } = await supabase.from('missions').insert({
-    type: fields.type,
-    source: fields.source,
-    service: fields.service ?? 'cleaning',
-    delivery_instructions: fields.deliveryInstructions || null,
-    airbnb_id: fields.airbnbId || null,
-    partner_id: fields.partnerId || null,
-    created_by: fields.createdBy || null,
-    created_by_role: fields.createdByRole || 'admin',
-    property_name: linked ? null : fields.propertyName,
-    address: linked ? null : fields.address,
-    // Coordonnées de l'adresse cible (proximité). Pour une mission liée à un site, le
-    // fallback sur airbnbs suffit ; pour une adresse libre, on stocke le géocodage.
-    address_lat: fields.addressLat ?? null,
-    address_lng: fields.addressLng ?? null,
-    date_from: fields.dateFrom,
-    time_from: fields.timeFrom || null,
-    time_to: fields.timeTo || null,
-    hours_worked: Math.round((minutes / 60) * 100) / 100,
-    mission_duration_minutes: minutes,
-    cleaner_id: cleanerIdToStore,
-    cleaner_name: fields.cleanerName || null,
-    client_name: fields.clientName || null,
-    price: fields.price,  // prix CLIENT (facturation) — indépendant du gain cleaner
-    cleaner_gain: gain,
-    cleaner_hourly_rate_snapshot: cleanerIdToStore ? rate : null,
-    apartment_default_duration_snapshot: fields.apartmentDefaultDuration ?? null,
-    instructions: fields.instructions || null,
-    next_arrival: fields.nextArrival || null,
-    next_arrival_time: fields.nextArrivalTime || null,
-    // Périmètre d'une maison louée à la chambre — écrit seulement s'il est
-    // renseigné, pour ne rien changer aux logements classiques.
-    ...(fields.coveredUnits ? {
-      covered_units: fields.coveredUnits,
-      whole_property: !!fields.wholeProperty,
-      covered_unit_names: fields.coveredUnitNames ?? null,
-    } : {}),
-    status: cleanerIdToStore ? 'assigned' : 'pending',
-  }).select('id').single();
-
-  if (error) {
-    console.error('createMissionDB error:', error);
-    return { error: error.message };
-  }
-  // Si assignée dès la création → notif cleaner
-  if (cleanerIdToStore && data?.id) await notifyCleanerNewMission(data.id);
+  // Le gain du cleaner est calculé par le serveur avec le taux EN BASE : les
+  // taux transmis ici (cleanerHourlyRate…) ne sont plus pris en compte.
+  const res = await ecrireMission({ action: 'create', fields });
+  if (res.error) return { error: res.error };
+  if (res.data?.assigned && res.data?.id) await notifyCleanerNewMission(res.data.id as string);
   return { error: null };
 }
 
@@ -485,52 +357,12 @@ export async function createOneShotMissionDB(fields: {
   cleaners: { id: string; name: string; hourlyRate?: number }[];
   createdBy?: string;
 }): Promise<{ error: string | null; count: number }> {
-  const minutes = Number(fields.durationMinutes) || 0;
-  const list = fields.cleaners ?? [];
-  // group_id seulement si plusieurs intervenants (une intervention = un groupe).
-  const groupId = list.length > 1 ? crypto.randomUUID() : null;
-
-  const rowBase = {
-    type: fields.type || 'deep_clean',
-    source: fields.source || 'hotel',
-    service: 'cleaning' as const,
-    property_name: fields.propertyName,
-    address: fields.address || null,
-    address_lat: fields.addressLat ?? null,
-    address_lng: fields.addressLng ?? null,
-    date_from: fields.date,
-    time_from: fields.time || null,
-    instructions: fields.instructions || null,
-    mission_duration_minutes: minutes,
-    hours_worked: Math.round((minutes / 60) * 100) / 100,
-    apartment_default_duration_snapshot: minutes,
-    created_by: fields.createdBy || null,
-    created_by_role: 'admin',
-    group_id: groupId,
-  };
-
-  let rows: Record<string, unknown>[];
-  if (list.length === 0) {
-    // Aucun intervenant encore : une ligne « À assigner », prix client porté ici.
-    rows = [{ ...rowBase, cleaner_id: null, cleaner_name: null, price: fields.price || 0, cleaner_gain: 0, status: 'pending' }];
-  } else {
-    rows = list.map((c, i) => ({
-      ...rowBase,
-      cleaner_id: c.id,
-      cleaner_name: c.name,
-      // Prix client porté par UNE seule ligne (la 1re) → le CA ne compte qu'une fois.
-      price: i === 0 ? (fields.price || 0) : 0,
-      cleaner_gain: computeCleanerGain(c.hourlyRate ?? 0, minutes),
-      cleaner_hourly_rate_snapshot: c.hourlyRate ?? null,
-      status: 'assigned',
-    }));
-  }
-
-  const { data, error } = await supabase.from('missions').insert(rows).select('id');
-  if (error) { console.error('createOneShotMissionDB error:', error); return { error: error.message, count: 0 }; }
+  const res = await ecrireMission({ action: 'create-oneshot', fields });
+  if (res.error) return { error: res.error, count: 0 };
+  const ids = (res.data?.ids as string[] | undefined) ?? [];
   // Notifier chaque cleaner assigné.
-  if (list.length > 0 && data) { for (const r of data) await notifyCleanerNewMission(r.id); }
-  return { error: null, count: data?.length ?? 0 };
+  if (res.data?.assigned) { for (const id of ids) await notifyCleanerNewMission(id); }
+  return { error: null, count: ids.length };
 }
 
 // Création groupée : une mission INDIVIDUELLE par appartement sélectionné,
@@ -543,46 +375,12 @@ export async function createMissionsBatchDB(params: {
   createdBy?: string; createdByRole?: string;
 }): Promise<{ error: string | null; count: number }> {
   if (params.apartments.length === 0) return { error: 'Aucun appartement sélectionné.', count: 0 };
-
-  const cleanerIdToStore: string | null = params.cleanerId || null;
-  const rate = Number(params.cleanerHourlyRate) || 0;
-
-  const rows = params.apartments.map(a => {
-    const minutes = Number(a.durationMinutes) || 0;
-    return {
-      type: 'regular',
-      source: 'airbnb',
-      airbnb_id: a.airbnbId,
-      partner_id: a.partnerId || null,
-      created_by: params.createdBy || null,
-      created_by_role: params.createdByRole || 'admin',
-      property_name: null,           // repris de la fiche appartement (join)
-      address: null,
-      date_from: params.dateFrom,
-      time_from: params.timeFrom || null,
-      time_to: null,
-      hours_worked: Math.round((minutes / 60) * 100) / 100,
-      mission_duration_minutes: minutes,
-      cleaner_id: cleanerIdToStore,
-      cleaner_name: params.cleanerName || null,
-      price: a.price,                // prix CLIENT repris de la fiche appartement
-      cleaner_gain: cleanerIdToStore ? computeCleanerGain(rate, minutes) : 0,
-      cleaner_hourly_rate_snapshot: cleanerIdToStore ? rate : null,
-      apartment_default_duration_snapshot: a.defaultDuration ?? null,
-      status: cleanerIdToStore ? 'assigned' : 'pending',
-    };
-  });
-
-  const { data, error } = await supabase.from('missions').insert(rows).select('id');
-  if (error) {
-    console.error('createMissionsBatchDB error:', error);
-    return { error: error.message, count: 0 };
-  }
+  const res = await ecrireMission({ action: 'create-batch', fields: params });
+  if (res.error) return { error: res.error, count: 0 };
+  const ids = (res.data?.ids as string[] | undefined) ?? [];
   // Notif cleaner pour chaque mission assignée dès la création.
-  if (cleanerIdToStore && data) {
-    for (const r of data) await notifyCleanerNewMission(r.id);
-  }
-  return { error: null, count: data?.length ?? 0 };
+  if (res.data?.assigned) { for (const id of ids) await notifyCleanerNewMission(id); }
+  return { error: null, count: ids.length };
 }
 
 // ── RENDEZ-VOUS (service = 'appointment') ───────────────────────────────────
@@ -605,58 +403,17 @@ export async function createAppointmentDB(fields: {
   assigneeId?: string; assigneeRole?: string; assigneeName?: string;
   createdBy?: string;
 }): Promise<{ error: string | null }> {
-  const isCleaner = fields.assigneeRole === 'cleaner';
-  // Cleaner assigné → cleaner_id (= cleaners.id du dropdown) pour apparaître dans son
-  // planning. Admin → assignee_user_id (= users.id), cleaner_id null.
-  const cleanerId = fields.assigneeId && isCleaner ? fields.assigneeId : null;
-  const cleanerName = cleanerId ? (fields.assigneeName ?? null) : null;
-  const assigneeUserId = fields.assigneeId && !isCleaner ? fields.assigneeId : null;
-  const assigneeName = assigneeUserId ? (fields.assigneeName ?? null) : null;
-  const assigneeRole = assigneeUserId ? (fields.assigneeRole ?? 'admin') : null;
-  const assigned = !!fields.assigneeId;
-
-  const { data, error } = await supabase.from('missions').insert({
-    type: 'appointment',
-    source: 'hotel',
-    service: 'appointment',
-    property_name: fields.title,
-    address: null,
-    date_from: fields.date,
-    time_from: fields.time || null,
-    instructions: fields.description || null,
-    price: 0,
-    cleaner_gain: 0,
-    mission_duration_minutes: 0,
-    hours_worked: 0,
-    cleaner_id: cleanerId,
-    cleaner_name: cleanerName,
-    assignee_user_id: assigneeUserId,
-    assignee_name: assigneeName,
-    assignee_role: assigneeRole,
-    created_by: fields.createdBy || null,
-    created_by_role: 'admin',
-    status: assigned ? 'assigned' : 'pending',
-  }).select('id').single();
-
-  if (error) { console.error('createAppointmentDB error:', error); return { error: error.message }; }
-  if (cleanerId && data?.id) await notifyCleanerNewMission(data.id);
+  // Cleaner assigné → son planning (cleaner_id) ; admin → assignee_user_id.
+  const res = await ecrireMission({ action: 'create-appointment', fields });
+  if (res.error) return { error: res.error };
+  if (res.data?.notifyCleaner && res.data?.id) await notifyCleanerNewMission(res.data.id as string);
   return { error: null };
 }
 
-// Maps app-level MissionStatus → DB status string
-function toDbMissionStatus(appStatus: MissionStatus): string {
-  const map: Record<MissionStatus, string> = {
-    pending: 'pending',
-    accepted: 'assigned',
-    in_progress: 'inprogress',
-    completed: 'done',
-    cancelled: 'cancelled',
-  };
-  return map[appStatus] ?? appStatus;
-}
 
 export async function updateMissionStatusDB(id: string, status: MissionStatus, actor?: MissionActor): Promise<void> {
-  await supabase.from('missions').update({ status: toDbMissionStatus(status) }).eq('id', id);
+  const res = await ecrireMission({ action: 'set-status', missionId: id, status });
+  if (res.error) { console.error('updateMissionStatusDB:', res.error); return; }
   // Notifications selon le nouveau statut
   if (status === 'cancelled') await notifyMissionCancelled(id, actor?.role ?? '', actor?.id ?? '');
   else if (status === 'completed') await notifyMissionCompleted(id);
@@ -674,11 +431,9 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
 // `manual_order` de chaque mission ; le tri partagé (missionOrder.ts) l'applique
 // à date égale, côté admin ET côté cleaner.
 export async function updateMissionsOrderDB(orders: { id: string; order: number }[]): Promise<{ error: string | null }> {
-  const results = await Promise.all(orders.map(o =>
-    supabase.from('missions').update({ manual_order: o.order }).eq('id', o.id)));
-  const failed = results.find(r => r.error);
-  if (failed?.error) console.error('updateMissionsOrderDB:', failed.error);
-  return { error: failed?.error?.message ?? null };
+  const res = await ecrireMission({ action: 'reorder', orders });
+  if (res.error) console.error('updateMissionsOrderDB:', res.error);
+  return { error: res.error };
 }
 
 // Assignation groupée d'un même cleaner à plusieurs missions (tournée par zone).
@@ -724,27 +479,11 @@ export async function requestExtraTimeDB(params: {
 }): Promise<{ error: string | null }> {
   const minutes = Math.max(0, Math.round(Number(params.minutes) || 0));
   if (minutes <= 0) return { error: 'Durée supplémentaire invalide.' };
-
-  // Le cleaner ne peut agir que sur sa propre mission, non clôturée.
-  const cleanerTableId = await resolveToCleanerTableId(params.userId);
-  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
-
-  const { data, error } = await supabase
-    .from('missions')
-    .update({
-      extra_time_minutes: minutes,
-      extra_time_reason: params.reason || null,
-      extra_time_status: 'pending',
-      extra_time_requested_at: params.at ?? new Date().toISOString(),
-    })
-    .eq('id', params.missionId)
-    .eq('cleaner_id', cleanerTableId)
-    .not('status', 'in', '(done,cancelled)')
-    .select('id');
-
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) return { error: 'Demande impossible sur cette mission.' };
-
+  // Le cleaner ne peut agir que sur SA mission non clôturée (vérifié côté serveur).
+  const res = await ecrireMission({
+    action: 'extra-time-request', missionId: params.missionId, minutes, reason: params.reason, at: params.at,
+  });
+  if (res.error) return { error: res.error };
   await notifyExtraTimeRequested(params.missionId, minutes);
   return { error: null };
 }
@@ -756,35 +495,10 @@ export async function resolveExtraTimeDB(
   actor: MissionActor,
 ): Promise<{ error: string | null }> {
   if (actor.role !== 'admin') return { error: "Action réservée à l'administrateur." };
-
-  const { data: m } = await supabase
-    .from('missions')
-    .select('cleaner_id, service, mission_duration_minutes, extra_time_minutes, extra_time_status')
-    .eq('id', missionId).single();
-  if (!m) return { error: 'Mission introuvable.' };
-  if (m.extra_time_status !== 'pending') return { error: 'Aucune demande en attente.' };
-
-  if (!approve) {
-    const { error } = await supabase.from('missions')
-      .update({ extra_time_status: 'refused' }).eq('id', missionId);
-    if (error) return { error: error.message };
-    await notifyExtraTimeResolved(missionId, false);
-    return { error: null };
-  }
-
-  // Approbation : la durée payée augmente du temps demandé. Le gain est
-  // recalculé PAR LE SERVEUR, à partir du taux en base — le navigateur n'écrit
-  // plus d'argent.
-  const extra = Math.max(0, Math.round(Number(m.extra_time_minutes) || 0));
-  const newMinutes = (Number(m.mission_duration_minutes) || 0) + extra;
-
-  const paie = await ecrireMission({ action: 'set-duration', missionId, minutes: newMinutes });
-  if (paie.error) return { error: paie.error };
-
-  const { error } = await supabase.from('missions')
-    .update({ extra_time_status: 'approved' }).eq('id', missionId);
-  if (error) return { error: error.message };
-  await notifyExtraTimeResolved(missionId, true);
+  // Approbation : la durée payée augmente, le gain est recalculé par le serveur.
+  const res = await ecrireMission({ action: 'extra-time-resolve', missionId, approve });
+  if (res.error) return { error: res.error };
+  await notifyExtraTimeResolved(missionId, approve);
   return { error: null };
 }
 
@@ -797,14 +511,7 @@ export async function addMissionTimeDB(
   if (actor.role !== 'admin') return { error: "Action réservée à l'administrateur." };
   const delta = Math.round(Number(deltaMinutes) || 0);
   if (delta === 0) return { error: 'Indiquez un nombre de minutes.' };
-
-  const { data: m } = await supabase.from('missions')
-    .select('cleaner_id, service, mission_duration_minutes').eq('id', missionId).single();
-  if (!m) return { error: 'Mission introuvable.' };
-
-  // La durée pilote la paie : le recalcul se fait côté serveur.
-  const newMinutes = Math.max(0, (Number(m.mission_duration_minutes) || 0) + delta);
-  const res = await ecrireMission({ action: 'set-duration', missionId, minutes: newMinutes });
+  const res = await ecrireMission({ action: 'add-time', missionId, delta });
   return { error: res.error };
 }
 
@@ -817,69 +524,26 @@ export async function addMissionTimeDB(
 // Démarrage : horodatage + statut « en cours » + position de départ (best-effort).
 // Coordonnées de l'adresse d'une mission (via l'appartement lié). Null pour les
 // missions hôtel (pas de géocodage) ou un appartement non géolocalisé.
-async function missionAddressCoords(missionId: string): Promise<{ service?: string; coords: GeoPoint | null }> {
-  const { data } = await supabase.from('missions')
-    .select('service, address_lat, address_lng, airbnbs(latitude, longitude)').eq('id', missionId).single();
-  const d = data as any;
-  // Priorité aux coordonnées portées par la mission elle-même ; à défaut, le site lié.
-  let coords: GeoPoint | null = d?.address_lat != null && d?.address_lng != null
-    ? { lat: Number(d.address_lat), lng: Number(d.address_lng) }
-    : null;
-  if (!coords) {
-    const apt = d?.airbnbs;
-    coords = apt && apt.latitude != null && apt.longitude != null
-      ? { lat: Number(apt.latitude), lng: Number(apt.longitude) }
-      : null;
-  }
-  return { service: d?.service, coords };
-}
 
 // `at` = horodatage de l'action (ISO). En hors-ligne, l'action est capturée sur
 // place puis rejouée plus tard : on enregistre l'heure du démarrage réel, pas celle
 // du rejeu. Par défaut = maintenant (chemin en ligne classique).
 export async function startMissionDB(
-  missionId: string, userId: string, coords?: GeoPoint | null, at?: string,
+  missionId: string, _userId: string, coords?: GeoPoint | null, at?: string,
 ): Promise<{ error: string | null; tooFar?: boolean }> {
-  const cleanerTableId = await resolveToCleanerTableId(userId);
-  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
-
-  // GPS OBLIGATOIRE pour le MÉNAGE : le cleaner doit être à proximité (≤ 200 m) de
-  // l'adresse. La LIVRAISON n'est pas concernée (pas de pointage). Si l'adresse n'a
-  // pas de coordonnées (hôtel / appart non géolocalisé), on ne peut pas vérifier.
-  const { service, coords: addr } = await missionAddressCoords(missionId);
-  if (service !== 'delivery' && addr) {
-    if (!coords) return { error: GPS_REQUIRED_ERROR };
-    if (distanceMeters(addr, coords) > TRACKING_TOLERANCE_METERS) return { error: ADDRESS_PROXIMITY_ERROR, tooFar: true };
-  }
-
-  const patch: Record<string, unknown> = {
-    status: 'inprogress',
-    started_at: at ?? new Date().toISOString(),
-  };
-  if (coords) { patch.start_lat = coords.lat; patch.start_lng = coords.lng; }
-
-  const { data, error } = await supabase.from('missions').update(patch)
-    .eq('id', missionId).eq('cleaner_id', cleanerTableId)
-    .not('status', 'in', '(done,cancelled)').select('id');
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) return { error: 'Action impossible sur cette mission.' };
-  return { error: null };
+  // GPS OBLIGATOIRE pour le ménage (≤ 200 m de l'adresse) : contrôlé par le
+  // serveur. Le cleaner est celui de la session.
+  const res = await ecrireMission({ action: 'start', missionId, coords: coords ?? null, at });
+  return { error: res.error, tooFar: res.data?.tooFar === true || undefined };
 }
 
 // Livraison : le livreur valide simplement « Livré » → mission terminée. Aucun
 // pointage, aucun GPS, aucune étape de démarrage.
 export async function markDeliveredDB(
-  missionId: string, userId: string, at?: string,
+  missionId: string, _userId: string, at?: string,
 ): Promise<{ error: string | null }> {
-  const cleanerTableId = await resolveToCleanerTableId(userId);
-  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
-
-  const { data, error } = await supabase.from('missions')
-    .update({ status: 'done', ended_at: at ?? new Date().toISOString() })
-    .eq('id', missionId).eq('cleaner_id', cleanerTableId)
-    .not('status', 'in', '(done,cancelled)').select('id');
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) return { error: 'Action impossible sur cette mission.' };
+  const res = await ecrireMission({ action: 'deliver', missionId, at });
+  if (res.error) return { error: res.error };
   await notifyMissionCompleted(missionId);
   return { error: null };
 }
@@ -887,66 +551,13 @@ export async function markDeliveredDB(
 // Fin : vérifie la proximité (si les deux positions existent), calcule la durée
 // réelle, horodate la fin et clôture la mission. Renvoie tooFar si trop éloigné.
 export async function finishMissionDB(
-  missionId: string, userId: string, coords?: GeoPoint | null, at?: string,
+  missionId: string, _userId: string, coords?: GeoPoint | null, at?: string,
 ): Promise<{ error: string | null; tooFar?: boolean }> {
-  const cleanerTableId = await resolveToCleanerTableId(userId);
-  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
-
-  const { data: m } = await supabase.from('missions')
-    .select('started_at, start_lat, start_lng, cleaner_id, status, service, source, price, mission_duration_minutes, cleaner_hourly_rate_snapshot, address_lat, address_lng, airbnbs(latitude, longitude)')
-    .eq('id', missionId).single();
-  if (!m || m.cleaner_id !== cleanerTableId) return { error: 'Mission introuvable.' };
-  if (m.status === 'done' || m.status === 'cancelled') return { error: 'Mission déjà clôturée.' };
-
-  // Contrôle GPS (ménage uniquement). En priorité contre l'ADRESSE de la mission
-  // (≤ 200 m) — coords portées par la mission, sinon par le site lié ; à défaut, début ↔ fin.
-  const md = m as any;
-  const apt = md?.airbnbs;
-  const addr = md?.address_lat != null && md?.address_lng != null
-    ? { lat: Number(md.address_lat), lng: Number(md.address_lng) }
-    : (apt && apt.latitude != null && apt.longitude != null
-        ? { lat: Number(apt.latitude), lng: Number(apt.longitude) } : null);
-  if ((m as any).service !== 'delivery') {
-    if (addr) {
-      if (!coords) return { error: GPS_REQUIRED_ERROR };
-      if (distanceMeters(addr, coords) > TRACKING_TOLERANCE_METERS) return { error: ADDRESS_PROXIMITY_ERROR, tooFar: true };
-    } else if (coords && m.start_lat != null && m.start_lng != null) {
-      const d = distanceMeters({ lat: Number(m.start_lat), lng: Number(m.start_lng) }, coords);
-      if (d > TRACKING_TOLERANCE_METERS) return { error: PROXIMITY_ERROR, tooFar: true };
-    }
-  }
-
-  // Heure de fin = celle capturée sur place (hors-ligne) ou maintenant (en ligne).
-  const now = at ? new Date(at) : new Date();
-  // Minutes réellement travaillées, quand il y a eu un pointage de début.
-  let cloturerArgent: number | null = null;
-  const patch: Record<string, unknown> = { status: 'done', ended_at: now.toISOString() };
-  if (m.started_at) {
-    const mins = Math.max(0, Math.round((now.getTime() - new Date(m.started_at).getTime()) / 60000));
-    patch.actual_duration_minutes = mins;
-
-    const md = m as { source?: string; price?: number; mission_duration_minutes?: number; cleaner_hourly_rate_snapshot?: number; service?: string };
-    const svc = md.service ?? 'cleaning';
-    const planned = Number(md.mission_duration_minutes) || 0;
-
-    // PAIE CLEANER et FACTURATION HÔTEL : pour une mission d'hôtel, la paie suit
-    // le TEMPS RÉEL pointé et la facture le MAX(temps accordé, temps réel). Deux
-    // calculs d'argent — ils se font désormais côté serveur (action
-    // 'close-money'), après l'enregistrement de la clôture. Le téléphone du
-    // cleaner n'écrit plus de montant.
-    cloturerArgent = mins;
-  }
-  if (coords) { patch.end_lat = coords.lat; patch.end_lng = coords.lng; }
-
-  const { error } = await supabase.from('missions').update(patch).eq('id', missionId);
-  if (error) return { error: error.message };
-
-  // Les montants, par le serveur. Un échec ici ne doit pas remettre en cause la
-  // clôture elle-même : la mission est terminée, le cleaner est parti.
-  if (cloturerArgent != null) {
-    const res = await ecrireMission({ action: 'close-money', missionId, actualMinutes: cloturerArgent });
-    if (res.error) await signalerEchecArgent('clôture financière', missionId, res.error);
-  }
+  // Contrôle GPS, durée réelle et montants (hôtel) : tout se fait côté serveur.
+  const res = await ecrireMission({ action: 'finish', missionId, coords: coords ?? null, at });
+  if (res.error) return { error: res.error, tooFar: res.data?.tooFar === true || undefined };
+  // La clôture est enregistrée ; un échec sur les montants ne la remet pas en cause.
+  if (res.data?.argent) await signalerEchecArgent('clôture financière', missionId, String(res.data.argent));
   await notifyMissionCompleted(missionId);
   return { error: null };
 }
@@ -958,23 +569,11 @@ export async function finishMissionDB(
 // Garde atomique : impossible sur une mission déjà terminée/annulée, ou qui
 // n'appartient pas au cleaner qui la demande.
 export async function withdrawMissionDB(
-  missionId: string, userId: string,
+  missionId: string, _userId: string,
 ): Promise<{ error: string | null }> {
-  const cleanerTableId = await resolveToCleanerTableId(userId);
-  if (!cleanerTableId) return { error: 'Cleaner introuvable.' };
-
-  // Nom du cleaner AVANT détachement : la notification doit dire qui s'est désisté.
-  const { data: before } = await supabase.from('missions')
-    .select('cleaner_name').eq('id', missionId).maybeSingle();
-
-  const { data, error } = await supabase.from('missions')
-    .update({ status: 'pending', cleaner_id: null, cleaner_name: null })
-    .eq('id', missionId).eq('cleaner_id', cleanerTableId)
-    .not('status', 'in', '(done,cancelled)').select('id');
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) return { error: 'Désistement impossible sur cette mission.' };
-
-  await notifyMissionWithdrawn(missionId, before?.cleaner_name ?? null);
+  const res = await ecrireMission({ action: 'withdraw', missionId });
+  if (res.error) return { error: res.error };
+  await notifyMissionWithdrawn(missionId, (res.data?.cleanerName as string | null) ?? null);
   return { error: null };
 }
 
@@ -1005,45 +604,8 @@ export async function unassignMissionDB(missionId: string): Promise<{ error: str
 
 // Relit la mission pour l'autorisation. Tolère l'absence des colonnes created_by
 // (migration_mission_owner.sql non encore appliquée) en retombant sur partner_id.
-async function loadMissionForAuth(missionId: string) {
-  const full = await supabase
-    .from('missions')
-    .select('id, status, partner_id, created_by, created_by_role')
-    .eq('id', missionId)
-    .single();
-  if (!full.error) return { data: full.data as any, error: null };
-
-  const min = await supabase.from('missions').select('id, status, partner_id').eq('id', missionId).single();
-  if (min.error || !min.data) return { data: null, error: min.error };
-  return { data: { ...min.data, created_by: null, created_by_role: null } as any, error: null };
-}
 
 // Vérifie droits + statut. Renvoie un message d'erreur explicite si refusé.
-async function authorizeMissionMutation(
-  missionId: string,
-  actor: MissionActor,
-  action: 'modifier' | 'supprimer',
-): Promise<{ ok: true; row: any } | { ok: false; error: string }> {
-  const { data: row } = await loadMissionForAuth(missionId);
-  if (!row) return { ok: false, error: 'Mission introuvable.' };
-
-  const isAdmin = actor.role === 'admin';
-
-  // 1) Statut verrouillé (terminée / annulée) → refus SAUF pour l'admin, qui
-  //    garde le contrôle total (reprendre, modifier, annuler, supprimer).
-  const appStatus = mapMissionStatus(row.status);
-  if (isMissionLocked(appStatus) && !isAdmin) {
-    return { ok: false, error: missionLockMessage(appStatus, action) };
-  }
-
-  // 2) Droits : admin autorisé ; sinon doit être le créateur de la mission
-  const isCreator = !!actor.id && (row.created_by === actor.id || row.partner_id === actor.id);
-  if (!isAdmin && !isCreator) {
-    return { ok: false, error: "Vous n'êtes pas autorisé à modifier cette mission." };
-  }
-
-  return { ok: true, row };
-}
 
 // Champs modifiables. Le créateur (partenaire) ne touche que l'opérationnel ;
 // l'admin peut aussi modifier cleaner / prix / gain / statut.
@@ -1073,102 +635,11 @@ export async function updateMissionDB(
   actor: MissionActor,
   fields: MissionUpdateFields,
 ): Promise<{ error: string | null }> {
-  const auth = await authorizeMissionMutation(missionId, actor, 'modifier');
-  if (!auth.ok) return { error: auth.error };
-
-  const isAdmin = actor.role === 'admin';
-  // Rempli quand la durée change : la paie est alors recalculée côté serveur.
-  let recalculerPaie: { minutes?: number; aptDefault?: number | null; price?: number } | null = null;
-  const patch: Record<string, unknown> = {};
-
-  // Champs opérationnels — créateur et admin
-  if (fields.dateFrom !== undefined) patch.date_from = fields.dateFrom;
-  if (fields.timeFrom !== undefined) patch.time_from = fields.timeFrom || null;
-  if (fields.type !== undefined) patch.type = fields.type;
-  if (fields.service !== undefined) patch.service = fields.service;
-  if (fields.deliveryInstructions !== undefined) patch.delivery_instructions = fields.deliveryInstructions || null;
-  if (fields.airbnbId !== undefined) patch.airbnb_id = fields.airbnbId || null;
-  if (fields.propertyName !== undefined) patch.property_name = fields.propertyName;
-  if (fields.address !== undefined) patch.address = fields.address;
-  if (fields.instructions !== undefined) patch.instructions = fields.instructions || null;
-  if (fields.nextArrival !== undefined) patch.next_arrival = fields.nextArrival || null;
-  if (fields.nextArrivalTime !== undefined) patch.next_arrival_time = fields.nextArrivalTime || null;
-
-  // Champs réservés à l'admin — ignorés en silence si l'acteur n'est pas admin
-  if (isAdmin) {
-    if (fields.cleanerId !== undefined) {
-      patch.cleaner_id = fields.cleanerId || null;
-      patch.cleaner_name = fields.cleanerName ?? null;
-    }
-    // Prix CLIENT : c'est de l'argent, il part par le serveur avec le reste.
-    if (fields.price !== undefined) {
-      recalculerPaie = { ...(recalculerPaie ?? {}), price: Number(fields.price) || 0 };
-    }
-    if (fields.status !== undefined) patch.status = toDbMissionStatus(fields.status);
-
-    // ── Recalcul du gain cleaner ──────────────────────────────────────────
-    // Déclenché si l'admin change le cleaner, l'appartement, la durée ou la
-    // prestation. Ménage = taux horaire × durée / 60 ; livraison = montant fixe.
-    const touchesPay = fields.cleanerId !== undefined
-      || fields.airbnbId !== undefined
-      || fields.missionDurationMinutes !== undefined
-      || fields.service !== undefined;
-    if (touchesPay) {
-      const { data: current } = await supabase
-        .from('missions')
-        .select('cleaner_id, service, mission_duration_minutes, apartment_default_duration_snapshot')
-        .eq('id', missionId).single();
-
-      const cleanerId = fields.cleanerId !== undefined ? fields.cleanerId : current?.cleaner_id;
-      const service = (fields.service !== undefined ? fields.service : current?.service) as MissionService | undefined;
-
-      // Durée par défaut de l'appartement (si l'appart change ou pour fallback).
-      let aptDefault: number | null = current?.apartment_default_duration_snapshot ?? null;
-      if (fields.airbnbId !== undefined && fields.airbnbId) {
-        const { data: apt } = await supabase.from('airbnbs')
-          .select('estimated_cleaning_minutes').eq('id', fields.airbnbId).single();
-        if (apt?.estimated_cleaning_minutes != null) aptDefault = Number(apt.estimated_cleaning_minutes);
-      }
-
-      // Durée retenue : explicite > durée courante > défaut appart > 60.
-      const minutes = fields.missionDurationMinutes !== undefined
-        ? Number(fields.missionDurationMinutes) || 0
-        : (current?.mission_duration_minutes != null
-            ? Number(current.mission_duration_minutes)
-            : (aptDefault ?? 60));
-
-      patch.mission_duration_minutes = minutes;
-      patch.hours_worked = Math.round((minutes / 60) * 100) / 100;
-      if (aptDefault != null) patch.apartment_default_duration_snapshot = aptDefault;
-
-      // Le gain n'est plus calculé ici : il l'est par le serveur, juste après
-      // l'enregistrement (cf. `recalculerPaie` plus bas). Le navigateur n'écrit
-      // pas d'argent.
-      recalculerPaie = { ...(recalculerPaie ?? {}), minutes, aptDefault: aptDefault ?? null };
-    }
-  }
-
-  if (Object.keys(patch).length === 0) return { error: null };
-
-  // Garde atomique : la requête elle-même refuse de toucher une mission clôturée.
-  const { data, error } = await supabase
-    .from('missions')
-    .update(patch)
-    .eq('id', missionId)
-    .not('status', 'in', '(done,cancelled)')
-    .select('id');
-
-  if (error) return { error: error.message };
-  if (!data || data.length === 0) {
-    return { error: 'Cette mission est clôturée et ne peut plus être modifiée.' };
-  }
-  // La durée a changé → la paie est recalculée côté serveur, à partir du taux en
-  // base. C'était le dernier endroit où le navigateur écrivait de l'argent.
-  if (recalculerPaie) {
-    const res = await ecrireMission({ action: 'set-duration', missionId, ...recalculerPaie });
-    if (res.error) await signalerEchecArgent('recalcul de la paie', missionId, res.error);
-  }
-
+  // Droits (admin ou créateur), verrouillage et recalcul de la paie : côté serveur.
+  const res = await ecrireMission({ action: 'update', missionId, fields });
+  if (res.error) return { error: res.error };
+  if (res.data?.rien) return { error: null };
+  if (res.data?.argent) await signalerEchecArgent('recalcul de la paie', missionId, String(res.data.argent));
   // Notif : mission modifiée (admin + cleaner si assignée)
   await notifyMissionModified(missionId, actor.role, actor.id);
   return { error: null };
@@ -1226,12 +697,8 @@ export async function deleteMissionDB(
 // automatiquement puisqu'ils dérivent du statut courant.
 export async function reopenMissionDB(missionId: string, actor: MissionActor): Promise<{ error: string | null }> {
   if (actor.role !== 'admin') return { error: "Action réservée à l'administrateur." };
-  const { error } = await supabase.from('missions').update({
-    status: 'inprogress',
-    ended_at: null,
-    actual_duration_minutes: null,
-  }).eq('id', missionId);
-  return { error: error?.message ?? null };
+  const res = await ecrireMission({ action: 'reopen', missionId });
+  return { error: res.error };
 }
 
 // (disponibilité cleaner déplacée dans ./db/cleaners)

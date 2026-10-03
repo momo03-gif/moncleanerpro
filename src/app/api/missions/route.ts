@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { computeMissionGain, computeCleanerGain, billableHotelPrice } from '@/lib/pay';
+import { computeMissionGain } from '@/lib/pay';
+import { executerActionMission, appliquerDuree, cloturerArgent } from '@/lib/missionActions';
 import type { MissionService } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -21,7 +22,8 @@ export const runtime = 'nodejs';
 // supprimer, et celui d'écrire les colonnes de paie et d'affectation
 // (cf. supabase/migration_missions_verrouillage.sql).
 //
-// Le reste des écritures suivra dans une passe dédiée.
+// Toutes les autres écritures ont suivi : cf. lib/missionActions.ts, branché
+// sur le `default` ci-dessous. Le navigateur n'écrit plus dans `missions`.
 
 const refus = (message: string, code = 403) => NextResponse.json({ error: message }, { status: code });
 
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
   if (!session) return refus('Non authentifié.', 401);
 
   let b: {
-    action?: 'delete' | 'assign' | 'unassign' | 'delete-recurring' | 'set-duration' | 'generate-recurring' | 'close-money' | 'reassign';
+    action?: string;
     missionId?: string; missionIds?: string[];
     cleanerId?: string; cleanerName?: string;
     fromCleanerId?: string; toCleanerId?: string; apercu?: boolean;
@@ -253,35 +255,13 @@ export async function POST(req: NextRequest) {
       if (typeof b.minutes !== 'number' && typeof b.price !== 'number') {
         return refus('Durée ou prix requis.', 400);
       }
-      const minutes = typeof b.minutes === 'number' ? Math.max(0, Math.round(b.minutes)) : null;
-
-      const { data: m } = await db.from('missions')
-        .select('service, cleaner_id').eq('id', b.missionId).maybeSingle();
-      if (!m) return refus('Mission introuvable.', 404);
-
-      const patch: Record<string, unknown> = {};
-      if (minutes != null) {
-        patch.mission_duration_minutes = minutes;
-        patch.hours_worked = Math.round((minutes / 60) * 100) / 100;
-      }
-      if (b.aptDefault != null) patch.apartment_default_duration_snapshot = b.aptDefault;
-      // Le prix CLIENT (facturation) est lui aussi écrit ici : c'est de l'argent.
-      if (typeof b.price === 'number') patch.price = Math.max(0, b.price);
-
-      if (minutes != null && m.cleaner_id) {
-        const { data: cleaner } = await db.from('cleaners')
-          .select('hourly_rate, delivery_rate').eq('id', m.cleaner_id).maybeSingle();
-        const rate = Number(cleaner?.hourly_rate) || 0;
-        const deliveryRate = Number(cleaner?.delivery_rate) || 0;
-        patch.cleaner_gain = computeMissionGain({
-          service: m.service as MissionService | undefined,
-          hourlyRate: rate, deliveryRate, durationMinutes: minutes,
-        });
-        patch.cleaner_hourly_rate_snapshot = rate;
-      }
-
-      const { error } = await db.from('missions').update(patch).eq('id', b.missionId);
-      if (error) { console.error('missions/set-duration:', error.message); return refus('Enregistrement impossible.', 500); }
+      const r = await appliquerDuree(db, b.missionId, {
+        minutes: typeof b.minutes === 'number' ? b.minutes : null,
+        aptDefault: b.aptDefault ?? null,
+        price: typeof b.price === 'number' ? b.price : null,
+      });
+      if (r.error) return refus(r.error, r.error === 'Mission introuvable.' ? 404 : 500);
+      const minutes = r.minutes;
       return NextResponse.json({ ok: true, minutes });
     }
 
@@ -293,30 +273,15 @@ export async function POST(req: NextRequest) {
       if (!b.missionId || typeof b.actualMinutes !== 'number') return refus('Ménage ou durée manquant.', 400);
 
       const { data: m } = await db.from('missions')
-        .select('source, service, price, mission_duration_minutes, cleaner_hourly_rate_snapshot, cleaner_id, cleaners!missions_cleaner_id_fkey(user_id)')
+        .select('cleaner_id, cleaners!missions_cleaner_id_fkey(user_id)')
         .eq('id', b.missionId).maybeSingle();
       if (!m) return refus('Mission introuvable.', 404);
 
       const cleanerUserId = (m as { cleaners?: { user_id?: string } }).cleaners?.user_id ?? null;
       if (!estAdmin && cleanerUserId !== session.id) return refus('Ce ménage ne vous est pas attribué.');
 
-      const mins = Math.max(0, Math.round(b.actualMinutes));
-      const svc = (m.service ?? 'cleaning') as string;
-      const planned = Number(m.mission_duration_minutes) || 0;
-      const patch: Record<string, unknown> = {};
-
-      const rate = Number(m.cleaner_hourly_rate_snapshot) || 0;
-      if (m.source === 'hotel' && svc === 'cleaning' && rate > 0) {
-        patch.cleaner_gain = computeCleanerGain(rate, mins);
-      }
-      const basePrice = Number(m.price) || 0;
-      if (m.source === 'hotel' && planned > 0 && basePrice > 0) {
-        patch.price = billableHotelPrice(basePrice, planned, mins);
-      }
-      if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true, rien: true });
-
-      const { error } = await db.from('missions').update(patch).eq('id', b.missionId);
-      if (error) { console.error('missions/close-money:', error.message); return refus('Enregistrement impossible.', 500); }
+      const r = await cloturerArgent(db, b.missionId, b.actualMinutes);
+      if (r.error) return refus(r.error, 500);
       return NextResponse.json({ ok: true });
     }
 
@@ -329,7 +294,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, created: res.created });
     }
 
-    default:
-      return refus('Action inconnue.', 400);
+    default: {
+      // Les autres écritures (pointage, création, modification, classement…) :
+      // cf. lib/missionActions.ts.
+      const r = await executerActionMission(db, session, b as Record<string, unknown>);
+      if (!r) return refus('Action inconnue.', 400);
+      return NextResponse.json(r.body, { status: r.status });
+    }
   }
 }
