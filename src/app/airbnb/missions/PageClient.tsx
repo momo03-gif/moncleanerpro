@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { useRouter } from 'next/navigation';
 import { getAirbnbsForPartner, getMissionsForPartnerDB, getReservationsForPartner, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
-import { supabase } from '@/lib/supabase';
+import { ecouterMissions } from '@/lib/missionsLive';
 import type { Apartment, Mission, Reservation } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
@@ -269,10 +269,7 @@ export default function AirbnbMissionsPage() {
   useEffect(() => {
     load();
     if (!user) return;
-    const ch = supabase.channel('partner-missions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return ecouterMissions(load);
   }, [load, user]);
 
   // Ouverture directe d'un onglet via ?tab= (ex. « Commander » → create,

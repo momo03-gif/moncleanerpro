@@ -27,7 +27,7 @@ import { fetchBeds24Reservations } from './pms/beds24';
 import { fetchLodgifyReservations } from './pms/lodgify';
 import { REST_CONNECTORS } from './pms/catalog';
 import { memoryTokenStore, type TokenStore, type PmsCallOptions } from './pms/rest';
-import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync } from './notifications';
+import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync } from './notificationEvents';
 import { parseAirbnbDescription } from './guestContact';
 import { shouldRealign } from './missionDefaults';
 

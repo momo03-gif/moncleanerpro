@@ -13,16 +13,15 @@ export { supplyNeeds, urgentNeeds, type SupplyNeed, type SupplyReport, type Supp
  * longtemps ne dit plus rien d'utile.
  */
 async function getSupplyReportsDB(airbnbId: string): Promise<SupplyReport[]> {
-  const { data, error } = await supabase
-    .from('missions')
-    .select('id, date_from, mission_reports(consumables, consumables_note)')
-    .eq('airbnb_id', airbnbId)
-    // En base, un ménage terminé porte le statut 'done' ('completed' est le nom
-    // applicatif, cf. mapMissionStatus). Ne pas « corriger » en 'completed'.
-    .eq('status', 'done')
-    .order('date_from', { ascending: false })
-    .limit(30);
-  if (error) { console.error('getSupplyReportsDB:', error.message); return []; }
+  // Lecture par le serveur : la table missions n'est plus lisible en direct.
+  // Réservé à l'admin et à la conciergerie propriétaire du logement.
+  let data: any[] = [];
+  try {
+    const res = await fetch(`/api/missions?scope=supplies&airbnbId=${encodeURIComponent(airbnbId)}`, { cache: 'no-store' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? `Erreur ${res.status}`);
+    data = body.data ?? [];
+  } catch (e) { console.error('getSupplyReportsDB:', e); return []; }
 
   const out: SupplyReport[] = [];
   for (const row of (data ?? []) as Record<string, unknown>[]) {

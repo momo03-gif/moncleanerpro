@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
 import { computeCleanerGain } from '@/lib/pay';
-import { notifyPartnerCreatedMission, notifyCleanerNewMission, notifyHotelRequestDecision } from '@/lib/notifications';
+import { notifyPartnerCreatedMission, notifyCleanerNewMission, notifyHotelRequestDecision } from '@/lib/notificationEvents';
 import type { HotelAnnounce, AnnounceStatus } from '@/lib/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 

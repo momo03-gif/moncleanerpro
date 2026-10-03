@@ -3,6 +3,8 @@ import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeMissionGain } from '@/lib/pay';
 import { executerActionMission, appliquerDuree, cloturerArgent } from '@/lib/missionActions';
+import { lirePourSession } from '@/lib/missionRead';
+import { notifyCleanerNewMission, notifyCleanerMissionUnassigned, notifyMissionCancelled, notifyMissionsTransferees } from '@/lib/notificationEvents';
 import type { MissionService } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -26,6 +28,24 @@ export const runtime = 'nodejs';
 // sur le `default` ci-dessous. Le navigateur n'écrit plus dans `missions`.
 
 const refus = (message: string, code = 403) => NextResponse.json({ error: message }, { status: code });
+
+// ── Lecture ──────────────────────────────────────────────────────────────────
+// GET /api/missions?scope=all|cleaner|partner|open|requests|ranking|supplies|one
+// Ce que chaque rôle a le droit de lire, et quels champs en sortent : cf.
+// lib/missionRead.ts. La clé publique ne lit plus la table.
+export async function GET(req: NextRequest) {
+  const session = await getSessionUser();
+  if (!session) return refus('Non authentifié.', 401);
+  const p = req.nextUrl.searchParams;
+  try {
+    const data = await lirePourSession(getSupabaseAdmin(), session, p.get('scope') ?? '', p);
+    if (data === null) return refus('Accès refusé.');
+    return NextResponse.json({ data }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (e) {
+    console.error('missions/GET:', (e as Error).message);
+    return refus('Lecture impossible.', 500);
+  }
+}
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUser();
@@ -68,6 +88,8 @@ export async function POST(req: NextRequest) {
       if (!b.missionId) return refus('Mission manquante.', 400);
       const droit = await peutAgir(b.missionId, 'supprimer');
       if (!droit.ok) return refus(droit.error);
+      // Prévenir AVANT : une fois supprimée, la mission n'a plus de contexte.
+      await notifyMissionCancelled(b.missionId, session.role, session.id);
 
       let q = db.from('missions').delete().eq('id', b.missionId);
       // Garde atomique : hors admin, une mission close ne part pas, même si son
@@ -132,6 +154,7 @@ export async function POST(req: NextRequest) {
         }).eq('id', id);
         if (error) { console.error('missions/assign:', error.message); return refus('Affectation impossible.', 500); }
       }
+      for (const id of ids) await notifyCleanerNewMission(id);
       return NextResponse.json({ ok: true, count: ids.length });
     }
 
@@ -216,7 +239,6 @@ export async function POST(req: NextRequest) {
       // Les deux intervenants doivent l'apprendre de nous, pas en ouvrant
       // l'application par hasard.
       if (count > 0) {
-        const { notifyMissionsTransferees } = await import('@/lib/notifications');
         await notifyMissionsTransferees(b.fromCleanerId, cible.id, count, apercu.premiere, apercu.derniere);
       }
       return NextResponse.json({ ok: true, count, apercu });
@@ -241,7 +263,8 @@ export async function POST(req: NextRequest) {
       if (!data || data.length === 0) return refus('Cette mission ne peut plus être modifiée.');
       // On rend l'ancien cleaner : il doit être prévenu, sinon il continue de
       // compter sur la mission et se déplace pour rien.
-      return NextResponse.json({ ok: true, previousCleanerId: avant.cleaner_id });
+      await notifyCleanerMissionUnassigned(b.missionId, avant.cleaner_id as string);
+      return NextResponse.json({ ok: true });
     }
 
     case 'set-duration': {

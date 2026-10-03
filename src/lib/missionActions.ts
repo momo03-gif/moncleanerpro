@@ -8,6 +8,11 @@ import {
   distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR,
   GPS_REQUIRED_ERROR, type GeoPoint,
 } from './geo';
+import {
+  notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified, notifyMissionCancelled,
+  notifyMissionCompleted, notifyMissionWithdrawn, notifyExtraTimeRequested, notifyExtraTimeResolved,
+  notifyAdminsMissionRequested, notifyCleanerRequestDecision,
+} from './notificationEvents';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Écritures sur `missions`, côté SERVEUR (service_role).
@@ -22,8 +27,8 @@ import {
 //  d'erreur sont repris À L'IDENTIQUE des anciennes fonctions : la file
 //  hors-ligne du cleaner les reconnaît pour savoir si elle doit retenter.
 //
-//  Les notifications restent envoyées par le navigateur après succès (comme
-//  pour l'affectation) : la route renvoie ce dont elles ont besoin.
+//  Les notifications partent d'ici, après succès (cf. notificationEvents.ts) :
+//  l'auteur est celui de la session, et elles ne dépendent plus du téléphone.
 // ══════════════════════════════════════════════════════════════════════════════
 
 export type Corps = Record<string, unknown>;
@@ -194,6 +199,7 @@ const ACTIONS: Record<string, Action> = {
       .not('status', 'in', '(done,cancelled)').select('id');
     if (error) { console.error('missions/deliver:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Action impossible sur cette mission.');
+    await notifyMissionCompleted(missionId);
     return ok();
   },
 
@@ -236,6 +242,7 @@ const ACTIONS: Record<string, Action> = {
     if (error) { console.error('missions/finish:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Mission déjà clôturée.');
 
+    await notifyMissionCompleted(missionId);
     // Les montants. Un échec ne remet pas en cause la clôture : le cleaner est parti.
     if (minutesReelles != null) {
       const r = await cloturerArgent(db, missionId, minutesReelles);
@@ -256,7 +263,8 @@ const ACTIONS: Record<string, Action> = {
       .not('status', 'in', '(done,cancelled)').select('id');
     if (error) { console.error('missions/withdraw:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Désistement impossible sur cette mission.');
-    return ok({ cleanerName: avant?.cleaner_name ?? null });
+    await notifyMissionWithdrawn(missionId, (avant?.cleaner_name as string | null) ?? null);
+    return ok();
   },
 
   async 'extra-time-request'(db, s, b) {
@@ -275,6 +283,7 @@ const ACTIONS: Record<string, Action> = {
       .not('status', 'in', '(done,cancelled)').select('id');
     if (error) { console.error('missions/extra-time-request:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Demande impossible sur cette mission.');
+    await notifyExtraTimeRequested(missionId, minutes);
     return ok({ minutes });
   },
 
@@ -306,7 +315,8 @@ const ACTIONS: Record<string, Action> = {
       .or(`pending_cleaner_id.is.null,pending_cleaner_id.eq.${c.id}`).select('id');
     if (error) { console.error('missions/request:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Cette mission n’est plus disponible.');
-    return ok({ cleanerName: c.name });
+    await notifyAdminsMissionRequested(missionId, c.name as string);
+    return ok();
   },
 
   // ── Conciergerie (partenaire Airbnb) ───────────────────────────────────────
@@ -333,6 +343,7 @@ const ACTIONS: Record<string, Action> = {
       status: 'pending',
     }).select('id').single();
     if (error) { console.error('missions/create-airbnb:', error.message); return ko('Création impossible.', 500); }
+    await notifyPartnerCreatedMission(s.name || 'Un partenaire Airbnb', dateFrom, str(b.timeFrom) ?? '', data?.id ?? null);
     return ok({ id: data?.id });
   },
 
@@ -432,11 +443,10 @@ const ACTIONS: Record<string, Action> = {
       return ok({ rien: true });
     }
     // La paie, après l'enregistrement : le nouveau cleaner est en base.
-    if (paie) {
-      const r = await appliquerDuree(db, missionId, paie);
-      if (r.error) return ok({ argent: r.error });
-    }
-    return ok();
+    let argent: string | null = null;
+    if (paie) argent = (await appliquerDuree(db, missionId, paie)).error;
+    await notifyMissionModified(missionId, s.role, s.id);
+    return ok(argent ? { argent } : {});
   },
 
   // ── Administration ─────────────────────────────────────────────────────────
@@ -460,6 +470,8 @@ const ACTIONS: Record<string, Action> = {
     if (!missionId || !st) return ko('Mission ou statut manquant.');
     const { error } = await db.from('missions').update({ status: st }).eq('id', missionId);
     if (error) { console.error('missions/set-status:', error.message); return ko('Enregistrement impossible.', 500); }
+    if (st === 'cancelled') await notifyMissionCancelled(missionId, s.role, s.id);
+    else if (st === 'done') await notifyMissionCompleted(missionId);
     return ok();
   },
 
@@ -488,7 +500,8 @@ const ACTIONS: Record<string, Action> = {
     }
     const { error } = await db.from('missions').update(patch).eq('id', missionId);
     if (error) { console.error('missions/decide-request:', error.message); return ko('Enregistrement impossible.', 500); }
-    return ok({ cleanerId: m.pending_cleaner_id });
+    await notifyCleanerRequestDecision(missionId, m.pending_cleaner_id as string, b.approve === true);
+    return ok();
   },
 
   async 'extra-time-resolve'(db, s, b) {
@@ -507,6 +520,7 @@ const ACTIONS: Record<string, Action> = {
     const { error } = await db.from('missions')
       .update({ extra_time_status: b.approve === true ? 'approved' : 'refused' }).eq('id', missionId);
     if (error) { console.error('missions/extra-time-resolve:', error.message); return ko('Enregistrement impossible.', 500); }
+    await notifyExtraTimeResolved(missionId, b.approve === true);
     return ok();
   },
 
@@ -572,7 +586,8 @@ const ACTIONS: Record<string, Action> = {
       status: cleanerId ? 'assigned' : 'pending',
     }).select('id').single();
     if (error) { console.error('missions/create:', error.message); return ko(error.message, 500); }
-    return ok({ id: data?.id, assigned: !!cleanerId });
+    if (cleanerId && data?.id) await notifyCleanerNewMission(data.id as string);
+    return ok({ id: data?.id });
   },
 
   async 'create-oneshot'(db, s, b) {
@@ -615,7 +630,8 @@ const ACTIONS: Record<string, Action> = {
     }
     const { data, error } = await db.from('missions').insert(rows).select('id');
     if (error) { console.error('missions/create-oneshot:', error.message); return ko(error.message, 500); }
-    return ok({ ids: (data ?? []).map(r => r.id), assigned: liste.length > 0 });
+    if (liste.length > 0) for (const r of data ?? []) await notifyCleanerNewMission(r.id as string);
+    return ok({ ids: (data ?? []).map(r => r.id) });
   },
 
   async 'create-batch'(db, s, b) {
@@ -645,7 +661,8 @@ const ACTIONS: Record<string, Action> = {
     });
     const { data, error } = await db.from('missions').insert(rows).select('id');
     if (error) { console.error('missions/create-batch:', error.message); return ko(error.message, 500); }
-    return ok({ ids: (data ?? []).map(r => r.id), assigned: !!cleanerId });
+    if (cleanerId) for (const r of data ?? []) await notifyCleanerNewMission(r.id as string);
+    return ok({ ids: (data ?? []).map(r => r.id) });
   },
 
   async 'create-appointment'(db, s, b) {
@@ -670,7 +687,8 @@ const ACTIONS: Record<string, Action> = {
       status: assigneeId ? 'assigned' : 'pending',
     }).select('id').single();
     if (error) { console.error('missions/create-appointment:', error.message); return ko(error.message, 500); }
-    return ok({ id: data?.id, notifyCleaner: !!cleanerId });
+    if (cleanerId && data?.id) await notifyCleanerNewMission(data.id as string);
+    return ok({ id: data?.id });
   },
 
   // Réapplique les forfaits d'une maison partagée aux ménages À VENIR non assignés.

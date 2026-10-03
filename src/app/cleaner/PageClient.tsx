@@ -9,7 +9,7 @@ import {
   submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime,
   initOfflineSync, syncQueue, queueSummary, dismissRejected, QUEUE_CHANGE_EVENT, type QueueSummary,
 } from '@/lib/offline/queue';
-import { supabase } from '@/lib/supabase';
+import { ecouterMissions } from '@/lib/missionsLive';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsForCleaner } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
@@ -703,13 +703,11 @@ export default function CleanerDashboard() {
     // Recharge au changement d'état réseau : bascule bandeau ↔ données à jour.
     window.addEventListener('online', load);
     window.addEventListener('offline', load);
-    const ch = supabase.channel('cleaner-missions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load)
-      .subscribe();
+    const stop = ecouterMissions(load);
     return () => {
       window.removeEventListener('online', load);
       window.removeEventListener('offline', load);
-      supabase.removeChannel(ch);
+      stop();
     };
   }, [load, user]);
 

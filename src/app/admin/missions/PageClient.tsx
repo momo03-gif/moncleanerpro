@@ -18,6 +18,7 @@ import type { Mission, HotelAnnounce, Apartment } from '@/lib/types';
 import { canCleanerDoService } from '@/lib/service';
 import Icon from '@/components/Icon';
 import { groupMissionsByCleaner, compareMissionPriority } from '@/lib/missionOrder';
+import { ecouterMissions } from '@/lib/missionsLive';
 import { inputStyle } from '@/lib/ui';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, addDaysStr, todayStr, type DateRange } from '@/lib/dateRange';
@@ -123,8 +124,8 @@ export default function MissionsPage() {
       timer = setTimeout(() => { if (savingOrder.current === 0) load(); }, 500);
     };
     const ch1 = supabase.channel('rt-requests').on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_requests' }, reload).subscribe();
-    const ch2 = supabase.channel('rt-missions').on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, reload).subscribe();
-    return () => { clearTimeout(timer); supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+    const stop = ecouterMissions(load, { enPause: () => savingOrder.current > 0 });
+    return () => { clearTimeout(timer); supabase.removeChannel(ch1); stop(); };
   }, [load]);
 
   // Réinitialise la pagination quand la portée de la vue change.
