@@ -17,7 +17,7 @@ import { getTerrainMap, type TerrainInfo } from '@/lib/fieldContact';
 import type { Mission, HotelAnnounce, Apartment } from '@/lib/types';
 import { canCleanerDoService } from '@/lib/service';
 import Icon from '@/components/Icon';
-import { groupMissionsByCleaner } from '@/lib/missionOrder';
+import { groupMissionsByCleaner, compareMissionPriority } from '@/lib/missionOrder';
 import { inputStyle } from '@/lib/ui';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, addDaysStr, todayStr, type DateRange } from '@/lib/dateRange';
@@ -68,6 +68,8 @@ export default function MissionsPage() {
   const [range, setRange] = useState<DateRange>(() => presetRange('today'));
   // Pagination douce : nombre de missions affichées (compact + léger → gros volumes OK).
   const [visibleCount, setVisibleCount] = useState(60);
+  // Nombre d'enregistrements de classement en cours (suspend le rechargement temps réel).
+  const savingOrder = useRef(0);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [loading, setLoading] = useState(true);
@@ -112,9 +114,17 @@ export default function MissionsPage() {
 
   useEffect(() => {
     load();
-    const ch1 = supabase.channel('rt-requests').on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_requests' }, load).subscribe();
-    const ch2 = supabase.channel('rt-missions').on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, load).subscribe();
-    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+    // Une action groupée (classement, assignation multiple…) modifie plusieurs
+    // lignes d'un coup : on regroupe les événements en un seul rechargement, et
+    // on n'en déclenche aucun pendant l'enregistrement d'un classement.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const reload = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (savingOrder.current === 0) load(); }, 500);
+    };
+    const ch1 = supabase.channel('rt-requests').on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_requests' }, reload).subscribe();
+    const ch2 = supabase.channel('rt-missions').on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, reload).subscribe();
+    return () => { clearTimeout(timer); supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, [load]);
 
   // Réinitialise la pagination quand la portée de la vue change.
@@ -192,19 +202,28 @@ export default function MissionsPage() {
   // Réordonne les missions d'un cleaner POUR UNE JOURNÉE et persiste le rang
   // manuel (0..n). Le tri partagé compare d'abord la date : échanger avec une
   // mission d'un autre jour n'aurait aucun effet visible, donc on ne classe
-  // qu'entre missions du même jour. On renumérote la journée complète (pas
-  // seulement la partie affichée) pour éviter les rangs en doublon.
-  async function reorderDay(cleanerId: string | null, date: string, missionId: string, dir: -1 | 1) {
-    const day = (allGroups.find(g => g.cleanerId === cleanerId)?.missions ?? []).filter(m => m.date === date);
-    const index = day.findIndex(m => m.id === missionId);
-    const target = index + dir;
-    if (index < 0 || target < 0 || target >= day.length) return;
-    const arr = [...day];
-    [arr[index], arr[target]] = [arr[target], arr[index]];
+  // qu'entre missions du même jour. `visibleDay` = ce que l'admin voit (filtres
+  // appliqués) ; on renumérote pourtant la journée COMPLÈTE, missions masquées
+  // comprises, sinon leurs anciens rangs entrent en collision avec les nouveaux.
+  async function reorderDay(mission: Mission, visibleDay: Mission[], dir: -1 | 1) {
+    const neighbor = visibleDay[visibleDay.indexOf(mission) + dir];
+    if (!neighbor) return;
+    const full = missions
+      .filter(x => (x.cleanerId ?? null) === (mission.cleanerId ?? null) && x.date === mission.date)
+      .sort(compareMissionPriority);
+    const from = full.findIndex(x => x.id === mission.id);
+    const to = full.findIndex(x => x.id === neighbor.id);
+    if (from < 0 || to < 0) return;
+    const [moved] = full.splice(from, 1);
+    full.splice(to, 0, moved);
     // Mise à jour optimiste : on reflète le nouvel ordre tout de suite.
-    const orderById = new Map(arr.map((m, i) => [m.id, i]));
+    const orderById = new Map(full.map((m, i) => [m.id, i]));
     setMissions(prev => prev.map(m => orderById.has(m.id) ? { ...m, manualOrder: orderById.get(m.id) } : m));
-    const { error } = await updateMissionsOrderDB(arr.map((m, i) => ({ id: m.id, order: i })));
+    // Chaque ligne réécrite déclenche un événement temps réel ; on suspend le
+    // rechargement pendant l'écriture pour ne pas afficher d'états intermédiaires.
+    savingOrder.current++;
+    const { error } = await updateMissionsOrderDB(full.map((m, i) => ({ id: m.id, order: i })));
+    savingOrder.current--;
     if (error) {
       toast("Le nouvel ordre n'a pas pu être enregistré.", 'error');
       await load();
@@ -485,22 +504,22 @@ export default function MissionsPage() {
                     </span>
                   </div>
                   <div className="space-y-2">
-                    {group.missions.map((m, i) => {
+                    {group.missions.map(m => {
                       // Classement au sein de la journée (voir reorderDay).
                       const dayList = group.missions.filter(x => x.date === m.date);
                       const dayIndex = dayList.indexOf(m);
-                      const dayTotal = allGroups.find(g => g.cleanerId === group.cleanerId)?.missions.filter(x => x.date === m.date).length ?? dayList.length;
+                      const many = dayList.length > 1;
                       return (
                       <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
                         terrain={terrain[m.id]}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
                         selected={selectedIds.has(m.id)}
                         onToggleSelect={toggleSelect}
-                        position={dayTotal > 1 ? dayIndex + 1 : undefined}
+                        position={many ? dayIndex + 1 : undefined}
                         canMoveUp={dayIndex > 0}
-                        canMoveDown={dayIndex < dayTotal - 1}
-                        onMoveUp={dayTotal > 1 ? () => reorderDay(group.cleanerId, m.date, m.id, -1) : undefined}
-                        onMoveDown={dayTotal > 1 ? () => reorderDay(group.cleanerId, m.date, m.id, 1) : undefined} />
+                        canMoveDown={dayIndex < dayList.length - 1}
+                        onMoveUp={many ? () => reorderDay(m, dayList, -1) : undefined}
+                        onMoveDown={many ? () => reorderDay(m, dayList, 1) : undefined} />
                       );
                     })}
                   </div>
