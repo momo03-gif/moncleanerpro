@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { annexe } from './db/shared';
+import { deposerFichier } from './depot';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Vidéo d'accès d'un site (logement) : comment s'y rendre / trouver la clé /
@@ -14,28 +15,6 @@ import { supabase } from './supabase';
 // ════════════════════════════════════════════════════════════════════════════
 
 export const SITE_VIDEOS_BUCKET = 'site_videos';
-
-// Récupère les URL de vidéo d'accès pour une liste de sites, en UNE requête.
-// RÉSILIENT : si la colonne access_video_url n'existe pas encore (migration non
-// exécutée) ou en cas d'erreur, renvoie une map vide → la fonctionnalité est
-// simplement inactive, SANS jamais casser le reste (ex. l'affichage des missions).
-export async function getSiteVideosMap(airbnbIds: string[]): Promise<Record<string, string>> {
-  const ids = Array.from(new Set(airbnbIds.filter(Boolean)));
-  if (ids.length === 0) return {};
-  try {
-    const { data, error } = await supabase
-      .from('airbnbs').select('id, access_video_url').in('id', ids);
-    if (error) return {};
-    const map: Record<string, string> = {};
-    for (const r of data ?? []) {
-      const url = (r as { access_video_url?: string }).access_video_url;
-      if (url) map[(r as { id: string }).id] = url;
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
 
 // Plafond volontairement bas (plan gratuit) : une vidéo d'accès n'a besoin que de
 // quelques secondes. Au-delà, on refuse avec un message clair.
@@ -57,53 +36,21 @@ export async function uploadSiteVideoDB(airbnbId: string, file: File): Promise<S
     return { error: `Vidéo trop lourde (${sizeMb.toFixed(0)} Mo). Maximum ${MAX_VIDEO_MB} Mo — filmez plus court.` };
   }
 
-  // Supprime d'abord l'ancien fichier (une seule vidéo par site).
-  const { data: existing } = await supabase
-    .from('airbnbs').select('access_video_path').eq('id', airbnbId).maybeSingle();
-  const oldPath = existing?.access_video_path as string | null | undefined;
-
+  // Dépôt autorisé par le serveur (admin, ou conciergerie du logement) ;
+  // l'enregistrement remplace l'ancienne vidéo et supprime son fichier.
   const ext = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
-  const rand = Math.random().toString(36).slice(2, 8);
-  const path = `${airbnbId}/access-${Date.now()}-${rand}.${ext}`;
-
-  const { error: upErr } = await supabase.storage
-    .from(SITE_VIDEOS_BUCKET)
-    .upload(path, file, { contentType: file.type || 'video/mp4', upsert: false });
-  if (upErr) { console.error('uploadSiteVideoDB storage:', upErr.message); return { error: upErr.message }; }
-
-  const { data: pub } = supabase.storage.from(SITE_VIDEOS_BUCKET).getPublicUrl(path);
-  const url = pub.publicUrl;
-
-  const { error } = await supabase.from('airbnbs')
-    .update({ access_video_url: url, access_video_path: path })
-    .eq('id', airbnbId);
-  if (error) {
-    // Rollback du fichier orphelin si l'enregistrement échoue.
-    await supabase.storage.from(SITE_VIDEOS_BUCKET).remove([path]);
-    console.error('uploadSiteVideoDB update:', error.message);
-    return { error: error.message };
+  const depot = await deposerFichier('site-video', { airbnbId, ext }, file, file.type || 'video/mp4');
+  if (depot.error !== null) { console.error('uploadSiteVideoDB storage:', depot.error); return { error: depot.error }; }
+  try {
+    const res = await annexe('site-video-set', { airbnbId, path: depot.path });
+    return { error: null, url: res.url as string };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Enregistrement impossible.' };
   }
-
-  // Nettoyage de l'ancien fichier (best-effort) après remplacement réussi.
-  if (oldPath && oldPath !== path) {
-    await supabase.storage.from(SITE_VIDEOS_BUCKET).remove([oldPath]).catch(() => {});
-  }
-  return { error: null, url };
 }
 
 // Supprime la vidéo d'accès d'un site (fichier + référence).
 export async function removeSiteVideoDB(airbnbId: string): Promise<SiteVideoResult> {
-  const { data: existing } = await supabase
-    .from('airbnbs').select('access_video_path').eq('id', airbnbId).maybeSingle();
-  const path = existing?.access_video_path as string | null | undefined;
-
-  if (path) {
-    const { error: rmErr } = await supabase.storage.from(SITE_VIDEOS_BUCKET).remove([path]);
-    if (rmErr) console.error('removeSiteVideoDB storage:', rmErr.message);
-  }
-  const { error } = await supabase.from('airbnbs')
-    .update({ access_video_url: null, access_video_path: null })
-    .eq('id', airbnbId);
-  if (error) { console.error('removeSiteVideoDB update:', error.message); return { error: error.message }; }
-  return { error: null, url: null };
+  try { await annexe('site-video-remove', { airbnbId }); return { error: null, url: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Suppression impossible.' }; }
 }

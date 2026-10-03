@@ -10,7 +10,7 @@ import { annexe } from './db/shared';
 //  La clé publique, elle, n'a plus le droit de déposer ni d'effacer.
 // ══════════════════════════════════════════════════════════════════════════════
 
-export type TypeDepot = 'mission-photo' | 'repair-photo' | 'checklist-photo' | 'receipt';
+export type TypeDepot = 'mission-photo' | 'repair-photo' | 'checklist-photo' | 'receipt' | 'site-video' | 'logo';
 
 export async function deposerFichier(
   kind: TypeDepot, params: Record<string, unknown>, fichier: Blob, contentType: string,

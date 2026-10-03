@@ -24,6 +24,8 @@ const refuse = ko('Accès refusé.', 403);
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v : undefined);
 
 const PHOTOS_BUCKET = 'mission_photos';
+const SITE_VIDEOS_BUCKET = 'site_videos';
+const LOGOS_BUCKET = 'logos';
 const MAX_PHOTOS_PER_MISSION = 8;
 const MAX_REPAIR_PHOTOS = 2;
 const REPAIR_SELECT = '*, airbnbs(name, address)';
@@ -181,6 +183,25 @@ const OPS: Record<string, Op> = {
         path = `checklists/${airbnbId}/${itemId}-${ts}.jpg`;
         break;
       }
+      case 'site-video': {
+        // Vidéo d'accès d'un logement : l'admin, ou la conciergerie propriétaire.
+        const airbnbId = str(b.airbnbId);
+        if (!airbnbId) return ko('Logement manquant.');
+        const lien = await lienLogement(db, s, airbnbId);
+        if (lien !== 'admin' && lien !== 'partner') return refuse;
+        const ext = (str(b.ext) ?? 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4';
+        bucket = SITE_VIDEOS_BUCKET;
+        path = `${airbnbId}/access-${ts}-${rand}.${ext}`;
+        break;
+      }
+      case 'logo': {
+        // Logo de la conciergerie connectée, et d'elle seule.
+        if (s.role !== 'airbnb') return refuse;
+        const ext = (str(b.ext) ?? 'png').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'png';
+        bucket = LOGOS_BUCKET;
+        path = `${s.id}/logo-${ts}.${ext}`;
+        break;
+      }
       case 'receipt': {
         if (s.role !== 'admin') return refuse;
         const ext = (str(b.ext) ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
@@ -208,6 +229,62 @@ const OPS: Record<string, Op> = {
     if ((count ?? 0) > 0) return ko('Photo déjà enregistrée.');
     await db.storage.from(PHOTOS_BUCKET).remove([path]);
     return ok();
+  },
+
+  // ── Vidéo d'accès d'un logement (une seule par logement) ──
+  async 'site-video-set'(db, s, b) {
+    const airbnbId = str(b.airbnbId), path = str(b.path);
+    if (!airbnbId || !path) return ko('Vidéo incomplète.');
+    const lien = await lienLogement(db, s, airbnbId);
+    if (lien !== 'admin' && lien !== 'partner') return refuse;
+    if (!path.startsWith(`${airbnbId}/access-`) || path.includes('..')) return ko('Chemin de vidéo invalide.');
+    const { data: avant } = await db.from('airbnbs').select('access_video_path').eq('id', airbnbId).maybeSingle();
+    const url = db.storage.from(SITE_VIDEOS_BUCKET).getPublicUrl(path).data.publicUrl;
+    const { error } = await db.from('airbnbs').update({ access_video_url: url, access_video_path: path }).eq('id', airbnbId);
+    if (error) {
+      await db.storage.from(SITE_VIDEOS_BUCKET).remove([path]);
+      console.error('annexes/site-video-set:', error.message);
+      return ko('Enregistrement impossible.', 500);
+    }
+    // Une seule vidéo par logement : l'ancienne part, le stockage ne gonfle pas.
+    const ancien = avant?.access_video_path as string | null | undefined;
+    if (ancien && ancien !== path) await db.storage.from(SITE_VIDEOS_BUCKET).remove([ancien]);
+    return ok({ url });
+  },
+
+  async 'site-video-remove'(db, s, b) {
+    const airbnbId = str(b.airbnbId);
+    if (!airbnbId) return ko('Logement manquant.');
+    const lien = await lienLogement(db, s, airbnbId);
+    if (lien !== 'admin' && lien !== 'partner') return refuse;
+    const { data: avant } = await db.from('airbnbs').select('access_video_path').eq('id', airbnbId).maybeSingle();
+    const { error } = await db.from('airbnbs').update({ access_video_url: null, access_video_path: null }).eq('id', airbnbId);
+    if (error) { console.error('annexes/site-video-remove:', error.message); return ko('Suppression impossible.', 500); }
+    if (avant?.access_video_path) await db.storage.from(SITE_VIDEOS_BUCKET).remove([avant.access_video_path as string]);
+    return ok();
+  },
+
+  // ── Logo de la conciergerie (fiche d'accueil) ──
+  async 'logo-get'(db, s) {
+    const { data } = await db.from('users').select('logo_url').eq('id', s.id).maybeSingle();
+    return ok({ url: (data?.logo_url as string | null) ?? null });
+  },
+
+  async 'logo-set'(db, s, b) {
+    if (s.role !== 'airbnb') return refuse;
+    const path = str(b.path);
+    if (!path || !path.startsWith(`${s.id}/logo-`) || path.includes('..')) return ko('Chemin de logo invalide.');
+    const { data: avant } = await db.from('users').select('logo_path').eq('id', s.id).maybeSingle();
+    const url = db.storage.from(LOGOS_BUCKET).getPublicUrl(path).data.publicUrl;
+    const { error } = await db.from('users').update({ logo_url: url, logo_path: path }).eq('id', s.id);
+    if (error) {
+      await db.storage.from(LOGOS_BUCKET).remove([path]);
+      console.error('annexes/logo-set:', error.message);
+      return ko('Enregistrement impossible.', 500);
+    }
+    const ancien = avant?.logo_path as string | null | undefined;
+    if (ancien && ancien !== path) await db.storage.from(LOGOS_BUCKET).remove([ancien]);
+    return ok({ url });
   },
 
   // ── Rapport de fin de mission ──
