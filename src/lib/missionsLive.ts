@@ -39,3 +39,19 @@ export function ecouterMissions(
     supabase.removeChannel(ch);
   };
 }
+
+// Même principe pour les RÉSERVATIONS et les flux de synchronisation : canal
+// `reservations` (déclencheur SQL, cf. migration_comptes_logements_reservations.sql).
+// Une synchro réécrit des dizaines de lignes : le regroupement évite autant de
+// rechargements.
+export function ecouterReservations(onChange: () => void, opts: { delaiMs?: number } = {}): () => void {
+  const delai = opts.delaiMs ?? 1500;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const recharger = () => { clearTimeout(timer); timer = setTimeout(onChange, delai); };
+  const ch = supabase.channel('reservations')
+    .on('broadcast', { event: 'change' }, recharger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, recharger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reservation_feeds' }, recharger)
+    .subscribe();
+  return () => { clearTimeout(timer); supabase.removeChannel(ch); };
+}

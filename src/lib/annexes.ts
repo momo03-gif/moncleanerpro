@@ -265,6 +265,23 @@ const OPS: Record<string, Op> = {
     return ok();
   },
 
+  // ── Comptes : la table n'est plus lisible publiquement (e-mails, téléphones) ──
+  // Administrateurs assignables à un rendez-vous (écran admin).
+  async admins(db, s) {
+    if (s.role !== 'admin') return refuse;
+    const { data, error } = await db.from('users').select('id, name').eq('role', 'admin');
+    if (error) return ko('Lecture impossible.', 500);
+    return ok({ data: data ?? [] });
+  },
+
+  // Sa propre fiche (ou celle de n'importe qui pour l'admin).
+  async 'user-fiche'(db, s, b) {
+    const id = s.role === 'admin' ? (str(b.userId) ?? s.id) : s.id;
+    const { data, error } = await db.from('users').select('id, name, email, phone, status, role').eq('id', id).maybeSingle();
+    if (error) return ko('Lecture impossible.', 500);
+    return ok({ data });
+  },
+
   // ── Logo de la conciergerie (fiche d'accueil) ──
   async 'logo-get'(db, s) {
     const { data } = await db.from('users').select('logo_url').eq('id', s.id).maybeSingle();

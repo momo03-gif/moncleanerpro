@@ -2,7 +2,6 @@
 // Extrait de db.ts. Les opérations sensibles (création, mot de passe, infos liées au
 // compte users) passent par la route serveur /api/admin/users (postServer).
 
-import { supabase } from '../supabase';
 import { postServer } from './shared';
 import { getServerDb } from '../serverDb';
 
@@ -155,9 +154,10 @@ export async function getCleanerByUserId(userId: string) {
       if (cleaner) return cleaner;
     }
   } catch { /* repli ci-dessous */ }
-  // Repli : la fiche utilisateur, quand aucune ligne `cleaners` n'existe.
-  const { data: user } = await supabase.from('users').select('id, name, email, phone, status, role').eq('id', userId).single();
-  return user;
+  // Repli : la fiche utilisateur, quand aucune ligne `cleaners` n'existe —
+  // par le serveur, la table des comptes n'étant plus lisible publiquement.
+  try { return (await postServer('/api/annexes', { op: 'user-fiche', userId })).data ?? null; }
+  catch { return null; }
 }
 
 // ── Disponibilité (statut + jours travaillés) ────────────────────────────────────

@@ -9,7 +9,7 @@ import {
 } from '@/lib/db';
 import { getStayDuplicatesForPartner } from '@/lib/db/reservations';
 import { chevauchements } from '@/lib/reservationDedupe';
-import { supabase } from '@/lib/supabase';
+import { ecouterReservations } from '@/lib/missionsLive';
 import type { Apartment, ReservationFeed, Reservation } from '@/lib/types';
 import { platformLabel } from '@/lib/pms/registry';
 import Icon from '@/components/Icon';
@@ -106,11 +106,7 @@ export default function AirbnbSyncPage() {
   useEffect(() => {
     load();
     if (!user) return;
-    const ch = supabase.channel('partner-reservations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservation_feeds' }, load)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return ecouterReservations(load);
   }, [load, user]);
 
   async function syncNow() {

@@ -1,4 +1,3 @@
-import { supabase } from './supabase';
 import type { User, Mission, MissionStatus, MissionType, MissionSource, MissionService, HotelAnnounce, Apartment, Payment, CompanyInfo, InvoiceLine, InvoiceRecord, Role, ReservationFeed, Reservation } from './types';
 import { clusterApartments } from './zones';
 import type { GeoPoint } from './geo';
@@ -376,7 +375,10 @@ export async function createMissionsBatchDB(params: {
 // (cleaner → cleaner_id, visible dans son planning ; admin → assignee_user_id).
 export async function getAssignableStaffDB(): Promise<{ id: string; name: string; role: string }[]> {
   const cleaners = await getActiveCleanersDB();
-  const { data: admins } = await supabase.from('users').select('id, name').eq('role', 'admin');
+  // Par le serveur : la table des comptes n'est plus lisible publiquement.
+  let admins: { id: string; name: string }[] = [];
+  try { admins = (await postServer('/api/annexes', { op: 'admins' })).data ?? []; }
+  catch (e) { console.error('getAssignableStaffDB:', e); }
   return [
     ...(admins ?? []).map(a => ({ id: a.id, name: a.name, role: 'admin' })),
     ...cleaners.map((c: any) => ({ id: c.id, name: c.name, role: 'cleaner' })),

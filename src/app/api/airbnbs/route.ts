@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession } from '@/lib/apiGuard';
+import { APT_SELECT } from '@/lib/db/airbnbs';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
   if (sansSession) return sansSession;
 
   let b: {
-    action?: 'create' | 'update' | 'delete' | 'assign-cleaner' | 'set-coords' | 'set-zones' | 'access';
+    action?: 'create' | 'update' | 'delete' | 'assign-cleaner' | 'set-coords' | 'set-zones' | 'access' | 'list' | 'coords';
     id?: string;
     row?: Record<string, unknown>;
     patch?: Record<string, unknown>;
@@ -125,6 +126,28 @@ export async function POST(req: NextRequest) {
         if (error) { console.error('airbnbs/set-zones:', error.message); return refus('Enregistrement impossible.', 500); }
       }
       return NextResponse.json({ ok: true, count: zones.length });
+    }
+
+    case 'list': {
+      // La liste des logements n'est plus lisible avec la clé publique
+      // (adresses, GPS, prix). L'admin les voit tous ; une conciergerie, les
+      // siens — sans la durée de ménage, qui pilote la paie des cleaners.
+      if (!estAdmin && appelant!.role !== 'airbnb') return refus('Accès refusé.', 403);
+      let q = db.from('airbnbs').select(APT_SELECT).order('created_at');
+      if (!estAdmin) q = q.eq('partner_id', appelant!.id);
+      const { data, error } = await q;
+      if (error) { console.error('airbnbs/list:', error.message); return refus('Lecture impossible.', 500); }
+      const lignes = (data ?? []) as unknown as Record<string, unknown>[];
+      const rows = estAdmin ? lignes : lignes.map(r => ({ ...r, estimated_cleaning_minutes: null }));
+      return NextResponse.json({ data: rows }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    case 'coords': {
+      // Coordonnées de tous les logements, pour recalculer les zones (admin).
+      if (!estAdmin) return refus('Réservé à l’administration.', 403);
+      const { data, error } = await db.from('airbnbs').select('id, latitude, longitude');
+      if (error) { console.error('airbnbs/coords:', error.message); return refus('Lecture impossible.', 500); }
+      return NextResponse.json({ data: data ?? [] });
     }
 
     case 'access': {

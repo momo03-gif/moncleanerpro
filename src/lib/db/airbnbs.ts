@@ -1,7 +1,6 @@
 // ── Appartements Airbnb + zones géographiques ────────────────────────────────────
 // Extrait de db.ts.
 
-import { supabase } from '../supabase';
 import { clusterApartments } from '../zones';
 import type { Apartment } from '../types';
 import { postServer } from './shared';
@@ -63,7 +62,7 @@ function rowToApartment(a: any): Apartment {
 // ⚠️ Colonnes EXPLICITES, pas d'étoile : les champs d'accès (codes, directives,
 // contact de secours) ne sont plus lisibles avec la clé publique. Une étoile
 // les redemanderait et la requête entière serait refusée.
-const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, '
+export const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, '
   + 'linge_mode, linge_kits, linge_forfait, linge_libelle, '
   + 'cleaner_id, partner_id, partner_name, bedrooms, beds, sofa_beds, client_price, '
   + 'estimated_cleaning_minutes, latitude, longitude, zone_id, zone_color, zone_name, '
@@ -100,24 +99,23 @@ async function enrichirAcces(apts: Apartment[]): Promise<Apartment[]> {
 }
 
 export async function getAirbnbs(): Promise<Apartment[]> {
-  const { data, error } = await supabase.from('airbnbs').select(APT_SELECT).order('created_at');
-  if (error) console.error('getAirbnbs error:', error.code, error.message);
-  return enrichirAcces((data ?? []).map(rowToApartment));
+  // Par le serveur : la table n'est plus lisible avec la clé publique.
+  try {
+    const d = await postServer('/api/airbnbs', { action: 'list' });
+    return enrichirAcces((d.data ?? []).map(rowToApartment));
+  } catch (e) { console.error('getAirbnbs:', e); return []; }
 }
 
 // Appartements d'un partenaire Airbnb (avec compte) — filtrés par partner_id
-export async function getAirbnbsForPartner(userId: string): Promise<Apartment[]> {
-  const { data, error } = await supabase
-    .from('airbnbs')
-    .select(APT_SELECT)
-    .eq('partner_id', userId)
-    .order('created_at');
-  if (error) console.error('getAirbnbsForPartner error:', error.code, error.message);
-  // Le partenaire ne doit PAS voir la durée de ménage (paramétrée par l'admin, elle
-  // sert à la paie des cleaners) ni le gain cleaner : on les retire.
-  const base = (data ?? []).map(rowToApartment)
-    .map(a => ({ ...a, estimatedCleaningMinutes: undefined, cleanerGain: undefined }));
-  return enrichirAcces(base);
+export async function getAirbnbsForPartner(_userId: string): Promise<Apartment[]> {
+  // Les logements de la conciergerie CONNECTÉE (session, côté serveur). Elle ne
+  // voit ni la durée de ménage (elle pilote la paie des cleaners) ni le gain.
+  try {
+    const d = await postServer('/api/airbnbs', { action: 'list' });
+    const base = (d.data ?? []).map(rowToApartment)
+      .map((a: Apartment) => ({ ...a, estimatedCleaningMinutes: undefined, cleanerGain: undefined }));
+    return enrichirAcces(base);
+  } catch (e) { console.error('getAirbnbsForPartner:', e); return []; }
 }
 
 // Réapplique les forfaits d'une maison partagée aux ménages À VENIR.
@@ -336,8 +334,10 @@ export async function setAirbnbCoordsDB(id: string, lat: number, lng: number) {
 // Recalcule les zones de tous les appartements géolocalisés (clustering 2 km)
 // et persiste zone_id / zone_color / zone_name. Renvoie le nombre de zones.
 export async function regenerateZonesDB(): Promise<{ zones: number; assigned: number }> {
-  const { data } = await supabase.from('airbnbs').select('id, latitude, longitude');
-  const apts = (data ?? []).map((a: any) => ({
+  let data: any[] = [];
+  try { data = (await postServer('/api/airbnbs', { action: 'coords' })).data ?? []; }
+  catch (e) { console.error('regenerateZonesDB:', e); return { zones: 0, assigned: 0 }; }
+  const apts = data.map((a: any) => ({
     id: a.id,
     latitude: a.latitude != null ? Number(a.latitude) : null,
     longitude: a.longitude != null ? Number(a.longitude) : null,

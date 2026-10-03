@@ -2,9 +2,8 @@
 // Extrait de db.ts. Lecture/écriture via le client (clé publique) ; le fetch des
 // iCal et la création des missions se font côté serveur (routes API → service_role).
 
-import { supabase } from '../supabase';
 import { dedupeStays, doublonsSejours } from '../reservationDedupe';
-import { trimTime } from './shared';
+import { trimTime, postServer } from './shared';
 import type { ReservationFeed, Reservation } from '../types';
 
 function rowToFeed(r: any): ReservationFeed {
@@ -61,7 +60,7 @@ function rowToReservation(r: any): Reservation {
 // `connection_kind` et `external_property_id` sont sûrs (ils ne servent qu'à
 // afficher « connecté par API ») ; les identifiants eux-mêmes ne sortent jamais
 // du serveur. Ne pas remettre d'étoile ici.
-const FEED_SELECT = 'id, airbnb_id, partner_id, platform, ical_url, label, active, '
+export const FEED_SELECT = 'id, airbnb_id, partner_id, platform, ical_url, label, active, '
   + 'last_sync_at, last_sync_status, last_error, created_at, '
   + 'connection_kind, external_property_id, airbnbs(name)';
 // ⚠️ Colonnes EXPLICITES ici aussi. Cette table contient le NOM et le TÉLÉPHONE
@@ -73,22 +72,26 @@ const FEED_SELECT = 'id, airbnb_id, partner_id, platform, ical_url, label, activ
 // Les colonnes sensibles ne sont plus lisibles avec la clé publique
 // (cf. supabase/migration_reservations_verrouillage.sql) : ne pas les remettre
 // ici, la requête entière serait refusée.
-const RESERVATION_SELECT = 'id, feed_id, airbnb_id, partner_id, platform, status, '
+export const RESERVATION_SELECT = 'id, feed_id, airbnb_id, partner_id, platform, status, '
   + 'check_in, check_out, check_in_time, check_out_time, mission_id, mission_created_at, '
   + 'created_at, airbnbs(name)';
 
+// Lecture par le serveur (cf. /api/reservations/lire) : ces tables ne sont plus
+// lisibles avec la clé publique. Une conciergerie reçoit ce qui la concerne
+// (session) ; l'identifiant passé ici n'est plus qu'indicatif.
+async function lire(op: string, extra: Record<string, unknown> = {}): Promise<any> {
+  return (await postServer('/api/reservations/lire', { op, ...extra })).data;
+}
+
 // Flux d'un partenaire (ou tous, pour l'admin).
-export async function getReservationFeedsForPartner(userId: string): Promise<ReservationFeed[]> {
-  const { data, error } = await supabase.from('reservation_feeds').select(FEED_SELECT)
-    .eq('partner_id', userId).order('created_at');
-  if (error) console.error('getReservationFeedsForPartner:', error.code, error.message);
-  return (data ?? []).map(rowToFeed);
+export async function getReservationFeedsForPartner(_userId: string): Promise<ReservationFeed[]> {
+  try { return ((await lire('feeds')) ?? []).map(rowToFeed); }
+  catch (e) { console.error('getReservationFeedsForPartner:', e); return []; }
 }
 
 export async function getAllReservationFeeds(): Promise<ReservationFeed[]> {
-  const { data, error } = await supabase.from('reservation_feeds').select(FEED_SELECT).order('created_at');
-  if (error) console.error('getAllReservationFeeds:', error.code, error.message);
-  return (data ?? []).map(rowToFeed);
+  try { return ((await lire('feeds')) ?? []).map(rowToFeed); }
+  catch (e) { console.error('getAllReservationFeeds:', e); return []; }
 }
 
 // ── Écritures : par le serveur, jamais par le navigateur ─────────────────────
@@ -138,10 +141,8 @@ export async function updateReservationFeed(id: string, fields: {
  * annonce le nombre avant d'agir — c'est la seule chose honnête à faire.
  */
 export async function countReservationsForFeed(feedId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('reservations').select('id', { count: 'exact', head: true }).eq('feed_id', feedId);
-  if (error) { console.error('countReservationsForFeed:', error.message); return 0; }
-  return count ?? 0;
+  try { return Number(await lire('count-feed', { feedId })) || 0; }
+  catch (e) { console.error('countReservationsForFeed:', e); return 0; }
 }
 
 export async function deleteReservationFeed(id: string): Promise<{ error: string | null }> {
@@ -149,19 +150,15 @@ export async function deleteReservationFeed(id: string): Promise<{ error: string
 }
 
 // Réservations d'un partenaire (tableau « Réservations synchronisées »).
-export async function getReservationsForPartner(userId: string): Promise<Reservation[]> {
-  const { data, error } = await supabase.from('reservations').select(RESERVATION_SELECT)
-    .eq('partner_id', userId).order('check_out', { ascending: false });
-  if (error) console.error('getReservationsForPartner:', error.code, error.message);
-  return dedupeStays((data ?? []).map(rowToReservation));
+export async function getReservationsForPartner(_userId: string): Promise<Reservation[]> {
+  try { return dedupeStays(((await lire('reservations')) ?? []).map(rowToReservation)); }
+  catch (e) { console.error('getReservationsForPartner:', e); return []; }
 }
 
 // Toutes les réservations (vue admin occupation).
 export async function getAllReservations(): Promise<Reservation[]> {
-  const { data, error } = await supabase.from('reservations').select(RESERVATION_SELECT)
-    .order('check_out', { ascending: false });
-  if (error) console.error('getAllReservations:', error.code, error.message);
-  return dedupeStays((data ?? []).map(rowToReservation));
+  try { return dedupeStays(((await lire('reservations')) ?? []).map(rowToReservation)); }
+  catch (e) { console.error('getAllReservations:', e); return []; }
 }
 
 /**
@@ -173,9 +170,9 @@ export async function getAllReservations(): Promise<Reservation[]> {
  * recrée. On le remonte donc à l'exploitant pour qu'il choisisse le
  * calendrier à garder.
  */
-export async function getStayDuplicatesForPartner(userId: string) {
-  const { data, error } = await supabase.from('reservations').select(RESERVATION_SELECT)
-    .eq('partner_id', userId).gte('check_out', new Date().toISOString().slice(0, 10));
-  if (error) { console.error('getStayDuplicatesForPartner:', error.code, error.message); return []; }
-  return doublonsSejours((data ?? []).map(rowToReservation));
+export async function getStayDuplicatesForPartner(_userId: string) {
+  try {
+    const rows = (await lire('reservations', { depuis: new Date().toISOString().slice(0, 10) })) ?? [];
+    return doublonsSejours(rows.map(rowToReservation));
+  } catch (e) { console.error('getStayDuplicatesForPartner:', e); return []; }
 }

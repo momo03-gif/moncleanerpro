@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAirbnbs, getAllReservations, getAllReservationFeeds, getPartnerAccountsDB } from '@/lib/db';
 import type { PartnerAccount } from '@/lib/db';
-import { supabase } from '@/lib/supabase';
+import { ecouterReservations } from '@/lib/missionsLive';
 import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
 // Nom des plateformes : lu dans le registre, pour que l'admin et l'espace
 // partenaire désignent toujours une source de la même façon.
@@ -251,10 +251,7 @@ export default function AdminReservationsPage() {
 
   useEffect(() => {
     load();
-    const ch = supabase.channel('admin-reservations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, load)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return ecouterReservations(load);
   }, [load]);
 
   async function syncAll() {
