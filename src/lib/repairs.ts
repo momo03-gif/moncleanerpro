@@ -1,24 +1,21 @@
-import { supabase } from './supabase';
 import { annexe } from './db/shared';
+import { deposerFichier } from './depot';
 import { compressImage } from './imageCompress';
 import type { Repair, RepairStatus } from './types';
 
 // Photos d'un incident : 2 maximum. Réutilise le bucket Storage des photos de
 // mission (sous-dossier repairs/) pour éviter de créer un bucket dédié.
 export const MAX_REPAIR_PHOTOS = 2;
-const REPAIR_PHOTOS_BUCKET = 'mission_photos';
 
 // Compresse puis téléverse une image d'incident → URL publique.
-export async function uploadRepairPhotoDB(airbnbId: string, file: File): Promise<{ url: string | null; error: string | null }> {
+export async function uploadRepairPhotoDB(airbnbId: string, file: File, missionId?: string): Promise<{ url: string | null; error: string | null }> {
   if (!file.type.startsWith('image/')) return { url: null, error: 'Fichier image attendu (jpg, png…).' };
   const compressed = await compressImage(file);
-  const rand = Math.random().toString(36).slice(2, 8);
-  const path = `repairs/${airbnbId}/${Date.now()}-${rand}.jpg`;
-  const { error: upErr } = await supabase.storage.from(REPAIR_PHOTOS_BUCKET)
-    .upload(path, compressed, { contentType: compressed.type || 'image/jpeg', upsert: false });
-  if (upErr) { console.error('uploadRepairPhotoDB:', upErr.message); return { url: null, error: upErr.message }; }
-  const { data } = supabase.storage.from(REPAIR_PHOTOS_BUCKET).getPublicUrl(path);
-  return { url: data.publicUrl, error: null };
+  // Dépôt autorisé par le serveur : l'admin, ou le cleaner depuis SA mission
+  // sur ce logement (d'où `missionId`). Chemin choisi par le serveur.
+  const depot = await deposerFichier('repair-photo', { airbnbId, missionId }, compressed, compressed.type || 'image/jpeg');
+  if (depot.error !== null) { console.error('uploadRepairPhotoDB:', depot.error); return { url: null, error: depot.error }; }
+  return { url: depot.url, error: null };
 }
 
 // ════════════════════════════════════════════════════════════════════════════

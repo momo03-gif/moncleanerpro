@@ -66,7 +66,7 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
     // Téléverse d'abord les photos (2 max), puis crée la réparation avec leurs URLs.
     const urls: string[] = [];
     for (const f of photos.slice(0, MAX_REPAIR_PHOTOS)) {
-      const up = await uploadRepairPhotoDB(airbnbId, f);
+      const up = await uploadRepairPhotoDB(airbnbId, f, missionId);
       if (up.error) { setBusy(false); setError('Échec de l’envoi d’une photo : ' + up.error); return; }
       if (up.url) urls.push(up.url);
     }

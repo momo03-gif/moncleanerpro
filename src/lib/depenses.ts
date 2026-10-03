@@ -57,10 +57,10 @@ export async function deleteDepenseDB(id: string): Promise<{ error: string | nul
 
 // Upload d'un reçu dans le bucket Storage 'receipts' → URL publique.
 export async function uploadReceiptDB(file: File): Promise<{ url: string | null; error: string | null }> {
+  // Dépôt autorisé par le serveur (admin uniquement) — cf. lib/depot.ts.
+  const { deposerFichier } = await import('./depot');
   const ext = file.name.split('.').pop() || 'jpg';
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
-  if (error) { console.error('uploadReceiptDB:', error.message); return { url: null, error: error.message }; }
-  const { data } = supabase.storage.from('receipts').getPublicUrl(path);
-  return { url: data.publicUrl, error: null };
+  const depot = await deposerFichier('receipt', { ext }, file, file.type || 'image/jpeg');
+  if (depot.error !== null) { console.error('uploadReceiptDB:', depot.error); return { url: null, error: depot.error }; }
+  return { url: depot.url, error: null };
 }

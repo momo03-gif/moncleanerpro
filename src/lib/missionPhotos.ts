@@ -1,6 +1,6 @@
-import { supabase } from './supabase';
 import { getServerDb } from './serverDb';
 import { annexe } from './db/shared';
+import { deposerFichier } from './depot';
 import { compressImage } from './imageCompress';
 import type { MissionPhoto, MissionPhotoKind } from './types';
 
@@ -80,14 +80,11 @@ export async function uploadMissionPhotoDB(params: {
   // Compression pour limiter le stockage.
   const compressed = await compressImage(file);
 
-  // Chemin : <missionId>/<kind>-<timestamp>-<rand>.jpg
-  const rand = Math.random().toString(36).slice(2, 8);
-  const path = `${missionId}/${kind}-${Date.now()}-${rand}.jpg`;
-
-  const { error: upErr } = await supabase.storage
-    .from(PHOTOS_BUCKET)
-    .upload(path, compressed, { contentType: compressed.type || 'image/jpeg', upsert: false });
-  if (upErr) { console.error('uploadMissionPhotoDB storage:', upErr.message); return { error: upErr.message }; }
+  // Dépôt autorisé par le serveur (cleaner de la mission ou admin), qui choisit
+  // le chemin : <missionId>/<kind>-<timestamp>-<rand>.jpg
+  const depot = await deposerFichier('mission-photo', { missionId, photoKind: kind }, compressed, compressed.type || 'image/jpeg');
+  if (depot.error !== null) { console.error('uploadMissionPhotoDB storage:', depot.error); return { error: depot.error }; }
+  const path = depot.path;
 
   // La référence est enregistrée par le serveur, qui vérifie que la mission
   // est bien celle du cleaner (ou de l'admin) et recalcule l'URL publique.
@@ -97,7 +94,7 @@ export async function uploadMissionPhotoDB(params: {
     return { error: null, photo: rowToPhoto(res.data) };
   } catch (e) {
     // Rollback du fichier orphelin si l'enregistrement de la référence échoue.
-    await supabase.storage.from(PHOTOS_BUCKET).remove([path]);
+    await annexe('upload-cancel', { missionId, path }).catch(() => {});
     const message = e instanceof Error ? e.message : 'Enregistrement impossible.';
     console.error('uploadMissionPhotoDB:', message);
     return { error: message };

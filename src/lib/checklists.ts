@@ -9,6 +9,7 @@
 
 import { supabase } from './supabase';
 import { compressImage } from './imageCompress';
+import { deposerFichier } from './depot';
 import type { ChecklistItem, ChecklistCheck, MissionChecklistLine } from './types';
 
 // La logique pure (conformité, regroupement, modèle de démarrage) vit dans
@@ -187,7 +188,6 @@ export async function getChecklistCountsForMissionsDB(missionIds: string[]): Pro
 // ── Photo de référence d'un point ─────────────────────────────────────────────
 // Réutilise le bucket des photos de mission (sous-dossier checklists/) : pas de
 // bucket supplémentaire à créer ni à configurer.
-const CHECKLIST_PHOTOS_BUCKET = 'mission_photos';
 
 /** Compresse puis téléverse la photo modèle d'un point → URL publique. */
 export async function uploadChecklistPhotoDB(
@@ -195,12 +195,11 @@ export async function uploadChecklistPhotoDB(
 ): Promise<{ url: string | null; error: string | null }> {
   if (!file.type.startsWith('image/')) return { url: null, error: 'Fichier image attendu (jpg, png…).' };
   const compressed = await compressImage(file);
-  const path = `checklists/${airbnbId}/${itemId}-${Date.now()}.jpg`;
-  const { error } = await supabase.storage.from(CHECKLIST_PHOTOS_BUCKET)
-    .upload(path, compressed, { contentType: compressed.type || 'image/jpeg', upsert: false });
-  if (error) { console.error('uploadChecklistPhotoDB:', error.message); return { url: null, error: error.message }; }
-  const { data } = supabase.storage.from(CHECKLIST_PHOTOS_BUCKET).getPublicUrl(path);
-  const url = data.publicUrl;
+  // Dépôt autorisé par le serveur (admin, ou conciergerie du logement) :
+  // checklists/<airbnbId>/<itemId>-<timestamp>.jpg
+  const depot = await deposerFichier('checklist-photo', { airbnbId, itemId }, compressed, compressed.type || 'image/jpeg');
+  if (depot.error !== null) { console.error('uploadChecklistPhotoDB:', depot.error); return { url: null, error: depot.error }; }
+  const url = depot.url;
   const saved = await updateChecklistItemDB(itemId, { referencePhotoUrl: url });
   if (saved.error) return { url: null, error: saved.error };
   return { url, error: null };

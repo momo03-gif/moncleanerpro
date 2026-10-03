@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SessionUser } from './sessionToken';
+import { canEditChecklist } from './checklistAccess';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Ce qui gravite autour des missions — photos, rapports de fin de ménage,
@@ -139,6 +140,74 @@ const OPS: Record<string, Op> = {
     }).select('*').single();
     if (error) { console.error('annexes/photo-add:', error.message); return ko('Enregistrement impossible.', 500); }
     return ok({ data });
+  },
+
+  // ── Dépôt de fichiers : autorisation à usage unique ──
+  //
+  // Les réserves de fichiers acceptaient dépôts et SUPPRESSIONS avec la clé
+  // publique. Le navigateur demande désormais ici une autorisation de dépôt
+  // pour un chemin précis, délivrée après vérification de ses droits ; il ne
+  // peut ni choisir l'emplacement, ni effacer quoi que ce soit.
+  async 'upload-url'(db, s, b) {
+    const rand = Math.random().toString(36).slice(2, 8);
+    const ts = Date.now();
+    let bucket = PHOTOS_BUCKET, path: string;
+    switch (b.kind) {
+      case 'mission-photo': {
+        const missionId = str(b.missionId);
+        if (!missionId) return ko('Mission manquante.');
+        const lien = await lienMission(db, s, missionId);
+        if (lien !== 'admin' && lien !== 'cleaner') return refuse;
+        path = `${missionId}/${b.photoKind === 'before' ? 'before' : 'after'}-${ts}-${rand}.jpg`;
+        break;
+      }
+      case 'repair-photo': {
+        const airbnbId = str(b.airbnbId);
+        if (!airbnbId) return ko('Logement manquant.');
+        if (s.role !== 'admin') {
+          const missionId = str(b.missionId);
+          if (s.role !== 'cleaner' || !missionId || (await lienMission(db, s, missionId)) !== 'cleaner') return refuse;
+          const { data: m } = await db.from('missions').select('airbnb_id').eq('id', missionId).maybeSingle();
+          if (m?.airbnb_id !== airbnbId) return refuse;
+        }
+        path = `repairs/${airbnbId}/${ts}-${rand}.jpg`;
+        break;
+      }
+      case 'checklist-photo': {
+        const airbnbId = str(b.airbnbId), itemId = str(b.itemId);
+        if (!airbnbId || !itemId || !/^[0-9a-f-]{36}$/i.test(itemId)) return ko('Point manquant.');
+        const { data: apt } = await db.from('airbnbs').select('partner_id').eq('id', airbnbId).maybeSingle();
+        if (!canEditChecklist({ id: s.id, role: s.role }, apt ? { partnerId: (apt.partner_id as string | null) ?? null } : null)) return refuse;
+        path = `checklists/${airbnbId}/${itemId}-${ts}.jpg`;
+        break;
+      }
+      case 'receipt': {
+        if (s.role !== 'admin') return refuse;
+        const ext = (str(b.ext) ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
+        bucket = 'receipts';
+        path = `${ts}-${rand}.${ext}`;
+        break;
+      }
+      default:
+        return ko('Type de fichier inconnu.');
+    }
+    const { data, error } = await db.storage.from(bucket).createSignedUploadUrl(path);
+    if (error || !data) { console.error('annexes/upload-url:', error?.message); return ko('Dépôt impossible.', 500); }
+    return ok({ bucket, path: data.path, token: data.token, publicUrl: db.storage.from(bucket).getPublicUrl(data.path).data.publicUrl });
+  },
+
+  // Annuler un dépôt de photo de ménage dont la référence n'a pas pu être
+  // enregistrée : seulement un fichier de SA mission, et jamais un fichier
+  // déjà référencé (preuve d'un ménage).
+  async 'upload-cancel'(db, s, b) {
+    const missionId = str(b.missionId), path = str(b.path);
+    if (!missionId || !path || !path.startsWith(`${missionId}/`) || path.includes('..')) return ko('Fichier invalide.');
+    const lien = await lienMission(db, s, missionId);
+    if (lien !== 'admin' && lien !== 'cleaner') return refuse;
+    const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true }).eq('storage_path', path);
+    if ((count ?? 0) > 0) return ko('Photo déjà enregistrée.');
+    await db.storage.from(PHOTOS_BUCKET).remove([path]);
+    return ok();
   },
 
   // ── Rapport de fin de mission ──
