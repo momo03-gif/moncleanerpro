@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { useRouter } from 'next/navigation';
-import { getAirbnbsForPartner, getMissionsForPartnerDB, getReservationsForPartner, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
-import { ecouterMissions } from '@/lib/missionsLive';
+import { getAirbnbsForPartner, getMissionsForPartnerDB, getMissionByIdDB, getReservationsForPartner, createAirbnbMissionDB, updateMissionDB, deleteMissionDB, isMissionLocked } from '@/lib/db';
+import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import type { Apartment, Mission, Reservation } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
@@ -269,7 +269,14 @@ export default function AirbnbMissionsPage() {
   useEffect(() => {
     load();
     if (!user) return;
-    return ecouterMissions(load);
+    // Mise à jour ciblée : seules les missions modifiées sont relues, et le
+    // serveur ne rend que celles de la conciergerie.
+    return ecouterMissions(load, {
+      surIds: async ids => {
+        const relues = await Promise.all(ids.map(id => getMissionByIdDB(id)));
+        setMissions(prev => fusionnerMissions(prev, ids, relues));
+      },
+    });
   }, [load, user]);
 
   // Ouverture directe d'un onglet via ?tab= (ex. « Commander » → create,

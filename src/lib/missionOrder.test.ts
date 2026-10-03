@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortMissionsForCleaner, sortMissionsByPriority } from './missionOrder';
+import { sortMissionsForCleaner, sortMissionsByPriority, fusionnerMissions } from './missionOrder';
 import type { Mission } from './types';
 
 // Fabrique une mission minimale : seuls les champs de tri nous intéressent ici.
@@ -41,5 +41,33 @@ describe('sortMissionsForCleaner — la mission terminée descend en bas', () =>
       m('todo', { createdAt: '2026-07-01T09:00:00Z' }),
     ];
     expect(sortMissionsByPriority(list).map(x => x.id)).toEqual(['done', 'todo']);
+  });
+});
+
+describe('fusionnerMissions — mise à jour ciblée du planning', () => {
+  const a = { id: 'a', date: '2026-10-04' } as Mission;
+  const b = { id: 'b', date: '2026-10-04' } as Mission;
+
+  it('remplace une mission modifiée, sans toucher aux autres', () => {
+    const a2 = { ...a, status: 'completed' } as Mission;
+    const r = fusionnerMissions([a, b], ['a'], [{ mission: a2 }]);
+    expect(r).toEqual([a2, b]);
+  });
+
+  it('ajoute une mission qui vient d’apparaître (nouvelle assignation)', () => {
+    const c = { id: 'c', date: '2026-10-05' } as Mission;
+    expect(fusionnerMissions([a], ['c'], [{ mission: c }]).map(m => m.id)).toEqual(['a', 'c']);
+  });
+
+  it('retire une mission qui n’existe plus pour nous', () => {
+    expect(fusionnerMissions([a, b], ['a'], [{ mission: null }]).map(m => m.id)).toEqual(['b']);
+  });
+
+  it('ne retire RIEN quand la relecture est incertaine (réseau)', () => {
+    expect(fusionnerMissions([a, b], ['a'], [null]).map(m => m.id)).toEqual(['a', 'b']);
+  });
+
+  it('ignore une mission d’un autre qui ne nous concerne pas', () => {
+    expect(fusionnerMissions([a], ['zz'], [{ mission: null }]).map(m => m.id)).toEqual(['a']);
   });
 });

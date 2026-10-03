@@ -71,17 +71,24 @@ const date = (v: string | null | undefined) => (v && /^\d{4}-\d{2}-\d{2}$/.test(
 /** Toutes les missions (admin). */
 export async function lireToutes(db: SupabaseClient, since?: string | null): Promise<Ligne[]> {
   // PostgREST plafonne une réponse (1000 lignes par défaut) : on pagine pour
-  // ne jamais tronquer l'historique en silence.
-  const out: Ligne[] = [];
-  for (let from = 0; ; from += 1000) {
-    let q = db.from('missions').select(MISSION_SELECT).order('date_from', { ascending: false }).order('id')
-      .range(from, from + 999);
-    const s = date(since);
+  // ne jamais tronquer l'historique en silence. La 1re page donne le total ;
+  // les suivantes partent EN PARALLÈLE (plutôt qu'une à une).
+  const s = date(since);
+  const page = (from: number, compter = false) => {
+    let q = db.from('missions').select(MISSION_SELECT, compter ? { count: 'exact' } : undefined)
+      .order('date_from', { ascending: false }).order('id').range(from, from + 999);
     if (s) q = q.gte('date_from', s);
-    const { data, error } = await q;
-    if (error) throw new Error(error.message);
-    out.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
+    return q;
+  };
+  const premiere = await page(0, true);
+  if (premiere.error) throw new Error(premiere.error.message);
+  const out: Ligne[] = [...(premiere.data ?? [])];
+  const total = premiere.count ?? out.length;
+  const suivantes = [];
+  for (let from = 1000; from < total; from += 1000) suivantes.push(page(from));
+  for (const r of await Promise.all(suivantes)) {
+    if (r.error) throw new Error(r.error.message);
+    out.push(...(r.data ?? []));
   }
   return out;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  getMissionsDB, getHotelRequestsDB, getActiveCleanersDB,
+  getMissionsDB, getMissionByIdDB, getHotelRequestsDB, getActiveCleanersDB,
   createMissionDB, validateRequestDB, refuseRequestDB,
   getApprovedHotelsDB, getAirbnbs,
   assignCleanerToMissionsDB,
@@ -18,7 +18,7 @@ import type { Mission, HotelAnnounce, Apartment } from '@/lib/types';
 import { canCleanerDoService } from '@/lib/service';
 import Icon from '@/components/Icon';
 import { groupMissionsByCleaner, compareMissionPriority } from '@/lib/missionOrder';
-import { ecouterMissions } from '@/lib/missionsLive';
+import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import { inputStyle } from '@/lib/ui';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, addDaysStr, todayStr, type DateRange } from '@/lib/dateRange';
@@ -113,6 +113,15 @@ export default function MissionsPage() {
     setLoading(false);
   }, []);
 
+  // Mise à jour CIBLÉE : quand quelques missions changent (un cleaner démarre,
+  // termine…), on ne relit qu'elles, au lieu de tout le planning et des listes.
+  const rafraichirMissions = useCallback(async (ids: string[]) => {
+    const relues = await Promise.all(ids.map(id => getMissionByIdDB(id)));
+    setMissions(prev => fusionnerMissions(prev, ids, relues));
+    const presentes = relues.flatMap(r => (r?.mission ? [r.mission.id] : []));
+    if (presentes.length) getTerrainMap(presentes).then(t => setTerrain(prev => ({ ...prev, ...t }))).catch(() => {});
+  }, []);
+
   useEffect(() => {
     load();
     // Une action groupée (classement, assignation multiple…) modifie plusieurs
@@ -124,9 +133,9 @@ export default function MissionsPage() {
       timer = setTimeout(() => { if (savingOrder.current === 0) load(); }, 500);
     };
     const ch1 = supabase.channel('rt-requests').on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_requests' }, reload).subscribe();
-    const stop = ecouterMissions(load, { enPause: () => savingOrder.current > 0 });
+    const stop = ecouterMissions(load, { enPause: () => savingOrder.current > 0, surIds: rafraichirMissions });
     return () => { clearTimeout(timer); supabase.removeChannel(ch1); stop(); };
-  }, [load]);
+  }, [load, rafraichirMissions]);
 
   // Réinitialise la pagination quand la portée de la vue change.
   useEffect(() => { setVisibleCount(60); }, [tab, filter, zoneFilter, range]);

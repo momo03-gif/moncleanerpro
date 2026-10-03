@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { getMissionsForCleanerDB } from '@/lib/db';
+import { getMissionsForCleanerDB, getMissionByIdDB } from '@/lib/db';
 import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
 import {
   submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime,
   initOfflineSync, syncQueue, queueSummary, dismissRejected, QUEUE_CHANGE_EVENT, type QueueSummary,
 } from '@/lib/offline/queue';
-import { ecouterMissions } from '@/lib/missionsLive';
+import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsForCleaner } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
@@ -646,6 +646,9 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
 export default function CleanerDashboard() {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
+  // Dernière liste affichée, lisible depuis l'écoute temps réel (mise à jour ciblée).
+  const missionsRef = useRef<Mission[]>([]);
+  useEffect(() => { missionsRef.current = missions; }, [missions]);
   const [loading, setLoading] = useState(true);
   // Terminées repliées par défaut : le cleaner voit d'abord ce qu'il lui reste.
   const [showDone, setShowDone] = useState(false);
@@ -687,6 +690,8 @@ export default function CleanerDashboard() {
     const enriched = m;
     setMissions(enriched);
     setOfflineSince(null);
+    // Les missions s'affichent dès maintenant : le bloc d'accès arrive ensuite.
+    setLoading(false);
     // Codes d'accès, directives, vidéo et contacts : UNE requête, indépendante du
     // planning. En cas d'échec, le cleaner garde ses missions — il lui manque
     // seulement le bloc d'accès, et il peut appeler l'agence.
@@ -703,7 +708,19 @@ export default function CleanerDashboard() {
     // Recharge au changement d'état réseau : bascule bandeau ↔ données à jour.
     window.addEventListener('online', load);
     window.addEventListener('offline', load);
-    const stop = ecouterMissions(load);
+    // Mise à jour ciblée : le signal concerne TOUTE l'entreprise ; on ne relit
+    // que les missions modifiées, et le serveur ne rend que celles du cleaner.
+    const stop = ecouterMissions(load, {
+      surIds: async ids => {
+        const relues = await Promise.all(ids.map(id => getMissionByIdDB(id)));
+        if (relues.every(r => r && !r.mission) && ids.every(id => !missionsRef.current.some(m => m.id === id))) return;
+        const next = fusionnerMissions(missionsRef.current, ids, relues);
+        setMissions(next);
+        const nouvelles = relues.flatMap(r => (r?.mission ? [r.mission.id] : []));
+        if (nouvelles.length) getTerrainMap(nouvelles).then(t => setTerrain(prev => ({ ...prev, ...t }))).catch(() => {});
+        if (next.length > 0) cacheMissions(user.id, next).catch(() => {});
+      },
+    });
     return () => {
       window.removeEventListener('online', load);
       window.removeEventListener('offline', load);

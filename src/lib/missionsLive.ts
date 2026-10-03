@@ -17,19 +17,44 @@ import { supabase } from './supabase';
 
 export function ecouterMissions(
   onChange: () => void,
-  opts: { delaiMs?: number; enPause?: () => boolean } = {},
+  opts: {
+    delaiMs?: number;
+    enPause?: () => boolean;
+    /**
+     * Mise à jour CIBLÉE : reçoit les identifiants des missions modifiées, pour
+     * ne recharger qu'elles (quelques Ko) au lieu de tout le planning (plusieurs
+     * Mo à chaque geste d'un cleaner). Au-delà de MAX_CIBLE changements d'un
+     * coup (synchro, action groupée), on recharge tout, c'est plus simple.
+     */
+    surIds?: (ids: string[]) => void;
+  } = {},
 ): () => void {
   const delai = opts.delaiMs ?? 500;
+  const MAX_CIBLE = 25;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const recharger = () => {
+  let ids = new Set<string>();
+  let toutRecharger = false;
+  const planifier = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => { if (!opts.enPause?.()) onChange(); }, delai);
+    timer = setTimeout(() => {
+      if (opts.enPause?.()) { ids = new Set(); toutRecharger = false; return; }
+      const lot = Array.from(ids);
+      const tout = toutRecharger || !opts.surIds || lot.length === 0 || lot.length > MAX_CIBLE;
+      ids = new Set(); toutRecharger = false;
+      if (tout) onChange(); else opts.surIds!(lot);
+    }, delai);
   };
+  const signal = (id: unknown) => {
+    if (typeof id === 'string' && id) ids.add(id); else toutRecharger = true;
+    planifier();
+  };
+  const recharger = () => { toutRecharger = true; planifier(); };
   const auRetour = () => { if (document.visibilityState === 'visible') recharger(); };
 
   const ch = supabase.channel('missions')
-    .on('broadcast', { event: 'change' }, recharger)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, recharger)
+    .on('broadcast', { event: 'change' }, ({ payload }) => signal((payload as { id?: unknown })?.id))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' },
+      p => signal((p.new as { id?: unknown })?.id ?? (p.old as { id?: unknown })?.id))
     .subscribe();
   document.addEventListener('visibilitychange', auRetour);
 
@@ -55,3 +80,6 @@ export function ecouterReservations(onChange: () => void, opts: { delaiMs?: numb
     .subscribe();
   return () => { clearTimeout(timer); supabase.removeChannel(ch); };
 }
+
+// Fusion d'une mise à jour ciblée : cf. missionOrder.ts (logique pure, testée).
+export { fusionnerMissions } from './missionOrder';

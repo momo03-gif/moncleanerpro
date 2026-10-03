@@ -184,6 +184,21 @@ export async function getMissionsDB(sinceDate?: string): Promise<Mission[]> {
   }
 }
 
+/**
+ * Une seule mission, relue par le serveur (mise à jour ciblée du planning).
+ * `{ mission: null }` = elle n'existe plus (ou plus pour vous) ; `null` = on ne
+ * sait pas (réseau) — l'appelant ne doit alors RIEN retirer de l'écran.
+ */
+export async function getMissionByIdDB(id: string): Promise<{ mission: Mission | null } | null> {
+  try {
+    const res = await fetch(`/api/missions?scope=one&id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (res.status === 403 || res.status === 404) return { mission: null };
+    if (!res.ok) return null;
+    const body = await res.json();
+    return { mission: body.data ? rowToMission(body.data) : null };
+  } catch { return null; }
+}
+
 export async function getMissionsForCleanerDB(_userId: string, sinceDate?: string): Promise<Mission[]> {
   // Le cleaner est celui de la session : le serveur résout users.id → cleaners.id.
   try {

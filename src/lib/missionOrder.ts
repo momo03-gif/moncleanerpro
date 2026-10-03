@@ -149,3 +149,24 @@ export function groupMissionsByCleaner(missions: Mission[]): CleanerMissionGroup
   });
   return list;
 }
+
+/**
+ * Applique à une liste les missions relues une à une (mise à jour ciblée) :
+ * remplacée si elle y est, ajoutée si elle vient d'apparaître (nouvelle
+ * assignation…), retirée si le serveur dit qu'elle n'existe plus pour nous.
+ * Une relecture incertaine (`null`, réseau) ne retire jamais rien.
+ */
+export function fusionnerMissions(
+  liste: Mission[], ids: string[], relues: ({ mission: Mission | null } | null)[],
+): Mission[] {
+  const next = [...liste];
+  ids.forEach((id, i) => {
+    const r = relues[i];
+    if (!r) return;
+    const idx = next.findIndex(m => m.id === id);
+    if (!r.mission) { if (idx >= 0) next.splice(idx, 1); }
+    else if (idx >= 0) next[idx] = r.mission;
+    else next.push(r.mission);
+  });
+  return next;
+}
