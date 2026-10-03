@@ -2,6 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SessionUser } from './sessionToken';
 import { canEditChecklist } from './checklistAccess';
+import { colonnesFiche, type ChampsFiche } from './db/airbnbs';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Ce qui gravite autour des missions — photos, rapports de fin de ménage,
@@ -285,6 +286,103 @@ const OPS: Record<string, Op> = {
     const ancien = avant?.logo_path as string | null | undefined;
     if (ancien && ancien !== path) await db.storage.from(LOGOS_BUCKET).remove([ancien]);
     return ok({ url });
+  },
+
+  // ── Checklist : lecture (les écritures passent par /api/checklist) ──
+  // La lecture se faisait avec la clé publique, que la RLS de ces tables
+  // refuse : un point ajouté semblait disparaître aussitôt.
+  async 'checklist-items'(db, s, b) {
+    const airbnbId = str(b.airbnbId);
+    if (!airbnbId) return ko('Logement manquant.');
+    if (!(await lienLogement(db, s, airbnbId))) return refuse;
+    const { data, error } = await db.from('checklist_items').select('*')
+      .eq('airbnb_id', airbnbId).is('archived_at', null).order('position', { ascending: true });
+    if (error) return ko('Lecture impossible.', 500);
+    return ok({ data: data ?? [] });
+  },
+
+  // Standard du logement (archivés compris, pour l'historique) + coches du ménage.
+  async 'checklist-mission'(db, s, b) {
+    const missionId = str(b.missionId);
+    if (!missionId) return ko('Mission manquante.');
+    if (!(await lienMission(db, s, missionId))) return refuse;
+    const { data: m } = await db.from('missions').select('airbnb_id').eq('id', missionId).maybeSingle();
+    if (!m?.airbnb_id) return ok({ items: [], checks: [] });
+    const [items, checks] = await Promise.all([
+      db.from('checklist_items').select('*').eq('airbnb_id', m.airbnb_id).order('position', { ascending: true }),
+      db.from('mission_checklist_checks').select('*').eq('mission_id', missionId),
+    ]);
+    if (items.error) return ko('Lecture impossible.', 500);
+    return ok({ items: items.data ?? [], checks: checks.data ?? [] });
+  },
+
+  async 'checklist-counts-apartments'(db, s, b) {
+    let ids = (Array.isArray(b.airbnbIds) ? b.airbnbIds : []).filter((x): x is string => typeof x === 'string').slice(0, 500);
+    if (s.role !== 'admin') {
+      if (s.role !== 'airbnb') return refuse;
+      const { data: siens } = await db.from('airbnbs').select('id').eq('partner_id', s.id);
+      const a = new Set((siens ?? []).map(x => x.id as string));
+      ids = ids.filter(id => a.has(id));
+    }
+    if (ids.length === 0) return ok({ data: [] });
+    const { data, error } = await db.from('checklist_items').select('airbnb_id').in('airbnb_id', ids).is('archived_at', null);
+    if (error) return ko('Lecture impossible.', 500);
+    return ok({ data: (data ?? []).map(r => r.airbnb_id) });
+  },
+
+  async 'checklist-counts-missions'(db, s, b) {
+    const ids = (Array.isArray(b.missionIds) ? b.missionIds : []).filter((x): x is string => typeof x === 'string').slice(0, 500);
+    const visibles = ids.length ? await missionsVisibles(db, s, ids) : [];
+    if (visibles.length === 0) return ok({ data: [] });
+    const { data, error } = await db.from('mission_checklist_checks').select('mission_id').in('mission_id', visibles);
+    if (error) return ko('Lecture impossible.', 500);
+    return ok({ data: (data ?? []).map(r => r.mission_id) });
+  },
+
+  // ── Réassort des consommables : admin, ou conciergerie du logement ──
+  async 'restocks'(db, s, b) {
+    const airbnbId = str(b.airbnbId);
+    if (!airbnbId) return ko('Logement manquant.');
+    const lien = await lienLogement(db, s, airbnbId);
+    if (lien !== 'admin' && lien !== 'partner') return refuse;
+    const { data, error } = await db.from('supply_restocks').select('item, restocked_at')
+      .eq('airbnb_id', airbnbId).order('restocked_at', { ascending: false });
+    if (error) return ko('Lecture impossible.', 500);
+    return ok({ data: data ?? [] });
+  },
+
+  async 'restock-mark'(db, s, b) {
+    const airbnbId = str(b.airbnbId), item = str(b.item);
+    if (!airbnbId || !item) return ko('Article manquant.');
+    const lien = await lienLogement(db, s, airbnbId);
+    if (lien !== 'admin' && lien !== 'partner') return refuse;
+    const { error } = await db.from('supply_restocks').insert({ airbnb_id: airbnbId, item, restocked_by: str(b.by) ?? s.name ?? null });
+    if (error) { console.error('annexes/restock-mark:', error.message); return ko('Enregistrement impossible.', 500); }
+    return ok();
+  },
+
+  async 'restock-undo'(db, s, b) {
+    const airbnbId = str(b.airbnbId), item = str(b.item);
+    if (!airbnbId || !item) return ko('Article manquant.');
+    const lien = await lienLogement(db, s, airbnbId);
+    if (lien !== 'admin' && lien !== 'partner') return refuse;
+    const { data } = await db.from('supply_restocks').select('id').eq('airbnb_id', airbnbId).eq('item', item)
+      .order('restocked_at', { ascending: false }).limit(1).maybeSingle();
+    if (data?.id) await db.from('supply_restocks').delete().eq('id', data.id);
+    return ok();
+  },
+
+  // ── Fiche d'accueil du logement : admin, ou conciergerie du logement ──
+  // L'enregistrement écrivait avec la clé publique dans `airbnbs`, qui ne
+  // l'accepte pas : aucune fiche n'avait jamais pu être remplie.
+  async 'fiche-save'(db, s, b) {
+    const airbnbId = str(b.airbnbId);
+    if (!airbnbId) return ko('Logement manquant.');
+    const lien = await lienLogement(db, s, airbnbId);
+    if (lien !== 'admin' && lien !== 'partner') return refuse;
+    const { error } = await db.from('airbnbs').update(colonnesFiche((b.champs ?? {}) as ChampsFiche)).eq('id', airbnbId);
+    if (error) { console.error('annexes/fiche-save:', error.message); return ko('Enregistrement impossible.', 500); }
+    return ok();
   },
 
   // ── Rapport de fin de mission ──

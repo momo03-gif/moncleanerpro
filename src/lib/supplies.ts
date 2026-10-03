@@ -2,7 +2,7 @@
 // La logique PURE est dans suppliesCompute.ts (testable sans I/O) ; on la
 // réexporte ici pour n'avoir qu'un point d'import.
 
-import { supabase } from './supabase';
+import { annexe } from './db/shared';
 import { supplyNeeds, type SupplyReport, type SupplyRestock } from './suppliesCompute';
 
 export { supplyNeeds, urgentNeeds, type SupplyNeed, type SupplyReport, type SupplyRestock } from './suppliesCompute';
@@ -41,12 +41,10 @@ async function getSupplyReportsDB(airbnbId: string): Promise<SupplyReport[]> {
 }
 
 async function getRestocksDB(airbnbId: string): Promise<SupplyRestock[]> {
-  const { data, error } = await supabase
-    .from('supply_restocks').select('item, restocked_at')
-    .eq('airbnb_id', airbnbId)
-    .order('restocked_at', { ascending: false });
-  if (error) { console.error('getRestocksDB:', error.message); return []; }
-  return (data ?? []).map(r => ({ item: r.item as string, restockedAt: r.restocked_at as string }));
+  try {
+    const rows: Record<string, unknown>[] = (await annexe('restocks', { airbnbId })).data ?? [];
+    return rows.map(r => ({ item: r.item as string, restockedAt: r.restocked_at as string }));
+  } catch (e) { console.error('getRestocksDB:', e); return []; }
 }
 
 /** Liste de courses d'un logement (ce qui reste à racheter). */
@@ -59,21 +57,13 @@ export async function getSupplyNeedsDB(airbnbId: string) {
 export async function markRestockedDB(
   airbnbId: string, item: string, by?: string,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('supply_restocks').insert({
-    airbnb_id: airbnbId, item, restocked_by: by ?? null,
-  });
-  if (error) console.error('markRestockedDB:', error.message);
-  return { error: error?.message ?? null };
+  // Par le serveur (admin ou conciergerie du logement) : la table refuse la clé publique.
+  try { await annexe('restock-mark', { airbnbId, item, by }); return { error: null }; }
+  catch (e) { const m = e instanceof Error ? e.message : 'Enregistrement impossible.'; console.error('markRestockedDB:', m); return { error: m }; }
 }
 
 /** Annule un « réapprovisionné » posé par erreur (le plus récent de cet article). */
 export async function undoRestockDB(airbnbId: string, item: string): Promise<{ error: string | null }> {
-  const { data } = await supabase
-    .from('supply_restocks').select('id')
-    .eq('airbnb_id', airbnbId).eq('item', item)
-    .order('restocked_at', { ascending: false }).limit(1).maybeSingle();
-  if (!data?.id) return { error: null };
-  const { error } = await supabase.from('supply_restocks').delete().eq('id', data.id);
-  if (error) console.error('undoRestockDB:', error.message);
-  return { error: error?.message ?? null };
+  try { await annexe('restock-undo', { airbnbId, item }); return { error: null }; }
+  catch (e) { const m = e instanceof Error ? e.message : 'Annulation impossible.'; console.error('undoRestockDB:', m); return { error: m }; }
 }

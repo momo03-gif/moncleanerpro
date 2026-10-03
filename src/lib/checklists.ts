@@ -7,9 +7,9 @@
 // Décoché = pas de ligne dans mission_checklist_checks. On ne stocke jamais un
 // « false » : la conformité se lit toujours « points cochés / points requis ».
 
-import { supabase } from './supabase';
 import { compressImage } from './imageCompress';
 import { deposerFichier } from './depot';
+import { annexe } from './db/shared';
 import type { ChecklistItem, ChecklistCheck, MissionChecklistLine } from './types';
 
 // La logique pure (conformité, regroupement, modèle de démarrage) vit dans
@@ -67,13 +67,9 @@ function rowToCheck(r: Record<string, unknown>): ChecklistCheck {
 
 /** Standard de ménage d'un logement (points actifs, dans l'ordre). */
 export async function getChecklistForApartmentDB(airbnbId: string): Promise<ChecklistItem[]> {
-  const { data, error } = await supabase
-    .from('checklist_items').select('*')
-    .eq('airbnb_id', airbnbId)
-    .is('archived_at', null)
-    .order('position', { ascending: true });
-  if (error) { console.error('getChecklistForApartmentDB:', error.message); return []; }
-  return (data ?? []).map(rowToItem);
+  // Lecture par le serveur : la RLS de ces tables refuse la clé publique.
+  try { return ((await annexe('checklist-items', { airbnbId })).data ?? []).map(rowToItem); }
+  catch (e) { console.error('getChecklistForApartmentDB:', e); return []; }
 }
 
 /** Ajoute un point au standard ; il se place en fin de liste. */
@@ -121,18 +117,14 @@ export async function reorderChecklistDB(ids: string[]): Promise<{ error: string
  * plus les points cochés dont le modèle a été archivé depuis (sinon une preuve
  * disparaîtrait de l'historique quand la conciergerie nettoie son standard).
  */
-export async function getMissionChecklistDB(missionId: string, airbnbId: string): Promise<MissionChecklistLine[]> {
-  const [itemsRes, checksRes] = await Promise.all([
-    supabase.from('checklist_items').select('*').eq('airbnb_id', airbnbId).order('position', { ascending: true }),
-    supabase.from('mission_checklist_checks').select('*').eq('mission_id', missionId),
-  ]);
-  if (itemsRes.error) { console.error('getMissionChecklistDB(items):', itemsRes.error.message); return []; }
-  if (checksRes.error) console.error('getMissionChecklistDB(checks):', checksRes.error.message);
-
-  const checks = new Map((checksRes.data ?? []).map(rowToCheck).map(c => [c.itemId, c]));
-  return (itemsRes.data ?? [])
+export async function getMissionChecklistDB(missionId: string, _airbnbId: string): Promise<MissionChecklistLine[]> {
+  // Le logement est repris de la mission par le serveur.
+  let res: { items?: Record<string, unknown>[]; checks?: Record<string, unknown>[] };
+  try { res = await annexe('checklist-mission', { missionId }); }
+  catch (e) { console.error('getMissionChecklistDB:', e); return []; }
+  const checks = new Map((res.checks ?? []).map(rowToCheck).map(c => [c.itemId, c]));
+  return (res.items ?? [])
     .map(rowToItem)
-    // Un point archivé n'est proposé que s'il avait été coché sur CE ménage.
     .filter(item => !item.archivedAt || checks.has(item.id))
     .map(item => ({ item, check: checks.get(item.id) }));
 }
@@ -158,30 +150,22 @@ export async function uncheckChecklistItemDB(missionId: string, itemId: string):
  */
 export async function getChecklistCountsForApartmentsDB(airbnbIds: string[]): Promise<Map<string, number>> {
   if (airbnbIds.length === 0) return new Map();
-  const { data, error } = await supabase
-    .from('checklist_items').select('airbnb_id')
-    .in('airbnb_id', airbnbIds)
-    .is('archived_at', null);
-  if (error) { console.error('getChecklistCountsForApartmentsDB:', error.message); return new Map(); }
+  let ids: string[] = [];
+  try { ids = (await annexe('checklist-counts-apartments', { airbnbIds })).data ?? []; }
+  catch (e) { console.error('getChecklistCountsForApartmentsDB:', e); return new Map(); }
   const counts = new Map<string, number>();
-  for (const row of data ?? []) {
-    const id = row.airbnb_id as string;
-    counts.set(id, (counts.get(id) ?? 0) + 1);
-  }
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
   return counts;
 }
 
 /** Conformité de plusieurs missions d'un coup (listes, statistiques). */
 export async function getChecklistCountsForMissionsDB(missionIds: string[]): Promise<Map<string, number>> {
   if (missionIds.length === 0) return new Map();
-  const { data, error } = await supabase
-    .from('mission_checklist_checks').select('mission_id').in('mission_id', missionIds);
-  if (error) { console.error('getChecklistCountsForMissionsDB:', error.message); return new Map(); }
+  let ids: string[] = [];
+  try { ids = (await annexe('checklist-counts-missions', { missionIds })).data ?? []; }
+  catch (e) { console.error('getChecklistCountsForMissionsDB:', e); return new Map(); }
   const counts = new Map<string, number>();
-  for (const row of data ?? []) {
-    const id = row.mission_id as string;
-    counts.set(id, (counts.get(id) ?? 0) + 1);
-  }
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
   return counts;
 }
 

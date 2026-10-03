@@ -250,16 +250,15 @@ export function colonnesFiche(f: ChampsFiche): Record<string, string | null> {
 export async function saveFicheLogement(
   airbnbId: string, champs: ChampsFiche,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('airbnbs')
-    .update(colonnesFiche(champs)).eq('id', airbnbId);
-  if (error) {
-    console.error('saveFicheLogement:', error.code, error.message);
-    // 42703 = colonne absente : la migration n'a pas été jouée.
-    return { error: error.code === '42703'
-      ? 'La fiche d’accueil n’est pas encore activée : exécutez migration_fiche_logement.sql.'
-      : error.message };
+  // Par le serveur (admin ou conciergerie du logement) : la table des logements
+  // n'accepte pas d'écriture avec la clé publique — aucune fiche n'avait pu
+  // être enregistrée.
+  try { await postServer('/api/annexes', { op: 'fiche-save', airbnbId, champs }); return { error: null }; }
+  catch (e) {
+    const m = e instanceof Error ? e.message : 'Enregistrement impossible.';
+    console.error('saveFicheLogement:', m);
+    return { error: m };
   }
-  return { error: null };
 }
 
 export async function updateAirbnb(id: string, fields: {
