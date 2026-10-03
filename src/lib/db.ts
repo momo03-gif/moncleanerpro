@@ -673,9 +673,12 @@ export async function assignCleanerToMissionDB(missionId: string, cleanerId: str
 // Ordre manuel des missions (par cleaner) fixé par l'admin. On persiste le rang
 // `manual_order` de chaque mission ; le tri partagé (missionOrder.ts) l'applique
 // à date égale, côté admin ET côté cleaner.
-export async function updateMissionsOrderDB(orders: { id: string; order: number }[]): Promise<void> {
-  await Promise.all(orders.map(o =>
+export async function updateMissionsOrderDB(orders: { id: string; order: number }[]): Promise<{ error: string | null }> {
+  const results = await Promise.all(orders.map(o =>
     supabase.from('missions').update({ manual_order: o.order }).eq('id', o.id)));
+  const failed = results.find(r => r.error);
+  if (failed?.error) console.error('updateMissionsOrderDB:', failed.error);
+  return { error: failed?.error?.message ?? null };
 }
 
 // Assignation groupée d'un même cleaner à plusieurs missions (tournée par zone).

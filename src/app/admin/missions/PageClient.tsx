@@ -189,17 +189,26 @@ export default function MissionsPage() {
   }
   function clearSelection() { setSelectedIds(new Set()); }
 
-  // Réordonne les missions d'un groupe cleaner et persiste le rang manuel (0..n).
-  // Le tri partagé applique ensuite cet ordre côté admin ET côté cleaner.
-  async function reorderGroup(missionsOfGroup: Mission[], index: number, dir: -1 | 1) {
+  // Réordonne les missions d'un cleaner POUR UNE JOURNÉE et persiste le rang
+  // manuel (0..n). Le tri partagé compare d'abord la date : échanger avec une
+  // mission d'un autre jour n'aurait aucun effet visible, donc on ne classe
+  // qu'entre missions du même jour. On renumérote la journée complète (pas
+  // seulement la partie affichée) pour éviter les rangs en doublon.
+  async function reorderDay(cleanerId: string | null, date: string, missionId: string, dir: -1 | 1) {
+    const day = (allGroups.find(g => g.cleanerId === cleanerId)?.missions ?? []).filter(m => m.date === date);
+    const index = day.findIndex(m => m.id === missionId);
     const target = index + dir;
-    if (target < 0 || target >= missionsOfGroup.length) return;
-    const arr = [...missionsOfGroup];
+    if (index < 0 || target < 0 || target >= day.length) return;
+    const arr = [...day];
     [arr[index], arr[target]] = [arr[target], arr[index]];
     // Mise à jour optimiste : on reflète le nouvel ordre tout de suite.
     const orderById = new Map(arr.map((m, i) => [m.id, i]));
     setMissions(prev => prev.map(m => orderById.has(m.id) ? { ...m, manualOrder: orderById.get(m.id) } : m));
-    await updateMissionsOrderDB(arr.map((m, i) => ({ id: m.id, order: i })));
+    const { error } = await updateMissionsOrderDB(arr.map((m, i) => ({ id: m.id, order: i })));
+    if (error) {
+      toast("Le nouvel ordre n'a pas pu être enregistré.", 'error');
+      await load();
+    }
   }
 
   // Personnes éligibles à l'assignation groupée : doivent pouvoir réaliser le
@@ -476,18 +485,24 @@ export default function MissionsPage() {
                     </span>
                   </div>
                   <div className="space-y-2">
-                    {group.missions.map((m, i) => (
+                    {group.missions.map((m, i) => {
+                      // Classement au sein de la journée (voir reorderDay).
+                      const dayList = group.missions.filter(x => x.date === m.date);
+                      const dayIndex = dayList.indexOf(m);
+                      const dayTotal = allGroups.find(g => g.cleanerId === group.cleanerId)?.missions.filter(x => x.date === m.date).length ?? dayList.length;
+                      return (
                       <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
                         terrain={terrain[m.id]}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
                         selected={selectedIds.has(m.id)}
                         onToggleSelect={toggleSelect}
-                        position={group.missions.length > 1 ? i + 1 : undefined}
-                        canMoveUp={i > 0}
-                        canMoveDown={i < group.missions.length - 1}
-                        onMoveUp={group.missions.length > 1 ? () => reorderGroup(group.missions, i, -1) : undefined}
-                        onMoveDown={group.missions.length > 1 ? () => reorderGroup(group.missions, i, 1) : undefined} />
-                    ))}
+                        position={dayTotal > 1 ? dayIndex + 1 : undefined}
+                        canMoveUp={dayIndex > 0}
+                        canMoveDown={dayIndex < dayTotal - 1}
+                        onMoveUp={dayTotal > 1 ? () => reorderDay(group.cleanerId, m.date, m.id, -1) : undefined}
+                        onMoveDown={dayTotal > 1 ? () => reorderDay(group.cleanerId, m.date, m.id, 1) : undefined} />
+                      );
+                    })}
                   </div>
                 </section>
               ))}
