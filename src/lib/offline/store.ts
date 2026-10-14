@@ -100,7 +100,8 @@ export async function patchCachedMission(
 // Type d'action cleaner rejouable. `at` = horodatage capturé AU MOMENT de l'action
 // (rejoué tel quel côté serveur pour un pointage exact) ; `coords` = position GPS
 // capturée sur place (revalidée à la reco : proximité ≤ 200 m).
-export type QueuedType = 'start' | 'finish' | 'deliver' | 'withdraw' | 'extraTime';
+// 'photo' : photo de ménage gardée sur le téléphone (Blob) jusqu'à son envoi.
+export type QueuedType = 'start' | 'finish' | 'deliver' | 'withdraw' | 'extraTime' | 'photo';
 
 export interface QueuedAction {
   id: string;                 // uuid — sert aussi de clé d'idempotence

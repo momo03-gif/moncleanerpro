@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getMissionPhotosDB, uploadMissionPhotoDB, deleteMissionPhotoDB, PHOTO_RETENTION_DAYS } from '@/lib/missionPhotos';
+import { getMissionPhotosDB, deleteMissionPhotoDB, PHOTO_RETENTION_DAYS } from '@/lib/missionPhotos';
+import { submitPhoto, photosEnFile, relancerPhoto, retirerPhoto, QUEUE_CHANGE_EVENT } from '@/lib/offline/queue';
 import { maxPhotos } from '@/lib/photosRegles';
 import type { MissionPhoto, MissionPhotoKind } from '@/lib/types';
 import Icon from '@/components/Icon';
@@ -106,11 +107,13 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen, ex
 //   · deux gestes clairs — « Appareil photo » (ouvre la caméra arrière) et
 //     « Galerie » (plusieurs photos déjà prises d'un coup) ; l'ancien bouton
 //     forçait la caméra et empêchait de choisir une photo existante ;
-//   · aperçu IMMÉDIAT de chaque photo, avec sa progression, sans attendre la fin
-//     de l'envoi ; deux envois à la fois ;
-//   · un envoi raté reste affiché avec « Réessayer » — rien ne se perd en silence ;
+//   · la photo est d'abord GARDÉE SUR LE TÉLÉPHONE puis envoyée dès que possible
+//     (cf. offline/queue.ts) : une connexion faible ou coupée ne la perd jamais,
+//     même si l'app est fermée, et n'empêche pas de terminer le ménage ;
+//   · aperçu IMMÉDIAT, avec « Envoi… » ou « En attente de réseau » ;
+//   · une photo refusée reste affichée avec « Réessayer » — rien ne se perd en silence ;
 //   · une photo ratée se supprime tant que le ménage n'est pas terminé.
-type Envoi = { cle: string; apercu: string; fichier: File; etat: 'envoi' | 'erreur'; message?: string };
+type Envoi = { cle: string; apercu: string; etat: 'envoi' | 'attente' | 'erreur'; message?: string };
 
 function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded, onZoom, enAvant, modifiable }: {
   title: string; kind: MissionPhotoKind; photos: MissionPhoto[];
@@ -126,23 +129,53 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded
   const [envois, setEnvois] = useState<Envoi[]>([]);
   const [error, setError] = useState('');
   const [suppression, setSuppression] = useState<string | null>(null);
-  const apercus = useRef<string[]>([]);
+  const apercus = useRef<Map<string, string>>(new Map());
+  const nbEnFile = useRef(0);
   const limite = maxPhotos(kind);
   const enCours = envois.filter(x => x.etat === 'envoi').length;
   const place = limite - photos.length - envois.length;
 
+  // Les photos de cette mission encore sur le téléphone, relues à chaque
+  // changement de la file. Quand une photo quitte la file, elle est en ligne :
+  // on recharge la liste du serveur.
+  useEffect(() => {
+    if (mode !== 'cleaner') return;
+    let actif = true;
+    async function relire() {
+      const enFile = (await photosEnFile(missionId)).filter(x => x.kind === kind);
+      if (!actif) return;
+      const enLigne = typeof navigator === 'undefined' || navigator.onLine !== false;
+      const vus = new Set<string>();
+      const liste: Envoi[] = enFile.map(x => {
+        vus.add(x.id);
+        let apercu = apercus.current.get(x.id);
+        if (!apercu) { apercu = URL.createObjectURL(x.blob); apercus.current.set(x.id, apercu); }
+        return {
+          cle: x.id, apercu,
+          // Hors-ligne, ou déjà un essai raté (réseau faible) : en attente, nouvel essai automatique.
+          etat: x.status === 'rejected' ? 'erreur' : enLigne && x.attempts === 0 ? 'envoi' : 'attente',
+          message: x.error,
+        };
+      });
+      for (const [id, url] of apercus.current) if (!vus.has(id)) { URL.revokeObjectURL(url); apercus.current.delete(id); }
+      if (liste.length < nbEnFile.current) onUploaded();
+      nbEnFile.current = liste.length;
+      setEnvois(liste);
+    }
+    relire();
+    window.addEventListener(QUEUE_CHANGE_EVENT, relire);
+    window.addEventListener('online', relire);
+    window.addEventListener('offline', relire);
+    return () => {
+      actif = false;
+      window.removeEventListener(QUEUE_CHANGE_EVENT, relire);
+      window.removeEventListener('online', relire);
+      window.removeEventListener('offline', relire);
+    };
+  }, [missionId, kind, mode, onUploaded]);
+
   // Libère les aperçus locaux au démontage.
   useEffect(() => () => { apercus.current.forEach(u => URL.revokeObjectURL(u)); }, []);
-
-  async function envoyer(x: Envoi) {
-    const res = await uploadMissionPhotoDB({ missionId, kind, file: x.fichier, userId });
-    if (res.error) {
-      setEnvois(l => l.map(y => (y.cle === x.cle ? { ...y, etat: 'erreur', message: res.error ?? undefined } : y)));
-      return;
-    }
-    setEnvois(l => l.filter(y => y.cle !== x.cle));
-    onUploaded();
-  }
 
   async function ajouter(e: React.ChangeEvent<HTMLInputElement>) {
     const fichiers = Array.from(e.target.files ?? []).filter(f => f.type.startsWith('image/'));
@@ -153,27 +186,17 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded
     if (fichiers.length > retenus.length) {
       setError(`Limite de ${limite} photos « ${title.toLowerCase()} » : ${fichiers.length - retenus.length} non ajoutée(s).`);
     }
-    const nouveaux: Envoi[] = retenus.map((f, i) => {
-      const apercu = URL.createObjectURL(f);
-      apercus.current.push(apercu);
-      return { cle: `${Date.now()}-${i}-${f.name}`, apercu, fichier: f, etat: 'envoi' };
-    });
-    setEnvois(l => [...l, ...nouveaux]);
-    // Deux envois à la fois : plus rapide, sans saturer un réseau mobile faible.
-    const attente = [...nouveaux];
-    await Promise.all([0, 1].map(async () => {
-      for (let x = attente.shift(); x; x = attente.shift()) await envoyer(x);
-    }));
+    // Gardées sur le téléphone, puis envoyées : l'aperçu apparaît par la file.
+    for (const f of retenus) {
+      try { await submitPhoto({ missionId, userId, kind, file: f }); }
+      catch (err) { setError(err instanceof Error ? err.message : 'Photo non enregistrée.'); onUploaded(); return; }
+    }
+    onUploaded();
   }
 
-  function reessayer(x: Envoi) {
-    setEnvois(l => l.map(y => (y.cle === x.cle ? { ...y, etat: 'envoi', message: undefined } : y)));
-    envoyer({ ...x, etat: 'envoi' });
-  }
+  function reessayer(x: Envoi) { void relancerPhoto(x.cle); }
 
-  function abandonner(x: Envoi) {
-    setEnvois(l => l.filter(y => y.cle !== x.cle));
-  }
+  function abandonner(x: Envoi) { void retirerPhoto(x.cle); }
 
   async function supprimer(p: MissionPhoto) {
     setSuppression(p.id); setError('');
@@ -222,6 +245,10 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-1 text-center">
                 {x.etat === 'envoi' ? (
                   <span className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: '#FFFFFF', borderTopColor: 'transparent' }} />
+                ) : x.etat === 'attente' ? (
+                  <span className="text-[10px] font-semibold px-1.5 py-1 rounded-md leading-tight" style={{ backgroundColor: 'rgba(20,18,16,0.65)', color: '#FFFFFF' }}>
+                    En attente de réseau
+                  </span>
                 ) : (
                   <>
                     <button onClick={() => reessayer(x)} className="text-[11px] font-semibold px-2 py-1 rounded-lg"
@@ -253,7 +280,12 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded
       {error && <p className="text-[11px] mt-1.5" style={{ color: '#B85A50' }}>{error}</p>}
       {echec && (
         <p className="text-[11px] mt-1.5" style={{ color: '#B85A50' }}>
-          {echec.message ?? 'Envoi impossible.'} Vérifiez le réseau puis « Réessayer ».
+          {echec.message ?? 'Envoi impossible.'}
+        </p>
+      )}
+      {envois.some(x => x.etat === 'attente') && (
+        <p className="text-[11px] mt-1.5" style={{ color: '#7A7068' }}>
+          Photos gardées sur le téléphone : elles partiront toutes seules au retour du réseau. Vous pouvez terminer le ménage.
         </p>
       )}
 
