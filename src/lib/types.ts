@@ -93,6 +93,8 @@ export interface Mission {
   airbnbId?: string;
   nextArrival?: string;
   nextArrivalTime?: string;
+  /** Créée par la synchronisation des réservations : son arrivée suivante est recalculée chaque heure. */
+  autoSynced?: boolean;
   // Horodatage de création — sert de proxy pour l'ordre d'attribution des missions.
   createdAt?: string;
   // Ordre manuel fixé par l'admin (par cleaner, à date égale). Prime sur le tri auto.

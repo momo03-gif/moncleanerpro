@@ -15,7 +15,8 @@ import type { MissionType, MissionSource, MissionService, Apartment, RecurringMi
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { SERVICE_LABEL, canCleanerDoService, serviceParts } from '@/lib/service';
 import { computeMissionGain, DURATION_PRESETS } from '@/lib/pay';
-import { formatDuration, formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES, money } from '@/lib/format';
+import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
+import ArriveeSuivante from '@/components/ArriveeSuivante';
 import { inputStyle } from '@/lib/ui';
 
 const emptyForm = {
@@ -722,23 +723,11 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée client — optionnel</label>
-                <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-                  <input type="date" value={form.nextArrival} min={form.date || undefined} onChange={e => setForm(p => ({ ...p, nextArrival: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
-                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                  <select value={form.nextArrivalTime} onChange={e => setForm(p => ({ ...p, nextArrivalTime: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
-                    style={{ ...inputStyle, color: form.nextArrivalTime ? '#1A1A1A' : '#A8A09A' }}>
-                    <option value="">Heure d&apos;arrivée</option>
-                    {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
-                  </select>
-                </div>
-                {form.nextArrival && form.date && form.nextArrival === form.date && (
-                  <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-                    Arrivée le jour même du ménage — turnover urgent
-                  </p>
-                )}
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée d&apos;un voyageur</label>
+                <ArriveeSuivante dateMenage={form.date}
+                  value={{ date: form.nextArrival, time: form.nextArrivalTime }}
+                  onChange={v => setForm(p => ({ ...p, nextArrival: v.date, nextArrivalTime: v.time }))}
+                  champClass="w-full px-4 py-3 rounded-xl text-sm border appearance-none" champStyle={inputStyle} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps de nettoyage (minutes)</label>

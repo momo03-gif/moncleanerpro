@@ -17,6 +17,7 @@ import { useFeedback } from '@/contexts/FeedbackContext';
 import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
 import { computeMissionGain } from '@/lib/pay';
 import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
+import ArriveeSuivante from '@/components/ArriveeSuivante';
 import { inputStyle } from '@/lib/ui';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
@@ -213,6 +214,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     type: mission.type, price: String(mission.price ?? 0),
     service: mission.service ?? 'cleaning' as MissionService,
     deliveryInstructions: mission.deliveryInstructions ?? '',
+    nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
   });
   const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
   // Codes d'accès : servis par /api/missions/terrain. Repli sur les notes de la
@@ -238,6 +240,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
       type: mission.type, price: String(mission.price ?? 0),
       service: mission.service ?? 'cleaning',
       deliveryInstructions: mission.deliveryInstructions ?? '',
+      nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
     });
     setActionError('');
     setEditOpen(true);
@@ -264,6 +267,12 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
       service: editForm.service,
       deliveryInstructions: serviceParts(editForm.service).delivery ? editForm.deliveryInstructions : '',
       price: Number(editForm.price) || 0,  // prix CLIENT uniquement
+      // Arrivée suivante : saisie à la main uniquement. Pour un ménage issu de
+      // la synchro, elle est recalculée depuis les réservations — on n'y touche pas.
+      ...(mission.autoSynced ? {} : {
+        nextArrival: editForm.nextArrival || null,
+        nextArrivalTime: editForm.nextArrival ? (editForm.nextArrivalTime || null) : null,
+      }),
     });
     setBusy(false);
     if (res.error) { setActionError(res.error); return; }
@@ -768,6 +777,21 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                     className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
                 )}
               </div>
+              {serviceParts(editForm.service).cleaning && (
+              <div className="col-span-2">
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prochaine arrivée d&apos;un voyageur</label>
+                {mission.autoSynced ? (
+                  <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#FFFFFF', color: '#7A7068', border: '1px solid #E8E4DC' }}>
+                    Calculée à partir des réservations synchronisées, mise à jour chaque heure.
+                  </p>
+                ) : (
+                  <ArriveeSuivante dateMenage={editForm.date}
+                    value={{ date: editForm.nextArrival, time: editForm.nextArrivalTime }}
+                    onChange={v => setEditForm(f => ({ ...f, nextArrival: v.date, nextArrivalTime: v.time }))}
+                    champClass="w-full px-3 py-2 rounded-lg text-sm border appearance-none" champStyle={inputStyle} />
+                )}
+              </div>
+              )}
               {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
               {serviceParts(editForm.service).cleaning && (
               <div>

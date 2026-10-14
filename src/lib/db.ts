@@ -139,6 +139,7 @@ function rowToMission(row: any): Mission {
     airbnbId: row.airbnb_id ?? undefined,
     nextArrival: row.next_arrival ?? undefined,
     nextArrivalTime: row.next_arrival_time ? trimTime(row.next_arrival_time) : undefined,
+    autoSynced: row.auto_synced === true,
     createdAt: row.created_at ?? undefined,
     manualOrder: row.manual_order != null ? Number(row.manual_order) : undefined,
     extraTimeMinutes: row.extra_time_minutes != null ? Number(row.extra_time_minutes) : undefined,

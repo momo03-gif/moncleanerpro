@@ -9,7 +9,8 @@ import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import type { Apartment, Mission, Reservation } from '@/lib/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
-import { formatHour, DEPARTURE_TIMES, ARRIVAL_TIMES } from '@/lib/format';
+import { formatHour, DEPARTURE_TIMES } from '@/lib/format';
+import ArriveeSuivante from '@/components/ArriveeSuivante';
 import { MISSION_STATUS_CFG } from '@/lib/labels';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import { serviceParts, serviceLabel } from '@/lib/service';
@@ -196,18 +197,11 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
               </div>
             </div>
             <div>
-              <Label>Prochaine arrivée — optionnel</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" aria-label="Date de la prochaine arrivée" value={form.nextArrival}
-                  min={form.date || undefined}
-                  onChange={e => setForm(f => ({ ...f, nextArrival: e.target.value }))} className={FIELD_SM} />
-                <select aria-label="Heure de la prochaine arrivée" value={form.nextArrivalTime}
-                  onChange={e => setForm(f => ({ ...f, nextArrivalTime: e.target.value }))}
-                  className={`${FIELD_SM} appearance-none`}>
-                  <option value="">Heure d&apos;arrivée</option>
-                  {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
-                </select>
-              </div>
+              <Label>Prochaine arrivée d&apos;un voyageur</Label>
+              <ArriveeSuivante dateMenage={form.date}
+                value={{ date: form.nextArrival, time: form.nextArrivalTime }}
+                onChange={v => setForm(f => ({ ...f, nextArrival: v.date, nextArrivalTime: v.time }))}
+                champClass={`${FIELD_SM} appearance-none`} />
             </div>
             <div>
               <Label htmlFor={`m-notes-${mission.id}`}>Consignes — optionnel</Label>
@@ -504,21 +498,11 @@ export default function AirbnbMissionsPage() {
             </div>
 
             <div>
-              <Label>Prochaine arrivée client — optionnel</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="date" aria-label="Date de la prochaine arrivée" value={nextArrival}
-                  min={date || today} onChange={e => setNextArrival(e.target.value)} className={FIELD} />
-                <select aria-label="Heure de la prochaine arrivée" value={nextArrivalTime}
-                  onChange={e => setNextArrivalTime(e.target.value)} className={`${FIELD} appearance-none`}>
-                  <option value="">Heure d&apos;arrivée</option>
-                  {ARRIVAL_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
-                </select>
-              </div>
-              {nextArrival && date && nextArrival === date && (
-                <p className="text-xs mt-2 px-3 py-2 rounded-lg font-semibold bg-danger-soft text-danger">
-                  Arrivée le jour même du ménage — turnover urgent
-                </p>
-              )}
+              <Label>Prochaine arrivée d&apos;un voyageur</Label>
+              <ArriveeSuivante dateMenage={date}
+                value={{ date: nextArrival, time: nextArrivalTime }}
+                onChange={v => { setNextArrival(v.date); setNextArrivalTime(v.time); }}
+                champClass={`${FIELD} appearance-none`} />
             </div>
 
             <div>
