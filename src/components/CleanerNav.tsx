@@ -19,7 +19,24 @@ export default function CleanerNav() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  async function handleLogout() { await logout(); router.push('/login'); }
+  // Des actions (photos, fin de ménage…) attendent encore le réseau : on tente
+  // de les envoyer ; s'il en reste, le cleaner décide — sinon elles seraient
+  // perdues en silence.
+  async function handleLogout() {
+    try {
+      const { syncQueue, queueSummary } = await import('@/lib/offline/queue');
+      await syncQueue();
+      const { pending } = await queueSummary();
+      if (pending > 0) {
+        const ok = window.confirm(`${pending} action${pending > 1 ? 's' : ''} (photos, fin de ménage…) n'${pending > 1 ? 'ont' : 'a'} pas encore pu être envoyée${pending > 1 ? 's' : ''}, faute de réseau.\n\nSi vous vous déconnectez maintenant, elle${pending > 1 ? 's seront perdues' : ' sera perdue'}. Se déconnecter quand même ?`);
+        if (!ok) return;
+      }
+      const { effacerDonneesHorsLigne } = await import('@/lib/offline/store');
+      await effacerDonneesHorsLigne({ file: true });
+    } catch { /* best-effort */ }
+    await logout();
+    router.push('/login');
+  }
 
   return (
     <>

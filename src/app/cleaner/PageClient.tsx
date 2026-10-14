@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { getMissionsForCleanerDB, getMissionByIdDB } from '@/lib/db';
+import { getMissionsForCleanerOuNull, getMissionByIdDB } from '@/lib/db';
 import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
 import {
   submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime,
@@ -13,7 +13,7 @@ import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsForCleaner } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
-import { cacheMissions, readCachedMissions } from '@/lib/offline/store';
+import { cacheMissions, readCachedMissions, cacheTerrain, readCachedTerrain } from '@/lib/offline/store';
 import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
@@ -24,7 +24,7 @@ import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
 import SiteAccessVideo from '@/components/SiteAccessVideo';
-import { getTerrainMap, type SiteContact, type GuestContact, type TerrainInfo } from '@/lib/fieldContact';
+import { getTerrainMap, getTerrainMapOuNull, type SiteContact, type GuestContact, type TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -687,6 +687,7 @@ export default function CleanerDashboard() {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       const cached = await readCachedMissions(user.id);
       if (cached) { setMissions(cached.missions); setOfflineSince(cached.syncedAt); }
+      setTerrain(await readCachedTerrain<TerrainInfo>(user.id));
       setLoading(false);
       return;
     }
@@ -699,7 +700,15 @@ export default function CleanerDashboard() {
     // toujours incluses) — inutile de tirer tout l'historique sur mobile, et ça
     // évite que la requête ralentisse à mesure que les missions s'accumulent.
     const since = toDateStr(new Date(Date.now() - 183 * 86400000));
-    const m = await getMissionsForCleanerDB(user.id, since);
+    const m = await getMissionsForCleanerOuNull(since);
+    // Réseau faible ou coupé alors que le téléphone se croit en ligne : on garde
+    // le planning et les codes d'accès du téléphone, jamais un écran vide.
+    if (m === null) {
+      if (cached) { setMissions(cached.missions); setOfflineSince(cached.syncedAt); }
+      setTerrain(await readCachedTerrain<TerrainInfo>(user.id));
+      setLoading(false);
+      return;
+    }
     const enriched = m;
     setMissions(enriched);
     setOfflineSince(null);
@@ -708,7 +717,15 @@ export default function CleanerDashboard() {
     // Codes d'accès, directives, vidéo et contacts : UNE requête, indépendante du
     // planning. En cas d'échec, le cleaner garde ses missions — il lui manque
     // seulement le bloc d'accès, et il peut appeler l'agence.
-    setTerrain(await getTerrainMap(enriched.map(x => x.id)));
+    const aFaire = enriched.filter(x => x.status !== 'completed' && x.status !== 'cancelled').map(x => x.id);
+    const t = await getTerrainMapOuNull(enriched.map(x => x.id));
+    if (t) {
+      setTerrain(t);
+      // Gardés sur le téléphone pour les seules missions encore à faire.
+      await cacheTerrain(user.id, t, aFaire);
+    } else {
+      setTerrain(await readCachedTerrain<TerrainInfo>(user.id));
+    }
     // On ne persiste pas un planning vide par-dessus un cache existant (une requête
     // en échec renvoie [] — inutile d'écraser des données valides).
     if (enriched.length > 0) await cacheMissions(user.id, enriched);

@@ -9,7 +9,11 @@
 
 import { compressImage } from './imageCompress';
 import { deposerFichier } from './depot';
-import { annexe } from './db/shared';
+import { annexe, postServer, estPanneReseau } from './db/shared';
+import { lireCache, ecrireCache } from './offline/store';
+
+/** Clé de la checklist d'une mission gardée sur le téléphone. */
+export const cleChecklist = (missionId: string) => `checklist:${missionId}`;
 import type { ChecklistItem, ChecklistCheck, MissionChecklistLine } from './types';
 
 // La logique pure (conformité, regroupement, modèle de démarrage) vit dans
@@ -23,16 +27,13 @@ export {
 // écriture depuis la clé publique est refusée (42501), silencieusement pour
 // l'utilisateur. Tout ce qui écrit passe donc par /api/checklist, qui vérifie la
 // session et le droit avant d'agir. La LECTURE, elle, reste directe.
-async function ecrire(payload: Record<string, unknown>): Promise<{ error: string | null; item?: unknown }> {
+async function ecrire(payload: Record<string, unknown>): Promise<{ error: string | null; item?: unknown; panne?: boolean }> {
   try {
-    const res = await fetch('/api/checklist', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return { error: data.error ?? 'Enregistrement impossible.' };
+    const data = await postServer('/api/checklist', payload);
     return { error: null, item: data.item };
-  } catch {
-    return { error: 'Connexion impossible. Réessayez.' };
+  } catch (e) {
+    if (estPanneReseau(e)) return { error: 'Connexion impossible. Réessayez.', panne: true };
+    return { error: e instanceof Error ? e.message : 'Enregistrement impossible.' };
   }
 }
 
@@ -119,9 +120,17 @@ export async function reorderChecklistDB(ids: string[]): Promise<{ error: string
  */
 export async function getMissionChecklistDB(missionId: string, _airbnbId: string): Promise<MissionChecklistLine[]> {
   // Le logement est repris de la mission par le serveur.
+  // Gardée sur le téléphone à chaque lecture réussie : sans réseau, on relit
+  // la dernière version (coches faites hors-ligne comprises, cf. offline/queue).
   let res: { items?: Record<string, unknown>[]; checks?: Record<string, unknown>[] };
-  try { res = await annexe('checklist-mission', { missionId }); }
-  catch (e) { console.error('getMissionChecklistDB:', e); return []; }
+  try {
+    res = await annexe('checklist-mission', { missionId });
+    await ecrireCache(cleChecklist(missionId), res);
+  } catch (e) {
+    const garde = await lireCache<typeof res>(cleChecklist(missionId));
+    if (!garde) { console.error('getMissionChecklistDB:', e); return []; }
+    res = garde;
+  }
   const checks = new Map((res.checks ?? []).map(rowToCheck).map(c => [c.itemId, c]));
   return (res.items ?? [])
     .map(rowToItem)

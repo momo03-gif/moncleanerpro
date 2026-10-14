@@ -91,6 +91,24 @@ export async function getTerrainMap(missionIds: string[]): Promise<Record<string
   }
 }
 
+/** Comme getTerrainMap, mais `null` si le réseau a fait défaut (pour retomber sur le téléphone). */
+export async function getTerrainMapOuNull(missionIds: string[], delaiMs = 10000): Promise<Record<string, TerrainInfo> | null> {
+  const ids = Array.from(new Set(missionIds.filter(Boolean)));
+  if (ids.length === 0) return {};
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), delaiMs);
+  try {
+    const res = await fetch('/api/missions/terrain', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ missionIds: ids }), signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    return data ? ((data.terrain ?? {}) as Record<string, TerrainInfo>) : null;
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+}
+
 /**
  * Voyageur rattaché à chaque mission — conservé pour les écrans qui n'ont besoin
  * que de ça. Les plannings passent par getTerrainMap, qui rend tout d'un coup.

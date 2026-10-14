@@ -1,4 +1,5 @@
-import { annexe } from './db/shared';
+import { annexe, estPanneReseau } from './db/shared';
+import { lireCache, ecrireCache } from './offline/store';
 import type { MissionReport } from './types';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -50,19 +51,31 @@ export async function getOpenIncidentsDB(): Promise<OpenIncident[]> {
 
 
 
+export const cleRapport = (missionId: string) => `rapport:${missionId}`;
+
 export async function getMissionReportDB(missionId: string): Promise<MissionReport | null> {
   try {
     const data = (await annexe('report', { missionId })).data;
-    return data ? rowToReport(data) : null;
-  } catch (e) { console.error('getMissionReportDB:', e); return null; }
+    const r = data ? rowToReport(data) : null;
+    await ecrireCache(cleRapport(missionId), r);
+    return r;
+  } catch (e) {
+    // Sans réseau : la dernière version gardée sur le téléphone.
+    if (estPanneReseau(e)) return lireCache<MissionReport>(cleRapport(missionId));
+    console.error('getMissionReportDB:', e);
+    return null;
+  }
 }
 
-export async function saveMissionReportDB(report: MissionReport): Promise<{ error: string | null }> {
+export async function saveMissionReportDB(report: MissionReport): Promise<{ error: string | null; panne?: boolean }> {
   // Réservé à l'admin et au cleaner de la mission (vérifié côté serveur).
-  try { await annexe('report-save', { report }); return { error: null }; }
-  catch (e) {
+  try {
+    await annexe('report-save', { report });
+    await ecrireCache(cleRapport(report.missionId), report);
+    return { error: null };
+  } catch (e) {
     const message = e instanceof Error ? e.message : 'Enregistrement impossible.';
     console.error('saveMissionReportDB:', message);
-    return { error: message };
+    return { error: message, panne: estPanneReseau(e) };
   }
 }

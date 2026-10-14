@@ -95,13 +95,63 @@ export async function patchCachedMission(
   }
 }
 
+// ── Cache générique (checklist, rapport…) ─────────────────────────────────────
+
+export async function lireCache<T>(cle: string): Promise<T | null> {
+  try { return (await idbGet<T>(cle)) ?? null; } catch { return null; }
+}
+
+export async function ecrireCache(cle: string, valeur: unknown): Promise<void> {
+  try { await idbSet(cle, valeur); } catch { /* best-effort */ }
+}
+
+// ── Codes d'accès des missions à venir (portail, boîte à clés, vidéo, contact) ──
+//
+// Sans réseau devant la porte, le cleaner voyait sa mission… sans le code. On
+// garde donc sur SON téléphone le bloc d'accès de SES missions encore à faire
+// — jamais celles terminées (purgées à chaque enregistrement) — et tout est
+// effacé à la déconnexion (cf. effacerDonneesHorsLigne).
+const terrainKey = (userId: string) => `terrain:${userId}`;
+
+export async function cacheTerrain(userId: string, terrain: Record<string, unknown>, missionsAFaire: string[]): Promise<void> {
+  const garder = new Set(missionsAFaire);
+  const filtre = Object.fromEntries(Object.entries(terrain).filter(([id]) => garder.has(id)));
+  await ecrireCache(terrainKey(userId), filtre);
+}
+
+export async function readCachedTerrain<T>(userId: string): Promise<Record<string, T>> {
+  return (await lireCache<Record<string, T>>(terrainKey(userId))) ?? {};
+}
+
+/**
+ * Efface ce que l'app garde sur le téléphone : planning, codes d'accès, cache.
+ * `file: true` efface AUSSI les actions pas encore envoyées (photos comprises) :
+ * à ne faire qu'après accord du cleaner (cf. CleanerNav).
+ */
+export async function effacerDonneesHorsLigne(opts: { file?: boolean } = {}): Promise<void> {
+  try {
+    const db = await openDB();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const magasins = opts.file ? [STORE, QUEUE] : [STORE];
+        const tx = db.transaction(magasins, 'readwrite');
+        for (const m of magasins) tx.objectStore(m).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } finally { db.close(); }
+  } catch { /* best-effort */ }
+}
+
 // ── File d'actions hors-ligne (rejouées à la reconnexion) ────────────────────
 
 // Type d'action cleaner rejouable. `at` = horodatage capturé AU MOMENT de l'action
 // (rejoué tel quel côté serveur pour un pointage exact) ; `coords` = position GPS
 // capturée sur place (revalidée à la reco : proximité ≤ 200 m).
 // 'photo' : photo de ménage gardée sur le téléphone (Blob) jusqu'à son envoi.
-export type QueuedType = 'start' | 'finish' | 'deliver' | 'withdraw' | 'extraTime' | 'photo';
+// 'checklist', 'report', 'repair' : le travail sur place (coches, rapport de fin,
+// réparation signalée), gardé quand le réseau fait défaut.
+export type QueuedType = 'start' | 'finish' | 'deliver' | 'withdraw' | 'extraTime' | 'photo' | 'checklist' | 'report' | 'repair';
 
 export interface QueuedAction {
   id: string;                 // uuid — sert aussi de clé d'idempotence

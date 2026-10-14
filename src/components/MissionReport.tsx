@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getMissionReportDB, saveMissionReportDB, reportHasContent } from '@/lib/missionReports';
+import { getMissionReportDB, reportHasContent } from '@/lib/missionReports';
+import { submitReport } from '@/lib/offline/queue';
 import { CONSUMABLE_ITEMS, type MissionReport as Report } from '@/lib/types';
 import Icon from '@/components/Icon';
 
@@ -84,12 +85,13 @@ export default function MissionReport({ missionId, mode, userId, defaultOpen, un
       note: note.trim() || undefined,
       submittedBy: userId,
     };
-    const res = await saveMissionReportDB(r);
+    // Sans réseau, le rapport est gardé sur le téléphone et envoyé plus tard.
+    const res = await submitReport({ userId: userId ?? '', report: r });
     setSaving(false);
     if (res.error) { setSavedMsg('Erreur : ' + res.error); return; }
     setReport(r);
-    setSavedMsg('Rapport enregistré ✓');
-    setTimeout(() => setSavedMsg(''), 3000);
+    setSavedMsg(res.queued ? 'Rapport gardé sur le téléphone — envoyé au retour du réseau ✓' : 'Rapport enregistré ✓');
+    setTimeout(() => setSavedMsg(''), res.queued ? 6000 : 3000);
   }
 
   const filled = reportHasContent(report);

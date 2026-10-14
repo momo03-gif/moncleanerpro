@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react';
 import {
-  getRepairsForApartmentDB, createRepairDB, resolveRepairDB, reopenRepairDB,
+  getRepairsForApartmentDB, resolveRepairDB, reopenRepairDB,
   uploadRepairPhotoDB, MAX_REPAIR_PHOTOS,
 } from '@/lib/repairs';
 import Icon from '@/components/Icon';
 import { useFeedback } from '@/contexts/FeedbackContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { submitRepair } from '@/lib/offline/queue';
 import type { Repair } from '@/lib/types';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -31,6 +33,7 @@ interface Props {
 const cardStyle = { borderColor: '#F2EFE9', backgroundColor: '#FCFBF8' };
 
 export default function RepairsPanel({ airbnbId, missionId, role, authorName, defaultOpen }: Props) {
+  const { user } = useAuth();
   const { toast } = useFeedback();
   const [open, setOpen] = useState(!!defaultOpen);
   const [loaded, setLoaded] = useState(false);
@@ -65,19 +68,27 @@ export default function RepairsPanel({ airbnbId, missionId, role, authorName, de
     setBusy(true); setError('');
     // Téléverse d'abord les photos (2 max), puis crée la réparation avec leurs URLs.
     const urls: string[] = [];
+    const horsLigne = typeof navigator !== 'undefined' && navigator.onLine === false;
+    let photosNonEnvoyees = 0;
     for (const f of photos.slice(0, MAX_REPAIR_PHOTOS)) {
+      // Sans réseau, la réparation passe quand même — sans ses photos.
+      if (horsLigne) { photosNonEnvoyees++; continue; }
       const up = await uploadRepairPhotoDB(airbnbId, f, missionId);
-      if (up.error) { setBusy(false); setError('Échec de l’envoi d’une photo : ' + up.error); return; }
+      if (up.error) { photosNonEnvoyees++; continue; }
       if (up.url) urls.push(up.url);
     }
-    const res = await createRepairDB({
-      airbnbId, missionId, description,
-      createdBy: authorName, createdRole: role, photos: urls,
+    // Sans réseau, la réparation est gardée sur le téléphone et envoyée plus tard.
+    const res = await submitRepair({
+      userId: user?.id ?? '',
+      repair: { airbnbId, missionId, description, createdBy: authorName, createdRole: role, photos: urls },
     });
     setBusy(false);
     if (res.error) { setError(res.error); return; }
     setDescription(''); setPhotos([]); setAdding(false);
-    toast('Réparation signalée.', 'success');
+    toast(res.queued
+      ? 'Réparation gardée sur le téléphone — envoyée au retour du réseau.'
+      : photosNonEnvoyees ? 'Réparation signalée (photos non envoyées : pas de réseau).' : 'Réparation signalée.',
+      res.queued || photosNonEnvoyees ? 'info' : 'success');
     load();
   }
 

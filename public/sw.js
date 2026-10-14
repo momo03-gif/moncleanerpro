@@ -72,16 +72,23 @@ self.addEventListener('fetch', e => {
   // Navigations (pages) : réseau d'abord, on met la réponse en cache pour pouvoir
   // rouvrir l'app hors-ligne ; repli = HTML en cache de cette page, sinon la page
   // hors-ligne. Le cache versionné est purgé à chaque déploiement (activate).
+  // Réseau faible : s'il ne répond pas en 3 s et qu'une version est gardée, on
+  // l'affiche tout de suite (la réponse réseau, si elle arrive, met le cache à
+  // jour pour la fois suivante) — au lieu d'un écran blanc dans une cave.
   if (request.mode === 'navigate') {
-    e.respondWith(
-      fetch(request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(request, clone));
-          return res;
-        })
-        .catch(() => caches.match(request).then(cached => cached || caches.match(OFFLINE_URL)))
-    );
+    e.respondWith((async () => {
+      const reseau = fetch(request).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(request, clone));
+        return res;
+      });
+      const garde = await caches.match(request);
+      if (!garde) {
+        try { return await reseau; } catch { return (await caches.match(OFFLINE_URL)) || Response.error(); }
+      }
+      const delai = new Promise(resolve => setTimeout(() => resolve(garde), 3000));
+      try { return await Promise.race([reseau, delai]); } catch { return garde; }
+    })());
     return;
   }
 

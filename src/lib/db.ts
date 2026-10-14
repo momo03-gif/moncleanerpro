@@ -200,6 +200,24 @@ export async function getMissionByIdDB(id: string): Promise<{ mission: Mission |
   } catch { return null; }
 }
 
+/**
+ * Planning du cleaner, ou `null` si le réseau a fait défaut (coupé, trop lent,
+ * erreur). La différence compte : une liste vide REMPLAÇAIT le planning gardé
+ * sur le téléphone — sur un réseau faible, le cleaner voyait un écran vide.
+ */
+export async function getMissionsForCleanerOuNull(sinceDate?: string, delaiMs = 10000): Promise<Mission[] | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), delaiMs);
+  try {
+    const qs = new URLSearchParams({ scope: 'cleaner', ...(sinceDate ? { since: sinceDate } : {}) });
+    const res = await fetch(`/api/missions?${qs}`, { cache: 'no-store', signal: controller.signal });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return (body.data ?? []).map(rowToMission);
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+}
+
 export async function getMissionsForCleanerDB(_userId: string, sinceDate?: string): Promise<Mission[]> {
   // Le cleaner est celui de la session : le serveur résout users.id → cleaners.id.
   try {

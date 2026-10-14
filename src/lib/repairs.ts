@@ -1,4 +1,5 @@
-import { annexe } from './db/shared';
+import { annexe, estPanneReseau } from './db/shared';
+import { lireCache, ecrireCache } from './offline/store';
 import { deposerFichier } from './depot';
 import { compressImage } from './imageCompress';
 import type { Repair, RepairStatus } from './types';
@@ -63,14 +64,32 @@ export async function getAllRepairsDB(): Promise<Repair[]> {
 
 /** Réparations d'un site donné (fiche logement admin / partenaire). */
 export async function getRepairsForApartmentDB(airbnbId: string): Promise<Repair[]> {
-  try { return ((await annexe('repairs-apartment', { airbnbId })).data ?? []).map(rowToRepair); }
-  catch (e) { console.error('getRepairsForApartmentDB:', e); return []; }
+  const cle = `reparations:repairs-apartment:${airbnbId}`;
+  try {
+    const lignes = (await annexe('repairs-apartment', { airbnbId })).data ?? [];
+    await ecrireCache(cle, lignes);
+    return lignes.map(rowToRepair);
+  } catch (e) {
+    // Sans réseau : la dernière liste gardée sur le téléphone.
+    if (estPanneReseau(e)) return ((await lireCache<Record<string, unknown>[]>(cle)) ?? []).map(rowToRepair);
+    console.error('getRepairsForApartmentDB:', e);
+    return [];
+  }
 }
 
 /** Réparations créées depuis une mission donnée (rapport cleaner). */
 export async function getRepairsForMissionDB(missionId: string): Promise<Repair[]> {
-  try { return ((await annexe('repairs-mission', { missionId })).data ?? []).map(rowToRepair); }
-  catch (e) { console.error('getRepairsForMissionDB:', e); return []; }
+  const cle = `reparations:repairs-mission:${missionId}`;
+  try {
+    const lignes = (await annexe('repairs-mission', { missionId })).data ?? [];
+    await ecrireCache(cle, lignes);
+    return lignes.map(rowToRepair);
+  } catch (e) {
+    // Sans réseau : la dernière liste gardée sur le téléphone.
+    if (estPanneReseau(e)) return ((await lireCache<Record<string, unknown>[]>(cle)) ?? []).map(rowToRepair);
+    console.error('getRepairsForMissionDB:', e);
+    return [];
+  }
 }
 
 export interface NewRepair {
@@ -86,7 +105,7 @@ export interface NewRepair {
  * Crée une réparation. Le partenaire propriétaire est repris du SITE (et non de
  * la mission) : c'est lui qui devra confirmer la réparation dans son espace.
  */
-export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | null; error: string | null }> {
+export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | null; error: string | null; panne?: boolean }> {
   const description = r.description.trim();
   if (!description) return { repair: null, error: 'Description requise.' };
 
@@ -102,7 +121,7 @@ export async function createRepairDB(r: NewRepair): Promise<{ repair: Repair | n
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Enregistrement impossible.';
     console.error('createRepairDB:', message);
-    return { repair: null, error: message };
+    return { repair: null, error: message, panne: estPanneReseau(e) };
   }
 
   if (typeof window !== 'undefined') {

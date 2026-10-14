@@ -3,8 +3,31 @@
 // Appel d'une route serveur : les opérations sensibles (création de compte, mot de
 // passe, validation partenaire) passent par des routes serveur en service_role,
 // jamais avec la clé publique.
-export async function postServer(url: string, body: unknown): Promise<any> {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+// Panne RÉSEAU (pas de réponse, délai dépassé, serveur injoignable) — à
+// distinguer d'un REFUS du serveur : la première se rattrape en gardant
+// l'action sur le téléphone, le second s'affiche au cleaner.
+export class PanneReseau extends Error {
+  constructor() { super('Connexion impossible pour le moment.'); this.name = 'PanneReseau'; }
+}
+export function estPanneReseau(e: unknown): boolean {
+  return e instanceof PanneReseau;
+}
+
+export async function postServer(url: string, body: unknown, delaiMs = 15000): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), delaiMs);   // réseau faible : jamais d'attente infinie
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal,
+    });
+  } catch {
+    throw new PanneReseau();
+  } finally {
+    clearTimeout(timer);
+  }
+  // Passerelle injoignable (502/503/504) : c'est le réseau, pas un refus.
+  if (res.status === 502 || res.status === 503 || res.status === 504) throw new PanneReseau();
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
   return data;

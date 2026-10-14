@@ -24,6 +24,11 @@ import { startMissionDB, finishMissionDB, markDeliveredDB, withdrawMissionDB, re
 import { GPS_REQUIRED_ERROR, type GeoPoint } from '@/lib/geo';
 import { PHOTOS_REQUISES_ERROR } from '@/lib/photosRegles';
 import { uploadMissionPhotoDB } from '@/lib/missionPhotos';
+import { checkChecklistItemDB, uncheckChecklistItemDB, cleChecklist } from '@/lib/checklists';
+import { saveMissionReportDB, cleRapport } from '@/lib/missionReports';
+import { createRepairDB, type NewRepair } from '@/lib/repairs';
+import { lireCache, ecrireCache } from './store';
+import type { ChecklistItem, MissionReport } from '@/lib/types';
 import { compressImage } from '@/lib/imageCompress';
 import type { MissionPhotoKind } from '@/lib/types';
 import {
@@ -87,6 +92,68 @@ export async function submitFinish(p: { missionId: string; userId: string; coord
   }
   await enqueue('finish', p.userId, p.missionId, {}, p.coords);
   await patchCachedMission(p.userId, p.missionId, { status: 'completed' });
+  void syncQueue();
+  return { queued: true, error: null };
+}
+
+// ── Travail sur place : checklist, rapport, réparation ───────────────────────
+//
+// Même principe que le pointage : en ligne, envoi direct ; si le RÉSEAU fait
+// défaut (pas un refus du serveur), l'action est gardée sur le téléphone et
+// rejouée dans l'ordre. Le cleaner voit tout de suite le résultat (cache local
+// mis à jour), et n'est jamais bloqué.
+
+/** Des actions de cette mission attendent-elles déjà le réseau ? Si oui, on garde l'ordre. */
+async function missionEnAttente(missionId: string): Promise<boolean> {
+  return (await allQueued()).some(i => i.missionId === missionId && i.status === 'pending');
+}
+
+export async function submitChecklist(p: {
+  missionId: string; userId: string; item: ChecklistItem; coche: boolean; authorName?: string;
+}): Promise<SubmitResult> {
+  if (isOnline() && !(await missionEnAttente(p.missionId))) {
+    const r = p.coche
+      ? await checkChecklistItemDB(p.missionId, p.item, p.authorName)
+      : await uncheckChecklistItemDB(p.missionId, p.item.id);
+    if (!r.error) return { queued: false, error: null };
+    if (!(r as { panne?: boolean }).panne) return { queued: false, error: r.error };
+  }
+  await enqueue('checklist', p.userId, p.missionId,
+    { itemId: p.item.id, label: p.item.label, coche: p.coche, authorName: p.authorName ?? '' }, null);
+  // La checklist gardée sur le téléphone reflète la coche tout de suite.
+  try {
+    const cle = cleChecklist(p.missionId);
+    const garde = await lireCache<{ items?: unknown[]; checks?: Record<string, unknown>[] }>(cle);
+    if (garde) {
+      const checks = (garde.checks ?? []).filter(c => c.item_id !== p.item.id);
+      if (p.coche) checks.push({ mission_id: p.missionId, item_id: p.item.id, label_snapshot: p.item.label, checked_at: new Date().toISOString(), checked_by: p.authorName ?? null });
+      await ecrireCache(cle, { ...garde, checks });
+    }
+  } catch { /* best-effort */ }
+  void syncQueue();
+  return { queued: true, error: null };
+}
+
+export async function submitReport(p: { userId: string; report: MissionReport }): Promise<SubmitResult> {
+  if (isOnline() && !(await missionEnAttente(p.report.missionId))) {
+    const r = await saveMissionReportDB(p.report);
+    if (!r.error) return { queued: false, error: null };
+    if (!r.panne) return { queued: false, error: r.error };
+  }
+  await enqueue('report', p.userId, p.report.missionId, { report: p.report }, null);
+  await ecrireCache(cleRapport(p.report.missionId), p.report);
+  void syncQueue();
+  return { queued: true, error: null };
+}
+
+export async function submitRepair(p: { userId: string; repair: NewRepair }): Promise<SubmitResult> {
+  const missionId = p.repair.missionId ?? '';
+  if (isOnline() && !(missionId && await missionEnAttente(missionId))) {
+    const r = await createRepairDB(p.repair);
+    if (!r.error) return { queued: false, error: null };
+    if (!r.panne) return { queued: false, error: r.error };
+  }
+  await enqueue('repair', p.userId, missionId, { repair: p.repair }, null);
   void syncQueue();
   return { queued: true, error: null };
 }
@@ -173,6 +240,9 @@ const RESOLVED_MESSAGES: Record<QueuedType, string[]> = {
   withdraw: ['Désistement impossible sur cette mission.'],
   extraTime: ['Demande impossible sur cette mission.', 'Durée supplémentaire invalide.'],
   photo: [],
+  checklist: [],
+  report: [],
+  repair: [],
 };
 
 // Classe le résultat d'une mutation mission. tooFar / GPS manquant = rejet (à
@@ -185,6 +255,13 @@ function classifyMission(type: QueuedType, r: { error: string | null; tooFar?: b
   if (RESOLVED_MESSAGES[type].includes(r.error)) return 'resolved';
   item.error = r.error ?? undefined;
   return 'retry';
+}
+
+/** Résultat d'un rejeu de travail sur place : panne → on retente ; refus → le cleaner est prévenu. */
+function travailSurPlace(r: { error: string | null; panne?: boolean }, item: QueuedAction): Outcome {
+  if (!r.error) return 'resolved';
+  item.error = r.error;
+  return r.panne ? 'retry' : 'rejected';
 }
 
 async function replayOne(item: QueuedAction): Promise<Outcome> {
@@ -203,6 +280,21 @@ async function replayOne(item: QueuedAction): Promise<Outcome> {
       return classifyMission('extraTime', await requestExtraTimeDB({
         missionId: item.missionId, userId: item.userId, minutes: Number(a.minutes) || 0, reason: a.reason, at: item.at,
       }), item);
+    case 'checklist': {
+      const point = { id: String(a.itemId), label: String(a.label ?? '') } as ChecklistItem;
+      const r = a.coche
+        ? await checkChecklistItemDB(item.missionId, point, a.authorName || undefined)
+        : await uncheckChecklistItemDB(item.missionId, point.id);
+      return travailSurPlace(r, item);
+    }
+    case 'report': {
+      const r = await saveMissionReportDB(a.report as MissionReport);
+      return travailSurPlace(r, item);
+    }
+    case 'repair': {
+      const r = await createRepairDB(a.repair as NewRepair);
+      return travailSurPlace(r, item);
+    }
     case 'photo': {
       const blob = a.blob as Blob | undefined;
       if (!(blob instanceof Blob)) return 'resolved';   // élément illisible : rien à envoyer

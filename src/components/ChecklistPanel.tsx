@@ -14,11 +14,13 @@ import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'reac
 import {
   getChecklistForApartmentDB, getMissionChecklistDB, addChecklistItemDB,
   updateChecklistItemDB, archiveChecklistItemDB, reorderChecklistDB,
-  checkChecklistItemDB, uncheckChecklistItemDB, seedStarterChecklistDB,
+  seedStarterChecklistDB,
   uploadChecklistPhotoDB, checklistProgress, groupByRoom, STARTER_CHECKLIST,
 } from '@/lib/checklists';
 import Icon from '@/components/Icon';
 import { useFeedback } from '@/contexts/FeedbackContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { submitChecklist } from '@/lib/offline/queue';
 import type { MissionChecklistLine } from '@/lib/types';
 
 interface Props {
@@ -43,6 +45,7 @@ const ROOM_SUGGESTIONS = ['Général', 'Cuisine', 'Salle de bain', 'Chambre', 'S
 
 export default function ChecklistPanel({ airbnbId, missionId, mode, authorName, readOnly, showTimes, defaultOpen }: Props) {
   const { toast, confirm } = useFeedback();
+  const { user } = useAuth();
   const [open, setOpen] = useState(!!defaultOpen);
   const [loaded, setLoaded] = useState(false);
   const [lines, setLines] = useState<MissionChecklistLine[]>([]);
@@ -153,10 +156,11 @@ export default function ChecklistPanel({ airbnbId, missionId, mode, authorName, 
     setLines(ls => ls.map(l => l.item.id === line.item.id
       ? { ...l, check: wasChecked ? undefined : { missionId, itemId: l.item.id, labelSnapshot: l.item.label, checkedAt: new Date().toISOString(), checkedBy: authorName } }
       : l));
-    const res = wasChecked
-      ? await uncheckChecklistItemDB(missionId, line.item.id)
-      : await checkChecklistItemDB(missionId, line.item, authorName);
-    if (res.error) { toast('Enregistrement impossible — vérifiez votre connexion.', 'error'); await load(); }
+    // Sans réseau, la coche est gardée sur le téléphone et envoyée plus tard.
+    const res = await submitChecklist({
+      missionId, userId: user?.id ?? '', item: line.item, coche: !wasChecked, authorName,
+    });
+    if (res.error) { toast(res.error, 'error'); await load(); }
   }
 
   // ── Rendu ──────────────────────────────────────────────────────────────────
