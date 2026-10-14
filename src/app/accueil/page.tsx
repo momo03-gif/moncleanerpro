@@ -581,7 +581,7 @@ export default function VitrinePage() {
           {/* Les communes qui ont leur page deviennent des liens : c'est le maillage
               interne le plus utile de la page, il pousse chaque page locale. */}
           <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
-            {SEO_PAGES.filter(p => getCityGeo(p.slug) && !getCityGeo(p.slug)!.withinCity && !p.cluster).map((p, i, arr) => (
+            {SEO_PAGES.filter(p => p.cluster === 'communes').map((p, i, arr) => (
               <span key={p.slug}>
                 <a href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
                   {getCityGeo(p.slug)!.city}

@@ -1507,7 +1507,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
-    related: ['nettoyage-bureaux-lyon', 'contrat-nettoyage-entreprise-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-vitres-lyon'],
+    related: ['nettoyage-bureaux-lyon', 'contrat-nettoyage-entreprise-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-vitres-lyon', 'nettoyage-lyon-vaise'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-09-13',
     faq: [
@@ -1567,7 +1567,7 @@ export const SEO_PAGES: SeoPage[] = [
         ],
       },
     ],
-    related: ['nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-livraison-programme-neuf'],
+    related: ['nettoyage-vitres-lyon', 'nettoyage-copropriete-lyon', 'nettoyage-bureaux-lyon', 'nettoyage-livraison-programme-neuf', 'nettoyage-lyon-gerland'],
     relatedPosts: ['choisir-societe-nettoyage-lyon'],
     updatedAt: '2026-09-13',
     faq: [
@@ -1757,6 +1757,132 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Vos produits laissent-ils une odeur ?', a: "Nous travaillons avec très peu de parfum. Dans ces logements comme dans une salle d’attente, une odeur de produit est perçue comme un défaut, pas comme une preuve de propreté." },
       { q: 'Proposez-vous le repassage à domicile ?', a: "Oui, en complément de l’entretien courant, sur le même créneau et avec la même intervenante." },
       { q: 'Couvrez-vous tout le 6e arrondissement ?', a: "Oui : Tête d’Or, Foch, Masséna, Brotteaux, ainsi que les abords du parc et la limite avec Villeurbanne." },
+    ],
+  },
+  {
+    slug: 'nettoyage-lyon-gerland',
+    keyword: 'nettoyage Gerland',
+    eyebrow: 'Lyon 7e — Gerland',
+    h1: 'Nettoyage de bureaux et de laboratoires à Gerland',
+    title: 'Nettoyage à Gerland (Lyon 7e) — MonCleanerPro',
+    description: "Nettoyage à Gerland, Lyon 7e : bureaux, laboratoires et centres de recherche. Périmètre écrit, accès restreints respectés. Devis écrit sous 24h.",
+    intro:
+      "À Gerland, une bonne partie des bâtiments n’abrite pas seulement des bureaux : laboratoires, plateaux de recherche, start-up de la santé et des biotechnologies y côtoient les sièges et les campus. Dans ces locaux, la première question n’est pas « que faut-il nettoyer ? » mais « qu’est-ce qu’on ne doit surtout pas toucher ? ». Une paillasse essuyée de bonne foi, un échantillon déplacé ou une porte d’accès restreint franchie sans consigne peuvent coûter des semaines de travail à une équipe. Notre travail commence donc par tracer cette frontière, par écrit.",
+    highlights: [
+      { title: 'Un périmètre écrit', text: "Ce que nous faisons, ce que nous ne touchons jamais, pièce par pièce. Validé par votre responsable sécurité avant le premier passage." },
+      { title: 'Accès restreints respectés', text: "Badges, zones réservées, consignes d’entrée : nous suivons vos règles, sans exception pour gagner du temps." },
+      { title: 'Horaires calés sur l’activité', text: "Une manipulation qui tourne la nuit ne se dérange pas. Le créneau est fixé avec vous, salle par salle si besoin." },
+      { title: 'Déchets : chacun sa filière', text: "Nous évacuons les déchets de bureau. Les déchets chimiques et biologiques restent dans vos filières dédiées." },
+    ],
+    includes: [
+      'Bureaux, open spaces et salles de réunion',
+      'Sanitaires, vestiaires et espaces de pause',
+      'Circulations, halls et escaliers',
+      'Sols des zones techniques, si votre protocole le prévoit',
+      'Vitrerie intérieure et cloisons vitrées',
+      'Sortie des déchets de bureau vers le local prévu',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'La frontière entre bureau et laboratoire se trace avant le premier passage',
+        paragraphs: [
+          "Dans un bâtiment mixte, l’erreur ne vient presque jamais d’un mauvais nettoyage. Elle vient d’un nettoyage fait au mauvais endroit : une intervenante consciencieuse qui essuie un plan de travail encombré, range un flacon qui semblait oublié ou vide une poubelle qui n’était pas une poubelle de bureau. Elle a bien travaillé selon ses critères, et elle a créé un incident selon les vôtres.",
+          "C’est pourquoi nous ne démarrons jamais sur une simple visite. Nous établissons avec votre responsable sécurité ou votre responsable de site une liste écrite, pièce par pièce : ce que nous faisons, ce que nous ne touchons jamais, les portes que nous ne franchissons pas. Paillasses, hottes, équipements, échantillons et instruments sont exclus par défaut. Si vous souhaitez que nous traitions les sols d’une zone technique, c’est votre protocole qui s’applique — tenue, produits, sens de passage — pas le nôtre.",
+          "Cette liste est remise à chaque intervenant, y compris un remplaçant. Elle est courte, et c’est ce qui la rend respectée : une consigne de trois pages ne se lit pas à six heures du matin.",
+        ],
+      },
+      {
+        h2: 'Un laboratoire ne vit pas aux mêmes heures qu’un bureau',
+        paragraphs: [
+          "Dans un open space, le créneau idéal est simple : avant l’arrivée des équipes ou après leur départ. Dans un laboratoire, ce raisonnement ne tient plus. Une culture peut tourner toute la nuit, une manipulation peut démarrer à sept heures, un appareil peut exiger qu’on n’ouvre pas la porte de la salle pendant un cycle.",
+          "Nous fixons donc les horaires avec vous zone par zone, et nous prévoyons une règle simple pour les cas imprévus : une salle signalée « manipulation en cours » n’est pas traitée ce jour-là, et nous le notons dans le compte rendu de passage. Mieux vaut une salle reportée et tracée qu’une expérience perdue.",
+        ],
+      },
+      {
+        h2: 'Ce que nous ne faisons pas, et pourquoi nous le disons',
+        paragraphs: [
+          "Nous n’intervenons pas en salle propre classée, nous ne prenons pas en charge les déchets chimiques, biologiques ou de soins, et nous ne décontaminons pas d’équipements. Ces prestations relèvent de filières et de qualifications spécifiques. Les accepter pour décrocher un contrat serait vous exposer à un risque que vous ne voyez pas en signant.",
+          "Ce que nous faisons, en revanche, nous le faisons avec méthode : les bureaux, les espaces partagés et les circulations d’un bâtiment de recherche concentrent autant de passage que n’importe quel siège, avec une contrainte supplémentaire — tout le monde y circule entre zones. Les poignées, les boutons d’ascenseur, les tisaneries et les sanitaires y demandent une attention quotidienne.",
+        ],
+      },
+      {
+        h2: 'Un quartier étendu, desservi en tournée',
+        paragraphs: [
+          "Gerland s’étend du parc et du stade jusqu’aux berges du Rhône, avec des bâtiments souvent espacés et de grandes emprises. Nous organisons nos passages en tournée sur le secteur, ce qui permet de tenir des créneaux matinaux réguliers et de répondre à une demande ponctuelle — une salle de réunion à remettre en état avant une visite, un plateau à reprendre après un déménagement interne — sans déplacement dédié.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'nettoyage-cabinet-medical-lyon', 'nettoyage-lyon-confluence', 'nettoyage-de-nuit-lyon', 'contrat-nettoyage-entreprise-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-10-14',
+    faq: [
+      { q: 'Intervenez-vous dans les laboratoires ?', a: "Dans les parties que vous nous confiez, selon un périmètre écrit. Paillasses, hottes, équipements et échantillons sont exclus par défaut. Les sols d’une zone technique peuvent être traités si votre protocole le prévoit, avec vos consignes." },
+      { q: 'Prenez-vous en charge les déchets de laboratoire ?', a: "Non. Les déchets chimiques, biologiques et de soins suivent vos filières réglementées. Nous évacuons uniquement les déchets de bureau vers le local prévu." },
+      { q: 'Intervenez-vous en salle propre ?', a: "Non. Une salle propre classée demande une qualification et des procédures spécifiques que nous ne revendiquons pas. Nous préférons vous le dire avant le devis." },
+      { q: 'Comment évitez-vous de déranger une manipulation en cours ?', a: "Les horaires sont fixés zone par zone avec vous. Une salle signalée « manipulation en cours » n’est pas traitée ce jour-là, et le report figure dans le compte rendu de passage." },
+      { q: 'Un remplaçant connaîtra-t-il les consignes ?', a: "Oui. Le périmètre écrit est remis à chaque intervenant, titulaire comme remplaçant, avant son premier passage sur le site." },
+      { q: 'Quelles zones couvrez-vous autour de Gerland ?', a: "Tout le 7e arrondissement, de Jean-Macé à Gerland, ainsi que la Guillotière, le 8e voisin et la Confluence de l’autre côté du Rhône." },
+    ],
+  },
+  {
+    slug: 'nettoyage-lyon-vaise',
+    keyword: 'nettoyage Vaise',
+    eyebrow: 'Lyon 9e — Vaise',
+    h1: 'Nettoyage de bureaux à Vaise (Lyon 9e)',
+    title: 'Nettoyage de bureaux à Vaise (Lyon 9e) — MonCleanerPro',
+    description: "Nettoyage de bureaux à Vaise, Lyon 9e : flex office, postes partagés, cuisines communes. Passages calés sur vos jours de présence. Devis sous 24h.",
+    intro:
+      "Vaise est devenu en quelques années l’un des pôles tertiaires de Lyon, avec beaucoup d’entreprises du numérique, du conseil et des services. Ces bureaux ont un point commun : ils ne sont plus occupés de la même façon du lundi au vendredi. Postes non attribués, télétravail deux ou trois jours par semaine, salles de visio, cabines téléphoniques, cuisine partagée qui devient le cœur de l’étage. Un contrat de nettoyage pensé pour le bureau d’il y a dix ans passe à côté de tout cela — il nettoie un lundi vide et laisse passer un jeudi plein.",
+    highlights: [
+      { title: 'Calé sur vos jours de présence', text: "Passages renforcés les jours pleins, allégés les jours creux. Vous payez l’occupation réelle, pas une moyenne." },
+      { title: 'Postes partagés désinfectés', text: "Un bureau non attribué sert à plusieurs personnes dans la semaine. Les plans de travail libérés sont repris à chaque passage." },
+      { title: 'Cuisine et cabines suivies', text: "Les petits espaces très fréquentés se dégradent plus vite que l’open space. Ils ont leur propre fréquence." },
+      { title: 'Compte rendu consultable', text: "Heure de passage, zones faites, anomalies : visible en ligne par votre office manager." },
+    ],
+    includes: [
+      'Open spaces, postes partagés et salles de réunion',
+      'Cabines téléphoniques et salles de visio',
+      'Cuisine commune, électroménager extérieur et vaisselle si prévue',
+      'Sanitaires et espaces de pause',
+      'Accueil, circulations et vitrerie intérieure',
+      'Tri et sortie des déchets selon les filières de l’immeuble',
+    ],
+    cluster: 'quartiers-lyon',
+    sections: [
+      {
+        h2: 'Le bon rythme n’est plus cinq jours sur cinq',
+        paragraphs: [
+          "Dans beaucoup d’entreprises du quartier, le mardi et le jeudi sont pleins, le lundi et le vendredi à moitié vides. Un passage identique chaque jour produit deux effets indésirables : on paie un nettoyage complet sur des plateaux qui n’ont presque pas servi, et on sous-dimensionne les jours où tout le monde est là — les sanitaires et la cuisine saturent avant midi.",
+          "Nous partons de votre calendrier de présence réel, pas d’un forfait. Les jours pleins reçoivent un passage complet, parfois complété d’un passage court en milieu de journée sur les sanitaires et la cuisine. Les jours creux reçoivent un entretien ciblé sur ce qui a effectivement servi. À budget égal, le résultat perçu par les équipes est nettement meilleur, parce que l’effort tombe là où il y a du monde.",
+        ],
+      },
+      {
+        h2: 'Un poste partagé est une surface collective',
+        paragraphs: [
+          "Quand chaque salarié avait son bureau, le plan de travail était une surface personnelle : chacun s’en accommodait. En flex office, le même poste voit passer trois ou quatre personnes dans la semaine. Il devient une surface de contact collective, au même titre qu’une poignée de porte, et doit être traité comme tel.",
+          "Cela suppose une règle simple, à poser avec vous dès le départ : nous reprenons intégralement les postes libérés, et nous ne déplaçons rien sur un poste encombré. C’est la condition pour que l’intervenante n’ait jamais à décider si un dossier ou un ordinateur peut être déplacé — une décision qui ne lui appartient pas. Les entreprises qui ont adopté une politique de bureau vide en fin de journée obtiennent un résultat bien supérieur pour le même temps passé.",
+          "Le matériel informatique lui-même — claviers, souris, écrans — reste en dehors de notre périmètre par défaut. Si vous souhaitez que nous en assurions l’entretien de surface, cela se prévoit au devis, avec les produits adaptés.",
+        ],
+      },
+      {
+        h2: 'Les petits espaces s’usent le plus vite',
+        paragraphs: [
+          "Une cabine téléphonique d’un mètre carré utilisée toute la journée concentre plus d’usage, au mètre carré, que n’importe quelle autre pièce de l’étage. Même chose pour la salle de visio sans fenêtre et pour la cuisine commune, devenue le principal lieu de rencontre depuis que les équipes ne viennent plus tous les jours.",
+          "Ces espaces ont donc leur propre fréquence dans notre planning. Pour la cuisine, nous fixons avec vous les règles qui évitent les malentendus : qui vide le réfrigérateur et à quel rythme, si la vaisselle est comprise, qui relance le lave-vaisselle. Ce sont des sujets minuscules qui créent de vraies tensions entre collègues quand personne ne les a tranchés.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'prix-nettoyage-bureaux-lyon', 'nettoyage-lyon-part-dieu', 'nettoyage-ecully', 'contrat-nettoyage-entreprise-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-10-14',
+    faq: [
+      { q: 'Pouvez-vous adapter les passages à nos jours de télétravail ?', a: "Oui, c’est la base de notre devis sur le quartier. Les jours pleins reçoivent un passage complet, les jours creux un entretien ciblé sur ce qui a servi." },
+      { q: 'Nettoyez-vous les postes de travail partagés ?', a: "Oui, à chaque passage, pour tous les postes libérés. Nous ne déplaçons jamais rien sur un poste encombré : la décision de toucher à vos affaires ne revient pas à l’intervenante." },
+      { q: 'Entretenez-vous le matériel informatique ?', a: "Pas par défaut. L’entretien de surface des claviers, souris et écrans peut être ajouté au devis, avec des produits adaptés à ce matériel." },
+      { q: 'Qui vide le réfrigérateur de la cuisine commune ?', a: "C’est une règle que nous fixons avec vous dès le départ : fréquence, ce qui est jeté, ce qui est conservé. Sans règle écrite, c’est une source de conflit assurée." },
+      { q: 'Intervenez-vous avant l’arrivée des équipes ?', a: "Oui, c’est le créneau le plus courant. Un passage court en milieu de journée peut s’y ajouter les jours de forte présence, sur les sanitaires et la cuisine." },
+      { q: 'Quelles zones couvrez-vous autour de Vaise ?', a: "Tout le 9e arrondissement — Vaise, l’Industrie, Saint-Rambert, la Duchère — ainsi qu’Écully, Champagne-au-Mont-d’Or et Tassin-la-Demi-Lune." },
     ],
   },
   // ── Contrat d'entretien : requête B2B la plus engageante du cluster. Celui qui
@@ -2530,7 +2656,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Utilisez-vous des produits désinfectants adaptés ?', a: "Oui, avec les temps de contact respectés — un désinfectant essuyé immédiatement ne désinfecte pas. C’est un point de méthode que nous vérifions, et il distingue un passage sérieux d’un passage rapide." },
       { q: 'Entretenez-vous aussi les copropriétés de Bron ?', a: "Oui, halls, cages d’escalier, paliers et locaux communs, pour les syndics professionnels comme pour les copropriétés en gestion bénévole." },
     ],
-    related: ['nettoyage-cabinet-medical-lyon', 'nettoyage-venissieux', 'nettoyage-vaulx-en-velin', 'nettoyage-bureaux-lyon'],
+    related: ['nettoyage-cabinet-medical-lyon', 'nettoyage-venissieux', 'nettoyage-vaulx-en-velin', 'nettoyage-bureaux-lyon', 'nettoyage-chassieu'],
     updatedAt: '2026-08-09',
   },
   {
@@ -2581,7 +2707,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Faites-vous aussi la remise en état après travaux ?', a: "Oui, mais c’est une prestation distincte, avec sa méthode et son matériel. Un contrat d’entretien ne peut pas absorber une livraison de bâtiment : voir notre page dédiée au nettoyage de fin de chantier à Saint-Priest." },
       { q: 'Intervenez-vous pour les copropriétés et commerces ?', a: "Oui, la commune ne se résume pas à ses zones d’activité. Parties communes d’immeubles, commerces et surfaces de vente font partie de nos interventions régulières." },
     ],
-    related: ['nettoyage-fin-de-chantier-saint-priest', 'nettoyage-venissieux', 'nettoyage-meyzieu', 'nettoyage-bureaux-lyon'],
+    related: ['nettoyage-fin-de-chantier-saint-priest', 'nettoyage-venissieux', 'nettoyage-meyzieu', 'nettoyage-bureaux-lyon', 'nettoyage-chassieu'],
     updatedAt: '2026-08-09',
   },
   {
@@ -2632,7 +2758,7 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Prenez-vous les sièges d’entreprise et espaces d’accueil ?', a: "Oui, avec une intervention hors présence : avant l’arrivée des équipes ou après leur départ. Un hall d’accueil se juge dans les premières secondes d’une visite client." },
       { q: 'Proposez-vous une remise en état avant une réception ou une vente ?', a: "Oui, en prestation ponctuelle : grand ménage complet avant un événement, une séance photo ou une mise en vente. C’est une intervention plus longue et plus détaillée que l’entretien courant." },
     ],
-    related: ['menage-domicile-lyon', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon', 'grand-menage-lyon', 'nettoyage-lyon-6-tete-dor'],
+    related: ['menage-domicile-lyon', 'nettoyage-tassin-la-demi-lune', 'nettoyage-sainte-foy-les-lyon', 'grand-menage-lyon', 'nettoyage-lyon-6-tete-dor', 'nettoyage-limonest'],
     updatedAt: '2026-08-09',
   },
   {
@@ -3161,6 +3287,127 @@ export const SEO_PAGES: SeoPage[] = [
       { q: 'Pouvez-vous réduire la durée du passage pour baisser le coût ?', a: "Dans une certaine limite seulement. En dessous d’un certain temps, les temps de contact des désinfectants ne sont plus respectés et il n’y a plus de désinfection, seulement du nettoyage. Nous préférons le dire et ajuster la fréquence plutôt que la durée." },
     ],
     related: ['nettoyage-cabinet-medical-lyon', 'nettoyage-oullins-pierre-benite', 'nettoyage-bureaux-lyon'],
+  },
+  {
+    slug: 'nettoyage-limonest',
+    cluster: 'communes',
+    keyword: 'nettoyage Limonest',
+    eyebrow: 'Limonest — Techlid',
+    h1: 'Nettoyage de bureaux à Limonest et sur le Techlid',
+    title: 'Nettoyage à Limonest et Techlid — MonCleanerPro',
+    description: "Nettoyage de bureaux à Limonest, Dardilly et sur le parc du Techlid : sièges, showrooms, sites fermés le soir. Procédure de fermeture écrite. Devis 24h.",
+    intro:
+      "Sur le Techlid, à cheval sur Limonest, Dardilly et Champagne-au-Mont-d’Or, les bureaux ne ressemblent pas à ceux du centre de Lyon. Ce sont souvent des bâtiments isolés au milieu de leur parking, occupés par une seule entreprise, qui se vident vers dix-huit heures et restent fermés toute la nuit. Le nettoyage y pose une question que l’on oublie en ville : quand l’intervenante est la dernière personne dans le bâtiment, c’est elle qui le ferme. L’alarme, les fenêtres, les lumières, la porte de service — tout cela fait partie de la prestation, que le devis le dise ou non.",
+    highlights: [
+      { title: 'Procédure de fermeture écrite', text: "Alarme, ouvrants, éclairage, accès : une fiche par site, suivie à chaque passage et tenue à jour." },
+      { title: 'Intervenants motorisés', text: "Le parc se rejoint en voiture. Nous affectons des intervenants qui viennent par leurs propres moyens, sans dépendre d’un bus du soir." },
+      { title: 'Abords et entrée traités', text: "Sur un site isolé, l’entrée encaisse la boue, les feuilles et la pluie. Elle a sa propre fréquence." },
+      { title: 'Trace de chaque passage', text: "Heure d’arrivée, de départ et anomalies relevées — visibles en ligne le lendemain matin." },
+    ],
+    includes: [
+      'Bureaux, salles de réunion et espaces d’accueil',
+      'Showrooms et espaces de démonstration',
+      'Sanitaires, vestiaires et espaces de pause',
+      'Hall et sas d’entrée, tapis et paillassons',
+      'Vitrerie intérieure et baies de rez-de-chaussée accessibles',
+      'Fermeture du site selon la procédure convenue',
+    ],
+    sections: [
+      {
+        h2: 'Le dernier à partir ferme le bâtiment',
+        paragraphs: [
+          "En centre-ville, un immeuble tertiaire a un gardien, un PC sécurité ou au moins des voisins. Sur un parc d’activités, un bâtiment occupé par une seule entreprise n’a souvent personne d’autre que l’équipe de nettoyage après dix-neuf heures. Si une fenêtre reste ouverte au premier étage ou si l’alarme n’est pas remise, personne ne s’en aperçoit avant le lendemain matin.",
+          "Nous établissons donc, avant le premier passage, une procédure de fermeture propre à votre site : l’ordre dans lequel les pièces sont faites pour finir près de la sortie, les ouvrants à vérifier, l’éclairage à couper, la séquence de l’alarme, la porte par laquelle on sort et la manière de la verrouiller. Cette fiche est remise à chaque intervenant, titulaire comme remplaçant. Elle est vérifiée sur place avec votre responsable lors du premier passage, puis à chaque changement — une alarme modifiée sans prévenir le prestataire est la première cause de déclenchement intempestif.",
+          "Les clés et badges qui nous sont confiés sont inventoriés et nominatifs. Vous savez à tout moment qui détient quoi.",
+        ],
+      },
+      {
+        h2: 'Un site qui se rejoint en voiture',
+        paragraphs: [
+          "Le Techlid et les zones voisines de Dardilly sont mal desservis en soirée par les transports en commun. Un prestataire qui y envoie des intervenants sans véhicule finit par décaler les horaires pour attraper le dernier bus, puis par raccourcir le passage. Le résultat se voit au bout de quelques semaines, sans que personne ne l’ait décidé.",
+          "Nous affectons sur ce secteur des intervenants qui viennent par leurs propres moyens, et nous regroupons les sites du parc pour qu’un même passage en enchaîne plusieurs. C’est ce qui permet de tenir un horaire stable, y compris en hiver, et de garder les mêmes personnes sur votre site.",
+        ],
+      },
+      {
+        h2: 'L’entrée, premier poste de dépense invisible',
+        paragraphs: [
+          "Un bâtiment posé au milieu d’un parking et d’espaces verts ramène à l’intérieur tout ce que le terrain contient : terre, gravillons, feuilles à l’automne, eau en hiver. Le hall et le premier couloir se salissent beaucoup plus vite que les étages, et c’est précisément ce qu’un client ou un candidat voit en arrivant.",
+          "Nous traitons donc l’entrée avec une fréquence propre, et nous vous conseillons sur le dimensionnement des tapis d’accueil : un tapis trop court laisse passer l’essentiel de la saleté, un tapis bien dimensionné en retient la plus grande partie et réduit d’autant l’usure des sols. C’est souvent l’investissement le plus rentable d’un site périurbain.",
+          "Les showrooms et espaces de démonstration, fréquents sur le parc, suivent la même logique : ils doivent être impeccables le jour d’une visite client. Nous pouvons ajouter un passage de reprise la veille d’un rendez-vous important, sur simple demande.",
+        ],
+      },
+    ],
+    related: ['nettoyage-bureaux-lyon', 'nettoyage-ecully', 'nettoyage-tassin-la-demi-lune', 'nettoyage-lyon-vaise', 'nettoyage-vitres-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-10-14',
+    faq: [
+      { q: 'Pouvez-vous fermer le bâtiment après votre passage ?', a: "Oui. Une procédure de fermeture écrite est établie pour votre site — alarme, ouvrants, éclairage, porte de sortie — et suivie à chaque passage, y compris par un remplaçant." },
+      { q: 'Intervenez-vous aussi à Dardilly et Champagne-au-Mont-d’Or ?', a: "Oui, sur l’ensemble du Techlid et des communes voisines : Limonest, Dardilly, Champagne-au-Mont-d’Or, Saint-Didier-au-Mont-d’Or et Écully." },
+      { q: 'Comment sont gérées les clés et badges ?', a: "Ils sont inventoriés et attribués nominativement. Vous savez à tout moment quel intervenant détient quel accès, et nous vous restituons tout en fin de contrat." },
+      { q: 'Que se passe-t-il si l’alarme se déclenche ?', a: "La procédure de votre site prévoit qui appeler et dans quel ordre. Le déclenchement et sa cause sont notés dans le compte rendu de passage, que vous consultez le lendemain." },
+      { q: 'Pouvez-vous préparer le showroom avant une visite client ?', a: "Oui, un passage de reprise peut être ajouté la veille d’un rendez-vous important, en complément de l’entretien courant." },
+      { q: 'Nettoyez-vous les vitres extérieures ?', a: "Les baies de rez-de-chaussée accessibles depuis le sol, oui. Les façades et vitrages en hauteur relèvent d’une prestation de vitrerie spécifique, chiffrée à part." },
+    ],
+  },
+  {
+    slug: 'nettoyage-chassieu',
+    cluster: 'communes',
+    keyword: 'nettoyage Chassieu',
+    eyebrow: 'Chassieu — Mi-Plaine',
+    h1: 'Nettoyage de locaux mixtes atelier et bureaux à Chassieu',
+    title: 'Nettoyage à Chassieu — MonCleanerPro',
+    description: "Nettoyage à Chassieu et sur la zone de Mi-Plaine : locaux mixtes atelier et bureaux, PME et industrie légère. Deux standards sous un même toit. Devis 24h.",
+    intro:
+      "À Chassieu, autour de la zone industrielle de Mi-Plaine et d’Eurexpo, beaucoup d’entreprises occupent un bâtiment qui est à la fois un atelier et un bureau : production ou stockage au rez-de-chaussée, administration et accueil à l’étage, parfois séparés par une simple porte. Ces deux espaces n’ont ni la même saleté, ni les mêmes produits, ni les mêmes règles. Le vrai sujet n’est d’ailleurs ni l’un ni l’autre : c’est la frontière entre les deux, par où la poussière de l’atelier remonte chaque jour dans les bureaux.",
+    highlights: [
+      { title: 'Deux standards, un seul contrat', text: "Bureaux traités comme des bureaux, zone atelier traitée selon ses propres règles. Pas un compromis entre les deux." },
+      { title: 'La jonction en priorité', text: "Couloir, escalier, sas : c’est là que la poussière d’atelier passe vers les bureaux. Ils ont leur fréquence propre." },
+      { title: 'Votre production d’abord', text: "Machines, postes et déchets industriels restent à vos équipes. Le périmètre est écrit avant le premier passage." },
+      { title: 'Créneaux entre deux équipes', text: "Si vous tournez en 2x8, nous intervenons dans les creux, sans croiser la production." },
+    ],
+    includes: [
+      'Bureaux, accueil et salles de réunion',
+      'Couloirs, escaliers et sas entre atelier et bureaux',
+      'Sanitaires, vestiaires et réfectoire',
+      'Sols des circulations d’atelier, selon le périmètre convenu',
+      'Vitrerie intérieure et portes vitrées',
+      'Sortie des déchets assimilés aux ordures ménagères',
+    ],
+    sections: [
+      {
+        h2: 'La poussière ne connaît pas l’organigramme',
+        paragraphs: [
+          "Dans un bâtiment mixte, les bureaux se salissent presque toujours plus vite que leur usage ne le justifie. La raison est simple : chaque personne qui passe de l’atelier à l’étage emporte sous ses semelles une partie de ce qui se trouve au sol en bas — poussière de découpe, résidus d’emballage, traces d’huile, gravillons du quai de chargement. Nettoyer les bureaux plus souvent ne règle rien tant que la source n’est pas traitée.",
+          "Nous concentrons donc l’effort sur la jonction : le couloir, l’escalier ou le sas qui relie les deux zones reçoit une fréquence supérieure au reste. Nous vous conseillons aussi sur ce qui se règle sans nous — un tapis de grande longueur au pied de l’escalier, une zone de changement de chaussures pour ceux qui montent souvent. Ces deux mesures réduisent davantage la saleté des bureaux qu’un passage supplémentaire.",
+        ],
+      },
+      {
+        h2: 'Ce qui reste à votre équipe de production',
+        paragraphs: [
+          "Un atelier a ses propres règles de propreté, et elles sont souvent liées à la sécurité ou à la qualité de votre production. Une machine se nettoie selon les consignes de son fabricant, un poste de travail selon votre organisation, et les déchets industriels — copeaux, chutes, emballages souillés, huiles — suivent des filières qui engagent votre responsabilité.",
+          "Nous ne prenons pas ces sujets à votre place. Le périmètre est écrit avant le premier passage : en zone atelier, nous traitons ce que vous nous confiez, en général les sols des circulations, les vestiaires et le réfectoire. Les équipements, les postes et les déchets de production restent à vos équipes. Cette frontière nette évite le pire des scénarios : un intervenant qui déplace une pièce en cours de fabrication ou qui jette quelque chose qui n’était pas un déchet.",
+          "Les intervenants qui entrent en zone atelier portent les équipements que votre site impose — chaussures de sécurité, gilet, protections auditives si nécessaire — et suivent l’accueil sécurité que vous prévoyez pour les entreprises extérieures.",
+        ],
+      },
+      {
+        h2: 'Intervenir sans croiser la production',
+        paragraphs: [
+          "Beaucoup d’entreprises du secteur tournent en équipes : le matin, l’après-midi, parfois la nuit. Les bureaux, eux, suivent des horaires de journée. Il n’existe donc pas de créneau où le bâtiment entier est vide, et le bon horaire dépend de la zone.",
+          "Nous calons nos passages sur vos creux réels : les bureaux avant l’arrivée de l’administration, le réfectoire et les vestiaires juste après un changement d’équipe, les circulations d’atelier pendant un arrêt de ligne. Les jours de salon à Eurexpo, la circulation sur les accès de la zone se charge fortement : nous en tenons compte pour que l’horaire convenu reste tenu.",
+        ],
+      },
+    ],
+    related: ['nettoyage-entrepot-lyon', 'nettoyage-bron', 'nettoyage-saint-priest', 'nettoyage-meyzieu', 'nettoyage-bureaux-lyon'],
+    relatedPosts: ['choisir-societe-nettoyage-lyon'],
+    updatedAt: '2026-10-14',
+    faq: [
+      { q: 'Nettoyez-vous les machines et postes de production ?', a: "Non. Ils se nettoient selon les consignes du fabricant et votre organisation, par vos équipes. En zone atelier, nous traitons ce que vous nous confiez par écrit, en général les sols des circulations." },
+      { q: 'Prenez-vous en charge les déchets industriels ?', a: "Non. Copeaux, huiles, emballages souillés et chutes suivent vos filières dédiées. Nous sortons uniquement les déchets assimilés aux ordures ménagères." },
+      { q: 'Vos intervenants ont-ils les équipements de sécurité ?', a: "Oui. Ils portent les équipements que votre site impose en zone atelier et suivent l’accueil sécurité prévu pour les entreprises extérieures." },
+      { q: 'Pouvez-vous intervenir si nous tournons en 2x8 ?', a: "Oui. Les passages sont calés zone par zone sur vos creux : bureaux avant l’arrivée de l’administration, vestiaires et réfectoire après un changement d’équipe." },
+      { q: 'Pourquoi nos bureaux se salissent-ils si vite ?', a: "Dans un bâtiment mixte, la saleté vient surtout de l’atelier, par les semelles. Traiter la jonction entre les deux zones et bien dimensionner les tapis est plus efficace qu’un passage de plus dans les bureaux." },
+      { q: 'Intervenez-vous aussi autour de Chassieu ?', a: "Oui : Mi-Plaine, Genas, Bron, Saint-Priest, Décines-Charpieu et Meyzieu, ainsi que le reste de l’est lyonnais." },
+    ],
   },
 
   // ── Déclinaisons communales du cluster « fin de chantier » ────────────────
@@ -5783,6 +6030,8 @@ export const CITY_GEO: Record<string, CityGeo> = {
   'nettoyage-decines-charpieu':       { city: 'Décines-Charpieu',       lat: 45.7692, lng: 4.9603, postalCode: '69150' },
   'nettoyage-sainte-foy-les-lyon':    { city: 'Sainte-Foy-lès-Lyon',    lat: 45.7369, lng: 4.8003, postalCode: '69110' },
   'nettoyage-saint-genis-laval':      { city: 'Saint-Genis-Laval',      lat: 45.6953, lng: 4.7936, postalCode: '69230' },
+  'nettoyage-limonest':               { city: 'Limonest',               lat: 45.8370, lng: 4.7720, postalCode: '69760' },
+  'nettoyage-chassieu':               { city: 'Chassieu',               lat: 45.7440, lng: 4.9660, postalCode: '69680' },
 
   // Pages « fin de chantier × commune » : même logique géo, ancrée sur la commune
   // visée, pour que chaque page porte un signal local propre.
@@ -5809,6 +6058,8 @@ export const CITY_GEO: Record<string, CityGeo> = {
   'nettoyage-vieux-lyon':      { city: 'Vieux Lyon',    withinCity: 'Lyon', lat: 45.7620, lng: 4.8272, postalCode: '69005' },
   'nettoyage-croix-rousse':    { city: 'La Croix-Rousse', withinCity: 'Lyon', lat: 45.7745, lng: 4.8320, postalCode: '69004' },
   'nettoyage-lyon-6-tete-dor': { city: 'Lyon 6e — Tête d’Or', withinCity: 'Lyon', lat: 45.7715, lng: 4.8480, postalCode: '69006' },
+  'nettoyage-lyon-gerland':    { city: 'Gerland', withinCity: 'Lyon', lat: 45.7300, lng: 4.8330, postalCode: '69007' },
+  'nettoyage-lyon-vaise':      { city: 'Vaise',   withinCity: 'Lyon', lat: 45.7740, lng: 4.8050, postalCode: '69009' },
 
   // Villes du cluster « chantier-national ». `region` est obligatoire ici : sans
   // elle, le balisage les déclarerait dans le Rhône. Ces entrées sont exclues de
