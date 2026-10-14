@@ -406,6 +406,25 @@ const OPS: Record<string, Op> = {
     return ok();
   },
 
+  // Supprimer une photo ratée : l'admin, ou le cleaner de la mission TANT QUE
+  // le ménage n'est pas terminé — ensuite, la photo est une preuve.
+  async 'photo-delete'(db, s, b) {
+    const id = str(b.id);
+    if (!id) return ko('Photo manquante.');
+    const { data: p } = await db.from('mission_photos').select('id, mission_id, storage_path').eq('id', id).maybeSingle();
+    if (!p) return ko('Photo introuvable.', 404);
+    const lien = await lienMission(db, s, p.mission_id as string);
+    if (lien !== 'admin' && lien !== 'cleaner') return refuse;
+    if (lien === 'cleaner') {
+      const { data: m } = await db.from('missions').select('status').eq('id', p.mission_id).maybeSingle();
+      if (m?.status === 'done' || m?.status === 'cancelled') return ko('Ménage terminé : ses photos ne se suppriment plus.');
+    }
+    const { error } = await db.from('mission_photos').delete().eq('id', id);
+    if (error) { console.error('annexes/photo-delete:', error.message); return ko('Suppression impossible.', 500); }
+    if (p.storage_path) await db.storage.from(PHOTOS_BUCKET).remove([p.storage_path as string]);
+    return ok();
+  },
+
   // ── Rapport de fin de mission ──
   async report(db, s, b) {
     const missionId = str(b.missionId);

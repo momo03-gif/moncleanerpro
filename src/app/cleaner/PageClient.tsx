@@ -468,7 +468,8 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               showTimes defaultOpen={mission.status === 'in_progress'} />
           )}
           <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
-            userId={userId} defaultOpen={photosRequises} exigeApres={photosRequises} />
+            userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress'} exigeApres={photosRequises}
+            modifiable={mission.status !== 'completed'} />
           <MissionReport missionId={mission.id} mode="cleaner" userId={userId} units={mission.coveredUnitNames} />
           {/* Réparations du logement : ce que le cleaner signale ici reste ouvert
               jusqu'à ce que le propriétaire l'ait fait réparer. */}

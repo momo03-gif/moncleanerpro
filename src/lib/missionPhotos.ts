@@ -102,6 +102,12 @@ export async function uploadMissionPhotoDB(params: {
   }
 }
 
+// Supprime une photo ratée (cleaner, tant que le ménage n'est pas terminé ; admin).
+export async function deleteMissionPhotoDB(id: string): Promise<{ error: string | null }> {
+  try { await annexe('photo-delete', { id }); return { error: null }; }
+  catch (e) { return { error: e instanceof Error ? e.message : 'Suppression impossible.' }; }
+}
+
 // Purge des photos expirées (> PHOTO_RETENTION_DAYS) : fichiers du bucket +
 // références en base. Utilisé par le cron. Renvoie le nombre supprimé.
 export async function deleteExpiredMissionPhotosDB(retentionDays = PHOTO_RETENTION_DAYS): Promise<{ deleted: number; error: string | null }> {

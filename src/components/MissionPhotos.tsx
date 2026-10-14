@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getMissionPhotosDB, uploadMissionPhotoDB, PHOTO_RETENTION_DAYS } from '@/lib/missionPhotos';
-import { maxPhotos, MAX_PHOTOS_AVANT, MAX_PHOTOS_APRES } from '@/lib/photosRegles';
+import { getMissionPhotosDB, uploadMissionPhotoDB, deleteMissionPhotoDB, PHOTO_RETENTION_DAYS } from '@/lib/missionPhotos';
+import { maxPhotos } from '@/lib/photosRegles';
 import type { MissionPhoto, MissionPhotoKind } from '@/lib/types';
 import Icon from '@/components/Icon';
 
@@ -21,9 +21,11 @@ interface Props {
   defaultOpen?: boolean;
   /** Le cleaner a voulu terminer sans photo « après » : on l'invite à en prendre. */
   exigeApres?: boolean;
+  /** Ménage non terminé : le cleaner peut retirer une photo ratée. */
+  modifiable?: boolean;
 }
 
-export default function MissionPhotos({ missionId, mode, userId, defaultOpen, exigeApres }: Props) {
+export default function MissionPhotos({ missionId, mode, userId, defaultOpen, exigeApres, modifiable }: Props) {
   const [photos, setPhotos] = useState<MissionPhoto[]>([]);
   const [open, setOpen] = useState(!!defaultOpen);
   const [loaded, setLoaded] = useState(false);
@@ -76,16 +78,16 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen, ex
               <PhotoSection
                 title="Après" kind="after" photos={after} mode={mode}
                 missionId={missionId} userId={userId}
-                onUploaded={load} onZoom={setLightbox} enAvant={!!exigeApres && after.length === 0}
+                onUploaded={load} onZoom={setLightbox} enAvant={!!exigeApres && after.length === 0} modifiable={modifiable}
               />
               <PhotoSection
                 title="Avant" kind="before" photos={before} mode={mode}
                 missionId={missionId} userId={userId}
-                onUploaded={load} onZoom={setLightbox}
+                onUploaded={load} onZoom={setLightbox} modifiable={modifiable}
               />
               {mode === 'cleaner' && (
                 <p className="text-[11px]" style={{ color: '#B8B0A8' }}>
-                  Après : {after.length}/{MAX_PHOTOS_APRES} (obligatoire) · Avant : {before.length}/{MAX_PHOTOS_AVANT} · supprimées automatiquement après {PHOTO_RETENTION_DAYS} jours.
+                  Photo « après » obligatoire pour terminer · conservées {PHOTO_RETENTION_DAYS} jours.
                 </p>
               )}
             </>
@@ -99,76 +101,169 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen, ex
 }
 
 // ── Section avant / après ───────────────────────────────────────────────────────
-function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded, onZoom, enAvant }: {
+//
+// Prise de photo pensée pour le terrain :
+//   · deux gestes clairs — « Appareil photo » (ouvre la caméra arrière) et
+//     « Galerie » (plusieurs photos déjà prises d'un coup) ; l'ancien bouton
+//     forçait la caméra et empêchait de choisir une photo existante ;
+//   · aperçu IMMÉDIAT de chaque photo, avec sa progression, sans attendre la fin
+//     de l'envoi ; deux envois à la fois ;
+//   · un envoi raté reste affiché avec « Réessayer » — rien ne se perd en silence ;
+//   · une photo ratée se supprime tant que le ménage n'est pas terminé.
+type Envoi = { cle: string; apercu: string; fichier: File; etat: 'envoi' | 'erreur'; message?: string };
+
+function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded, onZoom, enAvant, modifiable }: {
   title: string; kind: MissionPhotoKind; photos: MissionPhoto[];
   mode: 'cleaner' | 'viewer'; missionId: string; userId?: string;
   onUploaded: () => void; onZoom: (p: MissionPhoto) => void;
-  /** Gros bouton d'appel quand la photo est exigée et absente. */
+  /** Mise en avant quand la photo est exigée et absente. */
   enAvant?: boolean;
+  /** Le cleaner peut encore retirer une photo ratée (ménage non terminé). */
+  modifiable?: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galerieRef = useRef<HTMLInputElement>(null);
+  const [envois, setEnvois] = useState<Envoi[]>([]);
   const [error, setError] = useState('');
+  const [suppression, setSuppression] = useState<string | null>(null);
+  const apercus = useRef<string[]>([]);
   const limite = maxPhotos(kind);
-  const full = photos.length >= limite;
+  const enCours = envois.filter(x => x.etat === 'envoi').length;
+  const place = limite - photos.length - envois.length;
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = ''; // permet de re-sélectionner le même fichier
-    if (files.length === 0 || !userId) return;
-    setBusy(true); setError('');
-    let remaining = limite - photos.length;
-    for (const file of files) {
-      if (remaining <= 0) { setError(`Limite de ${limite} photos « ${title.toLowerCase()} » atteinte.`); break; }
-      const res = await uploadMissionPhotoDB({ missionId, kind, file, userId });
-      if (res.error) { setError(res.error); break; }
-      remaining--;
+  // Libère les aperçus locaux au démontage.
+  useEffect(() => () => { apercus.current.forEach(u => URL.revokeObjectURL(u)); }, []);
+
+  async function envoyer(x: Envoi) {
+    const res = await uploadMissionPhotoDB({ missionId, kind, file: x.fichier, userId });
+    if (res.error) {
+      setEnvois(l => l.map(y => (y.cle === x.cle ? { ...y, etat: 'erreur', message: res.error ?? undefined } : y)));
+      return;
     }
-    setBusy(false);
+    setEnvois(l => l.filter(y => y.cle !== x.cle));
     onUploaded();
   }
 
+  async function ajouter(e: React.ChangeEvent<HTMLInputElement>) {
+    const fichiers = Array.from(e.target.files ?? []).filter(f => f.type.startsWith('image/'));
+    e.target.value = ''; // permet de reprendre le même fichier
+    if (fichiers.length === 0 || !userId) return;
+    setError('');
+    const retenus = fichiers.slice(0, Math.max(0, place));
+    if (fichiers.length > retenus.length) {
+      setError(`Limite de ${limite} photos « ${title.toLowerCase()} » : ${fichiers.length - retenus.length} non ajoutée(s).`);
+    }
+    const nouveaux: Envoi[] = retenus.map((f, i) => {
+      const apercu = URL.createObjectURL(f);
+      apercus.current.push(apercu);
+      return { cle: `${Date.now()}-${i}-${f.name}`, apercu, fichier: f, etat: 'envoi' };
+    });
+    setEnvois(l => [...l, ...nouveaux]);
+    // Deux envois à la fois : plus rapide, sans saturer un réseau mobile faible.
+    const attente = [...nouveaux];
+    await Promise.all([0, 1].map(async () => {
+      for (let x = attente.shift(); x; x = attente.shift()) await envoyer(x);
+    }));
+  }
+
+  function reessayer(x: Envoi) {
+    setEnvois(l => l.map(y => (y.cle === x.cle ? { ...y, etat: 'envoi', message: undefined } : y)));
+    envoyer({ ...x, etat: 'envoi' });
+  }
+
+  function abandonner(x: Envoi) {
+    setEnvois(l => l.filter(y => y.cle !== x.cle));
+  }
+
+  async function supprimer(p: MissionPhoto) {
+    setSuppression(p.id); setError('');
+    const res = await deleteMissionPhotoDB(p.id);
+    setSuppression(null);
+    if (res.error) { setError(res.error); return; }
+    onUploaded();
+  }
+
+  const peutAjouter = mode === 'cleaner' && place > 0;
+  const rien = photos.length === 0 && envois.length === 0;
+  const echec = envois.find(x => x.etat === 'erreur');
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#A8A09A' }}>
-          {title} {photos.length > 0 && `· ${photos.length}`}
-        </p>
-        {mode === 'cleaner' && (
-          <button onClick={() => inputRef.current?.click()} disabled={busy || full}
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-lg disabled:opacity-40"
-            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-            {busy ? '...' : '+ Ajouter'}
-          </button>
-        )}
-      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: enAvant ? '#B85A50' : '#A8A09A' }}>
+        {title} · {photos.length}/{limite}{enCours > 0 ? ` · envoi de ${enCours}…` : ''}
+      </p>
 
-      {photos.length === 0 && enAvant && mode === 'cleaner' ? (
-        <button onClick={() => inputRef.current?.click()} disabled={busy}
-          className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-          <Icon name="camera" size={16} /> {busy ? 'Envoi…' : 'Prendre les photos « après »'}
-        </button>
-      ) : photos.length === 0 ? (
+      {rien && mode === 'viewer' && (
         <p className="text-[11px]" style={{ color: '#C2BBB2' }}>Aucune photo {title.toLowerCase()}.</p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
+      )}
+
+      {!rien && (
+        <div className="grid grid-cols-3 gap-2 mb-2">
           {photos.map(p => (
-            <button key={p.id} onClick={() => onZoom(p)}
-              className="relative w-16 h-16 rounded-lg overflow-hidden border"
-              style={{ borderColor: '#E8E4DC' }}>
+            <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden border" style={{ borderColor: '#E8E4DC' }}>
+              <button onClick={() => onZoom(p)} className="w-full h-full" aria-label={`Agrandir la photo ${title.toLowerCase()}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={title} className="w-full h-full object-cover" loading="lazy" />
+              </button>
+              {mode === 'cleaner' && modifiable && (
+                <button onClick={() => supprimer(p)} disabled={suppression === p.id} aria-label="Supprimer cette photo"
+                  className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center disabled:opacity-50"
+                  style={{ backgroundColor: 'rgba(20,18,16,0.6)', color: '#FFFFFF' }}>
+                  <Icon name="trash" size={14} />
+                </button>
+              )}
+            </div>
+          ))}
+          {envois.map(x => (
+            <div key={x.cle} className="relative aspect-square rounded-xl overflow-hidden border"
+              style={{ borderColor: x.etat === 'erreur' ? '#B85A50' : '#E8E4DC' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt={title} className="w-full h-full object-cover" loading="lazy" />
-            </button>
+              <img src={x.apercu} alt="" className="w-full h-full object-cover" style={{ opacity: 0.55 }} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-1 text-center">
+                {x.etat === 'envoi' ? (
+                  <span className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: '#FFFFFF', borderTopColor: 'transparent' }} />
+                ) : (
+                  <>
+                    <button onClick={() => reessayer(x)} className="text-[11px] font-semibold px-2 py-1 rounded-lg"
+                      style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Réessayer</button>
+                    <button onClick={() => abandonner(x)} className="text-[10px] font-medium" style={{ color: '#FFFFFF' }}>Retirer</button>
+                  </>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}
 
-      {error && <p className="text-[11px] mt-1" style={{ color: '#B85A50' }}>{error}</p>}
+      {peutAjouter && (
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => cameraRef.current?.click()}
+            className={`rounded-xl text-sm font-semibold flex items-center justify-center gap-2 ${enAvant || rien ? 'py-3' : 'py-2'}`}
+            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            <Icon name="camera" size={16} /> Appareil photo
+          </button>
+          <button onClick={() => galerieRef.current?.click()}
+            className={`rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border ${enAvant || rien ? 'py-3' : 'py-2'}`}
+            style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', color: '#1A1A1A' }}>
+            <Icon name="image" size={16} /> Galerie
+          </button>
+        </div>
+      )}
+
+      {error && <p className="text-[11px] mt-1.5" style={{ color: '#B85A50' }}>{error}</p>}
+      {echec && (
+        <p className="text-[11px] mt-1.5" style={{ color: '#B85A50' }}>
+          {echec.message ?? 'Envoi impossible.'} Vérifiez le réseau puis « Réessayer ».
+        </p>
+      )}
 
       {mode === 'cleaner' && (
-        <input ref={inputRef} type="file" accept="image/*" capture="environment" multiple
-          onChange={onPick} className="hidden" />
+        <>
+          {/* Caméra arrière directement. */}
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={ajouter} className="hidden" />
+          {/* Galerie : sans « capture », plusieurs photos d'un coup. */}
+          <input ref={galerieRef} type="file" accept="image/*" multiple onChange={ajouter} className="hidden" />
+        </>
       )}
     </div>
   );
