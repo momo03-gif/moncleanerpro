@@ -19,6 +19,7 @@ import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
+import { PHOTOS_REQUISES_ERROR, photosApresExigees } from '@/lib/photosRegles';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
@@ -194,11 +195,16 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
     onUpdate();
   }
 
+  const [photosRequises, setPhotosRequises] = useState(false);
+
   async function finish() {
     setBusy(true); setGeoError('');
     const pos = await getApproxPosition();
     const res = await submitFinish({ missionId: mission.id, userId, coords: pos });
     setBusy(false);
+    // Photos « après » manquantes : on ouvre le panneau photos sur l'appareil
+    // photo plutôt que d'afficher une simple erreur.
+    if (res.error === PHOTOS_REQUISES_ERROR) { setPhotosRequises(true); return; }
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
   }
@@ -461,7 +467,8 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               authorName={mission.cleanerName} readOnly={mission.status === 'completed'}
               showTimes defaultOpen={mission.status === 'in_progress'} />
           )}
-          <MissionPhotos missionId={mission.id} mode="cleaner" userId={userId} />
+          <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
+            userId={userId} defaultOpen={photosRequises} exigeApres={photosRequises} />
           <MissionReport missionId={mission.id} mode="cleaner" userId={userId} units={mission.coveredUnitNames} />
           {/* Réparations du logement : ce que le cleaner signale ici reste ouvert
               jusqu'à ce que le propriétaire l'ait fait réparer. */}
@@ -627,6 +634,11 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
               {busy ? '...' : <><Icon name="check" size={16} /> Terminer la mission</>}
             </button>
+          )}
+          {canFinish && photosApresExigees(mission.service) && (
+            <p className="text-[11px] text-center" style={{ color: photosRequises ? '#B85A50' : '#A8A09A' }}>
+              {photosRequises ? 'Ajoutez une photo « après » dans le panneau Photos ci-dessus, puis terminez.' : 'Une photo « après » au minimum est demandée pour terminer.'}
+            </p>
           )}
           {/* Seule sortie possible pour le cleaner : rendre la mission à l'admin.
               Il ne peut ni l'annuler ni la supprimer. */}

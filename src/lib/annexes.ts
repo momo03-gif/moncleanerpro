@@ -2,6 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SessionUser } from './sessionToken';
 import { canEditChecklist } from './checklistAccess';
+import { maxPhotos } from './photosRegles';
 import { colonnesFiche, type ChampsFiche } from './db/airbnbs';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -27,7 +28,6 @@ const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim
 const PHOTOS_BUCKET = 'mission_photos';
 const SITE_VIDEOS_BUCKET = 'site_videos';
 const LOGOS_BUCKET = 'logos';
-const MAX_PHOTOS_PER_MISSION = 8;
 const MAX_REPAIR_PHOTOS = 2;
 const REPAIR_SELECT = '*, airbnbs(name, address)';
 
@@ -119,7 +119,9 @@ const OPS: Record<string, Op> = {
     const missionId = str(b.missionId);
     if (!missionId) return ko('Mission manquante.');
     if (!(await lienMission(db, s, missionId))) return refuse;
-    const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true }).eq('mission_id', missionId);
+    let q = db.from('mission_photos').select('id', { count: 'exact', head: true }).eq('mission_id', missionId);
+    if (b.kind === 'before' || b.kind === 'after') q = q.eq('kind', b.kind);
+    const { count } = await q;
     return ok({ count: count ?? 0 });
   },
 
@@ -133,9 +135,11 @@ const OPS: Record<string, Op> = {
     const lien = await lienMission(db, s, missionId);
     if (lien !== 'admin' && lien !== 'cleaner') return refuse;
     if (!path.startsWith(`${missionId}/`) || path.includes('..')) return ko('Chemin de photo invalide.');
-    const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true }).eq('mission_id', missionId);
-    if ((count ?? 0) >= MAX_PHOTOS_PER_MISSION) {
-      return ko(`Limite atteinte : ${MAX_PHOTOS_PER_MISSION} photos maximum par mission.`);
+    // Limites SÉPARÉES avant / après (cf. photosRegles.ts).
+    const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true })
+      .eq('mission_id', missionId).eq('kind', kind);
+    if ((count ?? 0) >= maxPhotos(kind)) {
+      return ko(`Limite atteinte : ${maxPhotos(kind)} photos « ${kind === 'before' ? 'avant' : 'après'} » maximum.`);
     }
     const url = db.storage.from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
     const { data, error } = await db.from('mission_photos').insert({

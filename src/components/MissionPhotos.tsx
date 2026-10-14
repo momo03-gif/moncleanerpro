@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  getMissionPhotosDB, uploadMissionPhotoDB,
-  MAX_PHOTOS_PER_MISSION, PHOTO_RETENTION_DAYS,
-} from '@/lib/missionPhotos';
+import { getMissionPhotosDB, uploadMissionPhotoDB, PHOTO_RETENTION_DAYS } from '@/lib/missionPhotos';
+import { maxPhotos, MAX_PHOTOS_AVANT, MAX_PHOTOS_APRES } from '@/lib/photosRegles';
 import type { MissionPhoto, MissionPhotoKind } from '@/lib/types';
 import Icon from '@/components/Icon';
 
@@ -21,9 +19,11 @@ interface Props {
   mode: 'cleaner' | 'viewer';
   userId?: string;            // requis pour l'upload (cleaner)
   defaultOpen?: boolean;
+  /** Le cleaner a voulu terminer sans photo « après » : on l'invite à en prendre. */
+  exigeApres?: boolean;
 }
 
-export default function MissionPhotos({ missionId, mode, userId, defaultOpen }: Props) {
+export default function MissionPhotos({ missionId, mode, userId, defaultOpen, exigeApres }: Props) {
   const [photos, setPhotos] = useState<MissionPhoto[]>([]);
   const [open, setOpen] = useState(!!defaultOpen);
   const [loaded, setLoaded] = useState(false);
@@ -53,7 +53,7 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen }: 
   const total = photos.length;
 
   return (
-    <div className="rounded-xl border" style={{ borderColor: '#F2EFE9', backgroundColor: '#FCFBF8' }}>
+    <div className="rounded-xl border" style={{ borderColor: exigeApres && after.length === 0 ? '#B85A50' : '#F2EFE9', backgroundColor: '#FCFBF8' }}>
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-left">
         <span className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: '#7A7068' }}>
@@ -68,19 +68,24 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen }: 
             <p className="text-xs" style={{ color: '#A8A09A' }}>Chargement...</p>
           ) : (
             <>
-              <PhotoSection
-                title="Avant" kind="before" photos={before} mode={mode}
-                missionId={missionId} userId={userId} total={total}
-                onUploaded={load} onZoom={setLightbox}
-              />
+              {mode === 'cleaner' && exigeApres && after.length === 0 && (
+                <p className="text-xs px-3 py-2 rounded-lg font-semibold" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>
+                  Prenez au moins une photo « après » pour terminer le ménage : c’est la preuve du travail rendu.
+                </p>
+              )}
               <PhotoSection
                 title="Après" kind="after" photos={after} mode={mode}
-                missionId={missionId} userId={userId} total={total}
+                missionId={missionId} userId={userId}
+                onUploaded={load} onZoom={setLightbox} enAvant={!!exigeApres && after.length === 0}
+              />
+              <PhotoSection
+                title="Avant" kind="before" photos={before} mode={mode}
+                missionId={missionId} userId={userId}
                 onUploaded={load} onZoom={setLightbox}
               />
               {mode === 'cleaner' && (
                 <p className="text-[11px]" style={{ color: '#B8B0A8' }}>
-                  {total}/{MAX_PHOTOS_PER_MISSION} photos · supprimées automatiquement après {PHOTO_RETENTION_DAYS} jours.
+                  Après : {after.length}/{MAX_PHOTOS_APRES} (obligatoire) · Avant : {before.length}/{MAX_PHOTOS_AVANT} · supprimées automatiquement après {PHOTO_RETENTION_DAYS} jours.
                 </p>
               )}
             </>
@@ -94,24 +99,27 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen }: 
 }
 
 // ── Section avant / après ───────────────────────────────────────────────────────
-function PhotoSection({ title, kind, photos, mode, missionId, userId, total, onUploaded, onZoom }: {
+function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded, onZoom, enAvant }: {
   title: string; kind: MissionPhotoKind; photos: MissionPhoto[];
-  mode: 'cleaner' | 'viewer'; missionId: string; userId?: string; total: number;
+  mode: 'cleaner' | 'viewer'; missionId: string; userId?: string;
   onUploaded: () => void; onZoom: (p: MissionPhoto) => void;
+  /** Gros bouton d'appel quand la photo est exigée et absente. */
+  enAvant?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const full = total >= MAX_PHOTOS_PER_MISSION;
+  const limite = maxPhotos(kind);
+  const full = photos.length >= limite;
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = ''; // permet de re-sélectionner le même fichier
     if (files.length === 0 || !userId) return;
     setBusy(true); setError('');
-    let remaining = MAX_PHOTOS_PER_MISSION - total;
+    let remaining = limite - photos.length;
     for (const file of files) {
-      if (remaining <= 0) { setError(`Limite de ${MAX_PHOTOS_PER_MISSION} photos atteinte.`); break; }
+      if (remaining <= 0) { setError(`Limite de ${limite} photos « ${title.toLowerCase()} » atteinte.`); break; }
       const res = await uploadMissionPhotoDB({ missionId, kind, file, userId });
       if (res.error) { setError(res.error); break; }
       remaining--;
@@ -135,7 +143,13 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, total, onU
         )}
       </div>
 
-      {photos.length === 0 ? (
+      {photos.length === 0 && enAvant && mode === 'cleaner' ? (
+        <button onClick={() => inputRef.current?.click()} disabled={busy}
+          className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+          style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          <Icon name="camera" size={16} /> {busy ? 'Envoi…' : 'Prendre les photos « après »'}
+        </button>
+      ) : photos.length === 0 ? (
         <p className="text-[11px]" style={{ color: '#C2BBB2' }}>Aucune photo {title.toLowerCase()}.</p>
       ) : (
         <div className="flex flex-wrap gap-2">

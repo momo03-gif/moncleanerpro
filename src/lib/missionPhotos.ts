@@ -1,6 +1,7 @@
 import { getServerDb } from './serverDb';
 import { annexe } from './db/shared';
 import { deposerFichier } from './depot';
+import { maxPhotos } from './photosRegles';
 import { compressImage } from './imageCompress';
 import type { MissionPhoto, MissionPhotoKind } from './types';
 
@@ -12,8 +13,8 @@ import type { MissionPhoto, MissionPhotoKind } from './types';
 
 export const PHOTOS_BUCKET = 'mission_photos';
 
-// Limite par mission (« 6 à 8 photos maximum » → on retient 8).
-export const MAX_PHOTOS_PER_MISSION = 8;
+// Limites par type de photo (avant / après) : cf. photosRegles.ts.
+export { MAX_PHOTOS_AVANT, MAX_PHOTOS_APRES, maxPhotos } from './photosRegles';
 
 // Rétention : les photos servent de preuve, pas d'archive. Purge après 14 jours.
 export const PHOTO_RETENTION_DAYS = 14;
@@ -56,8 +57,8 @@ export async function getMissionPhotosForMissionsDB(missionIds: string[]): Promi
 }
 
 // Nombre de photos d'une mission (pour appliquer la limite avant upload).
-export async function countMissionPhotosDB(missionId: string): Promise<number> {
-  try { return Number((await annexe('photos-count', { missionId })).count) || 0; }
+export async function countMissionPhotosDB(missionId: string, kind?: MissionPhotoKind): Promise<number> {
+  try { return Number((await annexe('photos-count', { missionId, kind })).count) || 0; }
   catch { return 0; }
 }
 
@@ -71,10 +72,10 @@ export async function uploadMissionPhotoDB(params: {
 }): Promise<{ error: string | null; photo?: MissionPhoto }> {
   const { missionId, kind, file, userId } = params;
 
-  // Limite : 8 photos max par mission (avant + après confondus).
-  const current = await countMissionPhotosDB(missionId);
-  if (current >= MAX_PHOTOS_PER_MISSION) {
-    return { error: `Limite atteinte : ${MAX_PHOTOS_PER_MISSION} photos maximum par mission.` };
+  // Limite par type (avant / après) — revérifiée par le serveur.
+  const current = await countMissionPhotosDB(missionId, kind);
+  if (current >= maxPhotos(kind)) {
+    return { error: `Limite atteinte : ${maxPhotos(kind)} photos « ${kind === 'before' ? 'avant' : 'après'} » maximum.` };
   }
 
   // Compression pour limiter le stockage.

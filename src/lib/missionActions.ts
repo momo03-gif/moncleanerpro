@@ -8,6 +8,7 @@ import {
   distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR,
   GPS_REQUIRED_ERROR, type GeoPoint,
 } from './geo';
+import { photosApresExigees, PHOTOS_APRES_MIN, PHOTOS_REQUISES_ERROR } from './photosRegles';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified, notifyMissionCancelled,
   notifyMissionCompleted, notifyMissionWithdrawn, notifyExtraTimeRequested, notifyExtraTimeResolved,
@@ -215,6 +216,13 @@ const ACTIONS: Record<string, Action> = {
       .eq('id', missionId).maybeSingle();
     if (!m || m.cleaner_id !== cleanerId) return ko('Mission introuvable.');
     if (m.status === 'done' || m.status === 'cancelled') return ko('Mission déjà clôturée.');
+
+    // Photos « après » obligatoires pour un ménage : la preuve du travail rendu.
+    if (photosApresExigees(m.service as string | null)) {
+      const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true })
+        .eq('mission_id', missionId).eq('kind', 'after');
+      if ((count ?? 0) < PHOTOS_APRES_MIN) return ko(PHOTOS_REQUISES_ERROR, 400, { photosRequises: true });
+    }
 
     // Contrôle GPS (ménage) : contre l'adresse, à défaut début ↔ fin.
     const coords = point(b.coords);

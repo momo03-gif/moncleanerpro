@@ -15,6 +15,7 @@
 
 import { startMissionDB, finishMissionDB, markDeliveredDB, withdrawMissionDB, requestExtraTimeDB } from '@/lib/db';
 import { GPS_REQUIRED_ERROR, type GeoPoint } from '@/lib/geo';
+import { PHOTOS_REQUISES_ERROR } from '@/lib/photosRegles';
 import {
   addQueued, allQueued, putQueued, removeQueued, patchCachedMission,
   type QueuedAction, type QueuedType,
@@ -115,7 +116,9 @@ const RESOLVED_MESSAGES: Record<QueuedType, string[]> = {
 // remonter au cleaner) ; message terminal connu = résolu ; sinon on retente.
 function classifyMission(type: QueuedType, r: { error: string | null; tooFar?: boolean }, item: QueuedAction): Outcome {
   if (!r.error) return 'resolved';
-  if (r.tooFar || r.error === GPS_REQUIRED_ERROR) { item.error = r.error ?? undefined; return 'rejected'; }
+  // GPS manquant ou trop loin, photos « après » absentes : seul le cleaner peut
+  // y remédier — on le lui dit au lieu de retenter indéfiniment.
+  if (r.tooFar || r.error === GPS_REQUIRED_ERROR || r.error === PHOTOS_REQUISES_ERROR) { item.error = r.error ?? undefined; return 'rejected'; }
   if (RESOLVED_MESSAGES[type].includes(r.error)) return 'resolved';
   item.error = r.error ?? undefined;
   return 'retry';
