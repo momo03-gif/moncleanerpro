@@ -964,5 +964,13 @@ export async function runReservationSync(feedFilter?: { partnerId?: string; feed
 
   // La matérialisation balaie toutes les réservations en attente (idempotente).
   const materialized = await materializeMissions();
+
+  // Une connexion peut répondre « OK » et ne plus rien recevoir (logiciel de la
+  // conciergerie changé de version, clé régénérée…) : on le détecte sur une
+  // synchro COMPLÈTE uniquement — une synchro partielle ne voit pas tout.
+  if (!feedFilter?.feedId && !feedFilter?.partnerId) {
+    const { surveillerConnexionsMuettes } = await import('./syncSilenceServeur');
+    await surveillerConnexionsMuettes();
+  }
   return { feeds: results, materialized };
 }

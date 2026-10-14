@@ -65,6 +65,16 @@ export async function POST(req: NextRequest) {
       const { count, error } = await db.from('reservations').select('id', { count: 'exact', head: true }).eq('feed_id', b.feedId);
       return repondre(count ?? 0, error);
     }
+    case 'muettes': {
+      // Connexions qui ne reçoivent plus rien alors qu'elles répondent « OK »
+      // (cf. lib/syncSilence.ts) — tableau de bord admin.
+      if (!admin) return ko('Accès refusé.', 403);
+      try {
+        const { chargerConnexionsMuettes } = await import('@/lib/syncSilenceServeur');
+        const l = await chargerConnexionsMuettes(db);
+        return repondre(l.map(c => ({ conciergerie: c.conciergerie, logiciel: c.logiciel, joursSilence: c.joursSilence, derniereNouvelle: c.derniereNouvelle, flux: c.flux })), null);
+      } catch (e) { return repondre(null, { message: (e as Error).message }); }
+    }
     default:
       return ko('Opération inconnue.');
   }

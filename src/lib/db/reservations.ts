@@ -176,3 +176,11 @@ export async function getStayDuplicatesForPartner(_userId: string) {
     return doublonsSejours(rows.map(rowToReservation));
   } catch (e) { console.error('getStayDuplicatesForPartner:', e); return []; }
 }
+
+/** Connexion qui répond « OK » mais ne reçoit plus de réservation (cf. syncSilence.ts). */
+export interface ConnexionMuetteVue { conciergerie: string; logiciel: string; joursSilence: number; derniereNouvelle: string; flux: number }
+
+export async function getConnexionsMuettes(): Promise<ConnexionMuetteVue[]> {
+  try { return (await lire('muettes')) ?? []; }
+  catch (e) { console.error('getConnexionsMuettes:', e); return []; }
+}

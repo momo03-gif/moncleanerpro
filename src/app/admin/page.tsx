@@ -52,6 +52,8 @@ export default function AdminDashboard() {
   const [pending, setPending] = useState<any[]>(cached?.pending ?? []);
   const [incidents, setIncidents] = useState<OpenIncident[]>(cached?.incidents ?? []);
   const [failingFeeds, setFailingFeeds] = useState<number>(cached?.failingFeeds ?? 0);
+  // Connexions « muettes » : synchronisées sans erreur, mais plus alimentées.
+  const [muettes, setMuettes] = useState<{ conciergerie: string; logiciel: string; joursSilence: number; derniereNouvelle: string; flux: number }[]>([]);
   const [loading, setLoading] = useState(cached === undefined);
   const [actionErr, setActionErr] = useState<string | null>(null);
 
@@ -84,6 +86,8 @@ export default function AdminDashboard() {
       const failing = feeds.filter(f => f.lastSyncStatus === 'error').length;
       setMissions(m); setCleaners(c); setIncidents(inc);
       setFailingFeeds(failing);
+      // Indépendant du reste : un échec ici ne retarde pas le tableau de bord.
+      db.getConnexionsMuettes().then(setMuettes).catch(() => {});
       const pendingList = await loadPending();
       setSessionCache<DashCache>(DASH_CACHE_KEY, { missions: m, cleaners: c, pending: pendingList, incidents: inc, failingFeeds: failing });
       setLoading(false);
@@ -144,6 +148,18 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Alerte : synchronisation en panne ── */}
+      {muettes.map(c => (
+        <Link key={c.conciergerie + c.logiciel} href="/admin/reservations" className="block mb-3">
+          <div className="rounded-2xl border px-5 py-3.5 flex items-center gap-3" style={{ borderColor: '#EAC4BE', backgroundColor: '#FBECEA' }}>
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#B85A50' }} />
+            <p className="text-sm" style={{ color: '#B85A50' }}>
+              <span className="font-semibold">{c.conciergerie} ({c.logiciel}) : plus aucune nouvelle réservation depuis {c.joursSilence} jours.</span>{' '}
+              La synchronisation répond sans erreur, mais le logiciel de la conciergerie a peut-être changé — les ménages des réservations récentes ne sont pas créés.
+            </p>
+            <span className="ml-auto text-xs shrink-0" style={{ color: '#B85A50' }}>Voir →</span>
+          </div>
+        </Link>
+      ))}
       {failingFeeds > 0 && (
         <Link href="/admin/reservations" className="block mb-6">
           <div className="rounded-2xl border px-5 py-3.5 flex items-center gap-3" style={{ borderColor: '#EAC4BE', backgroundColor: '#FBECEA' }}>
