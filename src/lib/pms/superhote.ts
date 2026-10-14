@@ -28,11 +28,85 @@
 //  Le moteur la traite déjà : la mission naît en `pending`, un faux positif se
 //  referme d'un clic, un ménage manqué se découvre par un voyageur.
 //
+//  NOUVELLE VERSION (« SuperHote V2 », octobre 2026)
+//  SuperHote migre ses comptes vers une nouvelle application. Une fois migré,
+//  l'ancienne continue de répondre SANS ERREUR… avec des données figées : c'est
+//  ainsi que les réservations de Charles&charles ont cessé d'arriver le 08/10.
+//  La V2 a une vraie API publique et documentée (docs.superhote.com/api-v2) :
+//  `connect.superhote.com/api/v2/public`, jeton « Bearer » créé par le client
+//  (Plateformes → API → Créer un token ; lecture seule : rentals.read +
+//  reservations.read). Elle donne le STATUT de chaque réservation et n'inclut
+//  pas les dates bloquées — fini l'ambiguïté séjour / fermeture.
+//  On reconnaît un jeton V2 à sa forme « <numéro>|<secret> » ; une clé V1
+//  continue de passer par l'ancien chemin tant qu'un compte n'est pas migré.
+//
 // ⚠️ Ne jamais importer côté client.
 
 import type { ICalEvent } from '../ical';
 
 const BASE = 'https://app.superhote.com/api/v2';
+const BASE_V2 = 'https://connect.superhote.com/api/v2/public';
+
+/** Jeton de la nouvelle API (« 70335|abc… ») — sinon, clé de l'ancienne version. */
+export function estJetonV2(cle: string): boolean {
+  return /^\d+\|\S+$/.test(cle.trim());
+}
+
+async function getV2<T>(jeton: string, chemin: string, essai = 0): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(`${BASE_V2}${chemin}`, {
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${jeton.trim()}`, Accept: 'application/json' },
+    });
+    // 120 requêtes par minute et par compte : on attend ce que SuperHote demande.
+    if (res.status === 429 && essai < 2) {
+      const attente = Math.min(30, Number(res.headers.get('retry-after')) || 10);
+      await new Promise(r => setTimeout(r, attente * 1000));
+      return getV2<T>(jeton, chemin, essai + 1);
+    }
+    const texte = await res.text();
+    if (res.status === 401) throw new Error('Jeton SuperHote refusé (supprimé ou mal copié).');
+    if (res.status === 403) {
+      throw new Error('Ce jeton SuperHote n’a pas les droits nécessaires. Dans SuperHote : Plateformes → API, '
+        + 'créer un jeton avec la lecture des logements (rentals.read) et des réservations (reservations.read).');
+    }
+    if (!res.ok) throw new Error(`SuperHote a répondu ${res.status}${detail(texte)}`);
+    try { return JSON.parse(texte) as T; }
+    catch { throw new Error('SuperHote a renvoyé une réponse illisible.'); }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+interface PageV2<K extends string, T> {
+  result?: { [k in K]?: T[] } & { meta?: { current_page?: number; last_page?: number } };
+}
+
+async function toutesLesPagesV2<T>(jeton: string, chemin: string, cle: string): Promise<T[]> {
+  const out: T[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const sep = chemin.includes('?') ? '&' : '?';
+    const r = await getV2<PageV2<string, T>>(jeton, `${chemin}${sep}per_page=100&page=${page}`);
+    const res = r.result as Record<string, unknown> | undefined;
+    out.push(...((res?.[cle] as T[] | undefined) ?? []));
+    const meta = (res?.meta ?? {}) as { current_page?: number; last_page?: number };
+    if (!meta.last_page || (meta.current_page ?? page) >= meta.last_page) break;
+  }
+  return out;
+}
+
+/**
+ * Statut V2 → statut d'évènement. Seul un séjour CONFIRMÉ crée un ménage ; une
+ * annulation (hôte ou voyageur) l'annule ; une demande, une pré-approbation, un
+ * séjour non confirmé ou un voyageur absent restent en attente — sans ménage.
+ */
+export function statutV2(status: number | undefined): 'CONFIRMED' | 'CANCELLED' | 'TENTATIVE' {
+  if (status === 1) return 'CONFIRMED';
+  if (status === 0 || status === 5) return 'CANCELLED';
+  return 'TENTATIVE';
+}
 
 export interface SuperhoteCredentials {
   /** « SH apiKey », dans Paramètres Utilisateur du compte SuperHote. */
@@ -105,6 +179,13 @@ export interface SuperhoteProperty { id: string; name: string }
 export async function listSuperhoteProperties(
   creds: SuperhoteCredentials,
 ): Promise<SuperhoteProperty[]> {
+  if (estJetonV2(creds.apiKey)) {
+    const logements = await toutesLesPagesV2<{ id?: number; name?: string; enabled?: boolean }>(creds.apiKey, '/rentals', 'rentals');
+    return logements
+      .filter(l => l.id != null && l.enabled !== false)
+      .map(l => ({ id: String(l.id), name: (l.name ?? '').trim() || `Logement SuperHote nº ${l.id}` }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  }
   const demain = new Date(Date.now() + 86400000);
   const apres = new Date(Date.now() + 3 * 86400000);
 
@@ -171,6 +252,7 @@ export async function fetchSuperhoteReservations(
   propertyId: string,
   range: { from: string; to: string },
 ): Promise<ICalEvent[]> {
+  if (estJetonV2(_creds.apiKey)) return fetchSuperhoteV2(_creds.apiKey, propertyId, range);
   const rentalId = Number(propertyId);
   if (!Number.isFinite(rentalId)) {
     throw new Error(`Identifiant de logement SuperHote invalide : « ${propertyId} ».`);
@@ -194,5 +276,27 @@ export async function fetchSuperhoteReservations(
       summary: 'Séjour SuperHote',
       start: p.startDate,
       end: p.endDate,
+    }));
+}
+
+/**
+ * Séjours d'un logement par la nouvelle API. On ne garde QUE les dates et le
+ * statut : nom, e-mail et téléphone du voyageur ne sont jamais recopiés.
+ */
+async function fetchSuperhoteV2(jeton: string, propertyId: string, range: { from: string; to: string }): Promise<ICalEvent[]> {
+  const rentalId = Number(propertyId);
+  if (!Number.isFinite(rentalId)) throw new Error(`Identifiant de logement SuperHote invalide : « ${propertyId} ».`);
+  const resas = await toutesLesPagesV2<{ id?: number; rental_id?: number; checkin?: string; checkout?: string; status?: number }>(
+    jeton, `/reservations?rental_id=${rentalId}&checkout_from=${range.from}&checkin_to=${range.to}`, 'reservations');
+  return resas
+    // Ceinture et bretelles : on revérifie le logement, au cas où le filtre serait ignoré.
+    .filter(r => r.id != null && r.rental_id === rentalId && !!r.checkin && !!r.checkout && r.checkout > r.checkin)
+    .map(r => ({
+      // Identifiant stable d'une synchro à l'autre (cf. migration V1 → V2).
+      uid: `superhote-v2-${r.id}`,
+      status: statutV2(r.status),
+      summary: 'Séjour SuperHote',
+      start: r.checkin!.slice(0, 10),
+      end: r.checkout!.slice(0, 10),
     }));
 }
