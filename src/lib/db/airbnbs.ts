@@ -12,6 +12,7 @@ function rowToApartment(a: any): Apartment {
     address: a.address,
     structureType: a.structure_type ?? 'apartment',
     structureLabel: a.structure_label ?? undefined,
+    creditImpot: a.credit_impot === true,
     productCostCents: a.product_cost_cents != null ? Number(a.product_cost_cents) : undefined,
     portalCode: a.code_portail,
     keyboxCode: a.code_boite,
@@ -62,7 +63,7 @@ function rowToApartment(a: any): Apartment {
 // ⚠️ Colonnes EXPLICITES, pas d'étoile : les champs d'accès (codes, directives,
 // contact de secours) ne sont plus lisibles avec la clé publique. Une étoile
 // les redemanderait et la requête entière serait refusée.
-export const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, '
+export const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, credit_impot, '
   + 'linge_mode, linge_kits, linge_forfait, linge_libelle, '
   + 'cleaner_id, partner_id, partner_name, bedrooms, beds, sofa_beds, client_price, '
   + 'estimated_cleaning_minutes, latitude, longitude, zone_id, zone_color, zone_name, '
@@ -176,6 +177,7 @@ export async function createAirbnb(fields: {
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
   structureType?: string; structureLabel?: string; productCostCents?: number;
+  creditImpot?: boolean;
   parentAirbnbId?: string | null;
   groupTiers?: Record<string, { price?: number; minutes?: number }> | null;
 }): Promise<string | null> {
@@ -186,6 +188,7 @@ export async function createAirbnb(fields: {
     structure_type: fields.structureType ?? 'apartment',
     structure_label: fields.structureLabel || null,
     product_cost_cents: fields.productCostCents ?? null,
+    ...(fields.creditImpot !== undefined ? { credit_impot: fields.creditImpot } : {}),
     code_portail: fields.portalCode || null,
     code_boite: fields.keyboxCode || null,
     entry_instructions: fields.entryDirectives,
@@ -267,6 +270,7 @@ export async function updateAirbnb(id: string, fields: {
   bedrooms?: number; beds?: number; sofaBeds?: number; clientPrice?: number;
   estimatedCleaningMinutes?: number; zoneColor?: string; zoneName?: string; notes?: string;
   structureType?: string; structureLabel?: string; productCostCents?: number;
+  creditImpot?: boolean;
   parentAirbnbId?: string | null;
   groupTiers?: Record<string, { price?: number; minutes?: number }> | null;
 }) {
@@ -304,6 +308,7 @@ export async function updateAirbnb(id: string, fields: {
   if (fields.lingeLibelle !== undefined) patch.linge_libelle = fields.lingeLibelle || null;
   if (fields.structureType !== undefined) patch.structure_type = fields.structureType;
   if (fields.structureLabel !== undefined) patch.structure_label = fields.structureLabel || null;
+  if (fields.creditImpot !== undefined) patch.credit_impot = fields.creditImpot;
   // Rattachement et forfaits : réglages admin, même règle (écrits seulement si fournis).
   if (fields.parentAirbnbId !== undefined) patch.parent_airbnb_id = fields.parentAirbnbId || null;
   if (fields.groupTiers !== undefined) patch.group_tiers = fields.groupTiers ?? null;

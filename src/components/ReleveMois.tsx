@@ -12,6 +12,19 @@ export default function ReleveMois({ prestataireId }: { prestataireId?: string }
   const [periode, setPeriode] = useState(moisCourant());
   const [releve, setReleve] = useState<Releve | null>(null);
   const [erreur, setErreur] = useState('');
+  const [version, setVersion] = useState(0);
+  const [envoi, setEnvoi] = useState(false);
+  // L'admin (prestataireId fourni) marque le mois payé ; le prestataire le constate.
+  const admin = !!prestataireId;
+
+  async function payer(annuler: boolean) {
+    if (!prestataireId) return;
+    setEnvoi(true); setErreur('');
+    const r = await appelPrestataire(annuler ? 'annuler-paiement' : 'marquer-paye', { id: prestataireId, periode });
+    setEnvoi(false);
+    if (!r.ok) { setErreur(r.error); return; }
+    setVersion(v => v + 1);
+  }
 
   useEffect(() => {
     let actif = true;
@@ -22,7 +35,7 @@ export default function ReleveMois({ prestataireId }: { prestataireId?: string }
       if (r.ok) setReleve(r.releve); else setErreur(r.error);
     })();
     return () => { actif = false; };
-  }, [periode, prestataireId]);
+  }, [periode, prestataireId, version]);
 
   const dernier = periode >= moisCourant();
 
@@ -57,6 +70,29 @@ export default function ReleveMois({ prestataireId }: { prestataireId?: string }
               </div>
             ))}
           </div>
+
+          {releve.paiement ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: '#5A8A6A12' }}>
+              <p className="text-sm" style={{ color: '#3F6B4F' }}>
+                <span className="font-semibold">Payé</span> le {new Date(releve.paiement.paidAt).toLocaleDateString('fr-FR')} · {money(releve.paiement.montant)}
+                {Math.abs(releve.paiement.montant - releve.montant) >= 0.01 && (
+                  <span style={{ color: '#C48A2A' }}> · relevé actuel {money(releve.montant)}</span>
+                )}
+              </p>
+              {admin && (
+                <button onClick={() => payer(true)} disabled={envoi} className="text-xs font-semibold" style={{ color: '#B85A50' }}>Annuler le paiement</button>
+              )}
+            </div>
+          ) : releve.missions > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: '#C48A2A0D' }}>
+              <p className="text-sm" style={{ color: '#7A7068' }}>Pas encore réglé.</p>
+              {admin && (
+                <button onClick={() => payer(false)} disabled={envoi} className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                  Marquer {money(releve.montant)} comme payé
+                </button>
+              )}
+            </div>
+          )}
 
           {releve.lignes.length === 0 ? (
             <p className="text-sm text-center py-6" style={{ color: '#A8A09A' }}>Aucune mission terminée ce mois-ci.</p>

@@ -126,7 +126,8 @@ export default function AdminDashboard() {
   const overdue = missions.filter(m => m.date < today && !DONE(m.status));
   // « À assigner » : missions de terrain sans cleaner. Un rendez-vous confié à un admin
   // (assigneeUserId, sans cleanerId) n'est PAS « à assigner ».
-  const unassigned = missions.filter(m => !m.cleanerId && !m.assigneeUserId && !DONE(m.status));
+  // Une mission confiée à un prestataire est entre ses mains : il choisit l'agent.
+  const unassigned = missions.filter(m => !m.cleanerId && !m.assigneeUserId && !m.prestataireId && !DONE(m.status));
   const available = cleaners.filter(c => !['busy', 'offline', 'inactive'].includes(c.status));
 
   // Rendez-vous à venir (aujourd'hui et après), pour les rendre visibles quelle que

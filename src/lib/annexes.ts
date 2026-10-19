@@ -208,6 +208,21 @@ const OPS: Record<string, Op> = {
         path = `${s.id}/logo-${ts}.${ext}`;
         break;
       }
+      case 'prestataire-doc': {
+        // Document administratif d'un prestataire : lui-même, ou l'admin.
+        let pid: string | undefined;
+        if (s.role === 'admin') pid = str(b.prestataireId);
+        else if (s.role === 'prestataire') {
+          const { data: pr } = await db.from('prestataires').select('id').eq('user_id', s.id).maybeSingle();
+          pid = (pr?.id as string | undefined) ?? undefined;
+        }
+        if (!pid) return refuse;
+        const docKind = ['urssaf', 'kbis', 'assurance', 'autre'].includes(String(b.docKind)) ? String(b.docKind) : 'autre';
+        const ext = (str(b.ext) ?? 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'pdf';
+        bucket = 'prestataire_docs';
+        path = `${pid}/${docKind}-${ts}-${rand}.${ext}`;
+        break;
+      }
       case 'receipt': {
         if (s.role !== 'admin') return refuse;
         const ext = (str(b.ext) ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';

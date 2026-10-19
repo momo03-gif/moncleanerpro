@@ -296,6 +296,28 @@ export async function notifyPrestataireAgentDesiste(missionId: string, agentName
   } catch (e) { console.error('notifyPrestataireAgentDesiste:', e); }
 }
 
+/** Message libre au prestataire d'une mission (synchro des réservations). */
+export async function notifyPrestataireSync(missionId: string, title: string, message: string) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx?.prestataireUserId) return;
+    await dispatch([{ userId: ctx.prestataireUserId, role: 'prestataire', title, message, type: 'mission_modified', missionId }]);
+  } catch (e) { console.error('notifyPrestataireSync:', e); }
+}
+
+/** Le relevé d'un mois est marqué payé → le prestataire. */
+export async function notifyPrestatairePaiement(userId: string, periode: string, montant: number) {
+  try {
+    const [a, m] = periode.split('-').map(Number);
+    const mois = new Date(a, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const euros = (Math.round(montant * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    await dispatch([{
+      userId, role: 'prestataire', title: 'Paiement effectué',
+      message: `Votre relevé de ${mois} est réglé : ${euros} €.`, type: 'prestataire_paiement', missionId: null,
+    }]);
+  } catch (e) { console.error('notifyPrestatairePaiement:', e); }
+}
+
 // A quinquies. L'admin transfère en bloc les missions d'un intervenant à un
 // autre (arrêt, congés, départ). LES DEUX doivent l'apprendre de nous : celui
 // qui perd sa semaine de travail comme celui qui hérite de vingt interventions.

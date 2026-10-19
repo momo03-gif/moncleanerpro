@@ -26,6 +26,7 @@ const emptyForm = {
   entryDirectives: '', bedrooms: '', beds: '', sofaBeds: '', clientPrice: '',
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
   structureType: 'apartment', structureLabel: '', productCostCents: '',
+  creditImpot: false,
   // Maison à annonces multiples : '' = logement indépendant.
   parentAirbnbId: '',
   // Forfaits par nombre de chambres, sur l'annonce « maison entière ».
@@ -54,6 +55,7 @@ function aptToForm(a: Apartment): FormState {
     structureType: a.structureType ?? 'apartment',
     structureLabel: a.structureLabel ?? '',
     productCostCents: a.productCostCents != null ? String(a.productCostCents) : '',
+    creditImpot: a.creditImpot === true,
     partnerName: a.partnerName ?? '',
     portalCode: a.portalCode ?? '',
     keyboxCode: a.keyboxCode ?? '',
@@ -191,6 +193,7 @@ export default function AirbnbPage() {
       structureType: form.structureType || 'apartment',
       structureLabel: form.structureType === 'other' ? (form.structureLabel || undefined) : undefined,
       productCostCents: form.productCostCents ? Number(form.productCostCents) : undefined,
+      creditImpot: form.creditImpot,
       partnerName: form.partnerName || undefined,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
@@ -526,6 +529,14 @@ export default function AirbnbPage() {
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
             </div>
           </div>
+          <label className="flex items-start gap-3 mb-4 cursor-pointer select-none">
+            <input type="checkbox" checked={form.creditImpot} onChange={e => setForm(p => ({ ...p, creditImpot: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-[#C9A84C]" />
+            <span>
+              <span className="block text-sm font-medium" style={{ color: '#1A1A1A' }}>Domicile d’un particulier (crédit d’impôt)</span>
+              <span className="block text-xs" style={{ color: '#A8A09A' }}>Ses ménages ne pourront être confiés qu’à un prestataire déclaré services à la personne.</span>
+            </span>
+          </label>
           <button type="submit" disabled={saving} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             {saving ? 'Enregistrement...' : editingId ? 'Enregistrer' : 'Ajouter le site'}
           </button>
@@ -628,6 +639,11 @@ function SiteRow({ apt, onEdit, onDelete, onMaps, prixKit = 0 }: {
         {apt.structureType && apt.structureType !== 'apartment' && (
           <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#7C5CBF12', color: '#7C5CBF' }}>
             {structureLabel(apt.structureType, apt.structureLabel)}
+          </span>
+        )}
+        {apt.creditImpot && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#5A8A6A14', color: '#3F6B4F' }}>
+            crédit d’impôt
           </span>
         )}
         {apt.clientPrice != null && (

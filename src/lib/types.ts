@@ -257,6 +257,8 @@ export interface Apartment {
   // Type de structure (défaut : appartement). Voir StructureType.
   structureType?: StructureType;
   structureLabel?: string;   // libellé libre quand structureType = 'other'
+  /** Domicile d'un particulier (crédit d'impôt) : jamais confié à un prestataire non déclaré SAP. */
+  creditImpot?: boolean;
   // Override du coût produits par ménage (centimes). Absent → coût global ProfitConfig.
   productCostCents?: number;
   portalCode?: string;

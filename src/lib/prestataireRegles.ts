@@ -47,3 +47,57 @@ export function releveDuMois(lignes: LigneReleve[], periode: string): { missions
   }
   return { missions, minutes, montant: Math.round(montant * 100) / 100 };
 }
+
+// ── Crédit d'impôt ──────────────────────────────────────────────────────────
+// Le ménage au domicile d'un particulier ouvre droit au crédit d'impôt parce
+// qu'il est réalisé dans le cadre services à la personne. Le confier à un
+// prestataire qui n'est pas lui-même déclaré SAP peut faire perdre ce droit au
+// client : on l'interdit, sauf prestataire déclaré.
+export const CREDIT_IMPOT_REFUS =
+  'Ce logement est le domicile d’un particulier (crédit d’impôt) : il ne peut être confié qu’à un prestataire déclaré services à la personne.';
+
+export function peutConfier(o: { creditImpot?: boolean | null; sapDeclare?: boolean | null }): boolean {
+  return !o.creditImpot || !!o.sapDeclare;
+}
+
+// ── Obligation de vigilance ─────────────────────────────────────────────────
+// Attestation URSSAF : à renouveler tous les 6 mois. Kbis : à obtenir une fois
+// (on le redemande au bout d'un an pour rester à jour).
+export type TypeDocument = 'urssaf' | 'kbis' | 'assurance' | 'autre';
+
+export const LIBELLE_DOCUMENT: Record<TypeDocument, string> = {
+  urssaf: 'Attestation de vigilance URSSAF',
+  kbis: 'Extrait Kbis (ou avis SIRENE)',
+  assurance: 'Attestation d’assurance RC pro',
+  autre: 'Autre document',
+};
+
+/** Durée de validité retenue, en mois, par type de document. */
+const VALIDITE_MOIS: Partial<Record<TypeDocument, number>> = { urssaf: 6, kbis: 12, assurance: 12 };
+
+export interface DocumentVigilance { kind: string; delivered_on?: string | null; uploaded_at?: string | null }
+
+function ajouterMois(dateIso: string, mois: number): string {
+  const [a, m, j] = dateIso.slice(0, 10).split('-').map(Number);
+  const d = new Date(Date.UTC(a, m - 1 + mois, j));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * État de la vigilance pour un prestataire, à la date `aujourdhui` ('YYYY-MM-DD').
+ * Pour chaque document exigé (URSSAF, Kbis), on garde le plus récent : manquant,
+ * expiré, ou valable jusqu'à une date.
+ */
+export function etatVigilance(docs: DocumentVigilance[], aujourdhui: string): {
+  aJour: boolean;
+  details: { kind: 'urssaf' | 'kbis'; etat: 'manquant' | 'expire' | 'ok'; jusqu?: string }[];
+} {
+  const details = (['urssaf', 'kbis'] as const).map(kind => {
+    const dates = docs.filter(d => d.kind === kind)
+      .map(d => (d.delivered_on || d.uploaded_at || '').slice(0, 10)).filter(Boolean).sort();
+    if (dates.length === 0) return { kind, etat: 'manquant' as const };
+    const jusqu = ajouterMois(dates[dates.length - 1], VALIDITE_MOIS[kind] ?? 12);
+    return { kind, etat: (jusqu < aujourdhui ? 'expire' : 'ok') as 'expire' | 'ok', jusqu };
+  });
+  return { aJour: details.every(d => d.etat === 'ok'), details };
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gainPrestataire, attribuable, releveDuMois } from './prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance } from './prestataireRegles';
 
 describe('prestataires — règles', () => {
   it('doit au prestataire son taux × durée, au centime', () => {
@@ -26,5 +26,41 @@ describe('prestataires — règles', () => {
       { status: 'done', date_from: '2026-09-30', prestataire_gain: 30 },
     ], '2026-10');
     expect(r).toEqual({ missions: 2, minutes: 140, montant: 41.58 });
+  });
+});
+
+describe('prestataires — crédit d’impôt', () => {
+  it('ne confie le domicile d’un particulier qu’à un prestataire déclaré SAP', () => {
+    expect(peutConfier({ creditImpot: false, sapDeclare: false })).toBe(true);
+    expect(peutConfier({ creditImpot: true, sapDeclare: false })).toBe(false);
+    expect(peutConfier({ creditImpot: true, sapDeclare: true })).toBe(true);
+    expect(peutConfier({})).toBe(true);
+  });
+});
+
+describe('prestataires — vigilance', () => {
+  it('signale les documents manquants', () => {
+    const r = etatVigilance([], '2026-10-19');
+    expect(r.aJour).toBe(false);
+    expect(r.details.map(d => d.etat)).toEqual(['manquant', 'manquant']);
+  });
+
+  it('attestation URSSAF valable 6 mois, Kbis 12 mois, on garde la plus récente', () => {
+    const r = etatVigilance([
+      { kind: 'urssaf', delivered_on: '2026-01-10' },
+      { kind: 'urssaf', delivered_on: '2026-05-02' },
+      { kind: 'kbis', delivered_on: '2026-02-01' },
+    ], '2026-10-19');
+    expect(r.details).toEqual([
+      { kind: 'urssaf', etat: 'ok', jusqu: '2026-11-02' },
+      { kind: 'kbis', etat: 'ok', jusqu: '2027-02-01' },
+    ]);
+    expect(r.aJour).toBe(true);
+  });
+
+  it('expire le lendemain de la fin de validité', () => {
+    const r = etatVigilance([{ kind: 'urssaf', delivered_on: '2026-04-01' }, { kind: 'kbis', uploaded_at: '2026-04-01T10:00:00Z' }], '2026-10-02');
+    expect(r.details[0]).toEqual({ kind: 'urssaf', etat: 'expire', jusqu: '2026-10-01' });
+    expect(r.aJour).toBe(false);
   });
 });

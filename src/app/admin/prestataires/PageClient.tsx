@@ -7,6 +7,7 @@ import { money } from '@/lib/format';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
 import ReleveMois from '@/components/ReleveMois';
+import DocumentsPrestataire from '@/components/DocumentsPrestataire';
 import { useFeedback } from '@/contexts/FeedbackContext';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -194,10 +195,10 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
   p: Prestataire; periode: string; ouvert: boolean; onToggle: () => void; onChange: () => Promise<void>;
 }) {
   const { toast, confirm } = useFeedback();
-  const [onglet, setOnglet] = useState<'fiche' | 'agents' | 'releve'>('fiche');
+  const [onglet, setOnglet] = useState<'fiche' | 'agents' | 'releve' | 'documents'>('fiche');
   const [form, setForm] = useState({
     name: p.name, contactName: p.contact_name ?? '', email: p.email ?? '', phone: p.phone ?? '',
-    siret: p.siret ?? '', hourlyRate: String(p.hourly_rate ?? 0),
+    siret: p.siret ?? '', hourlyRate: String(p.hourly_rate ?? 0), sapDeclare: p.sap_declare === true,
   });
   const [mdp, setMdp] = useState('');
   const [agents, setAgents] = useState<Agent[] | null>(null);
@@ -258,6 +259,8 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold truncate" style={{ color: '#1A1A1A' }}>{p.name}</p>
             {!actif && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#B85A5015', color: '#B85A50' }}>Suspendu</span>}
+            {p.sap_declare && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#5A8A6A14', color: '#3F6B4F' }}>SAP</span>}
+            {p.vigilance_ok === false && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#C48A2A15', color: '#C48A2A' }}>Documents à jour : non</span>}
           </div>
           <p className="text-xs truncate" style={{ color: '#A8A09A' }}>
             {money(p.hourly_rate)}/h · {p.agents ?? 0} agent{(p.agents ?? 0) > 1 ? 's' : ''}{p.contact_name ? ` · ${p.contact_name}` : ''}
@@ -272,7 +275,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
       {ouvert && (
         <div className="px-4 md:px-6 pb-5 border-t" style={{ borderColor: '#F2EFE9' }}>
           <div className="flex gap-1 my-4 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-            {([['fiche', 'Fiche'], ['agents', 'Agents'], ['releve', 'Relevé']] as const).map(([k, l]) => (
+            {([['fiche', 'Fiche'], ['agents', 'Agents'], ['releve', 'Relevé'], ['documents', 'Documents']] as const).map(([k, l]) => (
               <button key={k} onClick={() => setOnglet(k)} className="px-4 py-1.5 rounded-xl text-sm font-medium"
                 style={{ backgroundColor: onglet === k ? '#FFFFFF' : 'transparent', color: onglet === k ? '#1A1A1A' : '#A8A09A' }}>
                 {l}
@@ -290,6 +293,14 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
                 <Champ label="SIRET"><input value={form.siret} onChange={e => setForm(f => ({ ...f, siret: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
                 <Champ label="Taux horaire payé (€/h)"><input type="number" min="0" step="0.5" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
               </div>
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input type="checkbox" checked={form.sapDeclare} onChange={e => setForm(f => ({ ...f, sapDeclare: e.target.checked }))}
+                  className="mt-0.5 w-4 h-4 accent-[#C9A84C]" />
+                <span>
+                  <span className="block text-sm font-medium" style={{ color: '#1A1A1A' }}>Déclaré services à la personne (SAP)</span>
+                  <span className="block text-xs" style={{ color: '#A8A09A' }}>Peut recevoir les ménages au domicile de particuliers (crédit d’impôt).</span>
+                </span>
+              </label>
               <div className="flex flex-wrap gap-2">
                 <button onClick={enregistrer} disabled={envoi} className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
                 <button onClick={basculer} disabled={envoi} className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
@@ -325,6 +336,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
           )}
 
           {onglet === 'releve' && <ReleveMois prestataireId={p.id} />}
+          {onglet === 'documents' && <DocumentsPrestataire prestataireId={p.id} />}
         </div>
       )}
     </div>

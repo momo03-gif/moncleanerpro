@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
     'parent_airbnb_id', 'group_tiers', 'cleaner_id',
     // La fourniture facturée est un prix : un partenaire ne la fixe pas.
     'linge_mode', 'linge_kits', 'linge_forfait', 'linge_libelle',
+    // Régime fiscal du ménage : décidé par nous, pas par le client.
+    'credit_impot',
   ];
   function filtrer(champs: Record<string, unknown>): Record<string, unknown> {
     if (estAdmin) return champs;

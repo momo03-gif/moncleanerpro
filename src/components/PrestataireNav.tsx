@@ -13,6 +13,7 @@ const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/prestataire', label: 'Missions', icon: 'missions' },
   { href: '/prestataire/agents', label: 'Agents', icon: 'cleaners' },
   { href: '/prestataire/releve', label: 'Relevé', icon: 'wallet' },
+  { href: '/prestataire/documents', label: 'Documents', icon: 'book' },
 ];
 
 export default function PrestataireNav() {

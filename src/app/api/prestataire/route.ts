@@ -19,10 +19,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
 import { hashPassword } from '@/lib/password';
-import { gainPrestataire, attribuable, releveDuMois } from '@/lib/prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance } from '@/lib/prestataireRegles';
 import {
   notifyCleanerNewMission, notifyCleanerMissionUnassigned,
-  notifyPrestataireMissionConfiee, notifyPrestataireMissionReprise,
+  notifyPrestataireMissionConfiee, notifyPrestataireMissionReprise, notifyPrestatairePaiement,
 } from '@/lib/notificationEvents';
 
 export const runtime = 'nodejs';
@@ -33,7 +33,7 @@ const ko = (error: string, status = 400) => NextResponse.json({ error }, { statu
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const MDP_MIN = 6;
 
-const PRESTATAIRE_COLONNES = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, created_at';
+const PRESTATAIRE_COLONNES = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at';
 
 /** Demande d'inscription pas encore validée : le compte de connexion est 'pending'. */
 async function enAttente(db: SupabaseClient, userId: unknown): Promise<boolean> {
@@ -75,6 +75,46 @@ async function creerCompte(db: SupabaseClient, f: { email: string; password: str
   return { id: data.id as string };
 }
 
+const DOCS_BUCKET = 'prestataire_docs';
+const TYPES_DOC = ['urssaf', 'kbis', 'assurance', 'autre'];
+const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+
+/** Documents d'un prestataire, avec un lien de lecture signé (1 h) et l'état de vigilance. */
+async function documents(db: SupabaseClient, prestataireId: string) {
+  const { data } = await db.from('prestataire_documents')
+    .select('id, kind, storage_path, file_name, delivered_on, uploaded_at')
+    .eq('prestataire_id', prestataireId).order('uploaded_at', { ascending: false });
+  const docs = await Promise.all((data ?? []).map(async d => {
+    const { data: s } = await db.storage.from(DOCS_BUCKET).createSignedUrl(d.storage_path as string, 3600);
+    return { id: d.id, kind: d.kind, fileName: d.file_name, deliveredOn: d.delivered_on, uploadedAt: d.uploaded_at, url: s?.signedUrl ?? null };
+  }));
+  return { documents: docs, vigilance: etatVigilance(data ?? [], aujourdhuiParis()) };
+}
+
+/** Enregistre un document déposé (le fichier est déjà dans la réserve, sous le dossier du prestataire). */
+async function ajouterDocument(db: SupabaseClient, prestataireId: string, b: Corps) {
+  const path = str(b.path), kind = str(b.kind);
+  if (!path || !kind || !TYPES_DOC.includes(kind)) return ko('Document incomplet.');
+  if (!path.startsWith(`${prestataireId}/`) || path.includes('..')) return ko('Chemin de document invalide.');
+  const livre = str(b.deliveredOn);
+  if (livre && !/^\d{4}-\d{2}-\d{2}$/.test(livre)) return ko('Date de délivrance invalide.');
+  const { error } = await db.from('prestataire_documents').insert({
+    prestataire_id: prestataireId, kind, storage_path: path,
+    file_name: str(b.fileName)?.slice(0, 200) ?? null, delivered_on: livre ?? null,
+  });
+  if (error) { console.error('prestataire/doc-add:', error.message); return ko('Enregistrement impossible.', 500); }
+  return ok();
+}
+
+async function supprimerDocument(db: SupabaseClient, prestataireId: string, docId: string | undefined) {
+  if (!docId) return ko('Document manquant.');
+  const { data: d } = await db.from('prestataire_documents').select('storage_path, prestataire_id').eq('id', docId).maybeSingle();
+  if (!d || d.prestataire_id !== prestataireId) return ko('Document introuvable.', 404);
+  await db.storage.from(DOCS_BUCKET).remove([d.storage_path as string]);
+  await db.from('prestataire_documents').delete().eq('id', docId);
+  return ok();
+}
+
 /** Relevé d'un mois pour un prestataire : missions terminées et montant dû. */
 async function releve(db: SupabaseClient, prestataireId: string, periode: string) {
   const [debut, fin] = bornes(periode);
@@ -84,9 +124,12 @@ async function releve(db: SupabaseClient, prestataireId: string, periode: string
     .order('date_from');
   if (error) throw new Error(error.message);
   const lignes = data ?? [];
+  const { data: paiement } = await db.from('prestataire_paiements')
+    .select('montant, paid_at, note').eq('prestataire_id', prestataireId).eq('periode', periode).maybeSingle();
   return {
     periode,
     ...releveDuMois(lignes, periode),
+    paiement: paiement ? { montant: Number(paiement.montant) || 0, paidAt: paiement.paid_at as string, note: (paiement.note as string | null) ?? null } : null,
     lignes: lignes.filter(l => l.status === 'done').map(l => ({
       id: l.id, date: l.date_from, time: (l.time_from ?? '').slice(0, 5),
       lieu: (l.airbnbs as { name?: string } | null)?.name || l.property_name || 'Mission',
@@ -136,6 +179,10 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         ? await db.from('users').select('id, status').in('id', userIds)
         : { data: [] as { id: string; status: string }[] };
       const attente = new Set((comptes ?? []).filter(c => c.status === 'pending').map(c => c.id));
+      const { data: docs } = ids.length
+        ? await db.from('prestataire_documents').select('prestataire_id, kind, delivered_on, uploaded_at').in('prestataire_id', ids)
+        : { data: [] as { prestataire_id: string; kind: string; delivered_on: string | null; uploaded_at: string }[] };
+      const jour = aujourdhuiParis();
       // Nombre d'agents et dû du mois, pour la liste.
       const { data: agents } = ids.length
         ? await db.from('cleaners').select('prestataire_id, status').in('prestataire_id', ids)
@@ -151,6 +198,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         prestataires: (data ?? []).map(p => ({
           ...p,
           en_attente: attente.has(p.user_id as string),
+          vigilance_ok: etatVigilance((docs ?? []).filter(d => d.prestataire_id === p.id), jour).aJour,
           agents: (agents ?? []).filter(a => a.prestataire_id === p.id && a.status === 'active').length,
           duMois: releveDuMois((faites ?? []).filter(m => m.prestataire_id === p.id) as never, periode).montant,
         })),
@@ -187,6 +235,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       if (b.email !== undefined) patch.email = str(b.email)?.toLowerCase() ?? null;
       // Le nouveau taux vaut pour les missions confiées À PARTIR DE MAINTENANT.
       if (b.hourlyRate !== undefined) patch.hourly_rate = Math.max(0, Number(b.hourlyRate) || 0);
+      if (b.sapDeclare !== undefined) patch.sap_declare = b.sapDeclare === true;
       if (b.status !== undefined) {
         if (b.status !== 'active' && b.status !== 'suspended') return ko('Statut invalide.');
         patch.status = b.status;
@@ -255,21 +304,64 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       return ok({ releve: await releve(db, id, periode) });
     }
 
+    // ── Paiement : marquer le relevé d'un mois comme payé (ou l'annuler) ──
+    case 'marquer-paye': {
+      const id = str(b.id);
+      const periode = String(b.periode ?? '');
+      if (!id || !/^\d{4}-\d{2}$/.test(periode)) return ko('Prestataire ou mois manquant.');
+      const r = await releve(db, id, periode);
+      const montant = b.montant != null && b.montant !== '' ? Math.max(0, Number(b.montant) || 0) : r.montant;
+      const { error } = await db.from('prestataire_paiements').upsert({
+        prestataire_id: id, periode, montant, paid_at: new Date().toISOString(), note: str(b.note) ?? null,
+      }, { onConflict: 'prestataire_id,periode' });
+      if (error) { console.error('prestataire/marquer-paye:', error.message); return ko('Enregistrement impossible (migration_prestataires_v2.sql exécutée ?).', 500); }
+      const { data: pr } = await db.from('prestataires').select('user_id').eq('id', id).maybeSingle();
+      if (pr?.user_id) await notifyPrestatairePaiement(pr.user_id as string, periode, montant);
+      return ok();
+    }
+
+    case 'annuler-paiement': {
+      const id = str(b.id);
+      const periode = String(b.periode ?? '');
+      if (!id || !/^\d{4}-\d{2}$/.test(periode)) return ko('Prestataire ou mois manquant.');
+      await db.from('prestataire_paiements').delete().eq('prestataire_id', id).eq('periode', periode);
+      return ok();
+    }
+
+    case 'docs': {
+      const id = str(b.id);
+      if (!id) return ko('Prestataire manquant.');
+      return ok(await documents(db, id));
+    }
+    case 'doc-add': {
+      const id = str(b.id);
+      if (!id) return ko('Prestataire manquant.');
+      return ajouterDocument(db, id, b);
+    }
+    case 'doc-delete': {
+      const id = str(b.id);
+      if (!id) return ko('Prestataire manquant.');
+      return supprimerDocument(db, id, str(b.docId));
+    }
+
     // ── Confier des missions à un prestataire ──
     case 'confier': {
       const pid = str(b.prestataireId);
       const ids = Array.isArray(b.missionIds) ? (b.missionIds as unknown[]).map(String).filter(Boolean) : [];
       if (!pid || ids.length === 0) return ko('Mission ou prestataire manquant.');
-      const { data: pr } = await db.from('prestataires').select('id, user_id, name, hourly_rate, status').eq('id', pid).maybeSingle();
+      const { data: pr } = await db.from('prestataires').select('id, user_id, name, hourly_rate, status, sap_declare').eq('id', pid).maybeSingle();
       if (!pr) return ko('Prestataire introuvable.', 404);
       if (pr.status !== 'active') return ko('Ce prestataire est suspendu.');
       if (await enAttente(db, pr.user_id)) return ko('Ce prestataire n’est pas encore validé.');
       const taux = Number(pr.hourly_rate) || 0;
 
-      let count = 0;
+      let count = 0, bloquees = 0;
       for (const id of ids) {
-        const { data: m } = await db.from('missions').select('*, airbnbs(estimated_cleaning_minutes)').eq('id', id).maybeSingle();
+        const { data: m } = await db.from('missions').select('*, airbnbs(estimated_cleaning_minutes, credit_impot)').eq('id', id).maybeSingle();
         if (!m || !attribuable(m.status as string)) continue;
+        // Domicile d'un particulier : seulement à un prestataire déclaré SAP.
+        const creditImpot = (m.airbnbs as { credit_impot?: boolean } | null)?.credit_impot === true;
+        if (!peutConfier({ creditImpot, sapDeclare: pr.sap_declare === true })) { bloquees++; continue; }
         const minutes = minutesDe(m);
         const ancienCleaner = m.cleaner_id as string | null;
         const ancienPresta = m.prestataire_id as string | null;
@@ -293,7 +385,8 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         }
         if (ancienPresta !== pr.id) await notifyPrestataireMissionConfiee(id);
       }
-      return ok({ count });
+      if (count === 0 && bloquees > 0) return ko(CREDIT_IMPOT_REFUS);
+      return ok({ count, bloquees });
     }
 
     // ── Reprendre une mission à un prestataire ──
@@ -432,6 +525,14 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
       const periode = /^\d{4}-\d{2}$/.test(String(b.periode ?? '')) ? String(b.periode) : moisCourant();
       return ok({ releve: await releve(db, pid, periode) });
     }
+
+    // Documents administratifs (Kbis, attestation URSSAF, assurance) : les siens.
+    case 'docs':
+      return ok(await documents(db, pid));
+    case 'doc-add':
+      return ajouterDocument(db, pid, b);
+    case 'doc-delete':
+      return supprimerDocument(db, pid, str(b.docId));
 
     default:
       return ko('Opération inconnue.');

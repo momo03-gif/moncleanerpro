@@ -27,7 +27,8 @@ import { fetchBeds24Reservations } from './pms/beds24';
 import { fetchLodgifyReservations } from './pms/lodgify';
 import { REST_CONNECTORS } from './pms/catalog';
 import { memoryTokenStore, type TokenStore, type PmsCallOptions } from './pms/rest';
-import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync } from './notificationEvents';
+import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync, notifyPrestataireSync } from './notificationEvents';
+import { gainPrestataire } from './prestataireRegles';
 import { parseAirbnbDescription } from './guestContact';
 import { shouldRealign } from './missionDefaults';
 
@@ -378,10 +379,16 @@ async function handleCancelledReservationMission(missionId: string) {
   if ((count ?? 0) > 0) return;
 
   const { data: m } = await db.from('missions')
-    .select('status, auto_synced, cleaner_name, airbnbs(name)').eq('id', missionId).single();
+    .select('status, auto_synced, cleaner_name, prestataire_id, date_from, airbnbs(name)').eq('id', missionId).single();
   if (!m || !m.auto_synced) return;
   if (m.status === 'pending') {
     await db.from('missions').update({ status: 'cancelled' }).eq('id', missionId);
+    // Confiée à un prestataire (agent pas encore choisi) : il doit le savoir.
+    if (m.prestataire_id) {
+      const place = (m as any).airbnbs?.name ?? 'un logement';
+      await notifyPrestataireSync(missionId, 'Mission annulée',
+        `La réservation de ${place} a été annulée : la mission du ${fmtDateFr(m.date_from as string)} n'aura pas lieu.`);
+    }
   } else if (m.status !== 'cancelled' && m.status !== 'done') {
     const place = (m as any).airbnbs?.name ?? 'un logement';
     await notifyAdminsSync('Réservation annulée — mission assignée',
@@ -395,7 +402,7 @@ async function handleCancelledReservationMission(missionId: string) {
 async function applyReservationDateChange(missionId: string, newDate: string, newTime: string | null) {
   const db = getSupabaseAdmin();
   const { data: m } = await db.from('missions')
-    .select('status, auto_synced, airbnbs(name)').eq('id', missionId).single();
+    .select('status, auto_synced, prestataire_id, airbnbs(name)').eq('id', missionId).single();
   if (!m || !m.auto_synced) return;
 
   // Mission partagée par plusieurs réservations (cf. handleCancelledReservationMission) :
@@ -415,6 +422,11 @@ async function applyReservationDateChange(missionId: string, newDate: string, ne
     await db.from('missions').update({
       date_from: newDate, time_from: newTime || DEFAULT_CHECKOUT_TIME,
     }).eq('id', missionId);
+    if (m.prestataire_id) {
+      const place = (m as any).airbnbs?.name ?? 'un logement';
+      await notifyPrestataireSync(missionId, 'Mission déplacée',
+        `Le départ du voyageur de ${place} a changé : la mission est déplacée au ${fmtDateFr(newDate)}.`);
+    }
   } else if (m.status !== 'cancelled' && m.status !== 'done') {
     const place = (m as any).airbnbs?.name ?? 'un logement';
     await notifyAdminsSync('Changement de date — mission assignée',
@@ -838,7 +850,7 @@ async function refreshMissionDefaults(today: string, horizon: string): Promise<n
   const db = getSupabaseAdmin();
 
   const { data: missions } = await db.from('missions')
-    .select('id, airbnb_id, mission_duration_minutes, apartment_default_duration_snapshot, price, airbnbs(estimated_cleaning_minutes, client_price)')
+    .select('id, airbnb_id, mission_duration_minutes, apartment_default_duration_snapshot, price, prestataire_id, prestataire_rate_snapshot, airbnbs(estimated_cleaning_minutes, client_price)')
     .eq('auto_synced', true)
     .eq('status', 'pending')
     .gte('date_from', today)
@@ -855,6 +867,7 @@ async function refreshMissionDefaults(today: string, horizon: string): Promise<n
   for (const m of missions as unknown as {
     id: string; airbnb_id: string; mission_duration_minutes: number | null;
     apartment_default_duration_snapshot: number | null; price: number | null;
+    prestataire_id: string | null; prestataire_rate_snapshot: number | null;
     airbnbs: { estimated_cleaning_minutes: number | null; client_price: number | null } | null;
   }[]) {
     if (!m.airbnbs || groups.has(m.airbnb_id)) continue;
@@ -876,6 +889,9 @@ async function refreshMissionDefaults(today: string, horizon: string): Promise<n
       apartment_default_duration_snapshot: minutes,
       hours_worked: Math.round((minutes / 60) * 100) / 100,
       price: apt.price ?? mis.price ?? 0,
+      // Confiée à un prestataire : ce qu'on lui doit suit la durée, à son taux figé.
+      ...(m.prestataire_id && m.prestataire_rate_snapshot != null
+        ? { prestataire_gain: gainPrestataire(Number(m.prestataire_rate_snapshot), minutes) } : {}),
     }).eq('id', m.id);
     if (error) { console.error('refreshMissionDefaults:', error.message); continue; }
     changed++;

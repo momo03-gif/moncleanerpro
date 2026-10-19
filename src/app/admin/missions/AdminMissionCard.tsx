@@ -927,7 +927,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 style={{ ...inputStyle, color: newPrestataire ? '#1A1A1A' : '#A8A09A' }}>
                 <option value="">{prestataires === null ? 'Chargement…' : 'Choisir un prestataire'}</option>
                 {(prestataires ?? []).filter(p => p.id !== mission.prestataireId).map(p => (
-                  <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h</option>
+                  <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h{p.sap_declare ? ' · SAP' : ''}</option>
                 ))}
               </select>
               <button onClick={handleConfier} disabled={!newPrestataire || busy}
