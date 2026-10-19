@@ -38,9 +38,16 @@ async function lireCleaners(payload: Record<string, unknown>): Promise<CleanerRe
   if (typeof window === 'undefined') {
     try {
       const db = getServerDb();
-      let q = db.from('cleaners').select(CLEANER_COLONNES);
-      if (payload.activeOnly) q = q.eq('status', 'active');
-      const { data } = await q.order('created_at');
+      // L'ÉQUIPE seulement : les agents des prestataires n'ont ni RH ni paie.
+      const lire = (sansAgents: boolean) => {
+        let q = db.from('cleaners').select(CLEANER_COLONNES);
+        if (payload.activeOnly) q = q.eq('status', 'active');
+        if (sansAgents) q = q.is('prestataire_id', null);
+        return q.order('created_at');
+      };
+      let { data, error } = await lire(true);
+      // Base pas encore migrée (colonne absente) : on lit comme avant.
+      if (error) ({ data } = await lire(false));
       return (data ?? []) as unknown as CleanerRecord[];
     } catch (e) { console.error('lireCleaners (serveur):', e); return []; }
   }

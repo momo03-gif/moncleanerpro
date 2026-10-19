@@ -31,6 +31,16 @@ export function billableHotelPrice(basePrice: number, plannedMinutes: number, re
   return Math.round(base * Math.max(1, real / planned) * 100) / 100;
 }
 
+/**
+ * Ce que la mission COÛTE en main-d'œuvre : le gain du cleaner de l'équipe, ou
+ * ce qu'on doit au prestataire à qui elle a été confiée (ses agents ont un gain
+ * à 0 — on paie le prestataire, pas eux). À utiliser pour les marges et la
+ * comptabilité ; la paie d'un cleaner reste cleanerGain.
+ */
+export function coutMainOeuvre(m: { cleanerGain?: number | null; prestataireGain?: number | null }): number {
+  return (Number(m.cleanerGain) || 0) + (Number(m.prestataireGain) || 0);
+}
+
 // Gain d'une mission selon sa prestation :
 //   ménage   → taux horaire × durée / 60
 //   livraison → montant fixe par livraison (delivery_rate)

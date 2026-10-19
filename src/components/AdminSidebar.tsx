@@ -50,6 +50,7 @@ const navGroups: NavGroup[] = [
     title: 'Équipe',
     items: [
       { href: '/admin/cleaners', label: 'Cleaners', icon: 'cleaners' },
+      { href: '/admin/prestataires', label: 'Prestataires', icon: 'accounts' },
       { href: '/admin/rh', label: 'Règles RH', icon: 'award' },
       { href: '/admin/formation', label: 'Formation', icon: 'book' },
     ],

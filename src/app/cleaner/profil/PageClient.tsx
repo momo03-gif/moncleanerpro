@@ -123,7 +123,7 @@ export default function CleanerProfil() {
 
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Heures à payer', value: `${payableHoursMonth}h`, gold: true, sub: 'ce mois' },
+            { label: user.agent ? 'Heures réalisées' : 'Heures à payer', value: `${payableHoursMonth}h`, gold: true, sub: 'ce mois' },
             { label: 'Missions',     value: completedMonth,         gold: false, sub: 'ce mois' },
             ...(showDeliveries ? [{ label: 'Livraisons', value: deliveriesMonth, gold: false, sub: 'ce mois' }] : []),
           ].map(s => (
@@ -136,8 +136,9 @@ export default function CleanerProfil() {
         </div>
       </div>
 
-      {/* ── Badges, niveau & classement (motivation) */}
-      <MotivationPanel userId={user.id} userName={user.name} />
+      {/* ── Badges, niveau & classement (motivation) — l'équipe seulement :
+          l'agent d'un prestataire n'a ni primes ni classement chez nous. */}
+      {!user.agent && <MotivationPanel userId={user.id} userName={user.name} />}
 
       {/* ── Disponibilité (boutons cliquables) */}
       <div className="rounded-2xl p-5 border mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>

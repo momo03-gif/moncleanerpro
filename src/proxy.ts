@@ -16,12 +16,14 @@ const PROTECTED: { prefix: string; role: Role }[] = [
   { prefix: '/cleaner', role: 'cleaner' },
   { prefix: '/hotel', role: 'hotel' },
   { prefix: '/airbnb', role: 'airbnb' },
+  { prefix: '/prestataire', role: 'prestataire' },
 ];
 
 function homeForRole(role: Role): string {
   return role === 'admin' ? '/admin'
     : role === 'cleaner' ? '/cleaner'
     : role === 'airbnb' ? '/airbnb/accueil'
+    : role === 'prestataire' ? '/prestataire'
     : '/hotel';
 }
 
@@ -61,5 +63,6 @@ export const config = {
     '/cleaner', '/cleaner/:path*',
     '/hotel', '/hotel/:path*',
     '/airbnb', '/airbnb/:path*',
+    '/prestataire', '/prestataire/:path*',
   ],
 };

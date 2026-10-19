@@ -93,8 +93,9 @@ export function computeApartmentProfitability(params: {
     if (cleaningMs.length === 0 && deliveryMs.length === 0) continue;
 
     const revenue = round2(cleaningMs.reduce((s, m) => s + (m.price || 0), 0));
-    const cleanerCost = round2(cleaningMs.reduce((s, m) => s + (m.cleanerGain || 0) * multOf(m.cleanerId), 0));
-    const deliveryCost = round2(deliveryMs.reduce((s, m) => s + (m.cleanerGain || 0) * multOf(m.cleanerId), 0));
+    // Prestataire : son montant tel quel (pas de charges employeur dessus).
+    const cleanerCost = round2(cleaningMs.reduce((s, m) => s + (m.cleanerGain || 0) * multOf(m.cleanerId) + (m.prestataireGain || 0), 0));
+    const deliveryCost = round2(deliveryMs.reduce((s, m) => s + (m.cleanerGain || 0) * multOf(m.cleanerId) + (m.prestataireGain || 0), 0));
 
     const unitProductCents = apt?.productCostCents ?? config.productCostCents;
     const productCost = round2((unitProductCents / 100) * cleaningMs.length);

@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'cleaner' | 'hotel' | 'airbnb';
+export type Role = 'admin' | 'cleaner' | 'hotel' | 'airbnb' | 'prestataire';
 
 export type PendingStatus = 'pending' | 'approved' | 'refused';
 
@@ -15,6 +15,8 @@ export interface User {
   status?: 'available' | 'busy' | 'offline';
   isActive?: boolean;
   pendingStatus?: PendingStatus;
+  /** Cleaner AGENT d'un prestataire (sous-traitant) : hors équipe, hors paie. */
+  agent?: boolean;
 }
 
 export type MissionStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
@@ -37,6 +39,12 @@ export interface Mission {
   status: MissionStatus;
   cleanerId?: string;
   cleanerName?: string;
+  // Mission confiée à un PRESTATAIRE (sous-traitant) : il la donne à l'un de ses
+  // agents (cleanerId). Ce qu'on lui doit = son taux × durée, figé à l'attribution.
+  prestataireId?: string;
+  prestataireName?: string;
+  prestataireGain?: number;
+  prestataireRateSnapshot?: number;
   price: number;
   cleanerGain?: number;
   // Paiement cleaner (taux horaire × durée). Indépendant du prix client.

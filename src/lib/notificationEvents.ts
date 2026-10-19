@@ -17,7 +17,7 @@ import { sendPushToUser } from './webpush';
 
 const db = () => getSupabaseAdmin();
 
-type Recipient = { userId: string; role: 'admin' | 'cleaner' | 'partner' | 'hotel' | 'airbnb' };
+type Recipient = { userId: string; role: 'admin' | 'cleaner' | 'partner' | 'hotel' | 'airbnb' | 'prestataire' };
 
 // Libellés des prestations hôtel (pour les messages de notification).
 const HOTEL_TYPE_LABEL: Record<string, string> = {
@@ -38,6 +38,7 @@ function urlForRole(role: string): string {
     case 'cleaner': return '/cleaner';
     case 'airbnb': return '/airbnb/missions';
     case 'hotel': return '/hotel/historique';
+    case 'prestataire': return '/prestataire';
     default: return '/';
   }
 }
@@ -59,12 +60,15 @@ interface MissionContext {
   partnerId: string | null;
   /** Le service rendu : une livraison ne s'annonce pas comme un ménage. */
   service: string | null;
+  /** Compte du prestataire à qui la mission est confiée (sous-traitance). */
+  prestataireUserId: string | null;
 }
 
 async function loadMissionContext(missionId: string): Promise<MissionContext | null> {
   const { data, error } = await db()
     .from('missions')
-    .select('id, date_from, time_from, property_name, client_name, cleaner_id, cleaner_name, created_by, created_by_role, partner_id, service, airbnbs(name)')
+    // `*` plutôt qu'une liste : tolère une base pas encore migrée (prestataire_id).
+    .select('*, airbnbs(name)')
     .eq('id', missionId)
     .single();
   if (error || !data) return null;
@@ -77,12 +81,19 @@ async function loadMissionContext(missionId: string): Promise<MissionContext | n
     const { data: c } = await db().from('cleaners').select('user_id').eq('id', data.cleaner_id).single();
     cleanerUserId = c?.user_id ?? null;
   }
+  let prestataireUserId: string | null = null;
+  const prestataireId = (data as { prestataire_id?: string | null }).prestataire_id;
+  if (prestataireId) {
+    const { data: pr } = await db().from('prestataires').select('user_id').eq('id', prestataireId).maybeSingle();
+    prestataireUserId = (pr?.user_id as string | undefined) ?? null;
+  }
   return {
     place, date: data.date_from ?? '', time: trimTime(data.time_from),
     cleanerUserId, cleanerName: data.cleaner_name ?? null,
     createdBy: data.created_by ?? null, createdByRole: data.created_by_role ?? null,
     partnerId: (data as { partner_id?: string | null }).partner_id ?? null,
     service: (data as { service?: string | null }).service ?? null,
+    prestataireUserId,
   };
 }
 
@@ -216,7 +227,7 @@ export async function notifyCleanerRequestDecision(missionId: string, cleanerId:
 
 // A quater. L'admin retire une mission à un cleaner → ce cleaner. Il compte
 // dessus et a peut-être organisé sa journée autour : il doit l'apprendre.
-export async function notifyCleanerMissionUnassigned(missionId: string, cleanerId: string) {
+export async function notifyCleanerMissionUnassigned(missionId: string, cleanerId: string, reprisePar = "l'administrateur") {
   try {
     const ctx = await loadMissionContext(missionId);
     const { data: c } = await db().from('cleaners').select('user_id').eq('id', cleanerId).single();
@@ -225,10 +236,51 @@ export async function notifyCleanerMissionUnassigned(missionId: string, cleanerI
     await dispatch([{
       userId: c.user_id, role: 'cleaner',
       title: 'Mission retirée',
-      message: `La mission${quand} ne vous est plus attribuée. Elle a été reprise par l'administrateur.`,
+      message: `La mission${quand} ne vous est plus attribuée. Elle a été reprise par ${reprisePar}.`,
       type: 'mission_unassigned', missionId,
     }]);
   } catch (e) { console.error('notifyCleanerMissionUnassigned:', e); }
+}
+
+// A sexies. Sous-traitance : l'admin confie une mission à un prestataire, ou la
+// lui reprend. C'est lui qui choisira l'agent : il doit le savoir tout de suite.
+export async function notifyPrestataireMissionConfiee(missionId: string) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx?.prestataireUserId) return;
+    await dispatch([{
+      userId: ctx.prestataireUserId, role: 'prestataire',
+      title: 'Nouvelle mission à attribuer',
+      message: `Mission le ${fmtDate(ctx.date)} à ${ctx.time} pour ${ctx.place}. Choisissez l'agent qui s'en charge.`,
+      type: 'mission_new', missionId,
+    }]);
+  } catch (e) { console.error('notifyPrestataireMissionConfiee:', e); }
+}
+
+export async function notifyPrestataireMissionReprise(missionId: string, prestataireUserId: string) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    const quand = ctx ? ` du ${fmtDate(ctx.date)} à ${ctx.time} (${ctx.place})` : '';
+    await dispatch([{
+      userId: prestataireUserId, role: 'prestataire',
+      title: 'Mission retirée',
+      message: `La mission${quand} ne vous est plus confiée.`,
+      type: 'mission_unassigned', missionId,
+    }]);
+  } catch (e) { console.error('notifyPrestataireMissionReprise:', e); }
+}
+
+export async function notifyPrestataireAgentDesiste(missionId: string, agentName: string | null) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx?.prestataireUserId) return;
+    await dispatch([{
+      userId: ctx.prestataireUserId, role: 'prestataire',
+      title: 'Mission à réattribuer',
+      message: `${agentName ?? 'Votre agent'} s'est désisté de la mission du ${fmtDate(ctx.date)} à ${ctx.time} (${ctx.place}). Choisissez un autre agent.`,
+      type: 'mission_withdrawn', missionId,
+    }]);
+  } catch (e) { console.error('notifyPrestataireAgentDesiste:', e); }
 }
 
 // A quinquies. L'admin transfère en bloc les missions d'un intervenant à un
@@ -303,6 +355,9 @@ export async function notifyMissionModified(missionId: string, actorRole: string
     if (ctx.cleanerUserId && ctx.cleanerUserId !== actorId) {
       rows.push({ userId: ctx.cleanerUserId, role: 'cleaner', title: 'Mission modifiée', message, type: 'mission_modified', missionId });
     }
+    if (ctx.prestataireUserId && ctx.prestataireUserId !== actorId) {
+      rows.push({ userId: ctx.prestataireUserId, role: 'prestataire', title: 'Mission modifiée', message, type: 'mission_modified', missionId });
+    }
     await dispatch(rows);
   } catch (e) { console.error('notifyMissionModified:', e); }
 }
@@ -321,6 +376,9 @@ export async function notifyMissionCancelled(missionId: string, actorRole: strin
     });
     if (ctx.cleanerUserId && ctx.cleanerUserId !== actorId) {
       rows.push({ userId: ctx.cleanerUserId, role: 'cleaner', title: 'Mission annulée', message, type: 'mission_cancelled', missionId });
+    }
+    if (ctx.prestataireUserId && ctx.prestataireUserId !== actorId) {
+      rows.push({ userId: ctx.prestataireUserId, role: 'prestataire', title: 'Mission annulée', message, type: 'mission_cancelled', missionId });
     }
     await dispatch(rows);
   } catch (e) { console.error('notifyMissionCancelled:', e); }

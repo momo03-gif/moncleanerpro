@@ -8,6 +8,7 @@ import { formatDuration, money } from '@/lib/format';
 import { serviceParts } from '@/lib/service';
 import type { PayrollRow } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
+import { coutMainOeuvre } from '@/lib/pay';
 
 // Perf : panneaux lourds (paie, dépenses) chargés en différé (chunks séparés),
 // uniquement quand leur onglet est ouvert.
@@ -72,12 +73,13 @@ function GlobalView() {
   // compté dans les salaires/charges ci-dessous — c'est justement une charge.
   const isBillable = (m: Mission) => serviceParts(m.service).cleaning;
   const totalRevenue = completedMissions.reduce((s, m) => s + (isBillable(m) ? m.price : 0), 0);
-  const totalSalaries = completedMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+  // Main-d'œuvre : cleaners de l'équipe ET prestataires (sous-traitance).
+  const totalSalaries = completedMissions.reduce((s, m) => s + coutMainOeuvre(m), 0);
   const netProfit = totalRevenue - totalSalaries;
 
   const thisMonthMissions = completedMissions.filter(m => m.date.startsWith(month));
   const revenueMonth = thisMonthMissions.reduce((s, m) => s + (isBillable(m) ? m.price : 0), 0);
-  const salariesMonth = thisMonthMissions.reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+  const salariesMonth = thisMonthMissions.reduce((s, m) => s + coutMainOeuvre(m), 0);
   // Coût employeur total du mois = base + primes.
   const laborMonth = Math.round((salariesMonth + primesMonth) * 100) / 100;
   const profitMonth = Math.round((revenueMonth - laborMonth) * 100) / 100;

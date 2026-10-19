@@ -21,6 +21,7 @@ import ArriveeSuivante from '@/components/ArriveeSuivante';
 import { inputStyle } from '@/lib/ui';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
+import { appelPrestataire, type Prestataire } from '@/lib/prestataireApi';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
@@ -200,6 +201,10 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   const [expanded, setExpanded] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [newCleaner, setNewCleaner] = useState('');
+  // Sous-traitance : confier la mission à un prestataire (chargés à l'ouverture).
+  const [confierOpen, setConfierOpen] = useState(false);
+  const [prestataires, setPrestataires] = useState<Prestataire[] | null>(null);
+  const [newPrestataire, setNewPrestataire] = useState('');
   const [busy, setBusy] = useState(false);
   const [mapsOpen, setMapsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -332,6 +337,42 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     onRefresh();
   }
 
+  async function ouvrirConfier() {
+    setConfierOpen(true); setActionError('');
+    if (prestataires === null) {
+      const r = await appelPrestataire<{ prestataires: Prestataire[] }>('list');
+      setPrestataires(r.ok ? r.prestataires.filter(p => p.status === 'active') : []);
+      if (!r.ok) setActionError(r.error);
+    }
+  }
+
+  async function handleConfier() {
+    if (!newPrestataire) return;
+    setBusy(true);
+    const r = await appelPrestataire<{ count: number }>('confier', { missionIds: [mission.id], prestataireId: newPrestataire });
+    setBusy(false);
+    if (!r.ok) { setActionError(r.error); toast(r.error, 'error'); return; }
+    if (!r.count) { toast('Mission déjà démarrée : impossible de la confier.', 'error'); return; }
+    toast('Mission confiée — le prestataire choisit son agent.', 'success');
+    setConfierOpen(false); setNewPrestataire('');
+    onRefresh();
+  }
+
+  async function handleReprendre() {
+    const ok = await confirm({
+      title: `Reprendre la mission à ${mission.prestataireName} ?`,
+      message: 'Elle redevient « à attribuer » chez nous. Le prestataire (et son agent) en sont informés.',
+      confirmLabel: 'Reprendre', danger: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    const r = await appelPrestataire('reprendre', { missionId: mission.id });
+    setBusy(false);
+    if (!r.ok) { setActionError(r.error); toast(r.error, 'error'); return; }
+    toast('Mission reprise.', 'success');
+    onRefresh();
+  }
+
   async function handleAssign() {
     if (!newCleaner) return;
     const c = cleaners.find(x => x.id === newCleaner);
@@ -369,7 +410,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
 
   // ── Repères pour la LIGNE COMPACTE (résumé au coup d'œil) ──
   const billable = mission.service !== 'delivery' && mission.service !== 'appointment';
-  const unassigned = !mission.cleanerName && !mission.assigneeName;
+  const unassigned = !mission.cleanerName && !mission.assigneeName && !mission.prestataireName;
   const arrivalToday = !!mission.nextArrival && mission.nextArrival === mission.date;
   // Pointage : temps réel vs prévu.
   const cPlanned = mission.missionDurationMinutes ?? 0;
@@ -416,7 +457,9 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</p>
           <p className="text-xs truncate" style={{ color: unassigned ? '#C48A2A' : '#A8A09A' }}>
-            {mission.cleanerName ?? mission.assigneeName ?? 'Non assigné'}
+            {mission.prestataireName
+              ? `${mission.prestataireName}${mission.cleanerName ? ` · ${mission.cleanerName}` : ' · agent à choisir'}`
+              : (mission.cleanerName ?? mission.assigneeName ?? 'Non assigné')}
             {arrivalToday && <span className="font-semibold" style={{ color: '#B91C1C' }}> · Arrivée jour-même</span>}
           </p>
         </div>
@@ -561,12 +604,22 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         ) : (
         /* Cleaner + durée + taux + prix client + gain cleaner */
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {mission.prestataireName ? (
+            <div>
+              <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Prestataire</p>
+              <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.prestataireName}</p>
+              <p className="text-xs" style={{ color: mission.cleanerName ? '#7A7068' : '#C48A2A' }}>
+                {mission.cleanerName ? `Agent : ${mission.cleanerName}` : 'Agent à choisir'}
+              </p>
+            </div>
+          ) : (
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Cleaner</p>
             <p className="text-sm font-medium" style={{ color: mission.cleanerName ? '#1A1A1A' : '#C48A2A' }}>
               {mission.cleanerName ?? 'Non assigné'}
             </p>
           </div>
+          )}
           {mission.requestedBy && (
             <div>
               <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Client</p>
@@ -578,6 +631,14 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>{mission.service === 'delivery' ? 'Type' : 'Durée'}</p>
             <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{mission.service === 'delivery' ? 'Forfait livraison' : formatDuration(mission.missionDurationMinutes)}</p>
           </div>
+          {mission.prestataireName ? (
+          <div>
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Taux prestataire</p>
+            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>
+              {mission.prestataireRateSnapshot != null ? `${money(mission.prestataireRateSnapshot)}/h` : '—'}
+            </p>
+          </div>
+          ) : (
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>{mission.service === 'delivery' ? 'Forfait cleaner' : 'Taux cleaner'}</p>
             <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>
@@ -586,6 +647,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 : (mission.cleanerHourlyRateSnapshot != null ? `${money(mission.cleanerHourlyRateSnapshot)}/h` : '—')}
             </p>
           </div>
+          )}
           {/* Livraison : jamais facturée au client → on masque le prix client. */}
           {mission.service !== 'delivery' && (
           <div>
@@ -594,8 +656,10 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
           </div>
           )}
           <div>
-            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Gain cleaner</p>
-            <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{money(mission.cleanerGain ?? 0)}</p>
+            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>{mission.prestataireName ? 'Dû au prestataire' : 'Gain cleaner'}</p>
+            <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>
+              {money(mission.prestataireName ? (mission.prestataireGain ?? 0) : (mission.cleanerGain ?? 0))}
+            </p>
           </div>
         </div>
         )}
@@ -854,6 +918,29 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 className="px-4 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
             </div>
           </div>
+        ) : confierOpen ? (
+          /* Confier la mission à un prestataire (sous-traitant) */
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <select value={newPrestataire} onChange={e => setNewPrestataire(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
+                style={{ ...inputStyle, color: newPrestataire ? '#1A1A1A' : '#A8A09A' }}>
+                <option value="">{prestataires === null ? 'Chargement…' : 'Choisir un prestataire'}</option>
+                {(prestataires ?? []).filter(p => p.id !== mission.prestataireId).map(p => (
+                  <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h</option>
+                ))}
+              </select>
+              <button onClick={handleConfier} disabled={!newPrestataire || busy}
+                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
+                style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
+              <button onClick={() => { setConfierOpen(false); setNewPrestataire(''); }}
+                className="px-3 py-2 rounded-xl text-sm"
+                style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
+            </div>
+            {prestataires !== null && prestataires.length === 0 && (
+              <p className="text-xs" style={{ color: '#A8A09A' }}>Aucun prestataire actif. Créez-en un dans Équipe › Prestataires.</p>
+            )}
+          </div>
         ) : assignOpen ? (
           /* Assigner / réassigner un cleaner */
           <div className="flex gap-2">
@@ -886,6 +973,21 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
                   style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
                   Réassigner cleaner
+                </button>
+              )}
+              {/* Sous-traitance : confier à un prestataire, ou le lui reprendre. */}
+              {(mission.status === 'pending' || mission.status === 'accepted') && mission.service !== 'appointment' && (
+                <button onClick={ouvrirConfier} disabled={busy}
+                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  {mission.prestataireId ? 'Changer de prestataire' : 'Confier à un prestataire'}
+                </button>
+              )}
+              {mission.prestataireId && (mission.status === 'pending' || mission.status === 'accepted') && (
+                <button onClick={handleReprendre} disabled={busy}
+                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
+                  style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+                  Reprendre au prestataire
                 </button>
               )}
               {/* Retirer la mission au cleaner sans la réassigner tout de suite :

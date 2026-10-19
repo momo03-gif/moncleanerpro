@@ -117,5 +117,6 @@ export function redirectPathForRole(role: Role): string {
   return role === 'admin' ? '/admin'
     : role === 'cleaner' ? '/cleaner'
     : role === 'airbnb' ? '/airbnb/accueil'
+    : role === 'prestataire' ? '/prestataire'
     : '/hotel';
 }

@@ -55,7 +55,7 @@ export default function CleanerNav() {
 
       {/* Bottom nav — grande pour les doigts */}
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex border-t" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {navItems.map(item => {
+        {navItems.filter(item => !(user?.agent && item.href === '/cleaner/proposees')).map(item => {
           const isActive = pathname === item.href;
           return (
             <Link

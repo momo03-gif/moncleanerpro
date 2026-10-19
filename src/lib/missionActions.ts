@@ -9,10 +9,11 @@ import {
   GPS_REQUIRED_ERROR, type GeoPoint,
 } from './geo';
 import { photosApresExigees, PHOTOS_APRES_MIN, PHOTOS_REQUISES_ERROR } from './photosRegles';
+import { gainPrestataire } from './prestataireRegles';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified, notifyMissionCancelled,
   notifyMissionCompleted, notifyMissionWithdrawn, notifyExtraTimeRequested, notifyExtraTimeResolved,
-  notifyAdminsMissionRequested, notifyCleanerRequestDecision,
+  notifyAdminsMissionRequested, notifyCleanerRequestDecision, notifyPrestataireAgentDesiste,
 } from './notificationEvents';
 import { logementsDuPartenaire, filtrePartenaire } from './missionRead';
 
@@ -94,7 +95,8 @@ export async function appliquerDuree(
   o: { minutes?: number | null; aptDefault?: number | null; price?: number | null },
 ): Promise<{ error: string | null; minutes: number | null }> {
   const minutes = o.minutes != null ? Math.max(0, Math.round(o.minutes)) : null;
-  const { data: m } = await db.from('missions').select('service, cleaner_id').eq('id', missionId).maybeSingle();
+  // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
+  const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
   if (!m) return { error: 'Mission introuvable.', minutes };
 
   const patch: Record<string, unknown> = {};
@@ -112,6 +114,11 @@ export async function appliquerDuree(
     });
     patch.cleaner_hourly_rate_snapshot = rate;
   }
+  // Mission confiée à un prestataire : ce qu'on lui doit suit la durée, à son
+  // taux FIGÉ (celui du jour où on la lui a confiée).
+  if (minutes != null && m.prestataire_id && m.prestataire_rate_snapshot != null) {
+    patch.prestataire_gain = gainPrestataire(Number(m.prestataire_rate_snapshot), minutes);
+  }
   if (Object.keys(patch).length === 0) return { error: null, minutes };
   const { error } = await db.from('missions').update(patch).eq('id', missionId);
   if (error) { console.error('appliquerDuree:', error.message); return { error: 'Enregistrement impossible.', minutes }; }
@@ -123,9 +130,8 @@ export async function appliquerDuree(
  * MAX(temps accordé, temps réel).
  */
 export async function cloturerArgent(db: SupabaseClient, missionId: string, actualMinutes: number): Promise<{ error: string | null }> {
-  const { data: m } = await db.from('missions')
-    .select('source, service, price, mission_duration_minutes, cleaner_hourly_rate_snapshot')
-    .eq('id', missionId).maybeSingle();
+  // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
+  const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
   if (!m) return { error: 'Mission introuvable.' };
 
   const mins = Math.max(0, Math.round(actualMinutes));
@@ -134,6 +140,11 @@ export async function cloturerArgent(db: SupabaseClient, missionId: string, actu
   const patch: Record<string, unknown> = {};
   const rate = Number(m.cleaner_hourly_rate_snapshot) || 0;
   if (m.source === 'hotel' && svc === 'cleaning' && rate > 0) patch.cleaner_gain = computeCleanerGain(rate, mins);
+  // Même règle pour le prestataire : un ménage d'hôtel se paie au temps réel.
+  const tauxPresta = Number(m.prestataire_rate_snapshot) || 0;
+  if (m.prestataire_id && m.source === 'hotel' && svc === 'cleaning' && tauxPresta > 0) {
+    patch.prestataire_gain = gainPrestataire(tauxPresta, mins);
+  }
   const basePrice = Number(m.price) || 0;
   if (m.source === 'hotel' && planned > 0 && basePrice > 0) patch.price = billableHotelPrice(basePrice, planned, mins);
   if (Object.keys(patch).length === 0) return { error: null };
@@ -265,7 +276,8 @@ const ACTIONS: Record<string, Action> = {
     if (!missionId) return ko('Mission manquante.');
     const cleanerId = await idCleaner(db, s.id);
     if (!cleanerId) return ko('Cleaner introuvable.', 403);
-    const { data: avant } = await db.from('missions').select('cleaner_name').eq('id', missionId).maybeSingle();
+    // `*` : tolère une base pas encore migrée (prestataire_id).
+    const { data: avant } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
     const { data, error } = await db.from('missions')
       .update({ status: 'pending', cleaner_id: null, cleaner_name: null })
       .eq('id', missionId).eq('cleaner_id', cleanerId)
@@ -273,6 +285,8 @@ const ACTIONS: Record<string, Action> = {
     if (error) { console.error('missions/withdraw:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Désistement impossible sur cette mission.');
     await notifyMissionWithdrawn(missionId, (avant?.cleaner_name as string | null) ?? null);
+    // Agent d'un prestataire : la mission revient « à attribuer » chez LUI.
+    if (avant?.prestataire_id) await notifyPrestataireAgentDesiste(missionId, (avant.cleaner_name as string | null) ?? null);
     return ok();
   },
 
@@ -300,13 +314,16 @@ const ACTIONS: Record<string, Action> = {
   async request(db, s, b) {
     const missionId = str(b.missionId);
     if (!missionId) return ko('Mission manquante.');
-    const { data: c } = await db.from('cleaners')
-      .select('id, name, can_clean, can_deliver').eq('user_id', s.id).maybeSingle();
+    // `*` : tolère une base pas encore migrée (prestataire_id).
+    const { data: c } = await db.from('cleaners').select('*').eq('user_id', s.id).maybeSingle();
     if (!c) return ko('Cleaner introuvable.', 403);
+    // L'agent d'un prestataire ne reçoit que ce que son prestataire lui donne.
+    if (c.prestataire_id) return ko('Vos missions vous sont attribuées par votre prestataire.', 403);
 
-    const { data: m } = await db.from('missions')
-      .select('service, status, pending_cleaner_id, pending_cleaner_name').eq('id', missionId).maybeSingle();
+    const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
     if (!m) return ko('Cette mission n’est plus disponible.');
+    // Confiée à un prestataire : elle n'est plus proposée à l'équipe.
+    if (m.prestataire_id) return ko('Cette mission n’est plus disponible.');
     if (!canCleanerDoService(c, ((m.service as MissionService) ?? 'cleaning'))) {
       return ko("Cette mission requiert une prestation que tu n'effectues pas.");
     }

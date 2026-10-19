@@ -64,6 +64,28 @@ export async function POST(req: Request) {
     }
   }
 
+  // Prestataire suspendu : ni lui, ni ses agents ne se connectent.
+  let agent = false;
+  if (u.role === 'prestataire') {
+    const { data: pr } = await db.from('prestataires').select('status').eq('user_id', u.id).maybeSingle();
+    if (!pr) return NextResponse.json(INVALID, { status: 401 });
+    if (pr.status === 'suspended') {
+      return NextResponse.json({ error: 'Compte suspendu. Contactez MonCleanerPro.' }, { status: 403 });
+    }
+  }
+  if (u.role === 'cleaner') {
+    // Agent d'un prestataire : best-effort (sans la migration, la colonne
+    // n'existe pas et la requête échoue — le cleaner reste un cleaner).
+    const { data: c } = await db.from('cleaners').select('prestataire_id, prestataires(status)')
+      .eq('user_id', u.id).maybeSingle();
+    if (c?.prestataire_id) {
+      agent = true;
+      if ((c.prestataires as { status?: string } | null)?.status === 'suspended') {
+        return NextResponse.json({ error: 'Compte suspendu. Contactez votre prestataire.' }, { status: 403 });
+      }
+    }
+  }
+
   // Migration transparente SHA-256 → bcrypt (non bloquante si elle échoue).
   if (needsRehash) {
     try { await db.from('users').update({ password_hash: await hashPassword(password) }).eq('id', u.id); }
@@ -73,6 +95,7 @@ export async function POST(req: Request) {
   const sessionUser: SessionUser = {
     id: u.id, name: u.name, email: u.email, role: u.role,
     phone: u.phone ?? undefined, isActive: u.status === 'active',
+    ...(agent ? { agent: true } : {}),
   };
   await createSession(sessionUser);
 

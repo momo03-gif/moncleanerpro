@@ -10,6 +10,7 @@ import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import { clientKindOf, CLIENT_KIND_LABEL, CLIENT_KIND_COLOR, type ClientKind } from '@/lib/clientKind';
 import Loading from "@/components/Loading";
 import Icon, { type IconName } from '@/components/Icon';
+import { coutMainOeuvre } from '@/lib/pay';
 
 // Perf : les panneaux lourds (RH, rentabilité) tirent la couche données ; on les
 // charge en différé (chunks séparés) pour qu'ils ne pèsent pas sur le chargement
@@ -52,7 +53,7 @@ export default function StatsPage() {
   const avgPrice = billable.length > 0 ? Math.round(billable.reduce((s, m) => s + m.price, 0) / billable.length) : 0;
 
   // Bénéfice net tout compris = revenus − salaires cleaners − dépenses (TTC).
-  const salariesAll = missions.filter(m => m.status === 'completed').reduce((s, m) => s + (m.cleanerGain ?? 0), 0);
+  const salariesAll = missions.filter(m => m.status === 'completed').reduce((s, m) => s + coutMainOeuvre(m), 0);
   const depensesAll = depenses.reduce((s, d) => s + d.montantTtc, 0);
   const netAllIn = Math.round((revenue - salariesAll - depensesAll) * 100) / 100;
 
@@ -68,7 +69,7 @@ export default function StatsPage() {
     const ms = missions.filter(m => clientKindOf(m, ehpadUserIds) === k);
     const done = ms.filter(m => m.status === 'completed');
     const ca = Math.round(done.filter(isBillable).reduce((s, m) => s + m.price, 0));
-    const salaries = Math.round(done.reduce((s, m) => s + (m.cleanerGain ?? 0), 0));
+    const salaries = Math.round(done.reduce((s, m) => s + coutMainOeuvre(m), 0));
     return { kind: k, total: ms.length, done: done.length, ca, salaries, marge: ca - salaries };
   });
 
@@ -87,7 +88,7 @@ export default function StatsPage() {
   // dans les salaires ; on l'isole ici pour le suivi.
   const deliveryDone = missions.filter(m => m.status === 'completed' && serviceParts(m.service).delivery);
   const deliveriesCount = deliveryDone.length;
-  const deliveriesCost = Math.round(deliveryDone.reduce((s, m) => s + (m.cleanerGain ?? 0), 0) * 100) / 100;
+  const deliveriesCost = Math.round(deliveryDone.reduce((s, m) => s + coutMainOeuvre(m), 0) * 100) / 100;
 
   const byType: Record<string, number> = {};
   missions.forEach(m => { byType[m.type] = (byType[m.type] ?? 0) + 1; });

@@ -104,6 +104,10 @@ function rowToMission(row: any): Mission {
     status: mapMissionStatus(row.status),
     cleanerId: row.cleaner_id,
     cleanerName: row.cleaner_name,
+    prestataireId: row.prestataire_id ?? undefined,
+    prestataireName: row.prestataire_name ?? undefined,
+    prestataireGain: row.prestataire_gain != null ? Number(row.prestataire_gain) : undefined,
+    prestataireRateSnapshot: row.prestataire_rate_snapshot != null ? Number(row.prestataire_rate_snapshot) : undefined,
     price,
     cleanerGain: Number(row.cleaner_gain) || 0,
     missionDurationMinutes: minutes,
@@ -216,6 +220,19 @@ export async function getMissionsForCleanerOuNull(sinceDate?: string, delaiMs = 
     return (body.data ?? []).map(rowToMission);
   } catch { return null; }
   finally { clearTimeout(timer); }
+}
+
+/**
+ * Missions confiées à un prestataire (sous-traitant). Le prestataire connecté
+ * lit les siennes ; l'admin passe `prestataireId`. `null` = lecture impossible.
+ */
+export async function getMissionsForPrestataireDB(opts: { prestataireId?: string; since?: string } = {}): Promise<Mission[] | null> {
+  try {
+    return ((await lireMissions({ scope: 'prestataire', prestataireId: opts.prestataireId, since: opts.since })) ?? []).map(rowToMission);
+  } catch (e) {
+    console.error('getMissionsForPrestataireDB:', e);
+    return null;
+  }
 }
 
 export async function getMissionsForCleanerDB(_userId: string, sinceDate?: string): Promise<Mission[]> {

@@ -50,10 +50,14 @@ export async function POST(req: NextRequest) {
   const db = getSupabaseAdmin();
   const estAdmin = appelant!.role === 'admin';
 
-  const { data: missions } = await db.from('missions')
+  const lire = (avecPrestataire: boolean) => db.from('missions')
     .select('id, status, airbnb_id, partner_id, cleaners!missions_cleaner_id_fkey(user_id), '
+      + (avecPrestataire ? 'prestataires(user_id), ' : '')
       + 'airbnbs(code_portail, code_boite, entry_instructions, notes, access_video_url, on_site_contact_name, on_site_contact_phone)')
     .in('id', ids);
+  let { data: missions, error } = await lire(true);
+  // Base pas encore migrée (pas de lien vers prestataires) : on lit comme avant.
+  if (error) ({ data: missions } = await lire(false));
 
   const terrain: Record<string, TerrainInfo> = {};
   const ouverts: string[] = [];   // ménages en cours, pour le contact voyageur
@@ -61,6 +65,7 @@ export async function POST(req: NextRequest) {
   type Ligne = {
     id: string; status: string; airbnb_id: string | null; partner_id: string | null;
     cleaners?: { user_id?: string } | null;
+    prestataires?: { user_id?: string } | null;
     airbnbs?: Record<string, string | null> | null;
   };
 
@@ -68,7 +73,9 @@ export async function POST(req: NextRequest) {
     const cleanerUserId = m.cleaners?.user_id ?? null;
     const autorise = estAdmin
       || (cleanerUserId && cleanerUserId === appelant!.id)
-      || (!!m.partner_id && m.partner_id === appelant!.id);
+      || (!!m.partner_id && m.partner_id === appelant!.id)
+      // Le prestataire à qui la mission est confiée : il prépare son agent.
+      || (!!m.prestataires?.user_id && m.prestataires.user_id === appelant!.id);
     if (!autorise) continue;
 
     const apt = m.airbnbs ?? {};

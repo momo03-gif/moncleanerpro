@@ -44,9 +44,17 @@ export async function POST(req: Request) {
       // ── LECTURE ──
       case 'list': {
         const colonnes = isAdmin ? COLONNES_COMPLETES : COLONNES_PUBLIQUES;
-        let q = db.from('cleaners').select(colonnes);
-        if (b.activeOnly) q = q.eq('status', 'active');
-        const { data, error } = await q.order('created_at');
+        // L'ÉQUIPE seulement : les agents des prestataires (sous-traitants)
+        // n'apparaissent ni dans les listes, ni en RH, ni dans la paie.
+        const lire = (sansAgents: boolean) => {
+          let q = db.from('cleaners').select(colonnes);
+          if (b.activeOnly) q = q.eq('status', 'active');
+          if (sansAgents) q = q.is('prestataire_id', null);
+          return q.order('created_at');
+        };
+        let { data, error } = await lire(true);
+        // Base pas encore migrée (colonne absente) : on lit comme avant.
+        if (error) ({ data, error } = await lire(false));
         if (error) { console.error('cleaners/list:', error.message); return NextResponse.json({ error: 'Lecture impossible.' }, { status: 500 }); }
         return NextResponse.json({ cleaners: data ?? [] });
       }

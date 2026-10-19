@@ -276,7 +276,7 @@ export async function GET(req: Request) {
       ]);
       const completed = (missions ?? []).filter((m: any) => m.status === 'done');
       const totalRevenue = completed.reduce((s: number, m: any) => s + (m.price ?? 0), 0);
-      const totalSalaries = completed.reduce((s: number, m: any) => s + (m.cleaner_gain ?? 0), 0);
+      const totalSalaries = completed.reduce((s: number, m: any) => s + (m.cleaner_gain ?? 0) + (Number(m.prestataire_gain) || 0), 0);
       return NextResponse.json({ stats: {
         totalMissions: (missions ?? []).length,
         completedMissions: completed.length,

@@ -16,6 +16,8 @@ export interface SessionUser {
   role: Role;
   phone?: string;
   isActive?: boolean;
+  /** Cleaner rattaché à un prestataire (sous-traitant) : hors équipe. */
+  agent?: boolean;
 }
 
 function secretKey(): Uint8Array {

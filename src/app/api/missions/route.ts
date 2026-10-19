@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeMissionGain } from '@/lib/pay';
 import { executerActionMission, appliquerDuree, cloturerArgent } from '@/lib/missionActions';
 import { lirePourSession } from '@/lib/missionRead';
-import { notifyCleanerNewMission, notifyCleanerMissionUnassigned, notifyMissionCancelled, notifyMissionsTransferees } from '@/lib/notificationEvents';
+import { notifyCleanerNewMission, notifyCleanerMissionUnassigned, notifyMissionCancelled, notifyMissionsTransferees, notifyPrestataireMissionReprise } from '@/lib/notificationEvents';
 import type { MissionService } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -28,6 +28,12 @@ export const runtime = 'nodejs';
 // sur le `default` ci-dessous. Le navigateur n'écrit plus dans `missions`.
 
 const refus = (message: string, code = 403) => NextResponse.json({ error: message }, { status: code });
+
+/** La mission quitte un prestataire : il doit le savoir (son agent éventuel aussi). */
+async function prevenirPrestataireRepris(missionId: string, prestataireId: string) {
+  const { data: pr } = await getSupabaseAdmin().from('prestataires').select('user_id').eq('id', prestataireId).maybeSingle();
+  if (pr?.user_id) await notifyPrestataireMissionReprise(missionId, pr.user_id as string);
+}
 
 // ── Lecture ──────────────────────────────────────────────────────────────────
 // GET /api/missions?scope=all|cleaner|partner|open|requests|ranking|supplies|one
@@ -128,8 +134,9 @@ export async function POST(req: NextRequest) {
       const deliveryRate = Number(cleaner.delivery_rate) || 0;
 
       for (const id of ids) {
+        // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
         const { data: m } = await db.from('missions')
-          .select('service, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)')
+          .select('*, airbnbs(estimated_cleaning_minutes)')
           .eq('id', id).maybeSingle();
         if (!m) continue;
 
@@ -151,8 +158,13 @@ export async function POST(req: NextRequest) {
           mission_duration_minutes: minutes,
           apartment_default_duration_snapshot: aptDefault != null ? Number(aptDefault) : null,
           hours_worked: Math.round((minutes / 60) * 100) / 100,
+          // Donnée à un cleaner de l'équipe : elle n'est plus confiée au prestataire.
+          ...(m.prestataire_id ? {
+            prestataire_id: null, prestataire_name: null, prestataire_rate_snapshot: null, prestataire_gain: null,
+          } : {}),
         }).eq('id', id);
         if (error) { console.error('missions/assign:', error.message); return refus('Affectation impossible.', 500); }
+        if (m.prestataire_id) await prevenirPrestataireRepris(id, m.prestataire_id as string);
       }
       for (const id of ids) await notifyCleanerNewMission(id);
       return NextResponse.json({ ok: true, count: ids.length });

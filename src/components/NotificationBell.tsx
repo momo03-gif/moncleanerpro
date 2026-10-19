@@ -39,6 +39,7 @@ function hrefForNotif(type: string, role: string): string {
     case 'airbnb':
     case 'partner': return '/airbnb/missions';
     case 'hotel': return '/hotel/historique';
+    case 'prestataire': return '/prestataire';
     default: return '/';
   }
 }

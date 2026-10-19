@@ -23,9 +23,19 @@ const INTERNES_PARTENAIRE = [
   'hours_worked', 'started_at', 'ended_at', 'actual_duration_minutes',
   'start_lat', 'start_lng', 'end_lat', 'end_lng', 'extra_time_minutes', 'extra_time_reason',
   'extra_time_status', 'extra_time_requested_at', 'pending_cleaner_id', 'pending_cleaner_name', 'pending_requested_at',
+  // La sous-traitance ne regarde pas le client.
+  'prestataire_id', 'prestataire_name', 'prestataire_gain', 'prestataire_rate_snapshot',
 ];
-/** Argent côté client, jamais envoyé à un cleaner. */
-const INTERNES_CLEANER = ['price', 'supplies_amount'];
+/** Argent côté client — et ce qu'on paie à un prestataire — jamais envoyé à un cleaner. */
+const INTERNES_CLEANER = ['price', 'supplies_amount', 'prestataire_gain', 'prestataire_rate_snapshot'];
+/**
+ * Ce qu'un PRESTATAIRE (et ses agents) ne voit pas : le prix et le nom du client,
+ * nos marges, la paie de nos cleaners, les demandes internes.
+ */
+const INTERNES_PRESTATAIRE = [
+  'price', 'supplies_amount', 'client_name', 'cleaner_gain', 'cleaner_hourly_rate_snapshot',
+  'pending_cleaner_id', 'pending_cleaner_name', 'pending_requested_at', 'partner_rating', 'partner_rating_comment',
+];
 
 function sans(rows: Ligne[], champs: string[], champsLogement: string[] = []): Ligne[] {
   return rows.map(r => {
@@ -42,6 +52,26 @@ function sans(rows: Ligne[], champs: string[], champsLogement: string[] = []): L
 
 const pourCleaner = (rows: Ligne[]) => sans(rows, INTERNES_CLEANER, ['client_price', 'estimated_cleaning_minutes']);
 const pourPartenaire = (rows: Ligne[]) => sans(rows, INTERNES_PARTENAIRE, ['estimated_cleaning_minutes']);
+/** Pour le prestataire : il garde ce qu'on lui doit (prestataire_gain). */
+export const pourPrestataire = (rows: Ligne[]) =>
+  sans(rows, INTERNES_PRESTATAIRE, ['client_price', 'partner_name', 'estimated_cleaning_minutes']);
+/** Pour l'agent d'un prestataire : comme son prestataire, sans le montant. */
+const pourAgent = (rows: Ligne[]) =>
+  sans(pourPrestataire(rows), ['prestataire_gain', 'prestataire_rate_snapshot']);
+
+/** cleaners.id + rattachement à un prestataire (agent: false si la base n'est pas migrée). */
+async function ficheCleaner(db: SupabaseClient, userId: string): Promise<{ id: string; agent: boolean } | null> {
+  const r = await db.from('cleaners').select('id, prestataire_id').eq('user_id', userId).maybeSingle();
+  if (!r.error) return r.data ? { id: r.data.id as string, agent: !!r.data.prestataire_id } : null;
+  const id = await idCleanerDeUtilisateur(db, userId);
+  return id ? { id, agent: false } : null;
+}
+
+/** prestataires.id du compte connecté. */
+export async function idPrestataireDeUtilisateur(db: SupabaseClient, userId: string): Promise<string | null> {
+  const { data } = await db.from('prestataires').select('id').eq('user_id', userId).maybeSingle();
+  return (data?.id as string | undefined) ?? null;
+}
 
 /** Logements (et sites) d'une conciergerie : c'est le LOGEMENT qui fait foi. */
 export async function logementsDuPartenaire(db: SupabaseClient, userId: string): Promise<string[]> {
@@ -103,7 +133,7 @@ export async function lireDuCleaner(db: SupabaseClient, cleanerId: string, since
   return data ?? [];
 }
 
-export type Portee = 'all' | 'cleaner' | 'partner' | 'open' | 'requests' | 'ranking' | 'supplies' | 'one';
+export type Portee = 'all' | 'cleaner' | 'partner' | 'prestataire' | 'open' | 'requests' | 'ranking' | 'supplies' | 'one';
 
 /**
  * Lecture pour une session donnée. Renvoie `null` si la portée est refusée à
@@ -125,8 +155,24 @@ export async function lirePourSession(
       // Un cleaner lit les siennes ; l'admin peut lire celles de n'importe qui.
       if (admin && p.get('cleanerId')) return lireDuCleaner(db, p.get('cleanerId')!, p.get('since'));
       if (session.role !== 'cleaner') return null;
-      const id = await idCleanerDeUtilisateur(db, session.id);
-      return id ? pourCleaner(await lireDuCleaner(db, id, p.get('since'))) : [];
+      const fiche = await ficheCleaner(db, session.id);
+      if (!fiche) return [];
+      const rows = await lireDuCleaner(db, fiche.id, p.get('since'));
+      return fiche.agent ? pourAgent(rows) : pourCleaner(rows);
+    }
+
+    case 'prestataire': {
+      // Les missions qu'on lui a confiées (l'admin peut regarder celles d'un prestataire).
+      const pid = admin
+        ? p.get('prestataireId')
+        : (session.role === 'prestataire' ? await idPrestataireDeUtilisateur(db, session.id) : null);
+      if (!pid) return admin ? [] : null;
+      let q = db.from('missions').select(MISSION_SELECT).eq('prestataire_id', pid).order('date_from', { ascending: false });
+      const s = date(p.get('since'));
+      if (s) q = q.gte('date_from', s);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return admin ? (data ?? []) : pourPrestataire(data ?? []);
     }
 
     case 'partner': {
@@ -142,8 +188,16 @@ export async function lirePourSession(
     case 'open': {
       // Missions ouvertes aux cleaners, pas encore demandées.
       if (!admin && session.role !== 'cleaner') return null;
-      const { data, error } = await db.from('missions').select(MISSION_SELECT)
-        .eq('status', 'pending').is('pending_cleaner_id', null).order('date_from');
+      // Les agents d'un prestataire ne reçoivent que ce que leur prestataire leur donne.
+      if (!admin && (await ficheCleaner(db, session.id))?.agent) return [];
+      const lire = (sansConfiees: boolean) => {
+        let q = db.from('missions').select(MISSION_SELECT).eq('status', 'pending').is('pending_cleaner_id', null);
+        // Une mission confiée à un prestataire n'est plus proposée à l'équipe.
+        if (sansConfiees) q = q.is('prestataire_id', null);
+        return q.order('date_from');
+      };
+      let { data, error } = await lire(true);
+      if (error) ({ data, error } = await lire(false));   // base pas encore migrée
       if (error) throw new Error(error.message);
       return admin ? (data ?? []) : pourCleaner(data ?? []);
     }
@@ -163,13 +217,16 @@ export async function lirePourSession(
       if (!admin && session.role !== 'cleaner') return null;
       const periode = p.get('period') ?? '';
       if (!/^\d{4}-\d{2}$/.test(periode)) return [];
-      const { data, error } = await db.from('missions').select('cleaner_id, cleaners!missions_cleaner_id_fkey(name)')
+      // Les agents des prestataires ne font pas partie de l'équipe : pas de classement.
+      const lire = (champs: string) => db.from('missions').select(champs)
         .eq('status', 'done').gte('date_from', `${periode}-01`).lt('date_from', moisSuivant(periode));
+      let { data, error } = await lire('cleaner_id, prestataire_id, cleaners!missions_cleaner_id_fkey(name)');
+      if (error) ({ data, error } = await lire('cleaner_id, cleaners!missions_cleaner_id_fkey(name)'));
       if (error) throw new Error(error.message);
       const parCleaner = new Map<string, { name: string; count: number }>();
-      for (const r of (data ?? []) as Ligne[]) {
+      for (const r of (data ?? []) as unknown as Ligne[]) {
         const id = r.cleaner_id as string | null;
-        if (!id) continue;
+        if (!id || r.prestataire_id) continue;
         const e = parCleaner.get(id) ?? { name: (r.cleaners as { name?: string } | null)?.name ?? 'Cleaner', count: 0 };
         e.count += 1; parCleaner.set(id, e);
       }
@@ -209,8 +266,12 @@ export async function lirePourSession(
         if (aSoi) return pourPartenaire([data])[0];
       }
       if (session.role === 'cleaner') {
-        const cid = await idCleanerDeUtilisateur(db, session.id);
-        if (cid && data.cleaner_id === cid) return pourCleaner([data])[0];
+        const fiche = await ficheCleaner(db, session.id);
+        if (fiche && data.cleaner_id === fiche.id) return (fiche.agent ? pourAgent : pourCleaner)([data])[0];
+      }
+      if (session.role === 'prestataire' && data.prestataire_id) {
+        const pid = await idPrestataireDeUtilisateur(db, session.id);
+        if (pid && data.prestataire_id === pid) return pourPrestataire([data])[0];
       }
       return null;
     }
