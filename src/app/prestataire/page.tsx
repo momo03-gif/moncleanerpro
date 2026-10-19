@@ -108,7 +108,7 @@ export default function PrestataireMissionsPage() {
       ) : agents.length === 0 && onglet === 'attribuer' && listes.attribuer.length > 0 ? (
         <div className="rounded-2xl border p-5 mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>Ajoutez d’abord vos agents</p>
-          <p className="text-sm mb-3" style={{ color: '#7A7068' }}>Chaque agent reçoit ses propres identifiants pour l’application terrain.</p>
+          <p className="text-sm mb-3" style={{ color: '#7A7068' }}>Chaque agent reçoit ses propres identifiants pour l’application terrain. Vous travaillez seul ? Ajoutez-vous comme agent (avec une autre adresse email) pour réaliser vous-même les missions.</p>
           <Link href="/prestataire/agents" className="inline-block px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             Gérer mes agents
           </Link>

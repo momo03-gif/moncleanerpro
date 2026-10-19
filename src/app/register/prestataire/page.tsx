@@ -11,7 +11,7 @@ import Icon from '@/components/Icon';
 const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', color: '#F5F5F5', outline: 'none' };
 
 const CHAMPS: { label: string; key: keyof typeof VIDE; type: string; placeholder: string; required: boolean }[] = [
-  { label: 'Raison sociale', key: 'name', type: 'text', placeholder: 'Nom de votre entreprise', required: true },
+  { label: 'Nom ou raison sociale', key: 'name', type: 'text', placeholder: 'Votre entreprise ou votre nom', required: true },
   { label: 'Nom du contact', key: 'contactName', type: 'text', placeholder: 'Prénom Nom', required: true },
   { label: 'Email', key: 'email', type: 'email', placeholder: 'contact@entreprise.fr', required: true },
   { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '06 12 34 56 78', required: true },
@@ -75,7 +75,7 @@ export default function RegisterPrestatairePage() {
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3"><Logo size={36} tone="dark" showWordmark={false} /></div>
-          <h1 className="text-xl font-bold tracking-wide" style={{ color: '#F5F5F5' }}>Compte prestataire</h1>
+          <h1 className="text-xl font-bold tracking-wide" style={{ color: '#F5F5F5' }}>Prestataire / indépendant</h1>
           <p className="text-sm mt-1" style={{ color: '#5A5550' }}>Votre compte sera activé après validation</p>
         </div>
 
@@ -94,7 +94,7 @@ export default function RegisterPrestatairePage() {
             ))}
 
             <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#1A1A1A', color: '#6A6058' }}>
-              Une fois validé, vous ajoutez vos agents : chacun reçoit ses identifiants pour l’application terrain.
+              Une fois validé, vous recevez nos missions. Si vous avez une équipe, vous ajoutez vos agents : chacun reçoit ses identifiants pour l’application terrain.
             </p>
 
             {error && <p className="text-xs text-center py-2 px-3 rounded-lg" style={{ backgroundColor: '#3A1A1A', color: '#F87171' }}>{error}</p>}
