@@ -22,7 +22,7 @@ const OPTIONS: { type: string; icon: IconName; title: string; desc: string; href
   {
     type: 'prestataire',
     icon: 'cleaners',
-    title: 'Prestataire / sous-traitant',
+    title: 'Prestataire',
     desc: 'Entreprise de nettoyage : réalisez nos missions avec vos agents.',
     href: '/register/prestataire',
   },

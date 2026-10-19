@@ -432,7 +432,7 @@ function CreatePrestataireForm({ onClose }: { onClose: () => void }) {
   return (
     <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
       <p className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Nouveau compte prestataire</p>
-      <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>Entreprise sous-traitante : elle attribue nos missions à ses propres agents.</p>
+      <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>Entreprise partenaire : elle attribue nos missions à ses propres agents.</p>
       <div className="grid gap-2">
         <input value={f.name} onChange={e => setF(s => ({ ...s, name: e.target.value }))} placeholder="Raison sociale" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.contactName} onChange={e => setF(s => ({ ...s, contactName: e.target.value }))} placeholder="Nom du contact" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
