@@ -43,7 +43,7 @@ function buildRecapText(mission: Mission, report: MissionReport | null): string 
   if (pts.length === 0) pts.push('Aucun point particulier signalé — logement propre et conforme.');
   lines.push(...pts);
   lines.push('');
-  lines.push('Photos avant/après disponibles dans l’espace MonCleanerPro.');
+  lines.push('Photos du ménage disponibles dans l’espace MonCleanerPro.');
   return lines.join('\n');
 }
 

@@ -8,8 +8,10 @@ import type { MissionPhoto, MissionPhotoKind } from '@/lib/types';
 import Icon from '@/components/Icon';
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Photos avant/après d'une mission — composant réutilisable.
-//    mode="cleaner" → ajout (avant/après) + consultation, PAS de suppression.
+//  Photos d'une mission — composant réutilisable.
+//  Depuis oct. 2026 : uniquement des photos « après » (jusqu'à 16). Les anciennes
+//  photos « avant » restent visibles, en lecture seule.
+//    mode="cleaner" → ajout de photos « après » + consultation.
 //    mode="viewer"  → consultation seule (admin) : zoom + téléchargement.
 //  Les partenaires (hôtel/Airbnb) n'affichent pas ce composant pour l'instant ;
 //  le mode "viewer" est prêt à être réutilisé pour eux plus tard.
@@ -81,11 +83,13 @@ export default function MissionPhotos({ missionId, mode, userId, defaultOpen, ex
                 missionId={missionId} userId={userId}
                 onUploaded={load} onZoom={setLightbox} enAvant={!!exigeApres && after.length === 0} modifiable={modifiable}
               />
-              <PhotoSection
-                title="Avant" kind="before" photos={before} mode={mode}
-                missionId={missionId} userId={userId}
-                onUploaded={load} onZoom={setLightbox} modifiable={modifiable}
-              />
+              {before.length > 0 && (
+                <PhotoSection
+                  title="Avant" kind="before" photos={before} mode="viewer"
+                  missionId={missionId}
+                  onUploaded={load} onZoom={setLightbox}
+                />
+              )}
               {mode === 'cleaner' && (
                 <p className="text-[11px]" style={{ color: '#B8B0A8' }}>
                   Photo « après » obligatoire pour terminer · conservées {PHOTO_RETENTION_DAYS} jours.
@@ -131,7 +135,7 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded
   const [suppression, setSuppression] = useState<string | null>(null);
   const apercus = useRef<Map<string, string>>(new Map());
   const nbEnFile = useRef(0);
-  const limite = maxPhotos(kind);
+  const limite = maxPhotos();
   const enCours = envois.filter(x => x.etat === 'envoi').length;
   const place = limite - photos.length - envois.length;
 
@@ -142,7 +146,8 @@ function PhotoSection({ title, kind, photos, mode, missionId, userId, onUploaded
     if (mode !== 'cleaner') return;
     let actif = true;
     async function relire() {
-      const enFile = (await photosEnFile(missionId)).filter(x => x.kind === kind);
+      // Une photo « avant » restée dans la file est enregistrée en « après ».
+      const enFile = kind === 'after' ? await photosEnFile(missionId) : [];
       if (!actif) return;
       const enLigne = typeof navigator === 'undefined' || navigator.onLine !== false;
       const vus = new Set<string>();

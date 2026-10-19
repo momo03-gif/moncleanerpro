@@ -13,8 +13,8 @@ import type { MissionPhoto, MissionPhotoKind } from './types';
 
 export const PHOTOS_BUCKET = 'mission_photos';
 
-// Limites par type de photo (avant / après) : cf. photosRegles.ts.
-export { MAX_PHOTOS_AVANT, MAX_PHOTOS_APRES, maxPhotos } from './photosRegles';
+// Limite des photos « après » : cf. photosRegles.ts.
+export { MAX_PHOTOS_APRES, maxPhotos } from './photosRegles';
 
 // Rétention : les photos servent de preuve, pas d'archive. Purge après 14 jours.
 export const PHOTO_RETENTION_DAYS = 14;
@@ -72,10 +72,12 @@ export async function uploadMissionPhotoDB(params: {
 }): Promise<{ error: string | null; photo?: MissionPhoto }> {
   const { missionId, kind, file, userId } = params;
 
-  // Limite par type (avant / après) — revérifiée par le serveur.
-  const current = await countMissionPhotosDB(missionId, kind);
-  if (current >= maxPhotos(kind)) {
-    return { error: `Limite atteinte : ${maxPhotos(kind)} photos « ${kind === 'before' ? 'avant' : 'après'} » maximum.` };
+  // Plus de photos « avant » : toute nouvelle photo est une photo « après »
+  // (une ancienne photo « avant » encore dans la file hors-ligne y compris).
+  void kind;
+  const current = await countMissionPhotosDB(missionId, 'after');
+  if (current >= maxPhotos()) {
+    return { error: `Limite atteinte : ${maxPhotos()} photos maximum.` };
   }
 
   // Compression pour limiter le stockage.
@@ -83,7 +85,7 @@ export async function uploadMissionPhotoDB(params: {
 
   // Dépôt autorisé par le serveur (cleaner de la mission ou admin), qui choisit
   // le chemin : <missionId>/<kind>-<timestamp>-<rand>.jpg
-  const depot = await deposerFichier('mission-photo', { missionId, photoKind: kind }, compressed, compressed.type || 'image/jpeg');
+  const depot = await deposerFichier('mission-photo', { missionId, photoKind: 'after' }, compressed, compressed.type || 'image/jpeg');
   if (depot.error !== null) { console.error('uploadMissionPhotoDB storage:', depot.error); return { error: depot.error }; }
   const path = depot.path;
 

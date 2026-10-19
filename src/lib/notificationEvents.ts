@@ -365,7 +365,7 @@ export async function notifyMissionCompleted(missionId: string) {
       const livraison = ctx.service === 'delivery';
       const partnerMsg = livraison
         ? `Livraison effectuée à ${ctx.place}.`
-        : `Ménage terminé à ${ctx.place}. Compte-rendu disponible : photos avant/après et rapport.`;
+        : `Ménage terminé à ${ctx.place}. Compte-rendu disponible : photos et rapport.`;
       rows.push({
         userId: partnerRecipient, role: 'partner',
         title: livraison ? 'Livraison effectuée' : 'Ménage terminé — compte-rendu prêt',

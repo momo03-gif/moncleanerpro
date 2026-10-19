@@ -6,20 +6,21 @@
 // ménage (vérifié par le serveur). Les livraisons et les rendez-vous ne sont
 // pas concernés ; l'admin peut toujours clôturer une mission lui-même.
 //
-// Limites SÉPARÉES : des photos « avant » ne doivent jamais empêcher d'ajouter
-// les photos « après » exigées (l'ancienne limite de 8 était commune).
+// Depuis oct. 2026, on ne prend PLUS de photos « avant » : uniquement des
+// photos « après », jusqu'à 16. Les anciennes photos « avant » restent
+// affichées ; toute nouvelle photo est enregistrée en « après » par le serveur.
 
-import type { MissionPhotoKind, MissionService } from './types';
+import type { MissionService } from './types';
 
 export const PHOTOS_APRES_MIN = 1;
-export const MAX_PHOTOS_APRES = 8;
-export const MAX_PHOTOS_AVANT = 4;
+export const MAX_PHOTOS_APRES = 16;
 
 export const PHOTOS_REQUISES_ERROR =
   'Ajoutez au moins une photo « après » pour terminer le ménage : c’est la preuve du travail rendu.';
 
-export function maxPhotos(kind: MissionPhotoKind): number {
-  return kind === 'before' ? MAX_PHOTOS_AVANT : MAX_PHOTOS_APRES;
+/** Une seule limite : toute nouvelle photo est une photo « après ». */
+export function maxPhotos(): number {
+  return MAX_PHOTOS_APRES;
 }
 
 /** Un ménage (seul ou avec livraison) exige des photos « après » ; pas une livraison ni un rendez-vous. */

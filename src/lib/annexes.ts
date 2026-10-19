@@ -130,16 +130,17 @@ const OPS: Record<string, Op> = {
   // chemin, qui doit être rangé sous la mission.
   async 'photo-add'(db, s, b) {
     const missionId = str(b.missionId), path = str(b.path);
-    const kind = b.kind === 'before' ? 'before' : 'after';
+    // Plus de photos « avant » : toute nouvelle photo est enregistrée en « après ».
+    const kind = 'after';
     if (!missionId || !path) return ko('Photo incomplète.');
     const lien = await lienMission(db, s, missionId);
     if (lien !== 'admin' && lien !== 'cleaner') return refuse;
     if (!path.startsWith(`${missionId}/`) || path.includes('..')) return ko('Chemin de photo invalide.');
-    // Limites SÉPARÉES avant / après (cf. photosRegles.ts).
+    // Limite des photos « après » (cf. photosRegles.ts).
     const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true })
       .eq('mission_id', missionId).eq('kind', kind);
-    if ((count ?? 0) >= maxPhotos(kind)) {
-      return ko(`Limite atteinte : ${maxPhotos(kind)} photos « ${kind === 'before' ? 'avant' : 'après'} » maximum.`);
+    if ((count ?? 0) >= maxPhotos()) {
+      return ko(`Limite atteinte : ${maxPhotos()} photos maximum.`);
     }
     const url = db.storage.from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
     const { data, error } = await db.from('mission_photos').insert({
@@ -165,7 +166,7 @@ const OPS: Record<string, Op> = {
         if (!missionId) return ko('Mission manquante.');
         const lien = await lienMission(db, s, missionId);
         if (lien !== 'admin' && lien !== 'cleaner') return refuse;
-        path = `${missionId}/${b.photoKind === 'before' ? 'before' : 'after'}-${ts}-${rand}.jpg`;
+        path = `${missionId}/after-${ts}-${rand}.jpg`;
         break;
       }
       case 'repair-photo': {
