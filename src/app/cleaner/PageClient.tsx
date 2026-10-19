@@ -501,7 +501,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
           ) : (
             <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
               <p className="text-[11px]" style={{ color: '#7A7068' }}>
-                Appartement très sale ? Ajoutez des photos « avant » et demandez du temps en plus.
+                Appartement très sale ? Prenez-le en photo et demandez du temps en plus.
               </p>
               <div className="flex gap-1.5">
                 {EXTRA_TIME_OPTIONS.map(opt => (
