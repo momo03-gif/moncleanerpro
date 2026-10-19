@@ -13,6 +13,8 @@ import type { Mission, Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { generatePassword, buildAccessMessage, copyToClipboard, APP_LOGIN_URL } from '@/lib/partnerAccess';
 import { currentMonth } from '@/lib/mockData';
+import Link from 'next/link';
+import { appelPrestataire } from '@/lib/prestataireApi';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 
@@ -45,7 +47,7 @@ export default function ComptesPage() {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<'name' | 'revenue' | 'sites'>('name');
   // Formulaire de création d'un compte partenaire.
-  const [creating, setCreating] = useState<null | 'hotel' | 'airbnb'>(null);
+  const [creating, setCreating] = useState<null | 'hotel' | 'airbnb' | 'prestataire'>(null);
 
   async function load() {
     const [pendHotels, partners, allMissions, partnerAccounts, apts] = await Promise.all([
@@ -153,7 +155,7 @@ export default function ComptesPage() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Partenaires</h1>
-          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription, comptes hôtels et conciergeries</p>
+          <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>Demandes d'inscription, comptes hôtels et conciergeries · création des comptes prestataires</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setCreating(c => (c === 'hotel' ? null : 'hotel'))}
@@ -164,10 +166,16 @@ export default function ComptesPage() {
             className="px-3 py-2 rounded-xl text-sm font-semibold border" style={{ borderColor: creating === 'airbnb' ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>
             + Conciergerie
           </button>
+          <button onClick={() => setCreating(c => (c === 'prestataire' ? null : 'prestataire'))}
+            className="px-3 py-2 rounded-xl text-sm font-semibold border" style={{ borderColor: creating === 'prestataire' ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>
+            + Prestataire
+          </button>
         </div>
       </div>
 
-      {creating && (
+      {creating === 'prestataire' ? (
+        <CreatePrestataireForm onClose={() => setCreating(null)} />
+      ) : creating && (
         <CreatePartnerForm kind={creating} onClose={() => setCreating(null)} onCreated={() => { setCreating(null); load(); }} />
       )}
 
@@ -346,6 +354,69 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
             </div>
           </div>
         )}
+      </div>
+      {err && <p className="text-xs mt-2" style={{ color: '#B85A50' }}>{err}</p>}
+      <div className="flex gap-2 mt-3">
+        <button disabled={busy} onClick={submit} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          {busy ? 'Création…' : 'Créer le compte'}
+        </button>
+        <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Création d'un compte PRESTATAIRE (sous-traitant) depuis l'écran Partenaires.
+// Même geste que pour un hôtel ou une conciergerie ; la fiche se gère ensuite
+// dans Équipe › Prestataires (agents, relevé, taux), où il apparaît aussitôt.
+function CreatePrestataireForm({ onClose }: { onClose: () => void }) {
+  const [f, setF] = useState({ name: '', contactName: '', email: '', phone: '', siret: '', hourlyRate: '', password: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [cree, setCree] = useState<string | null>(null);
+
+  async function submit() {
+    if (!f.name.trim() || !f.email.trim() || !f.phone.trim() || f.password.length < 6) {
+      setErr('Nom, email, téléphone et mot de passe (6 caractères min) requis.'); return;
+    }
+    if (!(Number(f.hourlyRate) > 0)) { setErr('Indiquez le taux horaire payé au prestataire.'); return; }
+    setBusy(true); setErr(null);
+    const r = await appelPrestataire('create', { ...f, hourlyRate: Number(f.hourlyRate) });
+    setBusy(false);
+    if (!r.ok) { setErr(r.error); return; }
+    setCree(f.email.trim());
+  }
+
+  if (cree) return (
+    <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
+      <p className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Compte prestataire créé</p>
+      <p className="text-sm mb-3" style={{ color: '#7A7068' }}>
+        Il se connecte avec {cree} et le mot de passe choisi, puis ajoute ses agents. Vous lui confiez des missions depuis la fiche de chaque mission.
+      </p>
+      <div className="flex gap-2">
+        <Link href="/admin/prestataires" className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          Voir les prestataires
+        </Link>
+        <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Fermer</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
+      <p className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Nouveau compte prestataire</p>
+      <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>Entreprise sous-traitante : elle attribue nos missions à ses propres agents.</p>
+      <div className="grid gap-2">
+        <input value={f.name} onChange={e => setF(s => ({ ...s, name: e.target.value }))} placeholder="Raison sociale" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.contactName} onChange={e => setF(s => ({ ...s, contactName: e.target.value }))} placeholder="Nom du contact" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.email} onChange={e => setF(s => ({ ...s, email: e.target.value }))} placeholder="Email (identifiant de connexion)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.phone} onChange={e => setF(s => ({ ...s, phone: e.target.value }))} placeholder="Téléphone (obligatoire)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.siret} onChange={e => setF(s => ({ ...s, siret: e.target.value }))} placeholder="SIRET" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.password} onChange={e => setF(s => ({ ...s, password: e.target.value }))} placeholder="Mot de passe provisoire" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <div className="flex items-center gap-2">
+          <input type="number" min="0" step="0.5" value={f.hourlyRate} onChange={e => setF(s => ({ ...s, hourlyRate: e.target.value }))} placeholder="Taux" className="w-28 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
+          <span className="text-sm" style={{ color: '#7A7068' }}>€ / h payés au prestataire</span>
+        </div>
       </div>
       {err && <p className="text-xs mt-2" style={{ color: '#B85A50' }}>{err}</p>}
       <div className="flex gap-2 mt-3">
