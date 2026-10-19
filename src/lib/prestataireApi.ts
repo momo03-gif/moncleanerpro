@@ -17,6 +17,8 @@ export interface Prestataire {
   agents?: number;
   /** Dû pour les missions terminées ce mois-ci (liste admin). */
   duMois?: number;
+  /** Demande d'inscription pas encore validée (liste admin). */
+  en_attente?: boolean;
 }
 
 export interface Agent {

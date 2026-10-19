@@ -34,6 +34,12 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : unde
 const MDP_MIN = 6;
 
 const PRESTATAIRE_COLONNES = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, created_at';
+
+/** Demande d'inscription pas encore validée : le compte de connexion est 'pending'. */
+async function enAttente(db: SupabaseClient, userId: unknown): Promise<boolean> {
+  const { data } = await db.from('users').select('status').eq('id', userId).maybeSingle();
+  return data?.status === 'pending';
+}
 const AGENT_COLONNES = 'id, user_id, name, email, phone, status, created_at';
 
 /** Durée de la mission en minutes (même règle que l'affectation d'un cleaner). */
@@ -105,6 +111,7 @@ export async function POST(req: Request) {
       const { data: moi } = await db.from('prestataires').select(PRESTATAIRE_COLONNES).eq('user_id', session.id).maybeSingle();
       if (!moi) return ko('Compte prestataire introuvable.', 403);
       if (moi.status !== 'active') return ko('Compte suspendu. Contactez MonCleanerPro.', 403);
+      if (await enAttente(db, session.id)) return ko('Compte en attente de validation.', 403);
       return await opPrestataire(db, op, b, moi as unknown as Record<string, unknown>);
     }
     return ko('Accès refusé.', 403);
@@ -123,6 +130,12 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const { data, error } = await db.from('prestataires').select(PRESTATAIRE_COLONNES).order('name');
       if (error) return ko('Lecture impossible (migration_prestataires.sql exécutée ?).', 500);
       const ids = (data ?? []).map(p => p.id as string);
+      // Demandes d'inscription en attente (compte de connexion 'pending').
+      const userIds = (data ?? []).map(p => p.user_id as string).filter(Boolean);
+      const { data: comptes } = userIds.length
+        ? await db.from('users').select('id, status').in('id', userIds)
+        : { data: [] as { id: string; status: string }[] };
+      const attente = new Set((comptes ?? []).filter(c => c.status === 'pending').map(c => c.id));
       // Nombre d'agents et dû du mois, pour la liste.
       const { data: agents } = ids.length
         ? await db.from('cleaners').select('prestataire_id, status').in('prestataire_id', ids)
@@ -137,6 +150,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         periode,
         prestataires: (data ?? []).map(p => ({
           ...p,
+          en_attente: attente.has(p.user_id as string),
           agents: (agents ?? []).filter(a => a.prestataire_id === p.id && a.status === 'active').length,
           duMois: releveDuMois((faites ?? []).filter(m => m.prestataire_id === p.id) as never, periode).montant,
         })),
@@ -191,6 +205,32 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       return ok();
     }
 
+    // ── Demande d'inscription : valider (avec son taux) ou refuser ──
+    case 'approve': {
+      const id = str(b.id);
+      const taux = Number(b.hourlyRate);
+      if (!id) return ko('Prestataire manquant.');
+      if (!(taux > 0)) return ko('Indiquez le taux horaire payé au prestataire.');
+      const { data: pr } = await db.from('prestataires').select('user_id').eq('id', id).maybeSingle();
+      if (!pr) return ko('Prestataire introuvable.', 404);
+      await db.from('prestataires').update({ hourly_rate: taux, status: 'active' }).eq('id', id);
+      const { error } = await db.from('users').update({ status: 'active' }).eq('id', pr.user_id);
+      if (error) return ko('Validation impossible.', 500);
+      return ok();
+    }
+
+    case 'refuse': {
+      const id = str(b.id);
+      if (!id) return ko('Prestataire manquant.');
+      const { data: pr } = await db.from('prestataires').select('user_id').eq('id', id).maybeSingle();
+      if (!pr) return ko('Prestataire introuvable.', 404);
+      // Seule une DEMANDE se refuse : un prestataire validé se suspend.
+      if (!(await enAttente(db, pr.user_id))) return ko('Ce prestataire est déjà validé : suspendez-le plutôt.');
+      await db.from('prestataires').delete().eq('id', id);
+      await db.from('users').delete().eq('id', pr.user_id);
+      return ok();
+    }
+
     case 'set-password': {
       const id = str(b.id), password = str(b.password);
       if (!id) return ko('Prestataire manquant.');
@@ -220,9 +260,10 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const pid = str(b.prestataireId);
       const ids = Array.isArray(b.missionIds) ? (b.missionIds as unknown[]).map(String).filter(Boolean) : [];
       if (!pid || ids.length === 0) return ko('Mission ou prestataire manquant.');
-      const { data: pr } = await db.from('prestataires').select('id, name, hourly_rate, status').eq('id', pid).maybeSingle();
+      const { data: pr } = await db.from('prestataires').select('id, user_id, name, hourly_rate, status').eq('id', pid).maybeSingle();
       if (!pr) return ko('Prestataire introuvable.', 404);
       if (pr.status !== 'active') return ko('Ce prestataire est suspendu.');
+      if (await enAttente(db, pr.user_id)) return ko('Ce prestataire n’est pas encore validé.');
       const taux = Number(pr.hourly_rate) || 0;
 
       let count = 0;

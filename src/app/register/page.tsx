@@ -19,6 +19,13 @@ const OPTIONS: { type: string; icon: IconName; title: string; desc: string; href
     desc: 'Gérez vos appartements et créez vos missions de nettoyage.',
     href: '/register/airbnb',
   },
+  {
+    type: 'prestataire',
+    icon: 'cleaners',
+    title: 'Prestataire / sous-traitant',
+    desc: 'Entreprise de nettoyage : réalisez nos missions avec vos agents.',
+    href: '/register/prestataire',
+  },
 ];
 
 export default function RegisterChoicePage() {

@@ -341,7 +341,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setConfierOpen(true); setActionError('');
     if (prestataires === null) {
       const r = await appelPrestataire<{ prestataires: Prestataire[] }>('list');
-      setPrestataires(r.ok ? r.prestataires.filter(p => p.status === 'active') : []);
+      setPrestataires(r.ok ? r.prestataires.filter(p => p.status === 'active' && !p.en_attente) : []);
       if (!r.ok) setActionError(r.error);
     }
   }

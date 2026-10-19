@@ -33,6 +33,7 @@ const TYPE_ICON: Record<string, IconName> = {
 function hrefForNotif(type: string, role: string): string {
   if (type === 'devis_request') return '/admin/devis';
   if (type === 'appointment_booked') return '/admin/rendez-vous';
+  if (type === 'prestataire_request') return '/admin/prestataires';
   switch (role) {
     case 'admin': return '/admin/missions';
     case 'cleaner': return '/cleaner';

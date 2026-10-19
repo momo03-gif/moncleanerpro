@@ -191,6 +191,19 @@ export async function notifyAdminsSync(title: string, message: string, missionId
   } catch (e) { console.error('notifyAdminsSync:', e); }
 }
 
+// Un sous-traitant demande à devenir prestataire (inscription publique) → admins.
+export async function notifyAdminsNouveauPrestataire(nom: string) {
+  try {
+    const admins = await adminUserIds();
+    await dispatch(admins.map(id => ({
+      userId: id, role: 'admin' as const,
+      title: 'Demande prestataire',
+      message: `${nom} demande à travailler avec nous comme prestataire. À valider dans Équipe › Prestataires.`,
+      type: 'prestataire_request', missionId: null,
+    })));
+  } catch (e) { console.error('notifyAdminsNouveauPrestataire:', e); }
+}
+
 // A bis. Un cleaner DEMANDE une mission → admins. Il ne se l'assigne pas lui-même :
 // tant que l'admin n'a pas validé, la mission reste à pourvoir.
 export async function notifyAdminsMissionRequested(missionId: string, cleanerName: string) {

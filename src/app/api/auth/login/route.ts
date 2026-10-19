@@ -69,6 +69,9 @@ export async function POST(req: Request) {
   if (u.role === 'prestataire') {
     const { data: pr } = await db.from('prestataires').select('status').eq('user_id', u.id).maybeSingle();
     if (!pr) return NextResponse.json(INVALID, { status: 401 });
+    if (u.status === 'pending') {
+      return NextResponse.json({ error: 'Compte en attente de validation.' }, { status: 403 });
+    }
     if (pr.status === 'suspended') {
       return NextResponse.json({ error: 'Compte suspendu. Contactez MonCleanerPro.' }, { status: 403 });
     }

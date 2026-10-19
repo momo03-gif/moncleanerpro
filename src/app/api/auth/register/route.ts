@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { hashPassword } from '@/lib/password';
+import { notifyAdminsNouveauPrestataire } from '@/lib/notificationEvents';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
 
   const type = b.type;
   const email = (b.email ?? '').toLowerCase().trim();
-  if ((type !== 'hotel' && type !== 'airbnb') || !email || !b.password || !b.name) {
+  if ((type !== 'hotel' && type !== 'airbnb' && type !== 'prestataire') || !email || !b.password || !b.name) {
     return NextResponse.json({ error: 'Champs manquants.' }, { status: 400 });
   }
 
@@ -30,7 +31,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
-    if (type === 'hotel') {
+    if (type === 'prestataire') {
+      // Sous-traitant : la demande attend la validation de l'admin, qui fixe
+      // alors son taux horaire. « En attente » = users.status 'pending'
+      // (cf. /api/auth/login) — la fiche, elle, n'a pas de taux tant que ce
+      // n'est pas validé.
+      const { error: pErr } = await db.from('prestataires').insert({
+        user_id: user.id, name: b.name, email, phone: b.phone ?? null,
+        contact_name: b.contactName ?? null, siret: b.siret ?? null, hourly_rate: 0, status: 'active',
+      });
+      if (pErr) {
+        await db.from('users').delete().eq('id', user.id);
+        console.error('register/prestataire:', pErr.message);
+        return NextResponse.json({ error: 'Inscription impossible pour le moment.' }, { status: 500 });
+      }
+      await notifyAdminsNouveauPrestataire(b.name);
+    } else if (type === 'hotel') {
       const { data: h, error: hErr } = await db.from('hotels').insert({
         user_id: user.id, hotel_name: b.name, address: b.address ?? null, email: b.email, phone: b.phone ?? null, status_account: 'pending',
       }).select('id').single();

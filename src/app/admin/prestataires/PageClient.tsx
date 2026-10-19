@@ -51,7 +51,9 @@ export default function PrestatairesPage() {
     await charger();
   }
 
-  const actifs = (liste ?? []).filter(p => p.status === 'active').length;
+  const demandes = (liste ?? []).filter(p => p.en_attente);
+  const valides = (liste ?? []).filter(p => !p.en_attente);
+  const actifs = valides.filter(p => p.status === 'active').length;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -88,13 +90,24 @@ export default function PrestatairesPage() {
         </form>
       )}
 
-      {liste === null ? <Loading variant="skeleton" rows={3} /> : liste.length === 0 && !ajout ? (
+      {demandes.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#C48A2A' }}>
+            Demandes d’inscription · {demandes.length}
+          </p>
+          <div className="space-y-3">
+            {demandes.map(p => <CarteDemande key={p.id} p={p} onChange={charger} />)}
+          </div>
+        </div>
+      )}
+
+      {liste === null ? <Loading variant="skeleton" rows={3} /> : valides.length === 0 && !ajout ? (
         <div className="rounded-2xl border p-8 text-center" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
           <p className="text-sm" style={{ color: '#7A7068' }}>Aucun prestataire pour l’instant.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {liste.map(p => (
+          {valides.map(p => (
             <CartePrestataire key={p.id} p={p} periode={periode} ouvert={ouvert === p.id}
               onToggle={() => setOuvert(o => (o === p.id ? null : p.id))} onChange={charger} />
           ))}
@@ -110,6 +123,70 @@ function Champ({ label, children }: { label: string; children: React.ReactNode }
       <span className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>{label}</span>
       {children}
     </label>
+  );
+}
+
+// Demande venue de l'inscription publique : on la valide en fixant le taux
+// qu'on lui paiera, ou on la refuse (le compte est alors supprimé).
+function CarteDemande({ p, onChange }: { p: Prestataire; onChange: () => Promise<void> }) {
+  const { toast, confirm } = useFeedback();
+  const [taux, setTaux] = useState('');
+  const [envoi, setEnvoi] = useState(false);
+
+  async function valider() {
+    setEnvoi(true);
+    const r = await appelPrestataire('approve', { id: p.id, hourlyRate: Number(taux) });
+    setEnvoi(false);
+    if (!r.ok) { toast(r.error, 'error'); return; }
+    toast(`${p.name} est validé : il peut se connecter et ajouter ses agents.`, 'success');
+    await onChange();
+  }
+
+  async function refuser() {
+    const ok = await confirm({
+      title: `Refuser la demande de ${p.name} ?`,
+      message: 'Le compte est supprimé : il ne pourra pas se connecter.',
+      confirmLabel: 'Refuser', danger: true,
+    });
+    if (!ok) return;
+    setEnvoi(true);
+    const r = await appelPrestataire('refuse', { id: p.id });
+    setEnvoi(false);
+    if (!r.ok) { toast(r.error, 'error'); return; }
+    toast('Demande refusée.', 'success');
+    await onChange();
+  }
+
+  return (
+    <div className="rounded-2xl border p-4 md:p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#C48A2A55' }}>
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+        <div className="min-w-0">
+          <p className="font-semibold" style={{ color: '#1A1A1A' }}>{p.name}</p>
+          <p className="text-xs" style={{ color: '#7A7068' }}>
+            {[p.contact_name, p.email, p.phone].filter(Boolean).join(' · ')}
+          </p>
+          {p.siret && <p className="text-xs" style={{ color: '#A8A09A' }}>SIRET {p.siret}</p>}
+        </div>
+        {p.created_at && (
+          <span className="text-[11px]" style={{ color: '#A8A09A' }}>
+            Reçue le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="number" min="0" step="0.5" inputMode="decimal" value={taux} onChange={e => setTaux(e.target.value)}
+          placeholder="Taux" className="w-24 px-3 py-2 rounded-xl text-sm border text-right" style={inputStyle} />
+        <span className="text-sm" style={{ color: '#7A7068' }}>€ / h</span>
+        <button onClick={valider} disabled={envoi || !(Number(taux) > 0)}
+          className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          Valider
+        </button>
+        <button onClick={refuser} disabled={envoi}
+          className="px-4 py-2 rounded-xl text-sm border disabled:opacity-40" style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+          Refuser
+        </button>
+      </div>
+    </div>
   );
 }
 

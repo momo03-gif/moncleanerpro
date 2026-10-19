@@ -173,6 +173,8 @@ export default function ComptesPage() {
         </div>
       </div>
 
+      <DemandesPrestataires />
+
       {creating === 'prestataire' ? (
         <CreatePrestataireForm onClose={() => setCreating(null)} />
       ) : creating && (
@@ -363,6 +365,31 @@ function CreatePartnerForm({ kind, onClose, onCreated }: {
         <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
       </div>
     </div>
+  );
+}
+
+// ── Rappel des demandes d'inscription PRESTATAIRE (validées dans Équipe ›
+// Prestataires, où l'on fixe leur taux) : l'admin traite ici les autres demandes,
+// il ne doit pas passer à côté de celles-là.
+function DemandesPrestataires() {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let actif = true;
+    (async () => {
+      const r = await appelPrestataire<{ prestataires: { en_attente?: boolean }[] }>('list');
+      if (actif && r.ok) setN(r.prestataires.filter(p => p.en_attente).length);
+    })();
+    return () => { actif = false; };
+  }, []);
+  if (n === 0) return null;
+  return (
+    <Link href="/admin/prestataires" className="flex items-center justify-between gap-3 mb-6 rounded-2xl border px-4 py-3"
+      style={{ borderColor: '#C48A2A55', backgroundColor: '#C48A2A0D' }}>
+      <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>
+        {n} demande{n > 1 ? 's' : ''} de prestataire en attente de validation
+      </span>
+      <span className="text-sm font-semibold shrink-0" style={{ color: '#C48A2A' }}>Traiter →</span>
+    </Link>
   );
 }
 
