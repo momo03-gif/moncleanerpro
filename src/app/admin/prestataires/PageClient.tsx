@@ -61,7 +61,7 @@ export default function PrestatairesPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Prestataires</h1>
           <p className="text-sm mt-1" style={{ color: '#A8A09A' }}>
-            Entreprises partenaires : elles attribuent nos missions à leurs propres agents. {liste ? `${actifs} actif${actifs > 1 ? 's' : ''}` : ''}
+            Sous-traitants : ils attribuent nos missions à leurs propres agents. {liste ? `${actifs} actif${actifs > 1 ? 's' : ''}` : ''}
           </p>
         </div>
         <button onClick={() => setAjout(s => !s)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
