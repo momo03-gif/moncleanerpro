@@ -28,6 +28,19 @@ export const REVIEWS = {
   askUrl: 'https://g.page/r/CSxSeubqgq0zEBM/review',
 };
 
+// Identifiant unique de l'entreprise dans les données structurées. Toutes les
+// pages y renvoient : Google et les assistants IA comprennent qu'il s'agit d'UNE
+// entité, décrite à plusieurs endroits, et pas de quarante homonymes.
+export const ENTITY_ID = 'https://moncleanerpro.fr/#entreprise';
+
+// Profils officiels de l'entreprise ailleurs sur le web (`sameAs`). C'est par là
+// qu'un assistant IA recoupe ce que le site dit de lui-même avec ce qu'en disent
+// les autres. N'ajouter QUE des profils réels et actifs, au nom exact
+// « MonCleanerPro » : Facebook, Instagram, LinkedIn, PagesJaunes, Bing Places…
+export const PROFILES: string[] = [
+  REVIEWS.url,
+];
+
 // Année de début d'activité, affichée en pied de page. L'ancienneté est un
 // signal de confiance bien plus utile qu'un « © 2026 » qui ne dit rien —
 // et qui, généré depuis la date du jour, donnait l'impression d'un site créé

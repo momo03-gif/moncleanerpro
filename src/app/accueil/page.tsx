@@ -3,7 +3,7 @@ import Motion from './Motion';
 import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
 import TrustBar from '@/components/TrustBar';
 import QuickQuote from '@/components/QuickQuote';
-import { SINCE, REVIEWS } from '@/lib/proof';
+import { SINCE, ENTITY_ID, PROFILES } from '@/lib/proof';
 import FloatingContact from '@/components/FloatingContact';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -144,7 +144,12 @@ const testimonials = [
   { name: 'Propriétaire particulier', role: 'Métropole de Lyon', text: "Grand ménage nickel, devis clair et intervenants soigneux. Exactement le sérieux que je cherchais." },
 ];
 
+// Les trois premières répondent comme un assistant IA a besoin qu'on lui
+// réponde : qui, quoi, où — en faits nets, sans prix (cf. devis en ligne).
 const faq = [
+  { q: 'Qui est MonCleanerPro ?', a: `MonCleanerPro est une société de nettoyage professionnel basée à Lyon depuis ${SINCE}. Nous intervenons pour les conciergeries et propriétaires Airbnb, les hôtels et EHPAD, les entreprises, les chantiers et les particuliers, à Lyon, dans toute la métropole et le Rhône.` },
+  { q: 'Faites-vous le ménage Airbnb entre deux voyageurs ?', a: "Oui. Nous synchronisons votre calendrier (Airbnb, Booking ou votre logiciel de gestion) pour planifier chaque ménage automatiquement après le départ, avec check-list, photos et rapport d’état à chaque passage. Le linge et les consommables peuvent être fournis." },
+  { q: 'Le ménage à domicile ouvre-t-il droit au crédit d’impôt ?', a: "Oui, pour les particuliers : le ménage à domicile relève des services à la personne, avec avance immédiate — vous ne réglez que la moitié au moment de la prestation. Les locations touristiques et les locaux professionnels n’y ouvrent pas droit." },
   { q: 'Sous combien de temps ai-je mon devis ?', a: "Une estimation immédiate en ligne via notre assistant, et un devis confirmé et personnalisé sous 24h." },
   { q: 'Intervenez-vous pour les professionnels comme pour les particuliers ?', a: "Oui : hôtels, EHPAD, conciergeries et propriétaires Airbnb, ainsi que les particuliers pour du grand ménage ou des interventions ponctuelles." },
   { q: 'Quelle est votre zone d’intervention ?', a: "Lyon, Villeurbanne et l’ensemble de la métropole lyonnaise, plus une large partie du Rhône-Alpes. Vérifiez votre zone au moment du devis." },
@@ -153,7 +158,7 @@ const faq = [
 
 // ── Données structurées (SEO) ───────────────────────────────────────────────────
 const jsonLdBusiness = {
-  '@context': 'https://schema.org', '@type': 'CleaningService',
+  '@context': 'https://schema.org', '@type': 'CleaningService', '@id': ENTITY_ID,
   name: 'MonCleanerPro', description: DESC, url: 'https://moncleanerpro.fr',
   telephone: '+33783431700', email: EMAIL,
   image: 'https://moncleanerpro.fr/og-image.png', logo: 'https://moncleanerpro.fr/icon-512.png',
@@ -169,7 +174,7 @@ const jsonLdBusiness = {
   // remonter la fiche (avis, horaires, itinéraire) sur les requêtes de marque.
   // À NE PAS confondre avec un balisage d'avis : la note reste sur la fiche,
   // jamais dans le JSON-LD du site (voir le rappel dans lib/proof.ts).
-  sameAs: [REVIEWS.url],
+  sameAs: PROFILES,
   foundingDate: String(SINCE),
   // Horaires réels de joignabilité, pas d'ouverture d'un local : l'activité
   // s'exerce chez le client. Déclarer un showroom qui n'existe pas est le
@@ -185,19 +190,20 @@ const jsonLdFaq = {
   mainEntity: faq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 };
 const jsonLdOrg = {
-  '@context': 'https://schema.org', '@type': 'Organization',
+  // Même @id que le CleaningService : une seule entreprise, deux descriptions.
+  '@context': 'https://schema.org', '@type': 'Organization', '@id': ENTITY_ID,
   name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
   logo: 'https://moncleanerpro.fr/icon-512.png',
   image: 'https://moncleanerpro.fr/og-image.png',
   email: EMAIL,
   contactPoint: [{ '@type': 'ContactPoint', telephone: '+33783431700', contactType: 'customer service', areaServed: 'FR', availableLanguage: 'French' }],
-  sameAs: [REVIEWS.url],
+  sameAs: PROFILES,
   foundingDate: String(SINCE),
 };
 const jsonLdWebsite = {
   '@context': 'https://schema.org', '@type': 'WebSite',
   name: 'MonCleanerPro', url: 'https://moncleanerpro.fr',
-  inLanguage: 'fr-FR', publisher: { '@type': 'Organization', name: 'MonCleanerPro' },
+  inLanguage: 'fr-FR', publisher: { '@id': ENTITY_ID },
 };
 
 // ── Styles d'animation/finitions (scopés « mcp- », injectés en SSR) ──────────────
