@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ConfidentialitePage() {
   return (
-    <LegalLayout title="Politique de confidentialité" updated="8 juillet 2026">
+    <LegalLayout title="Politique de confidentialité" updated="26 octobre 2026">
       <p>
         La présente politique décrit comment MonCleanerPro collecte, utilise et protège vos données personnelles
         lorsque vous utilisez le site <strong>moncleanerpro.fr</strong>, conformément au Règlement général sur la
@@ -36,6 +36,7 @@ export default function ConfidentialitePage() {
         <li>Traiter et répondre à vos demandes de devis et de contact <em>(mesures précontractuelles / votre consentement)</em>.</li>
         <li>Gérer la relation client et assurer le suivi des prestations <em>(exécution du contrat)</em>.</li>
         <li>Respecter nos obligations légales et comptables <em>(obligation légale)</em>.</li>
+        <li>Mesurer l’efficacité de nos annonces Google Ads <em>(votre consentement, recueilli par le bandeau cookies)</em>.</li>
       </ul>
 
       <h2>Destinataires des données</h2>
@@ -67,9 +68,16 @@ export default function ConfidentialitePage() {
 
       <h2>Cookies</h2>
       <p>
-        Le site utilise uniquement les cookies strictement nécessaires à son bon fonctionnement. Aucun cookie
-        publicitaire ou de traçage tiers n’est déposé sans votre consentement. Vous pouvez à tout moment
-        configurer votre navigateur pour refuser les cookies.
+        Le site utilise les cookies strictement nécessaires à son bon fonctionnement, ainsi qu’une mesure
+        d’audience sans cookie ni identifiant persistant (Vercel Analytics).
+      </p>
+      <p>
+        <strong>Google Ads (avec votre accord uniquement).</strong> Si vous cliquez sur « Accepter » dans le
+        bandeau, nous chargeons la balise Google Ads (Google Ireland Limited), qui dépose des cookies pour mesurer
+        si une visite issue de nos annonces aboutit à une demande de devis, à une prise de rendez-vous ou à un
+        appel. Aucune donnée de formulaire (nom, téléphone, e-mail) n’est transmise à Google. Si vous refusez,
+        rien n’est chargé et le site fonctionne de la même façon. Votre choix est conservé six mois, puis vous
+        est redemandé ; vous pouvez le modifier à tout moment avec le lien « Gérer les cookies » en bas de page.
       </p>
 
       <h2>Contact</h2>

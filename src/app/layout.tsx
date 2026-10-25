@@ -9,6 +9,8 @@ import NativeBridge from '@/components/NativeBridge';
 // bandeau de consentement à ajouter (contrairement à Google Analytics). Sans
 // mesure, impossible de savoir quelles pages amènent réellement des demandes.
 import { Analytics } from '@vercel/analytics/next';
+// Bandeau cookies + conversions Google Ads : vitrine seulement, après accord.
+import AdsConsent from '@/components/AdsConsent';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://moncleanerpro.fr'),
@@ -49,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </AuthProvider>
         <ServiceWorkerReg />
         <Analytics />
+        <AdsConsent />
       </body>
     </html>
   );

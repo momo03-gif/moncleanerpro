@@ -6,6 +6,7 @@ import { buildCatalog, classify, displayName, modeFor, type Item, type Mode } fr
 import { isEligibleSelection, netAfterCredit, CREDIT_CEILING } from '@/lib/creditImpot';
 import { resolveOrigin } from '@/lib/origin';
 import { getSimulatorConfigDB, type SimulatorConfig } from '@/lib/devisConfig';
+import { trackConversion } from '@/lib/adsTracking';
 import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './AirbnbSimulator';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -170,6 +171,7 @@ export default function DevisEnLignePage() {
       if (!res.ok || data.error) { setErr(data.error || 'Envoi impossible, réessayez.'); return; }
       setSentNumber(data.number || '');
       setSent(true);
+      trackConversion('devis');
     } catch { setBusy(false); setErr('Envoi impossible (connexion). Réessayez.'); }
   }
 

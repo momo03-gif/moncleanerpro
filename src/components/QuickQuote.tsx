@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { SOURCES } from '@/lib/proof';
+import { trackConversion } from '@/lib/adsTracking';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Formulaire de demande court, posé DANS les pages SEO.
@@ -74,6 +75,7 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
       const data = await res.json().catch(() => ({}));
       if (data?.ok) {
         setState('ok');
+        trackConversion('devis');
         setMessage('Demande reçue. Nous revenons vers vous sous 24h avec un devis écrit.');
       } else {
         setState('error');

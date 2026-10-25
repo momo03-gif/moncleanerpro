@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Motion from '../accueil/Motion';
+import CookieSettingsLink from '@/components/CookieSettingsLink';
 import { BLOG_POSTS } from '@/lib/blogPosts';
 
 const GOLD = '#C9A84C', INK = '#1A1A1A', VOID = '#0D0D0D', CREAM = '#FAFAF8', MUTED = '#7A7068', BORDER = '#E8E4DC';
@@ -89,6 +90,7 @@ export default function BlogIndexPage() {
             <a href="/" className="hover:opacity-80">Accueil</a>
             <a href="/devis-en-ligne" className="hover:opacity-80">Devis gratuit</a>
             <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
+            <CookieSettingsLink className="hover:opacity-80" />
           </div>
         </div>
       </footer>

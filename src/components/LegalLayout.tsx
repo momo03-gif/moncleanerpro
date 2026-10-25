@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import CookieSettingsLink from '@/components/CookieSettingsLink';
 
 // Gabarit commun des pages légales de la vitrine (server component).
 // Style sobre et lisible, cohérent avec la charte MonCleanerPro.
@@ -44,6 +45,7 @@ export default function LegalLayout({ title, updated, children }: { title: strin
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
             <a href="/confidentialite" className="hover:opacity-80">Confidentialité</a>
+            <CookieSettingsLink className="hover:opacity-80" />
           </div>
         </div>
       </footer>

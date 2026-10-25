@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Motion from '../../accueil/Motion';
+import CookieSettingsLink from '@/components/CookieSettingsLink';
 import { BLOG_POSTS, BLOG_SLUGS, getBlogPost } from '@/lib/blogPosts';
 
 export const dynamicParams = false;
@@ -142,6 +143,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
         <div className="max-w-3xl mx-auto px-5 py-10 flex flex-wrap items-center justify-between gap-4 text-sm">
           <a href="/blog" className="hover:opacity-80">← Tous les articles</a>
+          <CookieSettingsLink className="hover:opacity-80" />
           <span>07 83 43 17 00 · info@moncleanerpro.fr</span>
         </div>
       </footer>

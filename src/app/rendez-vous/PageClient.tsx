@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getBookedSlotsDB, getBookingConfigDB, DEFAULT_BOOKING } from '@/lib/appointments';
+import { trackConversion } from '@/lib/adsTracking';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Prise de rendez-vous en ligne (après validation d'un devis).
@@ -106,6 +107,7 @@ export default function PageClient() {
       if (!res.ok || data.error) { setErr(data.error || 'Réservation impossible, réessayez.'); if (data.error) loadBooked(month); return; }
       setRefCode(data.refCode || '');
       setStep(4);
+      trackConversion('rendezvous');
     } catch { setBusy(false); setErr('Réservation impossible (connexion). Réessayez.'); }
   }
 

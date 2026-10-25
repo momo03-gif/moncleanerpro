@@ -5,6 +5,7 @@ import { SEO_PAGES, SEO_SLUGS, getSeoPage, getCityGeo } from '@/lib/seoPages';
 import { getBlogPost } from '@/lib/blogPosts';
 import TrustBar, { ReviewsInline } from '@/components/TrustBar';
 import { SINCE, ENTITY_ID, PROFILES } from '@/lib/proof';
+import CookieSettingsLink from '@/components/CookieSettingsLink';
 import QuickQuote from '@/components/QuickQuote';
 import FloatingContact from '@/components/FloatingContact';
 
@@ -315,6 +316,7 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
             <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
             <a href="/confidentialite" className="hover:opacity-80">Confidentialité</a>
+            <CookieSettingsLink className="hover:opacity-80" />
             <span>{PHONE} · {EMAIL}</span>
             <span>Depuis {SINCE}</span>
           </div>

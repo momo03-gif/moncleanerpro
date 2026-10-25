@@ -4,6 +4,7 @@ import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
 import TrustBar from '@/components/TrustBar';
 import QuickQuote from '@/components/QuickQuote';
 import { SINCE, ENTITY_ID, PROFILES } from '@/lib/proof';
+import CookieSettingsLink from '@/components/CookieSettingsLink';
 import FloatingContact from '@/components/FloatingContact';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -659,6 +660,7 @@ export default function VitrinePage() {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
               <a href="/mentions-legales" className="mcp-link hover:opacity-80">Mentions légales</a>
               <a href="/confidentialite" className="mcp-link hover:opacity-80">Confidentialité</a>
+              <CookieSettingsLink className="mcp-link hover:opacity-80" />
               <span>{PHONE} · {EMAIL}</span>
             </div>
           </div>
