@@ -139,10 +139,11 @@ export default function FacturationPage() {
       id: m.id,
       date: m.date,
       logement: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
-      type: m.type,
+      // No show : on facture le déplacement, pas un ménage — et pas de linge.
+      type: m.noShow ? 'no_show' : m.type,
       cleaner: m.cleanerName || '—',
       prix: m.price || 0,
-      fourniture: fournitures[m.id] ?? null,
+      fourniture: m.noShow ? null : (fournitures[m.id] ?? null),
     })),
     amounts,
   );

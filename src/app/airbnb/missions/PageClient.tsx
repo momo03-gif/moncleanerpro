@@ -11,7 +11,7 @@ import DateRangeFilter from '@/components/DateRangeFilter';
 import { presetRange, inRange, type DateRange } from '@/lib/dateRange';
 import { formatHour, DEPARTURE_TIMES } from '@/lib/format';
 import ArriveeSuivante from '@/components/ArriveeSuivante';
-import { MISSION_STATUS_CFG } from '@/lib/labels';
+import { missionStatusCfg } from '@/lib/labels';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import { serviceParts, serviceLabel } from '@/lib/service';
 import CalendarTab from './CalendarTab';
@@ -22,7 +22,6 @@ import { Badge, Button, Card, EmptyState, FIELD, FIELD_SM, Label, PageTitle, Seg
 
 const today = new Date().toLocaleDateString('en-CA');  // date LOCALE (pas UTC)
 
-const STATUS_CFG = MISSION_STATUS_CFG;
 
 // Les titres de jour collants s'arrêtent juste sous l'en-tête. La valeur vient
 // du jeton `--header-h` : un `top-16` codé en dur était plus court que
@@ -55,7 +54,7 @@ function PartnerMissionCard({ mission, apartments, userId, onRefresh }: {
   onRefresh: () => void;
 }) {
   const { confirm, toast } = useFeedback();
-  const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
+  const st = missionStatusCfg(mission.status, mission.noShow);
   const locked = isMissionLocked(mission.status);
   // Une livraison n'est pas un ménage : elle ne prépare pas le logement pour
   // le voyageur suivant, et l'annoncer comme un départ à couvrir est faux.
@@ -397,7 +396,7 @@ export default function AirbnbMissionsPage() {
                       const r = e.res;
                       const isTurn = arrivalsByDay.has(r.checkOut);
                       const m = r.missionId ? missionById.get(r.missionId) : undefined;
-                      const cfg = m ? (STATUS_CFG[m.status] ?? STATUS_CFG.pending) : null;
+                      const cfg = m ? missionStatusCfg(m.status, m.noShow) : null;
                       return (
                         <Card key={'out' + r.id} tone={isTurn ? 'alert' : 'plain'} className="px-4 py-3 flex items-center gap-3">
                           <span className="shrink-0 inline-flex text-warn" aria-hidden="true"><Icon name="arrowDown" size={15} /></span>

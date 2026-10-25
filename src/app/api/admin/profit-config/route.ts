@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   };
 
   const db = getSupabaseAdmin();
-  const { error } = await db.from('profit_config').upsert({
+  const ligne: Record<string, unknown> = {
     id: 1,
     product_cost_cents: Math.round(nombre(b.productCostCents)),
     margin_target: nombre(b.marginTarget),
@@ -51,7 +51,12 @@ export async function POST(req: Request) {
     vat_rate: nombre(b.vatRate, 0.20),
     linen_kit_price: nombre(b.linenKitPrice),
     linen_kit_cost: nombre(b.linenKitCost),
-  }, { onConflict: 'id' });
+  };
+  // No show : colonnes de migration_no_show.sql. Envoyées seulement si l'écran
+  // les fournit, pour qu'une base pas encore migrée continue d'enregistrer le reste.
+  if (b.noShowClientFee != null) ligne.no_show_client_fee = Math.max(0, nombre(b.noShowClientFee));
+  if (b.noShowCleanerFee != null) ligne.no_show_cleaner_fee = Math.max(0, nombre(b.noShowCleanerFee));
+  const { error } = await db.from('profit_config').upsert(ligne, { onConflict: 'id' });
 
   if (error) {
     console.error('profit-config/save:', error.message);

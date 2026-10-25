@@ -25,9 +25,11 @@ const INTERNES_PARTENAIRE = [
   'extra_time_status', 'extra_time_requested_at', 'pending_cleaner_id', 'pending_cleaner_name', 'pending_requested_at',
   // La sous-traitance ne regarde pas le client.
   'prestataire_id', 'prestataire_name', 'prestataire_gain', 'prestataire_rate_snapshot',
+  'no_show_prev_price', 'no_show_prev_gain', 'no_show_prev_prestataire_gain',
 ];
 /** Argent côté client — et ce qu'on paie à un prestataire — jamais envoyé à un cleaner. */
-const INTERNES_CLEANER = ['price', 'supplies_amount', 'prestataire_gain', 'prestataire_rate_snapshot'];
+const INTERNES_CLEANER = ['price', 'supplies_amount', 'prestataire_gain', 'prestataire_rate_snapshot',
+  'no_show_prev_price', 'no_show_prev_prestataire_gain'];
 /**
  * Ce qu'un PRESTATAIRE (et ses agents) ne voit pas : le prix et le nom du client,
  * nos marges, la paie de nos cleaners, les demandes internes.
@@ -35,6 +37,7 @@ const INTERNES_CLEANER = ['price', 'supplies_amount', 'prestataire_gain', 'prest
 const INTERNES_PRESTATAIRE = [
   'price', 'supplies_amount', 'client_name', 'cleaner_gain', 'cleaner_hourly_rate_snapshot',
   'pending_cleaner_id', 'pending_cleaner_name', 'pending_requested_at', 'partner_rating', 'partner_rating_comment',
+  'no_show_prev_price', 'no_show_prev_gain',
 ];
 
 function sans(rows: Ligne[], champs: string[], champsLogement: string[] = []): Ligne[] {

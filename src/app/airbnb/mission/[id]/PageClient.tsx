@@ -100,7 +100,7 @@ export default function PartnerMissionDetailClient() {
     );
   }
 
-  const cfg = missionStatusCfg(mission.status);
+  const cfg = missionStatusCfg(mission.status, mission.noShow);
   const isDelivery = serviceParts(mission.service).delivery;
   const hasReport = reportHasContent(report);
   const isDone = mission.status === 'completed';
@@ -115,7 +115,7 @@ export default function PartnerMissionDetailClient() {
         <div className="flex items-start justify-between gap-2 mb-2">
           <h1 className="text-lg font-bold text-ink">{mission.property || 'Logement'}</h1>
           <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>
-            {missionStatusLabel(mission.status, mission.service)}
+            {missionStatusLabel(mission.status, mission.service, mission.noShow)}
           </Badge>
         </div>
         {mission.address && (

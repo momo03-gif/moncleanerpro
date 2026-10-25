@@ -283,7 +283,7 @@ export default function AdminDashboard() {
               const entries = collapseGroups(todayMissions);
               return entries.map((e, i) => {
                 const m = e.mission;
-                const cfg = missionStatusCfg(m.status);
+                const cfg = missionStatusCfg(m.status, m.noShow);
                 const isAppointment = m.service === 'appointment';
                 const badge = SERVICE_BADGE[m.service ?? 'cleaning'];
                 // Assigné(s) : intervention groupée → liste ; RDV → cleaner ou admin.

@@ -5,6 +5,8 @@
 //  garantit le même affichage partout (admin, cleaner, Airbnb, stats).
 // ════════════════════════════════════════════════════════════════════════════
 
+import { NO_SHOW_CFG } from './noShow';
+
 // Statuts de mission RÉELS (mappés depuis la base). Une mission ne peut être que
 // pending / accepted / in_progress / completed / cancelled — jamais « validated »
 // (ça, c'est les demandes hôtel, gérées à part).
@@ -16,15 +18,17 @@ export const MISSION_STATUS_CFG: Record<string, { label: string; color: string; 
   cancelled:   { label: 'Annulée',    color: '#B85A50', bg: '#B85A5015' },
 };
 
-export function missionStatusCfg(status: string) {
+// Un no show est une mission terminée, affichée à part : aucun ménage n'a été fait.
+export function missionStatusCfg(status: string, noShow?: boolean) {
+  if (noShow && status === 'completed') return NO_SHOW_CFG;
   return MISSION_STATUS_CFG[status] ?? MISSION_STATUS_CFG.pending;
 }
 
 // Libellé de statut tenant compte du service : une LIVRAISON terminée s'affiche
-// « Livré » (et non « Terminée »).
-export function missionStatusLabel(status: string, service?: string): string {
+// « Livré » (et non « Terminée »), un no show « No show ».
+export function missionStatusLabel(status: string, service?: string, noShow?: boolean): string {
   if (status === 'completed' && service === 'delivery') return 'Livré';
-  return missionStatusCfg(status).label;
+  return missionStatusCfg(status, noShow).label;
 }
 
 // Types de mission (nature du ménage). `menage` / `grand_menage` sont des alias
@@ -37,6 +41,8 @@ export const MISSION_TYPE_LABEL: Record<string, string> = {
   menage: 'Ménage',
   grand_menage: 'Grand ménage',
   appointment: 'Rendez-vous',
+  // Pas un type de mission : la colonne « Prestation » d'une facture pour un no show.
+  no_show: 'Déplacement — logement non utilisé',
 };
 
 export function missionTypeLabel(type: string | undefined | null): string {

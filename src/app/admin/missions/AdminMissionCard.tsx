@@ -9,8 +9,10 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   updateMissionStatusDB, assignCleanerToMissionDB, updateMissionDB,
   deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
-  decideMissionRequestDB, unassignMissionDB,
+  decideMissionRequestDB, unassignMissionDB, declareNoShowDB, cancelNoShowDB,
 } from '@/lib/db';
+import { getProfitConfigDB } from '@/lib/profitability';
+import { noShowPossible, NO_SHOW_LABEL } from '@/lib/noShow';
 import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -27,10 +29,9 @@ import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import ChecklistPanel from '@/components/ChecklistPanel';
 import RepairsPanel from '@/components/RepairsPanel';
-import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
+import { MISSION_TYPE_LABEL, missionStatusCfg, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { getMissionIncidentsDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncidentType, type RhIncident } from '@/lib/rhApi';
 
-const STATUS_CFG = MISSION_STATUS_CFG;
 const TYPE_LABEL = MISSION_TYPE_LABEL;
 
 function parseMissionNotes(notes: string | undefined | null) {
@@ -213,6 +214,9 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   const [addTimeOpen, setAddTimeOpen] = useState(false);
   const [addTimeVal, setAddTimeVal] = useState('30');
   const [deciding, setDeciding] = useState(false);
+  // No show : forfaits pré-remplis depuis les paramètres, modifiables pour cette mission.
+  const [noShowOpen, setNoShowOpen] = useState(false);
+  const [noShowForm, setNoShowForm] = useState({ clientFee: '', cleanerFee: '', note: '' });
   const [editForm, setEditForm] = useState({
     date: mission.date, time: mission.time,
     durationMinutes: String(mission.missionDurationMinutes ?? 60),
@@ -221,7 +225,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     deliveryInstructions: mission.deliveryInstructions ?? '',
     nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
   });
-  const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
+  const st = missionStatusCfg(mission.status, mission.noShow);
   // Codes d'accès : servis par /api/missions/terrain. Repli sur les notes de la
   // mission pour les anciennes missions dont le texte les contient encore.
   const notesParsees = parseMissionNotes(mission.notes);
@@ -306,6 +310,40 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     const res = await reopenMissionDB(mission.id, { id: user.id, role: 'admin' });
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
+    onRefresh();
+  }
+
+  async function ouvrirNoShow() {
+    setNoShowOpen(true); setActionError('');
+    const cfg = await getProfitConfigDB();
+    setNoShowForm({ clientFee: String(cfg.noShowClientFee ?? 0), cleanerFee: String(cfg.noShowCleanerFee ?? 0), note: '' });
+  }
+
+  async function handleNoShow() {
+    const fee = (v: string) => Math.max(0, Number(v.replace(',', '.')) || 0);
+    setBusy(true); setActionError('');
+    const res = await declareNoShowDB(mission.id, {
+      clientFee: fee(noShowForm.clientFee), cleanerFee: fee(noShowForm.cleanerFee), note: noShowForm.note,
+    });
+    setBusy(false);
+    if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
+    setNoShowOpen(false);
+    toast('Mission passée en no show.', 'success');
+    onRefresh();
+  }
+
+  async function handleCancelNoShow() {
+    const ok = await confirm({
+      title: 'Annuler le no show ?',
+      message: 'Le prix et le gain d’origine reviennent, et la mission redevient à faire.',
+      confirmLabel: 'Annuler le no show',
+    });
+    if (!ok) return;
+    setBusy(true); setActionError('');
+    const res = await cancelNoShowDB(mission.id);
+    setBusy(false);
+    if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
+    toast('No show annulé.', 'success');
     onRefresh();
   }
 
@@ -450,7 +488,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
           </button>
         )}
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }}
-          title={missionStatusLabel(mission.status, mission.service)} />
+          title={missionStatusLabel(mission.status, mission.service, mission.noShow)} />
         <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A', width: 44 }}>
           {mission.time ? formatHour(mission.time) : '—'}
         </span>
@@ -514,7 +552,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
           style={{ backgroundColor: st.bg, color: st.color }}>
-          {missionStatusLabel(mission.status, mission.service)}
+          {missionStatusLabel(mission.status, mission.service, mission.noShow)}
         </span>
       </div>
 
@@ -548,6 +586,19 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
             style={{ backgroundColor: mission.wholeProperty ? '#FBF4E2' : '#F5F3EF', color: mission.wholeProperty ? '#9A7B22' : '#7A7068' }}>
             {mission.coveredUnits}
           </span>
+        )}
+
+        {mission.noShow && (
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: '#8A6BB040', backgroundColor: '#8A6BB00D' }}>
+            <p className="text-xs font-semibold" style={{ color: '#8A6BB0' }}>
+              {NO_SHOW_LABEL} — {mission.noShowBy === 'cleaner' ? `constaté par ${mission.cleanerName ?? 'le cleaner'}` : 'déclaré par l’administration'}
+              {mission.noShowAt ? ` à ${formatClock(mission.noShowAt)}` : ''}
+            </p>
+            {mission.noShowNote && <p className="text-xs mt-1" style={{ color: '#7A7068' }}>{mission.noShowNote}</p>}
+            <p className="text-[11px] mt-1" style={{ color: '#A8A09A' }}>
+              Forfait déplacement : {money(mission.price ?? 0)} facturé · {money(mission.cleanerGain ?? 0)} pour le cleaner
+            </p>
+          </div>
         )}
 
         {/* Demande d'un cleaner en attente. Un cleaner ne s'assigne plus une
@@ -1008,8 +1059,24 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   {mission.service === 'delivery' ? '✓ Marquer livré' : '✓ Terminer'}
                 </button>
               )}
+              {/* No show : logement non utilisé, clôture au forfait déplacement. */}
+              {(mission.status === 'pending' || mission.status === 'accepted' || mission.status === 'in_progress')
+                && noShowPossible(mission.service) && !noShowOpen && (
+                <button onClick={ouvrirNoShow} disabled={busy}
+                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
+                  No show
+                </button>
+              )}
+              {mission.noShow && mission.status === 'completed' && (
+                <button onClick={handleCancelNoShow} disabled={busy}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50"
+                  style={{ borderColor: '#8A6BB0', color: '#8A6BB0' }}>
+                  Annuler le no show
+                </button>
+              )}
               {/* Mission terminée : l'admin peut la reprendre (« en cours »). */}
-              {mission.status === 'completed' && (
+              {mission.status === 'completed' && !mission.noShow && (
                 <button onClick={handleReopen} disabled={busy}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
                   style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>
@@ -1026,9 +1093,47 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               )}
             </div>
 
+            {noShowOpen && (
+              <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+                <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_LABEL}</p>
+                <p className="text-[11px]" style={{ color: '#7A7068' }}>
+                  La mission est clôturée sans ménage. Le client paie le forfait déplacement, le cleaner touche son forfait.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Facturé au client (€)</span>
+                    <input inputMode="decimal" value={noShowForm.clientFee}
+                      onChange={e => setNoShowForm(f => ({ ...f, clientFee: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[11px] mb-1" style={{ color: '#A8A09A' }}>Payé au cleaner (€)</span>
+                    <input inputMode="decimal" value={noShowForm.cleanerFee}
+                      onChange={e => setNoShowForm(f => ({ ...f, cleanerFee: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                  </label>
+                </div>
+                <input value={noShowForm.note} onChange={e => setNoShowForm(f => ({ ...f, note: e.target.value }))}
+                  placeholder="Remarque (facultatif)"
+                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button onClick={handleNoShow} disabled={busy}
+                    className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                    style={{ backgroundColor: '#8A6BB0', color: '#FFFFFF' }}>
+                    {busy ? '...' : 'Passer en no show'}
+                  </button>
+                  <button onClick={() => { setNoShowOpen(false); setActionError(''); }} disabled={busy}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Ajouter du temps — possible même sur une mission TERMINÉE (régularise la
-                durée payée par rapport au temps prévu, recalcule le gain cleaner). */}
-            {mission.status !== 'cancelled' && (
+                durée payée par rapport au temps prévu, recalcule le gain cleaner).
+                Sans objet sur un no show : le cleaner est payé au forfait. */}
+            {mission.status !== 'cancelled' && !mission.noShow && (
               addTimeOpen ? (
                 <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
                   <p className="text-[11px]" style={{ color: '#7A7068' }}>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { getMissionsForCleanerOuNull, getMissionByIdDB } from '@/lib/db';
+import { getMissionsForCleanerOuNull, getMissionByIdDB, declareNoShowDB } from '@/lib/db';
 import { recordParkingPaymentClient, getMissionParkingClient, quoteParkingClient } from '@/lib/parkingApi';
 import {
   submitStart, submitFinish, submitDeliver, submitWithdraw, submitExtraTime,
@@ -14,12 +14,13 @@ import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsForCleaner } from '@/lib/missionOrder';
 import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
 import { cacheMissions, readCachedMissions, cacheTerrain, readCachedTerrain } from '@/lib/offline/store';
-import { MISSION_STATUS_CFG, MISSION_TYPE_LABEL, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
+import { MISSION_TYPE_LABEL, missionStatusCfg, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import { PHOTOS_REQUISES_ERROR, photosApresExigees } from '@/lib/photosRegles';
+import { noShowPossible, NO_SHOW_LABEL } from '@/lib/noShow';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
@@ -44,8 +45,6 @@ function parseMissionNotes(notes: string | undefined | null) {
   if (km) { keyboxCode = km[1].trim(); text = text.replace(km[0], ''); }
   return { portalCode, keyboxCode, extra: text.replace(/·/g, '').trim() };
 }
-
-const STATUS_CFG = MISSION_STATUS_CFG;
 
 function toDateStr(d: Date) {
   // Date LOCALE (pas UTC) : sinon « aujourd'hui » bascule d'un jour entre minuit
@@ -155,7 +154,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
   const [parkingPayments, setParkingPayments] = useState<ParkingPayment[]>([]);
   // Tarif calculé par le fournisseur pour la durée (null = saisie manuelle du montant).
   const [parkingQuote, setParkingQuote] = useState<number | null>(null);
-  const st = STATUS_CFG[mission.status] ?? STATUS_CFG.pending;
+  const st = missionStatusCfg(mission.status, mission.noShow);
   // Livraison : pas de pointage ni GPS, juste un bouton « Livré ».
   const isDelivery = mission.service === 'delivery';
   // Rendez-vous : mission interne planifiée, sans GPS/pointage ni facturation.
@@ -196,6 +195,11 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
   }
 
   const [photosRequises, setPhotosRequises] = useState(false);
+  // No show : le voyageur n'est pas venu, le logement est propre.
+  const [noShowOpen, setNoShowOpen] = useState(false);
+  const [noShowNote, setNoShowNote] = useState('');
+  const [noShowError, setNoShowError] = useState('');
+  const canNoShow = (canStart || canFinish) && noShowPossible(mission.service);
 
   async function finish() {
     setBusy(true); setGeoError('');
@@ -206,6 +210,25 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
     // photo plutôt que d'afficher une simple erreur.
     if (res.error === PHOTOS_REQUISES_ERROR) { setPhotosRequises(true); return; }
     if (res.error) { setGeoError(res.error); return; }
+    onUpdate();
+  }
+
+  // Comme le parking : en ligne uniquement. La déclaration change ce qui est
+  // facturé, elle ne se rejoue pas à l'aveugle plus tard.
+  async function declareNoShow() {
+    setNoShowError('');
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setNoShowError('Le signalement nécessite une connexion internet.');
+      return;
+    }
+    setBusy(true);
+    const pos = await getApproxPosition();
+    const res = await declareNoShowDB(mission.id, { coords: pos, note: noShowNote });
+    setBusy(false);
+    if (res.photosRequises) { setPhotosRequises(true); setNoShowError(res.error ?? ''); return; }
+    if (res.error) { setNoShowError(res.error); return; }
+    setNoShowOpen(false);
+    toast('Signalement envoyé : mission clôturée sans ménage.', 'success');
     onUpdate();
   }
 
@@ -323,7 +346,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
             )}
           </div>
           <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
-            style={{ backgroundColor: st.bg, color: st.color }}>{missionStatusLabel(mission.status, mission.service)}</span>
+            style={{ backgroundColor: st.bg, color: st.color }}>{missionStatusLabel(mission.status, mission.service, mission.noShow)}</span>
         </div>
       </div>
 
@@ -641,6 +664,38 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               {photosRequises ? 'Ajoutez une photo « après » dans le panneau Photos ci-dessus, puis terminez.' : 'Une photo « après » au minimum est demandée pour terminer.'}
             </p>
           )}
+          {/* No show : le logement n'a pas été utilisé — rien à nettoyer. */}
+          {canNoShow && (noShowOpen ? (
+            <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+              <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_LABEL}</p>
+              <p className="text-[11px] leading-snug" style={{ color: '#7A7068' }}>
+                Le voyageur n&apos;est pas venu et le logement est propre ? Prenez au moins une photo du logement
+                tel que vous l&apos;avez trouvé (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.
+              </p>
+              <input value={noShowNote} onChange={e => setNoShowNote(e.target.value)}
+                placeholder="Ce que vous avez constaté (facultatif)"
+                className="w-full px-3 py-2 rounded-lg text-sm border"
+                style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+              {noShowError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{noShowError}</p>}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button onClick={declareNoShow} disabled={busy}
+                  className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  style={{ backgroundColor: '#8A6BB0', color: '#FFFFFF' }}>
+                  {busy ? '...' : 'Confirmer : logement non utilisé'}
+                </button>
+                <button onClick={() => { setNoShowOpen(false); setNoShowError(''); }} disabled={busy}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setNoShowOpen(true)} disabled={busy}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold border disabled:opacity-50"
+              style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
+              {NO_SHOW_LABEL} (no show)
+            </button>
+          ))}
           {/* Seule sortie possible pour le cleaner : rendre la mission à l'admin.
               Il ne peut ni l'annuler ni la supprimer. */}
           <button onClick={withdraw} disabled={busy}

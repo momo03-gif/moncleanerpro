@@ -32,6 +32,9 @@ export async function getProfitConfigDB(): Promise<ProfitConfig> {
     // Linge : ce qu'un kit est facturé au client, et ce qu'il nous coûte.
     linenKitPrice: data.linen_kit_price != null ? Number(data.linen_kit_price) : 0,
     linenKitCost: data.linen_kit_cost != null ? Number(data.linen_kit_cost) : 0,
+    // No show : forfaits par défaut (cf. lib/noShow.ts).
+    noShowClientFee: data.no_show_client_fee != null ? Number(data.no_show_client_fee) : 0,
+    noShowCleanerFee: data.no_show_cleaner_fee != null ? Number(data.no_show_cleaner_fee) : 0,
   };
 }
 

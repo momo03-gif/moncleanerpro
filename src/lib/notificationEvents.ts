@@ -469,6 +469,33 @@ export async function notifyMissionCompleted(missionId: string) {
   } catch (e) { console.error('notifyMissionCompleted:', e); }
 }
 
+// E bis. No show (logement non utilisé) → admins + partenaire. Le partenaire
+// doit comprendre qu'aucun ménage n'a été fait, et pourquoi il est facturé.
+export async function notifyMissionNoShow(missionId: string, by: 'cleaner' | 'admin') {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx) return;
+    const rows: NotifInput[] = [];
+    if (by === 'cleaner') {
+      const admins = await adminUserIds();
+      const message = `${ctx.cleanerName ?? 'Le cleaner'} signale que le logement ${ctx.place} n'a pas été utilisé : aucun ménage nécessaire.`;
+      rows.push(...admins.map(id => ({
+        userId: id, role: 'admin' as const, title: 'No show — logement non utilisé', message, type: 'mission_no_show', missionId,
+      })));
+    }
+    const partnerRecipient = ctx.partnerId ?? ctx.createdBy;
+    if (partnerRecipient) {
+      rows.push({
+        userId: partnerRecipient, role: 'partner',
+        title: 'Logement non utilisé',
+        message: `Nous sommes passés à ${ctx.place} : le logement n'a pas été utilisé, aucun ménage n'était nécessaire. Le déplacement est facturé au forfait.`,
+        type: 'mission_no_show', missionId,
+      });
+    }
+    await dispatch(rows);
+  } catch (e) { console.error('notifyMissionNoShow:', e); }
+}
+
 // F. Le cleaner demande du temps supplémentaire → admin
 export async function notifyExtraTimeRequested(missionId: string, minutes: number) {
   try {

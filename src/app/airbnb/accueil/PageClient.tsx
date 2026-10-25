@@ -284,7 +284,7 @@ export default function PartnerHomeClient() {
       ) : (
         <div className="space-y-2.5 mb-6">
           {missionsToday.map(m => {
-            const cfg = missionStatusCfg(m.status);
+            const cfg = missionStatusCfg(m.status, m.noShow);
             const turnover = m.nextArrival === m.date;
             const r = missionReadiness(m);
             return (
@@ -304,7 +304,7 @@ export default function PartnerHomeClient() {
                   )}
                 </div>
                 <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>
-                  {missionStatusLabel(m.status, m.service)}
+                  {missionStatusLabel(m.status, m.service, m.noShow)}
                 </Badge>
               </button>
             );
@@ -379,7 +379,7 @@ export default function PartnerHomeClient() {
           <SectionTitle>Prochains ménages</SectionTitle>
           <div className="space-y-2.5">
             {upcomingMissions.slice(0, 8).map(m => {
-              const cfg = missionStatusCfg(m.status);
+              const cfg = missionStatusCfg(m.status, m.noShow);
               return (
                 <button key={m.id} onClick={() => router.push(`/airbnb/mission/${m.id}`)}
                   className="w-full text-left rounded-2xl border bg-card border-line px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-transform">
@@ -390,7 +390,7 @@ export default function PartnerHomeClient() {
                     </p>
                   </div>
                   <Badge style={{ backgroundColor: cfg.bg, color: cfg.color }}>
-                    {missionStatusLabel(m.status, m.service)}
+                    {missionStatusLabel(m.status, m.service, m.noShow)}
                   </Badge>
                 </button>
               );

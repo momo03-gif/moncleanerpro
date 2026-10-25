@@ -88,9 +88,10 @@ function rowToMission(row: any): Mission {
   const svc = (row.service ?? 'cleaning') as MissionService;
   // Livraison ET rendez-vous ne sont jamais facturés au client → prix 0.
   const nonBillable = svc === 'delivery' || svc === 'appointment';
+  // No show : le forfait déplacement est le prix, même à 0 — jamais celui du ménage.
   const price = nonBillable
     ? 0
-    : (storedPrice === 0 && row.airbnb_id && apt?.client_price != null
+    : (storedPrice === 0 && row.no_show !== true && row.airbnb_id && apt?.client_price != null
         ? Number(apt.client_price) || 0
         : storedPrice);
 
@@ -160,6 +161,10 @@ function rowToMission(row: any): Mission {
     startLng: row.start_lng != null ? Number(row.start_lng) : undefined,
     endLat: row.end_lat != null ? Number(row.end_lat) : undefined,
     endLng: row.end_lng != null ? Number(row.end_lng) : undefined,
+    noShow: row.no_show === true || undefined,
+    noShowAt: row.no_show_at ?? undefined,
+    noShowBy: row.no_show_by ?? undefined,
+    noShowNote: row.no_show_note ?? undefined,
   };
 }
 
@@ -587,6 +592,27 @@ export async function finishMissionDB(
   // La clôture est enregistrée ; un échec sur les montants ne la remet pas en cause.
   if (res.data?.argent) await signalerEchecArgent('clôture financière', missionId, String(res.data.argent));
   return { error: null };
+}
+
+// No show : logement non utilisé, rien à nettoyer. Le cleaner le déclare sur
+// place (GPS + photo, vérifiés par le serveur) ; l'admin sans preuve, et peut
+// fixer les forfaits de cette mission (sinon : ceux des paramètres).
+export async function declareNoShowDB(
+  missionId: string,
+  o: { coords?: GeoPoint | null; note?: string; clientFee?: number; cleanerFee?: number } = {},
+): Promise<{ error: string | null; tooFar?: boolean; photosRequises?: boolean }> {
+  const res = await ecrireMission({ action: 'no-show', missionId, ...o, coords: o.coords ?? null });
+  return {
+    error: res.error,
+    tooFar: res.data?.tooFar === true || undefined,
+    photosRequises: res.data?.photosRequises === true || undefined,
+  };
+}
+
+// Admin : annuler un no show déclaré par erreur → montants d'avant, mission à refaire.
+export async function cancelNoShowDB(missionId: string): Promise<{ error: string | null }> {
+  const res = await ecrireMission({ action: 'cancel-no-show', missionId });
+  return { error: res.error };
 }
 
 // Désistement du cleaner : il renonce à SA mission non clôturée. La mission n'est

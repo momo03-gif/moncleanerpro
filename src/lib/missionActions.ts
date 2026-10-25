@@ -10,10 +10,12 @@ import {
 } from './geo';
 import { photosApresExigees, PHOTOS_APRES_MIN, PHOTOS_REQUISES_ERROR } from './photosRegles';
 import { gainPrestataire } from './prestataireRegles';
+import { noShowPossible, patchNoShow, patchAnnulerNoShow, NO_SHOW_PHOTO_ERROR, type NoShowFees } from './noShow';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified, notifyMissionCancelled,
   notifyMissionCompleted, notifyMissionWithdrawn, notifyExtraTimeRequested, notifyExtraTimeResolved,
   notifyAdminsMissionRequested, notifyCleanerRequestDecision, notifyPrestataireAgentDesiste,
+  notifyMissionNoShow,
 } from './notificationEvents';
 import { logementsDuPartenaire, filtrePartenaire } from './missionRead';
 
@@ -107,6 +109,15 @@ export async function appliquerDuree(
   if (o.aptDefault != null) patch.apartment_default_duration_snapshot = o.aptDefault;
   if (o.price != null) patch.price = Math.max(0, o.price);
 
+  // No show : le cleaner est payé au forfait, pas à la durée — une durée
+  // modifiée ensuite ne doit pas écraser ce forfait.
+  if (m.no_show === true) {
+    if (Object.keys(patch).length === 0) return { error: null, minutes };
+    const { error } = await db.from('missions').update(patch).eq('id', missionId);
+    if (error) { console.error('appliquerDuree:', error.message); return { error: 'Enregistrement impossible.', minutes }; }
+    return { error: null, minutes };
+  }
+
   if (minutes != null && m.cleaner_id) {
     const { rate, deliveryRate } = await taux(db, m.cleaner_id as string);
     patch.cleaner_gain = computeMissionGain({
@@ -152,6 +163,15 @@ export async function cloturerArgent(db: SupabaseClient, missionId: string, actu
   const { error } = await db.from('missions').update(patch).eq('id', missionId);
   if (error) { console.error('cloturerArgent:', error.message); return { error: 'Enregistrement impossible.' }; }
   return { error: null };
+}
+
+/** Forfaits no show par défaut (Statistiques › Rentabilité › Paramètres). 0 tant que rien n'est réglé. */
+async function forfaitsNoShow(db: SupabaseClient): Promise<NoShowFees> {
+  const { data } = await db.from('profit_config').select('*').eq('id', 1).maybeSingle();
+  return {
+    client: Number(data?.no_show_client_fee) || 0,
+    cleaner: Number(data?.no_show_cleaner_fee) || 0,
+  };
 }
 
 /** Coordonnées de l'adresse d'une mission : portées par la mission, sinon par le site lié. */
@@ -287,6 +307,73 @@ const ACTIONS: Record<string, Action> = {
     await notifyMissionWithdrawn(missionId, (avant?.cleaner_name as string | null) ?? null);
     // Agent d'un prestataire : la mission revient « à attribuer » chez LUI.
     if (avant?.prestataire_id) await notifyPrestataireAgentDesiste(missionId, (avant.cleaner_name as string | null) ?? null);
+    return ok();
+  },
+
+  // No show : le voyageur n'est pas venu, le logement est propre, rien à faire.
+  // Le cleaner le déclare sur place (GPS + photo) ; l'admin peut le déclarer
+  // sans preuve et ajuster les forfaits de cette mission.
+  async 'no-show'(db, s, b) {
+    const missionId = str(b.missionId);
+    if (!missionId) return ko('Mission manquante.');
+    const estAdmin = s.role === 'admin';
+
+    // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
+    const { data: m } = await db.from('missions')
+      .select('*, airbnbs(latitude, longitude)').eq('id', missionId).maybeSingle();
+    if (!m) return ko('Mission introuvable.', 404);
+    if (m.status === 'done' || m.status === 'cancelled') return ko('Mission déjà clôturée.');
+    if (!noShowPossible(m.service as string | null)) return ko('Le no show ne concerne que les ménages.');
+
+    let cleanerId: string | null = null;
+    if (!estAdmin) {
+      cleanerId = await idCleaner(db, s.id);
+      if (!cleanerId || m.cleaner_id !== cleanerId) return ko('Mission introuvable.');
+
+      // Sur place : même règle que le démarrage.
+      const coords = point(b.coords);
+      const addr = adresseMission(m as Record<string, unknown>);
+      if (addr) {
+        if (!coords) return ko(GPS_REQUIRED_ERROR);
+        if (distanceMeters(addr, coords) > TRACKING_TOLERANCE_METERS) return ko(ADDRESS_PROXIMITY_ERROR, 400, { tooFar: true });
+      }
+      // La preuve : le logement tel qu'il a été trouvé.
+      const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true })
+        .eq('mission_id', missionId).eq('kind', 'after');
+      if ((count ?? 0) < 1) return ko(NO_SHOW_PHOTO_ERROR, 400, { photosRequises: true });
+    }
+
+    const fees = await forfaitsNoShow(db);
+    // L'admin peut fixer d'autres montants pour CETTE mission.
+    if (estAdmin && num(b.clientFee) != null) fees.client = num(b.clientFee)!;
+    if (estAdmin && num(b.cleanerFee) != null) fees.cleaner = num(b.cleanerFee)!;
+
+    const patch = patchNoShow(m, fees, { at: horodatage(b.at), by: estAdmin ? 'admin' : 'cleaner', note: str(b.note) ?? null });
+    let q = db.from('missions').update(patch).eq('id', missionId).not('status', 'in', '(done,cancelled)');
+    if (cleanerId) q = q.eq('cleaner_id', cleanerId);
+    const { data, error } = await q.select('id');
+    if (error) { console.error('missions/no-show:', error.message); return ko('Enregistrement impossible.', 500); }
+    if (!data || data.length === 0) return ko('Mission déjà clôturée.');
+    await notifyMissionNoShow(missionId, estAdmin ? 'admin' : 'cleaner');
+    return ok();
+  },
+
+  // Annulation d'un no show (déclaré par erreur) : les montants reviennent, et
+  // la mission redevient à faire.
+  async 'cancel-no-show'(db, s, b) {
+    if (s.role !== 'admin') return reserveAdmin;
+    const missionId = str(b.missionId);
+    if (!missionId) return ko('Mission manquante.');
+    const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
+    if (!m) return ko('Mission introuvable.', 404);
+    if (m.no_show !== true) return ko('Cette mission n’est pas en no show.');
+    const patch = {
+      ...patchAnnulerNoShow(m),
+      status: m.cleaner_id ? 'assigned' : 'pending',
+      ended_at: null, actual_duration_minutes: null,
+    };
+    const { error } = await db.from('missions').update(patch).eq('id', missionId);
+    if (error) { console.error('missions/cancel-no-show:', error.message); return ko('Enregistrement impossible.', 500); }
     return ok();
   },
 
@@ -507,8 +594,13 @@ const ACTIONS: Record<string, Action> = {
     if (s.role !== 'admin') return ko("Action réservée à l'administrateur.", 403);
     const missionId = str(b.missionId);
     if (!missionId) return ko('Mission manquante.');
+    // Reprendre un no show, c'est aussi l'annuler : les montants d'avant reviennent.
+    const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
     const { error } = await db.from('missions')
-      .update({ status: 'inprogress', ended_at: null, actual_duration_minutes: null }).eq('id', missionId);
+      .update({
+        ...(m?.no_show === true ? patchAnnulerNoShow(m) : {}),
+        status: 'inprogress', ended_at: null, actual_duration_minutes: null,
+      }).eq('id', missionId);
     if (error) { console.error('missions/reopen:', error.message); return ko('Enregistrement impossible.', 500); }
     return ok();
   },

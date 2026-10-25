@@ -126,6 +126,12 @@ export interface Mission {
   startLng?: number;
   endLat?: number;
   endLng?: number;
+  // No show : logement non utilisé, mission clôturée sans ménage et facturée au
+  // forfait déplacement (cf. lib/noShow.ts).
+  noShow?: boolean;
+  noShowAt?: string;
+  noShowBy?: 'cleaner' | 'admin';
+  noShowNote?: string;
 }
 
 // ── Photos avant/après des missions (références ; images dans Storage) ──────────
@@ -453,6 +459,10 @@ export interface ProfitConfig {
   linenKitPrice?: number;
   /** Ce qu'un kit nous coûte (€) — pour que la marge reste vraie. */
   linenKitCost?: number;
+  /** No show (logement non utilisé) : forfait déplacement facturé au client (€). */
+  noShowClientFee?: number;
+  /** No show : forfait payé au cleaner (€). */
+  noShowCleanerFee?: number;
 }
 
 export type NotificationType =

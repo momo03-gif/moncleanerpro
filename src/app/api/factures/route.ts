@@ -142,10 +142,16 @@ export async function POST(req: NextRequest) {
       if (errA) return NextResponse.json({ fournitures: {}, indisponible: true });
       const parLogement = new Map((apts ?? []).map((a: any) => [a.id, a]));
 
+      // No show : le logement n'a pas servi, le linge n'a pas été changé. Requête
+      // à part : sans migration_no_show.sql, elle échoue et rien n'est écarté.
+      const { data: noShows } = await db.from('missions').select('id').in('id', ids).eq('no_show', true);
+      const sansLinge = new Set((noShows ?? []).map(m => m.id as string));
+
       const fournitures: Record<string, { montant: number; libelle: string; kits: number }> = {};
       const aFiger: { id: string; montant: number; libelle: string; kits: number }[] = [];
 
       for (const m of missions ?? []) {
+        if (sansLinge.has(m.id as string)) continue;
         const fige = Number(m.supplies_amount) || 0;
         if (fige > 0) {
           fournitures[m.id] = {
