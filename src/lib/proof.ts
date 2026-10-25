@@ -39,6 +39,7 @@ export const ENTITY_ID = 'https://moncleanerpro.fr/#entreprise';
 // « MonCleanerPro » : Facebook, Instagram, LinkedIn, PagesJaunes, Bing Places…
 export const PROFILES: string[] = [
   REVIEWS.url,
+  'https://www.instagram.com/moncleanerpro_nettoyage_lyon/',
 ];
 
 // Année de début d'activité, affichée en pied de page. L'ancienneté est un
