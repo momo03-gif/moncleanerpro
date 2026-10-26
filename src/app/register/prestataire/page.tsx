@@ -8,8 +8,9 @@ import { SPECIALITES } from '@/lib/prestataireRegles';
 
 // Inscription d'un prestataire (sous-traitant). Le compte reste en attente :
 // l'admin le valide et fixe alors le taux horaire. Volontairement absente du
-// choix /register (vu par les clients) : on n'y accède que par le lien direct,
-// pour qu'un client ne se dise jamais que sa prestation est sous-traitée.
+// choix /register (vu par les clients) : on y accède par le lien discret
+// « Rejoindre notre réseau d'intervenants » de /login ou par lien direct, pour
+// qu'un client ne se dise jamais que sa prestation est sous-traitée.
 
 const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', color: '#F5F5F5', outline: 'none' };
 
@@ -80,7 +81,7 @@ export default function RegisterPrestatairePage() {
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3"><Logo size={36} tone="dark" showWordmark={false} /></div>
-          <h1 className="text-xl font-bold tracking-wide" style={{ color: '#F5F5F5' }}>Prestataire / indépendant</h1>
+          <h1 className="text-xl font-bold tracking-wide" style={{ color: '#F5F5F5' }}>Rejoindre notre réseau d’intervenants</h1>
           <p className="text-sm mt-1" style={{ color: '#5A5550' }}>Votre compte sera activé après validation</p>
         </div>
 

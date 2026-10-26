@@ -86,6 +86,15 @@ export default function LoginPage() {
           </button>
         </div>
 
+        {/* Intervenants extérieurs : lien à part, discret, hors « compte partenaire » */}
+        <button onClick={() => router.push('/register/prestataire')}
+          className="w-full mt-3 py-2 text-xs transition-colors"
+          style={{ color: '#5A5550' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#5A5550')}>
+          Professionnel du nettoyage ? Rejoindre notre réseau d’intervenants
+        </button>
+
       </div>
     </div>
   );
