@@ -129,3 +129,26 @@ export function specialitesValides(v: unknown): Specialite[] {
 export function libelleSpecialite(key: string): string {
   return SPECIALITES.find(s => s.key === key)?.label ?? key;
 }
+
+/**
+ * Spécialités qui correspondent à une mission, d'après ce qu'on en sait
+ * (origine, type de site, prestation). Sert à proposer d'abord les bons
+ * prestataires quand on confie la mission ; ne bloque rien.
+ */
+export function specialitesPourMission(m: {
+  source?: string | null; siteType?: string | null; service?: string | null;
+}): Specialite[] {
+  const out = new Set<Specialite>();
+  if (m.service === 'delivery' || m.service === 'cleaning_delivery') { out.add('livraison'); out.add('linge'); }
+  if (m.service !== 'delivery') {
+    if (m.source === 'hotel') out.add('hotellerie');
+    else if (m.siteType === 'office' || m.siteType === 'gym') out.add('bureaux');
+    else if (m.source === 'airbnb') out.add('location_courte');
+  }
+  return [...out];
+}
+
+/** Le prestataire a-t-il au moins une des spécialités attendues ? */
+export function correspondSpecialite(specialites: readonly string[] | null | undefined, attendues: readonly string[]): boolean {
+  return attendues.length > 0 && (specialites ?? []).some(s => attendues.includes(s));
+}

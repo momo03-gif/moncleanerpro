@@ -24,6 +24,7 @@ import { inputStyle } from '@/lib/ui';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import { appelPrestataire, type Prestataire } from '@/lib/prestataireApi';
+import { specialitesPourMission, correspondSpecialite } from '@/lib/prestataireRegles';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
@@ -977,9 +978,21 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
                 style={{ ...inputStyle, color: newPrestataire ? '#1A1A1A' : '#A8A09A' }}>
                 <option value="">{prestataires === null ? 'Chargement…' : 'Choisir un prestataire'}</option>
-                {(prestataires ?? []).filter(p => p.id !== mission.prestataireId).map(p => (
-                  <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h{p.sap_declare ? ' · SAP' : ''}</option>
-                ))}
+                {(() => {
+                  // Ceux dont la spécialité colle à la mission d'abord ; les autres restent choisissables.
+                  const attendues = specialitesPourMission(mission);
+                  const choix = (prestataires ?? []).filter(p => p.id !== mission.prestataireId);
+                  const adaptes = choix.filter(p => correspondSpecialite(p.specialites, attendues));
+                  const autres = choix.filter(p => !adaptes.includes(p));
+                  const option = (p: Prestataire) => (
+                    <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h{p.sap_declare ? ' · SAP' : ''}</option>
+                  );
+                  if (!adaptes.length) return autres.map(option);
+                  return (<>
+                    <optgroup label="Spécialité adaptée">{adaptes.map(option)}</optgroup>
+                    {autres.length > 0 && <optgroup label="Autres prestataires">{autres.map(option)}</optgroup>}
+                  </>);
+                })()}
               </select>
               <button onClick={handleConfier} disabled={!newPrestataire || busy}
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"

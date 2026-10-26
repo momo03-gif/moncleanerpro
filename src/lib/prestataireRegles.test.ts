@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides } from './prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides, specialitesPourMission, correspondSpecialite } from './prestataireRegles';
 
 describe('prestataires — règles', () => {
   it('doit au prestataire son taux × durée, au centime', () => {
@@ -68,5 +68,15 @@ describe('prestataires — vigilance', () => {
     expect(specialitesValides(['vitrerie', 'bureaux', 'vitrerie', 'pirate'])).toEqual(['bureaux', 'vitrerie']);
     expect(specialitesValides('bureaux')).toEqual([]);
     expect(specialitesValides(undefined)).toEqual([]);
+  });
+
+  it('déduit les spécialités utiles d’une mission', () => {
+    expect(specialitesPourMission({ source: 'hotel', service: 'cleaning' })).toEqual(['hotellerie']);
+    expect(specialitesPourMission({ source: 'airbnb', siteType: 'office' })).toEqual(['bureaux']);
+    expect(specialitesPourMission({ source: 'airbnb', siteType: 'apartment' })).toEqual(['location_courte']);
+    expect(specialitesPourMission({ source: 'airbnb', service: 'delivery' })).toEqual(['livraison', 'linge']);
+    expect(correspondSpecialite(['vitrerie', 'hotellerie'], ['hotellerie'])).toBe(true);
+    expect(correspondSpecialite(['vitrerie'], [])).toBe(false);
+    expect(correspondSpecialite(undefined, ['hotellerie'])).toBe(false);
   });
 });
