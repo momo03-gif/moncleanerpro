@@ -41,6 +41,8 @@ export const MISSION_TYPE_LABEL: Record<string, string> = {
   menage: 'Ménage',
   grand_menage: 'Grand ménage',
   appointment: 'Rendez-vous',
+  // Pas un type de mission : la colonne « Prestation » d'une facture d'intervention.
+  repair: 'Intervention / petits travaux',
   // Pas un type de mission : la colonne « Prestation » d'une facture pour un no show.
   no_show: 'Déplacement — logement non utilisé',
 };

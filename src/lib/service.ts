@@ -9,6 +9,7 @@ export const SERVICE_LABEL: Record<MissionService, string> = {
   delivery: 'Livraison',
   cleaning_delivery: 'Nettoyage + livraison',
   appointment: 'Rendez-vous',
+  repair: 'Intervention',
 };
 
 // Couleurs des badges (cohérentes avec la charte sobre de l'app).
@@ -17,6 +18,7 @@ export const SERVICE_BADGE: Record<MissionService, { color: string; bg: string }
   delivery:          { color: '#C48A2A', bg: '#C48A2A15' },
   cleaning_delivery: { color: '#5A8A6A', bg: '#5A8A6A15' },
   appointment:       { color: '#7C5CBF', bg: '#7C5CBF15' },
+  repair:            { color: '#3F5A78', bg: '#4A6A8A14' },
 };
 
 export function serviceLabel(service?: MissionService | null): string {
@@ -27,6 +29,17 @@ export function serviceLabel(service?: MissionService | null): string {
 export function serviceParts(service?: MissionService | null): { cleaning: boolean; delivery: boolean } {
   const s = service ?? 'cleaning';
   return { cleaning: s === 'cleaning' || s === 'cleaning_delivery', delivery: s === 'delivery' || s === 'cleaning_delivery' };
+}
+
+// Facturée au client ? Le ménage et les interventions, jamais la livraison ni
+// le rendez-vous. Source unique pour le CA, la compta et la facturation.
+export function estFacturable(service?: MissionService | null): boolean {
+  return serviceParts(service).cleaning || service === 'repair';
+}
+
+// Payée au taux horaire × durée (ménage ou intervention), et pointable en RH.
+export function estAuTemps(service?: MissionService | null): boolean {
+  return serviceParts(service).cleaning || service === 'repair';
 }
 
 // Un cleaner peut-il réaliser une mission de ce service ? Il doit savoir faire

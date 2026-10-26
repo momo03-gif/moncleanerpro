@@ -89,9 +89,10 @@ function rowToMission(row: any): Mission {
   // Livraison ET rendez-vous ne sont jamais facturés au client → prix 0.
   const nonBillable = svc === 'delivery' || svc === 'appointment';
   // No show : le forfait déplacement est le prix, même à 0 — jamais celui du ménage.
+  // Intervention : son prix est celui saisi, jamais le prix du ménage du logement.
   const price = nonBillable
     ? 0
-    : (storedPrice === 0 && row.no_show !== true && row.airbnb_id && apt?.client_price != null
+    : (storedPrice === 0 && row.no_show !== true && svc !== 'repair' && row.airbnb_id && apt?.client_price != null
         ? Number(apt.client_price) || 0
         : storedPrice);
 
@@ -129,6 +130,8 @@ function rowToMission(row: any): Mission {
     type: (row.type as MissionType) ?? 'regular',
     service: (row.service as MissionService) ?? 'cleaning',
     deliveryInstructions: row.delivery_instructions ?? undefined,
+    repairSpecialite: row.repair_specialite ?? undefined,
+    repairDetails: row.repair_details ?? undefined,
     groupId: row.group_id ?? undefined,
     recurringId: row.recurring_id ?? undefined,
     assigneeUserId: row.assignee_user_id ?? undefined,
@@ -378,6 +381,7 @@ export async function createMissionDB(fields: {
   airbnbId?: string; partnerId?: string;
   nextArrival?: string; nextArrivalTime?: string;
   service?: MissionService; deliveryInstructions?: string;
+  repairSpecialite?: string; repairDetails?: string;
   addressLat?: number; addressLng?: number;
   createdBy?: string; createdByRole?: string;
   // Maison louée à la chambre : périmètre du ménage, identique à ce que produit
@@ -659,6 +663,8 @@ export interface MissionUpdateFields {
   type?: string;
   service?: MissionService;
   deliveryInstructions?: string;
+  repairSpecialite?: string;
+  repairDetails?: string;
   airbnbId?: string | null;
   propertyName?: string;
   address?: string;

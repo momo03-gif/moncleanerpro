@@ -6,6 +6,7 @@ import type { Mission } from '@/lib/types';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import { formatDuration, formatHour, money } from '@/lib/format';
 import { serviceLabel, SERVICE_BADGE } from '@/lib/service';
+import { libelleSpecialite } from '@/lib/prestataireRegles';
 import { appelPrestataire, type Agent } from '@/lib/prestataireApi';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
@@ -177,6 +178,15 @@ function CarteMission({ mission: m, agents, onChange }: { mission: Mission; agen
           <span className="flex items-center gap-1 font-semibold" style={{ color: '#1A1A1A' }}><Icon name="wallet" size={13} /> {money(m.prestataireGain)}</span>
         )}
       </div>
+
+      {m.service === 'repair' && (
+        <div className="text-sm mb-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#4A6A8A12' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#3F5A78' }}>
+            {m.repairSpecialite ? libelleSpecialite(m.repairSpecialite) : 'Travail à faire'}
+          </p>
+          {m.repairDetails && <p className="whitespace-pre-line" style={{ color: '#1A1A1A' }}>{m.repairDetails}</p>}
+        </div>
+      )}
 
       {m.notes && (
         <p className="text-sm mb-3 px-3 py-2 rounded-lg whitespace-pre-line" style={{ backgroundColor: '#F8F6F2', color: '#1A1A1A' }}>{m.notes}</p>

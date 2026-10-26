@@ -12,7 +12,8 @@ import {
 import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import type { Mission, ParkingPayment } from '@/lib/types';
 import { sortMissionsForCleaner } from '@/lib/missionOrder';
-import { serviceLabel, SERVICE_BADGE, serviceParts } from '@/lib/service';
+import { serviceLabel, SERVICE_BADGE, serviceParts, estAuTemps } from '@/lib/service';
+import { libelleSpecialite } from '@/lib/prestataireRegles';
 import { cacheMissions, readCachedMissions, cacheTerrain, readCachedTerrain } from '@/lib/offline/store';
 import { MISSION_TYPE_LABEL, missionStatusCfg, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
 import { formatDuration, formatHour } from '@/lib/format';
@@ -165,9 +166,9 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
   // Le stationnement concerne toute mission incluant une livraison (livraison pure
   // OU nettoyage + livraison) : c'est là que le livreur se déplace en véhicule.
   const hasDelivery = serviceParts(mission.service).delivery;
-  // Le temps supplémentaire ne concerne que le NETTOYAGE (rallonger une durée de
-  // ménage) — inutile sur une livraison pure.
-  const hasCleaning = serviceParts(mission.service).cleaning;
+  // Le temps supplémentaire ne concerne que le travail AU TEMPS (ménage ou
+  // intervention) — inutile sur une livraison pure.
+  const hasCleaning = estAuTemps(mission.service);
   const canStart  = !isSimple && (mission.status === 'accepted' || mission.status === 'pending');
   const canFinish = !isSimple && mission.status === 'in_progress';
   const canDeliver = isSimple && isOpen;
@@ -467,6 +468,16 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
             videoUrl={(terrain?.accessVideoUrl ?? mission.accessVideoUrl)!} mode="view" />
         )}
 
+        {/* Intervention : le travail à faire, en premier plan. */}
+        {mission.service === 'repair' && (
+          <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#4A6A8A12' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#3F5A78' }}>
+              {mission.repairSpecialite ? libelleSpecialite(mission.repairSpecialite) : 'Travail à faire'}
+            </p>
+            {mission.repairDetails && <p className="text-sm leading-snug whitespace-pre-wrap" style={{ color: '#4A4540' }}>{mission.repairDetails}</p>}
+          </div>
+        )}
+
         {/* Consignes de livraison — affichées quand la mission inclut une livraison. */}
         {serviceParts(mission.service).delivery && mission.deliveryInstructions && (
           <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#C48A2A12' }}>
@@ -485,7 +496,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
           {/* Checklist du logement : le standard demandé par la conciergerie, à
               cocher au fur et à mesure. Ouverte par défaut sur une mission en
               cours — c'est le fil conducteur du ménage. */}
-          {mission.airbnbId && hasCleaning && (
+          {mission.airbnbId && serviceParts(mission.service).cleaning && (
             <ChecklistPanel airbnbId={mission.airbnbId} missionId={mission.id} mode="run"
               authorName={mission.cleanerName} readOnly={mission.status === 'completed'}
               showTimes defaultOpen={mission.status === 'in_progress'} />

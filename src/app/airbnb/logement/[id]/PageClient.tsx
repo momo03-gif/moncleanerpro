@@ -346,7 +346,7 @@ export default function LogementDetailClient() {
                     <span className="text-gold-ink" aria-hidden="true"><Icon name="chevronRight" size={13} /></span>
                   </p>
                   <p className="text-xs mt-0.5 text-muted">
-                    {serviceParts(m.service).delivery ? 'Livraison' : 'Ménage'}
+                    {m.service === 'repair' ? 'Intervention' : serviceParts(m.service).delivery ? 'Livraison' : 'Ménage'}
                     {m.cleanerName ? ` · ${m.cleanerName}` : ' · non assigné'}
                   </p>
                 </div>

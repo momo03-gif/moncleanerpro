@@ -8,7 +8,7 @@ import { lignesFacture, totauxFacture, appliquerCorrections, type MenageAFacture
 import { vueFacture } from '@/lib/factureStatut';
 import { inputStyle } from '@/lib/ui';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
-import { serviceParts } from '@/lib/service';
+import { estFacturable } from '@/lib/service';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 import { InvoiceDoc } from '@/components/InvoiceDoc';
@@ -95,13 +95,12 @@ export default function FacturationPage() {
   useEffect(() => { loadAll(); }, []);
 
   // Les livraisons ne sont JAMAIS facturées au client : elles sont à la charge de
-  // l'entreprise. On exclut les missions de livraison seule (on garde un éventuel
-  // legacy « ménage + livraison » qui conserve une part nettoyage facturable).
+  // l'entreprise. On facture les ménages (y compris un éventuel legacy « ménage +
+  // livraison ») et les interventions (petits travaux).
   const done = useMemo(
     () => missions.filter(m => {
       if (m.status !== 'completed' || m.date < from || m.date > to) return false;
-      const parts = serviceParts(m.service);
-      return parts.cleaning; // delivery-only → exclu de la facturation client
+      return estFacturable(m.service); // livraison seule / rendez-vous → exclus
     }),
     [missions, from, to],
   );
@@ -140,10 +139,11 @@ export default function FacturationPage() {
       date: m.date,
       logement: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
       // No show : on facture le déplacement, pas un ménage — et pas de linge.
-      type: m.noShow ? 'no_show' : m.type,
+      // Intervention : facturée comme telle, sans linge non plus.
+      type: m.noShow ? 'no_show' : m.service === 'repair' ? 'repair' : m.type,
       cleaner: m.cleanerName || '—',
       prix: m.price || 0,
-      fourniture: m.noShow ? null : (fournitures[m.id] ?? null),
+      fourniture: m.noShow || m.service === 'repair' ? null : (fournitures[m.id] ?? null),
     })),
     amounts,
   );

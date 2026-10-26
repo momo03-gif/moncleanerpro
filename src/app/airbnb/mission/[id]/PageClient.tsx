@@ -16,6 +16,7 @@ import { getMissionReportDB, reportHasContent } from '@/lib/missionReports';
 import type { Mission, MissionReport } from '@/lib/types';
 import { missionStatusCfg, missionStatusLabel, missionTypeLabel } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
+import { libelleSpecialite } from '@/lib/prestataireRegles';
 import { formatHour } from '@/lib/format';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import MissionPhotos from '@/components/MissionPhotos';
@@ -137,7 +138,11 @@ export default function PartnerMissionDetailClient() {
           </div>
           <div>
             <p className="text-[11px] text-muted">Prestation</p>
-            <p className="font-semibold text-ink">{isDelivery ? 'Livraison' : missionTypeLabel(mission.type)}</p>
+            <p className="font-semibold text-ink">
+              {mission.service === 'repair'
+                ? (mission.repairSpecialite ? libelleSpecialite(mission.repairSpecialite) : 'Intervention')
+                : isDelivery ? 'Livraison' : missionTypeLabel(mission.type)}
+            </p>
           </div>
           <div>
             <p className="text-[11px] text-muted">Intervenant</p>
@@ -145,6 +150,13 @@ export default function PartnerMissionDetailClient() {
           </div>
         </div>
       </Card>
+
+      {mission.service === 'repair' && mission.repairDetails && (
+        <Card className="p-5 mb-5">
+          <p className="text-[11px] text-muted mb-1">Travail demandé</p>
+          <p className="text-sm text-ink whitespace-pre-wrap">{mission.repairDetails}</p>
+        </Card>
+      )}
 
       {/* Préparation du logement : la vraie question de la conciergerie — le
           logement est-il prêt, et l'a-t-il été à temps pour le voyageur ? */}
@@ -170,7 +182,7 @@ export default function PartnerMissionDetailClient() {
       )}
 
       {/* Checklist : la preuve, point par point, que votre standard a été suivi. */}
-      {mission.airbnbId && (
+      {mission.airbnbId && serviceParts(mission.service).cleaning && (
         <div className="mb-5">
           <ChecklistPanel airbnbId={mission.airbnbId} missionId={mission.id} mode="viewer" defaultOpen={isDone} />
         </div>

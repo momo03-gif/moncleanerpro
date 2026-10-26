@@ -27,7 +27,10 @@ export type MissionSource = 'hotel' | 'airbnb';
 // la livraison s'ajoute sans système séparé. Orthogonal à MissionType.
 // 'appointment' = rendez-vous (entretien client, etc.) : ni ménage ni livraison,
 // donc ni facturé ni payé (serviceParts renvoie les deux à false).
-export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery' | 'appointment';
+// 'repair' = intervention / petits travaux (serrure, peinture, matelas…) :
+// facturée au client, payée au taux horaire × durée, confiée en général à un
+// prestataire artisan ; jamais proposée d'office à l'équipe (cf. lib/service.ts).
+export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery' | 'appointment' | 'repair';
 
 export interface Mission {
   id: string;
@@ -79,6 +82,10 @@ export interface Mission {
   service?: MissionService;
   // Consignes de livraison (quoi livrer / où déposer) — affichées au cleaner.
   deliveryInstructions?: string;
+  // Intervention (service 'repair') : spécialité artisan visée (clé de
+  // SPECIALITES, lib/prestataireRegles) et description du travail à faire.
+  repairSpecialite?: string;
+  repairDetails?: string;
   // Intervention ponctuelle multi-cleaners : les lignes d'un même group_id sont
   // une seule intervention (un cleaner par ligne). Voir createOneShotMissionDB.
   groupId?: string;

@@ -504,6 +504,8 @@ const ACTIONS: Record<string, Action> = {
     if (has('type') && txt('type')) patch.type = txt('type');
     if (has('service') && txt('service')) patch.service = txt('service');
     if (has('deliveryInstructions')) patch.delivery_instructions = txt('deliveryInstructions') || null;
+    if (has('repairSpecialite')) patch.repair_specialite = txt('repairSpecialite') || null;
+    if (has('repairDetails')) patch.repair_details = txt('repairDetails') || null;
     if (has('propertyName')) patch.property_name = txt('propertyName');
     if (has('address')) patch.address = txt('address');
     if (has('instructions')) patch.instructions = txt('instructions') || null;
@@ -682,6 +684,10 @@ const ACTIONS: Record<string, Action> = {
       source: str(f.source) ?? 'hotel',
       service,
       delivery_instructions: str(f.deliveryInstructions) ?? null,
+      ...(service === 'repair' ? {
+        repair_specialite: str(f.repairSpecialite) ?? null,
+        repair_details: str(f.repairDetails) ?? null,
+      } : {}),
       airbnb_id: str(f.airbnbId) ?? null,
       partner_id: partnerId,
       created_by: s.id,

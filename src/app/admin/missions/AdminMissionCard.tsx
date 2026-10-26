@@ -16,7 +16,7 @@ import { noShowPossible, NO_SHOW_LABEL } from '@/lib/noShow';
 import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
+import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts, estAuTemps } from '@/lib/service';
 import { computeMissionGain } from '@/lib/pay';
 import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
 import ArriveeSuivante from '@/components/ArriveeSuivante';
@@ -24,7 +24,7 @@ import { inputStyle } from '@/lib/ui';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import { appelPrestataire, type Prestataire } from '@/lib/prestataireApi';
-import { specialitesPourMission, correspondSpecialite } from '@/lib/prestataireRegles';
+import { specialitesPourMission, correspondSpecialite, specialitesDuMetier, libelleSpecialite } from '@/lib/prestataireRegles';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
@@ -224,6 +224,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     type: mission.type, price: String(mission.price ?? 0),
     service: mission.service ?? 'cleaning' as MissionService,
     deliveryInstructions: mission.deliveryInstructions ?? '',
+    repairSpecialite: mission.repairSpecialite ?? '', repairDetails: mission.repairDetails ?? '',
     nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
   });
   const st = missionStatusCfg(mission.status, mission.noShow);
@@ -250,6 +251,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
       type: mission.type, price: String(mission.price ?? 0),
       service: mission.service ?? 'cleaning',
       deliveryInstructions: mission.deliveryInstructions ?? '',
+      repairSpecialite: mission.repairSpecialite ?? '', repairDetails: mission.repairDetails ?? '',
       nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
     });
     setActionError('');
@@ -276,6 +278,10 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
       type: editForm.type,
       service: editForm.service,
       deliveryInstructions: serviceParts(editForm.service).delivery ? editForm.deliveryInstructions : '',
+      ...(editForm.service === 'repair' ? {
+        repairSpecialite: editForm.repairSpecialite,
+        repairDetails: editForm.repairDetails.trim(),
+      } : {}),
       price: Number(editForm.price) || 0,  // prix CLIENT uniquement
       // Arrivée suivante : saisie à la main uniquement. Pour un ménage issu de
       // la synchro, elle est recalculée depuis les réservations — on n'y touche pas.
@@ -530,9 +536,9 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               {missionOriginLabel(mission)}
             </span>
           )}
-          {mission.service !== 'appointment' && <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>}
-          {/* Badge prestation : livraison ou rendez-vous (distinct). */}
-          {(serviceParts(mission.service).delivery || mission.service === 'appointment') && (
+          {mission.service !== 'appointment' && mission.service !== 'repair' && <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>}
+          {/* Badge prestation : livraison, rendez-vous ou intervention (distinct). */}
+          {(serviceParts(mission.service).delivery || mission.service === 'appointment' || mission.service === 'repair') && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg font-semibold"
               style={{ backgroundColor: SERVICE_BADGE[mission.service ?? 'cleaning'].bg, color: SERVICE_BADGE[mission.service ?? 'cleaning'].color }}>
               {serviceParts(mission.service).delivery && <Icon name="delivery" size={12} />} {serviceLabel(mission.service)}
@@ -577,9 +583,19 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         {/* Date / heure / durée */}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
-          {mission.time && <span className="inline-flex items-center gap-1">{source === 'airbnb' ? 'Départ ' : <Icon name="clock" size={14} />}{formatHour(mission.time)}</span>}
+          {mission.time && <span className="inline-flex items-center gap-1">{source === 'airbnb' && mission.service !== 'repair' ? 'Départ ' : <Icon name="clock" size={14} />}{formatHour(mission.time)}</span>}
           {(mission.missionDurationMinutes ?? 0) > 0 && <span className="inline-flex items-center gap-1"><Icon name="timer" size={14} />{formatDuration(mission.missionDurationMinutes)}</span>}
         </div>
+
+        {/* Intervention : métier visé + travail à faire. */}
+        {mission.service === 'repair' && (
+          <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: '#4A6A8A30', backgroundColor: '#4A6A8A0A' }}>
+            <p className="text-xs font-semibold" style={{ color: '#3F5A78' }}>
+              {mission.repairSpecialite ? libelleSpecialite(mission.repairSpecialite) : 'Intervention'}
+            </p>
+            {mission.repairDetails && <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: '#4A4540' }}>{mission.repairDetails}</p>}
+          </div>
+        )}
 
         {/* Maison louée à la chambre : périmètre exact du ménage. */}
         {mission.coveredUnits && (
@@ -881,8 +897,8 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{source === 'airbnb' ? 'Heure départ clients' : 'Heure'}</label>
-                {source === 'airbnb' ? (
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{source === 'airbnb' && editForm.service !== 'repair' ? 'Heure départ clients' : 'Heure'}</label>
+                {source === 'airbnb' && editForm.service !== 'repair' ? (
                   <select value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
                     <option value="">Choisir</option>
@@ -909,13 +925,14 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               </div>
               )}
               {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
-              {serviceParts(editForm.service).cleaning && (
+              {estAuTemps(editForm.service) && (
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Temps de nettoyage (min)</label>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{editForm.service === 'repair' ? 'Durée estimée (min)' : 'Temps de nettoyage (min)'}</label>
                 <input type="number" min="5" step="5" value={editForm.durationMinutes} onChange={e => setEditForm(f => ({ ...f, durationMinutes: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               )}
+              {editForm.service !== 'repair' && (
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type</label>
                 <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value as MissionType }))}
@@ -926,12 +943,14 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   <option value="deep_clean">Grand ménage</option>
                 </select>
               </div>
+              )}
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prestation</label>
                 <select value={editForm.service} onChange={e => setEditForm(f => ({ ...f, service: e.target.value as MissionService }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
                   <option value="cleaning">Nettoyage</option>
                   <option value="delivery">Livraison</option>
+                  <option value="repair">Intervention</option>
                 </select>
               </div>
               {/* Livraison : jamais facturée au client → pas de prix client. */}
@@ -949,6 +968,23 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 </div>
               </div>
             </div>
+            {editForm.service === 'repair' && (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type d&apos;intervention</label>
+                  <select value={editForm.repairSpecialite} onChange={e => setEditForm(f => ({ ...f, repairSpecialite: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+                    <option value="">Non précisé</option>
+                    {specialitesDuMetier('artisan').map(sp => <option key={sp.key} value={sp.key}>{sp.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Travail à faire</label>
+                  <textarea value={editForm.repairDetails} onChange={e => setEditForm(f => ({ ...f, repairDetails: e.target.value }))}
+                    rows={3} className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
+                </div>
+              </div>
+            )}
             {serviceParts(editForm.service).delivery && (
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Consignes de livraison</label>

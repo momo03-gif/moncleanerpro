@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       // Tant que migration_linge.sql n'est pas passée, les colonnes n'existent
       // pas : on rend une facture sans fourniture plutôt qu'une erreur.
       const { data: missions, error: errM } = await db.from('missions')
-        .select('id, airbnb_id, supplies_amount, supplies_label, supplies_kits').in('id', ids);
+        .select('id, airbnb_id, service, supplies_amount, supplies_label, supplies_kits').in('id', ids);
       if (errM) return NextResponse.json({ fournitures: {}, indisponible: true });
 
       // Le prix d'un kit vient de la GRILLE TARIFAIRE, section « Linge &
@@ -151,7 +151,8 @@ export async function POST(req: NextRequest) {
       const aFiger: { id: string; montant: number; libelle: string; kits: number }[] = [];
 
       for (const m of missions ?? []) {
-        if (sansLinge.has(m.id as string)) continue;
+        // Une intervention (petits travaux) ne change pas le linge.
+        if (sansLinge.has(m.id as string) || m.service === 'repair') continue;
         const fige = Number(m.supplies_amount) || 0;
         if (fige > 0) {
           fournitures[m.id] = {

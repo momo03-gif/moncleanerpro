@@ -172,8 +172,13 @@ export function libelleSpecialite(key: string): string {
  * prestataires quand on confie la mission ; ne bloque rien.
  */
 export function specialitesPourMission(m: {
-  source?: string | null; siteType?: string | null; service?: string | null;
+  source?: string | null; siteType?: string | null; service?: string | null; repairSpecialite?: string | null;
 }): Specialite[] {
+  // Intervention : la spécialité visée, ou à défaut n'importe quel artisan.
+  if (m.service === 'repair') {
+    const visee = specialitesValides([m.repairSpecialite], 'artisan');
+    return visee.length ? visee : specialitesDuMetier('artisan').map(s => s.key);
+  }
   const out = new Set<Specialite>();
   if (m.service === 'delivery' || m.service === 'cleaning_delivery') { out.add('livraison'); out.add('linge'); }
   if (m.service !== 'delivery') {

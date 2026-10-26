@@ -1,6 +1,6 @@
 import { getServerDb } from './serverDb';
 import { getMissionsByCleanerTableIdDB, getActiveCleanersDB } from './db';
-import { serviceParts } from './service';
+import { estAuTemps } from './service';
 
 // service_role côté serveur (le moteur RH tourne dans des routes admin).
 const supabase = getServerDb();
@@ -223,8 +223,9 @@ export async function computePayslipDB(cleanerId: string, period = currentPeriod
   // Temps accordé = ménage prévu par appartement ; temps réel = pointage, ou le
   // temps prévu en fallback quand la mission n'a pas été pointée.
   // Les livraisons (forfait) ne sont pas pointées et n'ont pas de temps : on les
-  // exclut des statistiques de pointage. Seul le nettoyage compte.
-  const pointable = completed.filter(m => serviceParts(m.service).cleaning);
+  // exclut des statistiques de pointage. Seul le travail au temps compte
+  // (ménage ou intervention).
+  const pointable = completed.filter(m => estAuTemps(m.service));
   const plannedMinutes = pointable.reduce((s, m) => s + (m.missionDurationMinutes ?? 0), 0);
   const pointed = pointable.filter(m => (m.actualDurationMinutes ?? 0) > 0);
   const realMinutes = pointable.reduce(
@@ -282,7 +283,7 @@ export async function computeCleanerPeriodDetailDB(cleanerId: string, from: stri
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
   const rows: PayDetailMission[] = completed.map(m => {
-    const isCleaning = serviceParts(m.service).cleaning;
+    const isCleaning = estAuTemps(m.service);   // ménage ou intervention
     const planned = isCleaning ? (m.missionDurationMinutes ?? 0) : 0;
     const pointed = (m.actualDurationMinutes ?? 0) > 0;
     // Ménage : réel = pointage, sinon prévu en fallback. Hors ménage : pas de temps.

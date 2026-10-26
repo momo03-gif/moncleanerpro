@@ -107,4 +107,7 @@ describe('missionReadiness — cas neutres', () => {
     const r = missionReadiness({ status: 'pending', date: '2026-08-20' }, at('2026-08-14T09:00:00'));
     expect(r).toEqual({ tone: 'planned', label: 'Ménage prévu', turnover: false });
   });
+  it('une intervention n’annonce jamais le logement prêt', () => {
+    expect(missionReadiness({ status: 'completed', date: '2026-08-14', service: 'repair' }, at('2026-08-14T14:00:00'))).toBeNull();
+  });
 });

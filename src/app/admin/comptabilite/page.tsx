@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import type { Mission, Payment } from '@/lib/types';
 import { currentMonth } from '@/lib/mockData';
 import { formatDuration, money } from '@/lib/format';
-import { serviceParts } from '@/lib/service';
+import { estFacturable } from '@/lib/service';
 import type { PayrollRow } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
 import { coutMainOeuvre } from '@/lib/pay';
@@ -71,7 +71,7 @@ function GlobalView() {
   // Les livraisons ne sont pas facturées au client (à la charge de l'entreprise) :
   // leur prix n'entre PAS dans le CA. En revanche leur coût (cleanerGain) reste
   // compté dans les salaires/charges ci-dessous — c'est justement une charge.
-  const isBillable = (m: Mission) => serviceParts(m.service).cleaning;
+  const isBillable = (m: Mission) => estFacturable(m.service);
   const totalRevenue = completedMissions.reduce((s, m) => s + (isBillable(m) ? m.price : 0), 0);
   // Main-d'œuvre : cleaners de l'équipe ET prestataires (sous-traitance).
   const totalSalaries = completedMissions.reduce((s, m) => s + coutMainOeuvre(m), 0);

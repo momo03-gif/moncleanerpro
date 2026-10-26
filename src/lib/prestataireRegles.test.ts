@@ -86,4 +86,13 @@ describe('prestataires — vigilance', () => {
     expect(specialitesValides(['peinture', 'vitrerie'], 'artisan')).toEqual(['peinture']);
     expect(specialitesValides(['peinture', 'vitrerie'], 'nettoyage')).toEqual(['vitrerie']);
   });
+
+  it('propose les artisans pour une intervention', () => {
+    expect(specialitesPourMission({ service: 'repair', repairSpecialite: 'serrurerie' })).toEqual(['serrurerie']);
+    // Spécialité absente ou pas artisan : tous les artisans conviennent.
+    const tous = specialitesPourMission({ service: 'repair' });
+    expect(tous).toContain('peinture');
+    expect(tous).not.toContain('vitrerie');
+    expect(specialitesPourMission({ service: 'repair', repairSpecialite: 'vitrerie' })).toEqual(tous);
+  });
 });

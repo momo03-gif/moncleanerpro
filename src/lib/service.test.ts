@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { serviceParts, canCleanerDoService, capabilitiesLabel } from './service';
+import { serviceParts, canCleanerDoService, capabilitiesLabel, estFacturable, estAuTemps } from './service';
 
 describe('serviceParts — décompose une prestation', () => {
   it('ménage', () => expect(serviceParts('cleaning')).toEqual({ cleaning: true, delivery: false }));
@@ -12,12 +12,24 @@ describe('serviceParts — décompose une prestation', () => {
 });
 
 describe('Règle métier : facturation client', () => {
-  // La facturation client se base sur serviceParts(...).cleaning :
-  // une livraison seule n'est JAMAIS facturée au client (à la charge de l'entreprise).
-  const estFacturable = (s: Parameters<typeof serviceParts>[0]) => serviceParts(s).cleaning;
+  // Une livraison seule n'est JAMAIS facturée au client (à la charge de l'entreprise).
   it('un ménage est facturable au client', () => expect(estFacturable('cleaning')).toBe(true));
   it('une livraison seule N’EST PAS facturable au client', () => expect(estFacturable('delivery')).toBe(false));
   it('un legacy ménage+livraison garde sa part ménage facturable', () => expect(estFacturable('cleaning_delivery')).toBe(true));
+  it('une intervention est facturable, un rendez-vous non', () => {
+    expect(estFacturable('repair')).toBe(true);
+    expect(estFacturable('appointment')).toBe(false);
+  });
+});
+
+describe('Intervention (petits travaux)', () => {
+  it('n’est ni un ménage ni une livraison', () => expect(serviceParts('repair')).toEqual({ cleaning: false, delivery: false }));
+  it('se paie au temps, comme un ménage', () => {
+    expect(estAuTemps('repair')).toBe(true);
+    expect(estAuTemps('cleaning')).toBe(true);
+    expect(estAuTemps('delivery')).toBe(false);
+    expect(estAuTemps('appointment')).toBe(false);
+  });
 });
 
 describe('canCleanerDoService — éligibilité cleaner ↔ mission', () => {

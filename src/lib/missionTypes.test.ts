@@ -16,6 +16,8 @@ describe('Rendez-vous (service appointment) — interne', () => {
   });
   it('gain cleaner = 0 (jamais payé au temps)', () => {
     expect(computeMissionGain({ service: 'appointment', hourlyRate: 20, deliveryRate: 5, durationMinutes: 120 })).toBe(0);
+    // Intervention : taux horaire × durée, jamais le forfait livraison.
+    expect(computeMissionGain({ service: 'repair', hourlyRate: 20, deliveryRate: 5, durationMinutes: 90 })).toBe(30);
   });
 });
 

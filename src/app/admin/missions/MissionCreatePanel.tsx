@@ -13,7 +13,8 @@ import { createRecurringDB, updateRecurringDB, setRecurringActiveDB, deleteRecur
 import { geocodeAddress } from '@/lib/zones';
 import type { MissionType, MissionSource, MissionService, Apartment, RecurringMission } from '@/lib/types';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { SERVICE_LABEL, canCleanerDoService, serviceParts } from '@/lib/service';
+import { SERVICE_LABEL, canCleanerDoService, serviceParts, estAuTemps } from '@/lib/service';
+import { specialitesDuMetier } from '@/lib/prestataireRegles';
 import { computeMissionGain, DURATION_PRESETS } from '@/lib/pay';
 import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
 import ArriveeSuivante from '@/components/ArriveeSuivante';
@@ -27,6 +28,8 @@ const emptyForm = {
   cleanerId: '', date: '', time: '',
   durationMinutes: '60', price: '',
   deliveryInstructions: '',
+  // Intervention (artisan) : spécialité visée + travail à faire.
+  repairSpecialite: '', repairDetails: '',
   nextArrival: '', nextArrivalTime: '',
   // Chambres à faire quand le bien est une maison louée à la chambre.
   // Vide = toutes (maison entière).
@@ -306,8 +309,11 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
       address: a?.address ?? '',
       cleanerId: matchedCleaner?.id ?? '',
       selectedUnits: preset,
-      price: t?.price != null ? String(t.price) : (a?.clientPrice != null ? String(a.clientPrice) : p.price),
-      durationMinutes: t?.minutes != null ? String(t.minutes)
+      // Intervention : ni le prix ni la durée du ménage du logement.
+      price: p.service === 'repair' ? p.price
+        : t?.price != null ? String(t.price) : (a?.clientPrice != null ? String(a.clientPrice) : p.price),
+      durationMinutes: p.service === 'repair' ? p.durationMinutes
+        : t?.minutes != null ? String(t.minutes)
         : (a?.estimatedCleaningMinutes != null ? String(a.estimatedCleaningMinutes) : p.durationMinutes),
     }));
   }
@@ -360,7 +366,13 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
       return;
     }
 
-    const type: MissionType = form.source === 'airbnb' ? 'regular' : 'checkout';
+    const isRepair = form.service === 'repair';
+    if (isRepair && !form.repairDetails.trim()) {
+      setCreateError('Décrivez le travail à faire.');
+      setCreating(false);
+      return;
+    }
+    const type: MissionType = form.source === 'airbnb' || isRepair ? 'regular' : 'checkout';
 
     // Mission Airbnb : on la lie à l'appartement (source de vérité pour
     // l'adresse et les codes d'accès) et au partenaire propriétaire s'il existe.
@@ -370,6 +382,8 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     const rooms = roomsOf(apt?.id);
     const units = form.selectedUnits.filter(u => rooms.some(r => r.name === u));
     const isWhole = rooms.length > 0 && (units.length === 0 || units.length >= rooms.length);
+    // Une intervention vise le logement, pas un périmètre de ménage par chambre.
+    const parChambre = rooms.length > 0 && !isRepair;
 
     // Champs partagés par les missions de la commande (ménage et/ou livraison).
     const common = {
@@ -382,13 +396,13 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
       apartmentDefaultDuration: apt?.estimatedCleaningMinutes,
       airbnbId: apt?.id,
       partnerId: apt?.partnerId,
-      nextArrival: form.nextArrival || undefined,
-      nextArrivalTime: form.nextArrivalTime || undefined,
+      nextArrival: isRepair ? undefined : (form.nextArrival || undefined),
+      nextArrivalTime: isRepair ? undefined : (form.nextArrivalTime || undefined),
       createdBy: userId,
       createdByRole: 'admin' as const,
       // Périmètre, formulé comme la synchro : une mission saisie à la main doit
       // être indiscernable d'une mission automatique pour le cleaner.
-      ...(rooms.length > 0 ? {
+      ...(parChambre ? {
         coveredUnits: isWhole ? 'Maison entière' : units.join(' + ') + ' + communs',
         wholeProperty: isWhole,
         coveredUnitNames: isWhole ? rooms.map(r => r.name) : units,
@@ -402,6 +416,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
     const result = await createMissionDB({
       ...common, type, service: form.service,
       deliveryInstructions: form.service === 'delivery' ? form.deliveryInstructions : undefined,
+      ...(isRepair ? { repairSpecialite: form.repairSpecialite || undefined, repairDetails: form.repairDetails.trim() } : {}),
       // Livraison : forfait, on ne suit aucun temps → durée 0.
       missionDurationMinutes: form.service === 'delivery' ? 0 : (Number(form.durationMinutes) || 60),
       cleanerHourlyRate: c?.hourly_rate ?? 0,
@@ -512,13 +527,17 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
             </div>
           </div>
 
-          {/* Prestation : ménage (défaut) ou livraison. */}
+          {/* Prestation : ménage (défaut), livraison ou intervention (artisan). */}
           <div className="mb-6">
             <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Prestation</label>
             <div className="flex gap-2 flex-wrap">
-              {(['cleaning', 'delivery'] as MissionService[]).map(s => (
+              {(['cleaning', 'delivery', 'repair'] as MissionService[]).map(s => (
                 <button key={s} type="button"
-                  onClick={() => setForm(p => ({ ...p, service: s, cleanerId: '' }))}
+                  onClick={() => setForm(p => (p.service === s ? p : {
+                    ...p, service: s, cleanerId: '',
+                    // Le prix du ménage ne vaut pas pour une intervention (et inversement).
+                    ...(s === 'repair' || p.service === 'repair' ? { price: '' } : {}),
+                  }))}
                   className="flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all"
                   style={{ borderColor: form.service === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.service === s ? '#C9A84C12' : '#FFFFFF', color: form.service === s ? '#C9A84C' : '#7A7068' }}>
                   {SERVICE_LABEL[s]}
@@ -534,6 +553,32 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                   rows={2} placeholder="Ex : déposer le linge propre dans le placard de l'entrée, récupérer le linge sale."
                   className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+              </div>
+            )}
+
+            {/* Intervention : quel métier, quel travail. Se confie ensuite à un artisan
+                depuis la mission (« Confier à un prestataire »). */}
+            {form.service === 'repair' && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Type d&apos;intervention</label>
+                  <select value={form.repairSpecialite} onChange={e => setForm(p => ({ ...p, repairSpecialite: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+                    style={{ ...inputStyle, color: form.repairSpecialite ? '#1A1A1A' : '#A8A09A' }}>
+                    <option value="">Choisir (facultatif)</option>
+                    {specialitesDuMetier('artisan').map(sp => <option key={sp.key} value={sp.key}>{sp.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Travail à faire</label>
+                  <textarea required value={form.repairDetails} onChange={e => setForm(p => ({ ...p, repairDetails: e.target.value }))}
+                    rows={3} placeholder="Ex : changer le cylindre de la porte d'entrée (2 clés), reboucher 3 trous dans le salon."
+                    className="w-full px-4 py-3 rounded-xl text-sm border resize-none" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+                <p className="text-xs" style={{ color: '#A8A09A' }}>
+                  Une fois créée, confiez-la à un artisan depuis la mission (« Confier à un prestataire ») : ceux de la bonne spécialité sont proposés en premier.
+                </p>
               </div>
             )}
           </div>
@@ -592,9 +637,9 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                 </div>
               </div>
               {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
-              {serviceParts(form.service).cleaning && (
+              {estAuTemps(form.service) && (
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps de nettoyage (minutes)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{form.service === 'repair' ? 'Durée estimée (minutes)' : 'Temps de nettoyage (minutes)'}</label>
                 <div className="flex gap-2 flex-wrap mb-2">
                   {DURATION_PRESETS.map(d => (
                     <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutes: String(d) }))}
@@ -640,7 +685,7 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
               {/* Maison louée à la chambre : QUE faut-il faire ce jour-là ? Le prix
                   et la durée suivent le forfait du nombre de chambres cochées —
                   les communs sont refaits à chaque passage, donc rien ne s'additionne. */}
-              {houseRooms.length > 0 && (
+              {houseRooms.length > 0 && form.service !== 'repair' && (
                 <div className="rounded-xl border p-4" style={{ borderColor: '#EBD9A8', backgroundColor: '#FBF4E2' }}>
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#9A7B22' }}>
                     Chambres à faire
@@ -708,20 +753,27 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                 </div>
               )}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Date de nettoyage</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{form.service === 'repair' ? 'Date de l’intervention' : 'Date de nettoyage'}</label>
                 <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Heure départ clients</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{form.service === 'repair' ? 'Heure' : 'Heure départ clients'}</label>
+                {form.service === 'repair' ? (
+                  <input required type="time" value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                ) : (
                 <select required value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
                   style={{ ...inputStyle, color: form.time ? '#1A1A1A' : '#A8A09A' }}>
                   <option value="">Choisir</option>
                   {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
                 </select>
+                )}
               </div>
+              {form.service !== 'repair' && (
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prochaine arrivée d&apos;un voyageur</label>
                 <ArriveeSuivante dateMenage={form.date}
@@ -729,8 +781,9 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                   onChange={v => setForm(p => ({ ...p, nextArrival: v.date, nextArrivalTime: v.time }))}
                   champClass="w-full px-4 py-3 rounded-xl text-sm border appearance-none" champStyle={inputStyle} />
               </div>
+              )}
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Temps de nettoyage (minutes)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>{form.service === 'repair' ? 'Durée estimée (minutes)' : 'Temps de nettoyage (minutes)'}</label>
                 <div className="flex gap-2 flex-wrap mb-2">
                   {DURATION_PRESETS.map(d => (
                     <button key={d} type="button" onClick={() => setForm(p => ({ ...p, durationMinutes: String(d) }))}
@@ -743,9 +796,17 @@ export default function MissionCreatePanel({ cleaners, hotels, airbnbs, staff, r
                 <input type="number" min="5" step="5" value={form.durationMinutes} onChange={e => setForm(p => ({ ...p, durationMinutes: e.target.value }))}
                   placeholder="Durée en minutes" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
                   onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
-                <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Pré-rempli depuis l'appartement — modifiable si plus sale que prévu.</p>
+                {form.service !== 'repair' && <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>Pré-rempli depuis l'appartement — modifiable si plus sale que prévu.</p>}
               </div>
-              {form.price && (
+              {/* Intervention : prix fixé à la main (devis), jamais celui du ménage. */}
+              {form.service === 'repair' ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prix client (€) — facturation</label>
+                  <input type="number" min="0" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
+                    placeholder="0" className="w-full px-4 py-3 rounded-xl text-sm border" style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')} onBlur={e => (e.currentTarget.style.borderColor = '#E8E4DC')} />
+                </div>
+              ) : form.price && (
                 <div className="md:col-span-2 px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: '#F8F6F2', color: '#7A7068' }}>
                   Prix client (facturation) repris de l'appartement : <span style={{ color: '#5A8A6A', fontWeight: 600 }}>{money(form.price)}</span>
                 </div>

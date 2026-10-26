@@ -38,6 +38,7 @@ export interface ReadinessInput {
   date: string;              // YYYY-MM-DD
   nextArrival?: string;      // YYYY-MM-DD de la prochaine arrivée
   nextArrivalTime?: string;  // HH:MM
+  service?: string | null;   // une intervention ne prépare pas le logement
 }
 
 /** Minutes écoulées depuis minuit pour "HH:MM" (null si illisible). */
@@ -63,6 +64,8 @@ function gapLabel(minutes: number): string {
  */
 export function missionReadiness(m: ReadinessInput, now: Date = new Date()): Readiness | null {
   if (m.status === 'cancelled') return null;
+  // Intervention (petits travaux) : pas un ménage, elle ne rend pas le logement « prêt ».
+  if (m.service === 'repair') return null;
 
   const today = now.toLocaleDateString('en-CA');
   const turnover = !!m.nextArrival && m.nextArrival === m.date;

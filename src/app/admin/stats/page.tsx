@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import type { Depense } from '@/lib/depensesApi';
 import type { Mission } from '@/lib/types';
 import { formatDuration, money } from '@/lib/format';
-import { serviceParts } from '@/lib/service';
+import { serviceParts, estFacturable } from '@/lib/service';
 import { MISSION_TYPE_LABEL as typeLabel } from '@/lib/labels';
 import { clientKindOf, CLIENT_KIND_LABEL, CLIENT_KIND_COLOR, type ClientKind } from '@/lib/clientKind';
 import Loading from "@/components/Loading";
@@ -47,7 +47,7 @@ export default function StatsPage() {
   const pending = missions.filter(m => m.status === 'pending').length;
   // Les livraisons ne sont pas facturées au client (à la charge de l'entreprise) :
   // exclues du CA. Leur coût reste dans les salaires/dépenses.
-  const isBillable = (m: Mission) => serviceParts(m.service).cleaning;
+  const isBillable = (m: Mission) => estFacturable(m.service);
   const billable = missions.filter(isBillable);
   const revenue = missions.filter(m => m.status === 'completed' && isBillable(m)).reduce((s, m) => s + m.price, 0);
   const avgPrice = billable.length > 0 ? Math.round(billable.reduce((s, m) => s + m.price, 0) / billable.length) : 0;
