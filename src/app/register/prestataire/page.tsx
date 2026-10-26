@@ -6,8 +6,10 @@ import Logo from '@/components/Logo';
 import Icon from '@/components/Icon';
 import { SPECIALITES } from '@/lib/prestataireRegles';
 
-// Inscription PUBLIQUE d'un prestataire (sous-traitant). Le compte reste en
-// attente : l'admin le valide et fixe alors le taux horaire.
+// Inscription d'un prestataire (sous-traitant). Le compte reste en attente :
+// l'admin le valide et fixe alors le taux horaire. Volontairement absente du
+// choix /register (vu par les clients) : on n'y accède que par le lien direct,
+// pour qu'un client ne se dise jamais que sa prestation est sous-traitée.
 
 const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', color: '#F5F5F5', outline: 'none' };
 
@@ -127,8 +129,8 @@ export default function RegisterPrestatairePage() {
           </form>
         </div>
 
-        <button onClick={() => router.push('/register')} className="w-full mt-4 py-2.5 text-sm" style={{ color: '#4A4540' }}>
-          ← Choisir un autre type
+        <button onClick={() => router.push('/login')} className="w-full mt-4 py-2.5 text-sm" style={{ color: '#4A4540' }}>
+          ← Retour à la connexion
         </button>
       </div>
     </div>
