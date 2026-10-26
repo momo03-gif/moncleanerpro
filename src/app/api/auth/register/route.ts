@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { hashPassword } from '@/lib/password';
 import { notifyAdminsNouveauPrestataire } from '@/lib/notificationEvents';
-import { specialitesValides } from '@/lib/prestataireRegles';
+import { specialitesValides, metierValide } from '@/lib/prestataireRegles';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +21,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Champs manquants.' }, { status: 400 });
   }
 
-  const specialites = specialitesValides(b.specialites);
+  const metier = metierValide(b.metier);
+  const specialites = specialitesValides(b.specialites, metier);
   if (type === 'prestataire' && !specialites.length) {
     return NextResponse.json({ error: 'Choisissez au moins une spécialité.' }, { status: 400 });
   }
@@ -51,8 +52,8 @@ export async function POST(req: Request) {
         console.error('register/prestataire:', pErr?.message);
         return NextResponse.json({ error: 'Inscription impossible pour le moment.' }, { status: 500 });
       }
-      // Best-effort : sans effet si migration_prestataires_specialites.sql n'est pas passée.
-      await db.from('prestataires').update({ specialites }).eq('id', pr.id);
+      // Best-effort : sans effet si les migrations specialites / metier ne sont pas passées.
+      await db.from('prestataires').update({ specialites, metier }).eq('id', pr.id);
       await notifyAdminsNouveauPrestataire(b.name);
     } else if (type === 'hotel') {
       const { data: h, error: hErr } = await db.from('hotels').insert({

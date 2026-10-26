@@ -21,6 +21,8 @@ export interface Prestataire {
   sap_declare?: boolean;
   /** Clés de SPECIALITES (lib/prestataireRegles), déclarées à l'inscription. */
   specialites?: string[];
+  /** 'nettoyage' ou 'artisan' (METIERS, lib/prestataireRegles). */
+  metier?: string;
   /** Demande d'inscription pas encore validée (liste admin). */
   en_attente?: boolean;
   /** Kbis et attestation URSSAF présents et à jour (liste admin). */

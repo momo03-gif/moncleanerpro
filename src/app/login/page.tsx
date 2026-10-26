@@ -86,14 +86,17 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Intervenants extérieurs : lien à part, discret, hors « compte partenaire » */}
-        <button onClick={() => router.push('/register/prestataire')}
-          className="w-full mt-3 py-2 text-xs transition-colors"
-          style={{ color: '#5A5550' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#5A5550')}>
-          Professionnel du nettoyage ? Rejoindre notre réseau d’intervenants
-        </button>
+        {/* Intervenants extérieurs (nettoyage, artisans) : petit bouton à part, hors « compte partenaire » */}
+        <div className="mt-6 pt-5 border-t text-center" style={{ borderColor: '#1F1F1F' }}>
+          <p className="text-xs mb-2" style={{ color: '#5A5550' }}>Professionnel du nettoyage ou artisan ?</p>
+          <button onClick={() => router.push('/register/prestataire')}
+            className="inline-flex items-center px-4 py-2 rounded-full text-xs font-medium border transition-all"
+            style={{ borderColor: '#2E2E2E', color: '#A8A09A', backgroundColor: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.color = '#C9A84C'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#A8A09A'; }}>
+            Rejoindre notre réseau d’intervenants
+          </button>
+        </div>
 
       </div>
     </div>

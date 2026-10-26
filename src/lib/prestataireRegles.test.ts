@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides, specialitesPourMission, correspondSpecialite } from './prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides, specialitesPourMission, metierValide, correspondSpecialite } from './prestataireRegles';
 
 describe('prestataires — règles', () => {
   it('doit au prestataire son taux × durée, au centime', () => {
@@ -78,5 +78,12 @@ describe('prestataires — vigilance', () => {
     expect(correspondSpecialite(['vitrerie', 'hotellerie'], ['hotellerie'])).toBe(true);
     expect(correspondSpecialite(['vitrerie'], [])).toBe(false);
     expect(correspondSpecialite(undefined, ['hotellerie'])).toBe(false);
+  });
+
+  it('sépare nettoyage et artisans', () => {
+    expect(metierValide('artisan')).toBe('artisan');
+    expect(metierValide('pirate')).toBe('nettoyage');
+    expect(specialitesValides(['peinture', 'vitrerie'], 'artisan')).toEqual(['peinture']);
+    expect(specialitesValides(['peinture', 'vitrerie'], 'nettoyage')).toEqual(['vitrerie']);
   });
 });

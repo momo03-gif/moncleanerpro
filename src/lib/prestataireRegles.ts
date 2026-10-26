@@ -102,28 +102,64 @@ export function etatVigilance(docs: DocumentVigilance[], aujourdhui: string): {
   return { aJour: details.every(d => d.etat === 'ok'), details };
 }
 
-// ── Spécialités ─────────────────────────────────────────────────────────────
-// Ce que le prestataire sait faire, déclaré à l'inscription : aide l'admin à
-// savoir à qui confier quelle mission. Clés stockées en base (prestataires.specialites).
-export const SPECIALITES = [
-  { key: 'location_courte', label: 'Ménage location courte durée' },
-  { key: 'hotellerie', label: 'Hôtellerie' },
-  { key: 'bureaux', label: 'Bureaux et locaux pro' },
-  { key: 'fin_chantier', label: 'Fin de chantier / remise en état' },
-  { key: 'vitrerie', label: 'Vitrerie' },
-  { key: 'domicile', label: 'Ménage chez les particuliers' },
-  { key: 'copropriete', label: 'Parties communes / copropriété' },
-  { key: 'textile', label: 'Moquettes, tapis, canapés' },
-  { key: 'linge', label: 'Linge / blanchisserie' },
-  { key: 'livraison', label: 'Livraison' },
+// ── Métier et spécialités ───────────────────────────────────────────────────
+// Deux profils de prestataire : les pros du nettoyage et les artisans (petits
+// travaux, réparations dans les logements). Chacun déclare ses spécialités à
+// l'inscription : ça aide l'admin à savoir à qui confier quoi.
+// Clés stockées en base (prestataires.metier, prestataires.specialites).
+export const METIERS = [
+  { key: 'nettoyage', label: 'Professionnel du nettoyage' },
+  { key: 'artisan', label: 'Artisan / petits travaux' },
 ] as const;
+
+export type Metier = (typeof METIERS)[number]['key'];
+
+export const SPECIALITES = [
+  { key: 'location_courte', metier: 'nettoyage', label: 'Ménage location courte durée' },
+  { key: 'hotellerie', metier: 'nettoyage', label: 'Hôtellerie' },
+  { key: 'bureaux', metier: 'nettoyage', label: 'Bureaux et locaux pro' },
+  { key: 'fin_chantier', metier: 'nettoyage', label: 'Fin de chantier / remise en état' },
+  { key: 'vitrerie', metier: 'nettoyage', label: 'Vitrerie' },
+  { key: 'domicile', metier: 'nettoyage', label: 'Ménage chez les particuliers' },
+  { key: 'copropriete', metier: 'nettoyage', label: 'Parties communes / copropriété' },
+  { key: 'textile', metier: 'nettoyage', label: 'Moquettes, tapis, canapés' },
+  { key: 'linge', metier: 'nettoyage', label: 'Linge / blanchisserie' },
+  { key: 'livraison', metier: 'nettoyage', label: 'Livraison' },
+  { key: 'rebouchage', metier: 'artisan', label: 'Rebouchage de trous, enduits' },
+  { key: 'peinture', metier: 'artisan', label: 'Peinture' },
+  { key: 'serrurerie', metier: 'artisan', label: 'Serrurerie (changement de serrure)' },
+  { key: 'literie', metier: 'artisan', label: 'Matelas et literie (réparation, remplacement)' },
+  { key: 'plomberie', metier: 'artisan', label: 'Plomberie (fuite, robinet, WC)' },
+  { key: 'electricite', metier: 'artisan', label: 'Électricité (prise, luminaire)' },
+  { key: 'meubles', metier: 'artisan', label: 'Montage et réparation de meubles' },
+  { key: 'menuiserie', metier: 'artisan', label: 'Menuiserie (portes, placards)' },
+  { key: 'joints', metier: 'artisan', label: 'Joints, silicone, carrelage' },
+  { key: 'electromenager', metier: 'artisan', label: 'Électroménager (installation, remplacement)' },
+  { key: 'multiservice', metier: 'artisan', label: 'Petits travaux divers' },
+] as const satisfies readonly { key: string; metier: Metier; label: string }[];
 
 export type Specialite = (typeof SPECIALITES)[number]['key'];
 
-/** Garde uniquement les clés connues, sans doublon, dans l'ordre de la liste. */
-export function specialitesValides(v: unknown): Specialite[] {
+export function metierValide(v: unknown): Metier {
+  return v === 'artisan' ? 'artisan' : 'nettoyage';
+}
+
+export function libelleMetier(key: string | null | undefined): string {
+  return METIERS.find(m => m.key === key)?.label ?? METIERS[0].label;
+}
+
+/** Spécialités proposées pour un métier, dans l'ordre d'affichage. */
+export function specialitesDuMetier(metier: Metier) {
+  return SPECIALITES.filter(s => s.metier === metier);
+}
+
+/**
+ * Garde uniquement les clés connues (et du métier donné, s'il l'est), sans
+ * doublon, dans l'ordre de la liste.
+ */
+export function specialitesValides(v: unknown, metier?: Metier): Specialite[] {
   const recu = new Set(Array.isArray(v) ? v.map(String) : []);
-  return SPECIALITES.map(s => s.key).filter(k => recu.has(k));
+  return SPECIALITES.filter(s => !metier || s.metier === metier).map(s => s.key).filter(k => recu.has(k));
 }
 
 export function libelleSpecialite(key: string): string {

@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
 import { hashPassword } from '@/lib/password';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides } from '@/lib/prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, type Metier } from '@/lib/prestataireRegles';
 import {
   notifyCleanerNewMission, notifyCleanerMissionUnassigned,
   notifyPrestataireMissionConfiee, notifyPrestataireMissionReprise, notifyPrestatairePaiement,
@@ -34,17 +34,18 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : unde
 const MDP_MIN = 6;
 
 const PRESTATAIRE_COLONNES_BASE = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at';
-const PRESTATAIRE_COLONNES = `${PRESTATAIRE_COLONNES_BASE}, specialites`;
+const PRESTATAIRE_COLONNES = `${PRESTATAIRE_COLONNES_BASE}, specialites, metier`;
 
-// Lecture des fiches : retombe sur les colonnes d'avant si la colonne
-// `specialites` n'existe pas encore (migration_prestataires_specialites.sql).
+// Lecture des fiches : retombe sur les colonnes d'avant si `specialites` ou
+// `metier` n'existent pas encore (migration_prestataires_specialites / _metier.sql).
+const COLONNES_RECENTES = /specialites|metier/;
 async function lirePrestataires(db: SupabaseClient, filtre?: { userId: string }) {
   const lire = (colonnes: string) => {
     const q = db.from('prestataires').select(colonnes);
     return filtre ? q.eq('user_id', filtre.userId) : q.order('name');
   };
   const r = await lire(PRESTATAIRE_COLONNES);
-  if (!r.error || !/specialites/.test(r.error.message)) return r;
+  if (!r.error || !COLONNES_RECENTES.test(r.error.message)) return r;
   return lire(PRESTATAIRE_COLONNES_BASE);
 }
 
@@ -236,8 +237,8 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         console.error('prestataire/create:', error.message);
         return ko('Création impossible (migration_prestataires.sql exécutée ?).', 500);
       }
-      const specialites = specialitesValides(b.specialites);
-      if (specialites.length && cree) await db.from('prestataires').update({ specialites }).eq('id', cree.id);
+      const metier = metierValide(b.metier);
+      if (cree) await db.from('prestataires').update({ metier, specialites: specialitesValides(b.specialites, metier) }).eq('id', cree.id);
       return ok();
     }
 
@@ -253,14 +254,15 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       // Le nouveau taux vaut pour les missions confiées À PARTIR DE MAINTENANT.
       if (b.hourlyRate !== undefined) patch.hourly_rate = Math.max(0, Number(b.hourlyRate) || 0);
       if (b.sapDeclare !== undefined) patch.sap_declare = b.sapDeclare === true;
-      if (b.specialites !== undefined) patch.specialites = specialitesValides(b.specialites);
+      if (b.metier !== undefined) patch.metier = metierValide(b.metier);
+      if (b.specialites !== undefined) patch.specialites = specialitesValides(b.specialites, patch.metier as Metier | undefined);
       if (b.status !== undefined) {
         if (b.status !== 'active' && b.status !== 'suspended') return ko('Statut invalide.');
         patch.status = b.status;
       }
       let { data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle();
-      if (error && /specialites/.test(error.message)) {   // base pas encore migrée
-        delete patch.specialites;
+      if (error && COLONNES_RECENTES.test(error.message)) {   // base pas encore migrée
+        delete patch.specialites; delete patch.metier;
         ({ data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle());
       }
       if (error || !data) return ko('Enregistrement impossible.', 500);

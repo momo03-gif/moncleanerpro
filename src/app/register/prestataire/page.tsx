@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import Icon from '@/components/Icon';
-import { SPECIALITES } from '@/lib/prestataireRegles';
+import { METIERS, specialitesDuMetier, type Metier } from '@/lib/prestataireRegles';
 
 // Inscription d'un prestataire (sous-traitant). Le compte reste en attente :
 // l'admin le valide et fixe alors le taux horaire. Volontairement absente du
@@ -28,6 +28,7 @@ const VIDE = { name: '', contactName: '', email: '', phone: '', siret: '', passw
 export default function RegisterPrestatairePage() {
   const router = useRouter();
   const [form, setForm] = useState(VIDE);
+  const [metier, setMetier] = useState<Metier>('nettoyage');
   const [specialites, setSpecialites] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,7 @@ export default function RegisterPrestatairePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'prestataire', name: form.name.trim(), contactName: form.contactName.trim(),
-          email: form.email, phone: form.phone.trim(), siret: form.siret.replace(/\s/g, ''), specialites, password: form.password,
+          email: form.email, phone: form.phone.trim(), siret: form.siret.replace(/\s/g, ''), metier, specialites, password: form.password,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -87,6 +88,25 @@ export default function RegisterPrestatairePage() {
 
         <div className="rounded-2xl p-8" style={{ backgroundColor: '#141414', border: '1px solid #242424' }}>
           <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <p className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: '#6A6058' }}>Vous êtes</p>
+              <div className="grid grid-cols-2 gap-2">
+                {METIERS.map(m => {
+                  const choisi = metier === m.key;
+                  return (
+                    <button key={m.key} type="button" aria-pressed={choisi}
+                      onClick={() => { if (!choisi) { setMetier(m.key); setSpecialites([]); } }}
+                      className="px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                      style={choisi
+                        ? { backgroundColor: '#C9A84C18', color: '#C9A84C', border: '1px solid #C9A84C' }
+                        : { backgroundColor: '#1A1A1A', color: '#A8A09A', border: '1px solid #2E2E2E' }}>
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {CHAMPS.map(f => (
               <div key={f.key}>
                 <label className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: '#6A6058' }}>{f.label}</label>
@@ -102,7 +122,7 @@ export default function RegisterPrestatairePage() {
             <div>
               <p className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: '#6A6058' }}>Vos spécialités</p>
               <div className="flex flex-wrap gap-2">
-                {SPECIALITES.map(sp => {
+                {specialitesDuMetier(metier).map(sp => {
                   const choisi = specialites.includes(sp.key);
                   return (
                     <button key={sp.key} type="button" aria-pressed={choisi}
