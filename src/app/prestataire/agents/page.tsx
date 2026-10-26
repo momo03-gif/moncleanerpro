@@ -37,10 +37,12 @@ export default function PrestataireAgentsPage() {
   async function creer(e: React.FormEvent) {
     e.preventDefault();
     setEnvoi(true); setErreur(''); setInfo('');
-    const r = await appelPrestataire('agent-create', form);
+    const r = await appelPrestataire<{ connexion?: 'telephone' | 'email' }>('agent-create', form);
     setEnvoi(false);
     if (!r.ok) { setErreur(r.error); return; }
-    setInfo(`Compte créé. ${form.name} se connecte sur l’application avec ${form.email} et le mot de passe choisi.`);
+    setInfo(r.connexion === 'email'
+      ? `Compte créé. Ce numéro est déjà celui de votre compte : ${form.name} se connecte avec ${form.email} et le mot de passe choisi.`
+      : `Compte créé. ${form.name} se connecte sur l’application avec son numéro ${form.phone} et le mot de passe choisi.`);
     setForm(VIDE); setAjout(false);
     await charger();
   }
@@ -71,9 +73,9 @@ export default function PrestataireAgentsPage() {
           <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>Nouvel agent</p>
           <input required placeholder="Nom et prénom" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
-          <input required type="email" placeholder="Email (identifiant de connexion)" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+          <input required type="tel" placeholder="Téléphone (identifiant de connexion)" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
             className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
-          <input type="tel" placeholder="Téléphone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+          <input required type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
             className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
           <input required minLength={6} placeholder="Mot de passe (6 caractères minimum)" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
             className="w-full px-4 py-3 rounded-xl text-sm" style={inputStyle} />
@@ -151,7 +153,7 @@ function CarteAgent({ agent, onChange }: { agent: Agent; onChange: () => Promise
             className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} />
           <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email"
             className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} />
-          <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone"
+          <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone (identifiant de connexion)"
             className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} />
           <div className="flex gap-2">
             <button onClick={() => executer('agent-update', form, 'Enregistré.')} disabled={envoi}

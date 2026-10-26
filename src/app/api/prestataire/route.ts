@@ -461,6 +461,13 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Record<string, unknown>) {
   const pid = moi.id as string;
+  // Téléphone de connexion d'un agent. Un indépendant qui est aussi son propre
+  // agent a le même numéro que son compte prestataire : un numéro ne sert qu'à
+  // un compte, l'agent se connecte alors avec son email.
+  async function identifiantAgent(telephone: string): Promise<string | null> {
+    const { data: compte } = await db.from('users').select('login_phone').eq('id', moi.user_id as string).maybeSingle();
+    return compte?.login_phone === telephone ? null : telephone;
+  }
 
   /** Un de MES agents, ou null. */
   async function monAgent(id: string | undefined) {
@@ -480,9 +487,12 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
 
     case 'agent-create': {
       const name = str(b.name), email = str(b.email)?.toLowerCase(), password = str(b.password);
-      if (!name || !email) return ko('Nom et email obligatoires.');
+      // L'agent se connecte avec son téléphone (email demandé aussi).
+      const telephone = normalizePhone(str(b.phone));
+      if (!name || !email || !telephone) return ko('Nom, téléphone et email obligatoires.');
       if (!password || password.length < MDP_MIN) return ko(`Mot de passe : ${MDP_MIN} caractères minimum.`);
-      const compte = await creerCompte(db, { email, password, name, phone: str(b.phone), role: 'cleaner' });
+      const loginPhone = await identifiantAgent(telephone);
+      const compte = await creerCompte(db, { email, password, name, phone: str(b.phone), role: 'cleaner', loginPhone });
       if (compte.error) return ko(compte.error);
       // Un agent est un cleaner « hors équipe » : taux 0 (on paie le prestataire,
       // pas l'agent), ménage uniquement.
@@ -496,18 +506,22 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
         console.error('prestataire/agent-create:', error.message);
         return ko('Création impossible.', 500);
       }
-      return ok();
+      return ok({ connexion: loginPhone ? 'telephone' : 'email' });
     }
 
     case 'agent-update': {
       const agent = await monAgent(str(b.id));
       if (!agent) return ko('Agent introuvable.', 404);
       const name = str(b.name), email = str(b.email)?.toLowerCase();
-      if (!name || !email) return ko('Nom et email obligatoires.');
-      const { error: uErr } = await db.from('users').update({ name, email, phone: str(b.phone) ?? null }).eq('id', agent.user_id);
-      if (uErr) return ko(/duplicate|unique/i.test(uErr.message) ? 'Un compte existe déjà avec cet email.' : 'Enregistrement impossible.');
-      await db.from('cleaners').update({ name, email, phone: str(b.phone) ?? null }).eq('id', agent.id);
-      return ok();
+      const telephone = normalizePhone(str(b.phone));
+      if (!name || !email || !telephone) return ko('Nom, téléphone et email obligatoires.');
+      const loginPhone = await identifiantAgent(telephone);
+      const { error: uErr } = await db.from('users')
+        .update({ name, email, phone: str(b.phone), login_phone: loginPhone }).eq('id', agent.user_id);
+      if (uErr) return ko(/login_phone/i.test(uErr.message) ? 'Ce numéro sert déjà à se connecter à un autre compte.'
+        : /duplicate|unique/i.test(uErr.message) ? 'Un compte existe déjà avec cet email.' : 'Enregistrement impossible.');
+      await db.from('cleaners').update({ name, email, phone: str(b.phone) }).eq('id', agent.id);
+      return ok({ connexion: loginPhone ? 'telephone' : 'email' });
     }
 
     case 'agent-password': {
