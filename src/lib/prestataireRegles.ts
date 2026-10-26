@@ -193,3 +193,31 @@ export function specialitesPourMission(m: {
 export function correspondSpecialite(specialites: readonly string[] | null | undefined, attendues: readonly string[]): boolean {
   return attendues.length > 0 && (specialites ?? []).some(s => attendues.includes(s));
 }
+
+// ── Véhicules ───────────────────────────────────────────────────────────────
+// Le prestataire dit s'il est véhiculé, et avec quoi (plusieurs choix
+// possibles), du plus léger au plus gros. En base (prestataires.vehicules) :
+// NULL = non renseigné, [] = pas véhiculé, sinon les clés ci-dessous.
+export const VEHICULES = [
+  { key: 'velo', label: 'Vélo' },
+  { key: 'trottinette', label: 'Trottinette' },
+  { key: 'scooter', label: 'Scooter' },
+  { key: 'voiture', label: 'Voiture' },
+  { key: 'camionnette', label: 'Camionnette' },
+] as const;
+
+export type Vehicule = (typeof VEHICULES)[number]['key'];
+
+/** Clés connues, sans doublon, dans l'ordre de la liste. */
+export function vehiculesValides(v: unknown): Vehicule[] {
+  const recu = new Set(Array.isArray(v) ? v.map(String) : []);
+  return VEHICULES.map(x => x.key).filter(k => recu.has(k));
+}
+
+/** « Voiture, Camionnette », « Non véhiculé », ou « Non renseigné » (NULL). */
+export function libelleVehicules(v: readonly string[] | null | undefined): string {
+  if (v == null) return 'Non renseigné';
+  const cles = vehiculesValides(v);
+  if (!cles.length) return 'Non véhiculé';
+  return cles.map(k => VEHICULES.find(x => x.key === k)!.label).join(', ');
+}

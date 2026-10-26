@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import Icon from '@/components/Icon';
-import { METIERS, specialitesDuMetier, type Metier } from '@/lib/prestataireRegles';
+import { METIERS, VEHICULES, specialitesDuMetier, type Metier } from '@/lib/prestataireRegles';
 import { normalizePhone } from '@/lib/phone';
 
 // Inscription d'un prestataire (sous-traitant). Le compte reste en attente :
@@ -31,6 +31,9 @@ export default function RegisterPrestatairePage() {
   const [form, setForm] = useState(VIDE);
   const [metier, setMetier] = useState<Metier>('nettoyage');
   const [specialites, setSpecialites] = useState<string[]>([]);
+  // Véhiculé ? null = pas encore répondu (la question est obligatoire).
+  const [vehicule, setVehicule] = useState<boolean | null>(null);
+  const [vehicules, setVehicules] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -43,6 +46,8 @@ export default function RegisterPrestatairePage() {
     if (!normalizePhone(form.phone)) { setError('Numéro de téléphone invalide.'); return; }
     if (form.siret.replace(/\s/g, '').length !== 14) { setError('Le SIRET compte 14 chiffres.'); return; }
     if (!specialites.length) { setError('Choisissez au moins une spécialité.'); return; }
+    if (vehicule === null) { setError('Dites-nous si vous êtes véhiculé.'); return; }
+    if (vehicule && !vehicules.length) { setError('Indiquez votre ou vos véhicules.'); return; }
 
     setLoading(true);
     try {
@@ -50,7 +55,7 @@ export default function RegisterPrestatairePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'prestataire', name: form.name.trim(), contactName: form.contactName.trim(),
-          email: form.email.trim(), phone: form.phone.trim(), siret: form.siret.replace(/\s/g, ''), metier, specialites, password: form.password,
+          email: form.email.trim(), phone: form.phone.trim(), siret: form.siret.replace(/\s/g, ''), metier, specialites, vehicule, vehicules: vehicule ? vehicules : [], password: form.password,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -138,6 +143,45 @@ export default function RegisterPrestatairePage() {
                   );
                 })}
               </div>
+            </div>
+
+            <div>
+              <p className="block text-xs font-medium mb-1.5 uppercase tracking-wider" style={{ color: '#6A6058' }}>Êtes-vous véhiculé ?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([[true, 'Oui'], [false, 'Non']] as const).map(([v, l]) => {
+                  const choisi = vehicule === v;
+                  return (
+                    <button key={l} type="button" aria-pressed={choisi}
+                      onClick={() => { setVehicule(v); if (!v) setVehicules([]); }}
+                      className="px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                      style={choisi
+                        ? { backgroundColor: '#C9A84C18', color: '#C9A84C', border: '1px solid #C9A84C' }
+                        : { backgroundColor: '#1A1A1A', color: '#A8A09A', border: '1px solid #2E2E2E' }}>
+                      {l}
+                    </button>
+                  );
+                })}
+              </div>
+              {vehicule && (
+                <div className="mt-2.5">
+                  <p className="text-xs mb-1.5" style={{ color: '#6A6058' }}>Avec quoi vous déplacez-vous ? (plusieurs choix possibles)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {VEHICULES.map(ve => {
+                      const choisi = vehicules.includes(ve.key);
+                      return (
+                        <button key={ve.key} type="button" aria-pressed={choisi}
+                          onClick={() => setVehicules(l => (choisi ? l.filter(k => k !== ve.key) : [...l, ve.key]))}
+                          className="px-3 py-1.5 rounded-full text-xs transition-all"
+                          style={choisi
+                            ? { backgroundColor: '#C9A84C', color: '#0D0D0D', border: '1px solid #C9A84C' }
+                            : { backgroundColor: '#1A1A1A', color: '#A8A09A', border: '1px solid #2E2E2E' }}>
+                          {ve.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#1A1A1A', color: '#6A6058' }}>

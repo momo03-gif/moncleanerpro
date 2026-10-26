@@ -9,7 +9,7 @@ import Loading from '@/components/Loading';
 import ReleveMois from '@/components/ReleveMois';
 import DocumentsPrestataire from '@/components/DocumentsPrestataire';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { METIERS, specialitesDuMetier, libelleSpecialite, libelleMetier, metierValide, type Metier } from '@/lib/prestataireRegles';
+import { METIERS, VEHICULES, specialitesDuMetier, libelleSpecialite, libelleMetier, libelleVehicules, metierValide, type Metier } from '@/lib/prestataireRegles';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Prestataires (sous-traitants) — entreprises extérieures à qui l'on confie
@@ -18,7 +18,7 @@ import { METIERS, specialitesDuMetier, libelleSpecialite, libelleMetier, metierV
 //  On confie une mission depuis sa fiche (Missions › « Confier à un prestataire »).
 // ════════════════════════════════════════════════════════════════════════════
 
-const VIDE = { name: '', contactName: '', email: '', phone: '', siret: '', hourlyRate: '', password: '', metier: 'nettoyage' as Metier, specialites: [] as string[] };
+const VIDE = { name: '', contactName: '', email: '', phone: '', siret: '', hourlyRate: '', password: '', metier: 'nettoyage' as Metier, specialites: [] as string[], vehicules: null as string[] | null };
 
 export default function PrestatairesPage() {
   const { toast } = useFeedback();
@@ -90,6 +90,9 @@ export default function PrestatairesPage() {
             <ChoixSpecialites metier={form.metier} valeur={form.specialites}
               onMetier={m => setForm(f => ({ ...f, metier: m, specialites: [] }))}
               onChange={v => setForm(f => ({ ...f, specialites: v }))} />
+          </div>
+          <div className="mt-3">
+            <ChoixVehicules valeur={form.vehicules} onChange={v => setForm(f => ({ ...f, vehicules: v }))} />
           </div>
           <button type="submit" disabled={envoi} className="mt-5 px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             {envoi ? 'Création…' : 'Créer le prestataire'}
@@ -169,6 +172,45 @@ function ChoixSpecialites({ metier, valeur, onMetier, onChange }: {
   );
 }
 
+// Véhiculé ? null = non renseigné, [] = non, sinon les véhicules cochés.
+function ChoixVehicules({ valeur, onChange }: { valeur: string[] | null; onChange: (v: string[] | null) => void }) {
+  const [oui, setOui] = useState(valeur != null && valeur.length > 0);
+  const etat = valeur == null && !oui ? null : oui;
+  return (
+    <div>
+      <span className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Véhiculé</span>
+      <div className="flex gap-1 mb-2 p-1 rounded-2xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
+        {([[true, 'Oui'], [false, 'Non'], [null, 'Non renseigné']] as const).map(([v, l]) => (
+          <button key={l} type="button"
+            onClick={() => { setOui(v === true); onChange(v === null ? null : v ? (valeur ?? []) : []); }}
+            className="px-3 py-1.5 rounded-xl text-xs font-medium"
+            style={{ backgroundColor: etat === v ? '#FFFFFF' : 'transparent', color: etat === v ? '#1A1A1A' : '#A8A09A' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {oui && (
+        <div className="flex flex-wrap gap-2">
+          {VEHICULES.map(ve => {
+            const liste = valeur ?? [];
+            const choisi = liste.includes(ve.key);
+            return (
+              <button key={ve.key} type="button" aria-pressed={choisi}
+                onClick={() => onChange(choisi ? liste.filter(k => k !== ve.key) : [...liste, ve.key])}
+                className="px-3 py-1.5 rounded-full text-xs border"
+                style={choisi
+                  ? { backgroundColor: '#C9A84C', borderColor: '#C9A84C', color: '#1A1A1A' }
+                  : { backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', color: '#7A7068' }}>
+                {ve.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Specialites({ keys }: { keys?: string[] }) {
   if (!keys?.length) return null;
   return (
@@ -224,6 +266,7 @@ function CarteDemande({ p, onChange }: { p: Prestataire; onChange: () => Promise
           </p>
           {p.siret && <p className="text-xs" style={{ color: '#A8A09A' }}>SIRET {p.siret}</p>}
           <Specialites keys={p.specialites} />
+          <p className="text-xs mt-1.5" style={{ color: '#7A7068' }}>Véhicule : {libelleVehicules(p.vehicules)}</p>
         </div>
         {p.created_at && (
           <span className="text-[11px]" style={{ color: '#A8A09A' }}>
@@ -256,7 +299,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
   const [form, setForm] = useState({
     name: p.name, contactName: p.contact_name ?? '', email: p.email ?? '', phone: p.phone ?? '',
     siret: p.siret ?? '', hourlyRate: String(p.hourly_rate ?? 0), sapDeclare: p.sap_declare === true,
-    metier: metierValide(p.metier), specialites: p.specialites ?? [],
+    metier: metierValide(p.metier), specialites: p.specialites ?? [], vehicules: p.vehicules ?? null,
   });
   const [mdp, setMdp] = useState('');
   const [agents, setAgents] = useState<Agent[] | null>(null);
@@ -323,6 +366,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
           </div>
           <p className="text-xs truncate" style={{ color: '#A8A09A' }}>
             {money(p.hourly_rate)}/h · {p.agents ?? 0} agent{(p.agents ?? 0) > 1 ? 's' : ''}{p.contact_name ? ` · ${p.contact_name}` : ''}
+            {p.vehicules != null ? ` · ${libelleVehicules(p.vehicules)}` : ''}
           </p>
           <Specialites keys={p.specialites} />
         </div>
@@ -356,6 +400,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
               <ChoixSpecialites metier={form.metier} valeur={form.specialites}
                 onMetier={m => setForm(f => ({ ...f, metier: m, specialites: [] }))}
                 onChange={v => setForm(f => ({ ...f, specialites: v }))} />
+              <ChoixVehicules valeur={form.vehicules} onChange={v => setForm(f => ({ ...f, vehicules: v }))} />
               <label className="flex items-start gap-3 cursor-pointer select-none">
                 <input type="checkbox" checked={form.sapDeclare} onChange={e => setForm(f => ({ ...f, sapDeclare: e.target.checked }))}
                   className="mt-0.5 w-4 h-4 accent-[#C9A84C]" />

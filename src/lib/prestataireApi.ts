@@ -23,6 +23,8 @@ export interface Prestataire {
   specialites?: string[];
   /** 'nettoyage' ou 'artisan' (METIERS, lib/prestataireRegles). */
   metier?: string;
+  /** Clés de VEHICULES ; [] = pas véhiculé, null = non renseigné. */
+  vehicules?: string[] | null;
   /** Demande d'inscription pas encore validée (liste admin). */
   en_attente?: boolean;
   /** Kbis et attestation URSSAF présents et à jour (liste admin). */

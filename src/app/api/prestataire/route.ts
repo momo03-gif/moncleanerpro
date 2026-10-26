@@ -20,7 +20,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
 import { normalizePhone } from '@/lib/phone';
 import { hashPassword } from '@/lib/password';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, type Metier } from '@/lib/prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, vehiculesValides, type Metier } from '@/lib/prestataireRegles';
 import {
   notifyCleanerNewMission, notifyCleanerMissionUnassigned,
   notifyPrestataireMissionConfiee, notifyPrestataireMissionReprise, notifyPrestatairePaiement,
@@ -35,11 +35,11 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : unde
 const MDP_MIN = 6;
 
 const PRESTATAIRE_COLONNES_BASE = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at';
-const PRESTATAIRE_COLONNES = `${PRESTATAIRE_COLONNES_BASE}, specialites, metier`;
+const PRESTATAIRE_COLONNES = `${PRESTATAIRE_COLONNES_BASE}, specialites, metier, vehicules`;
 
-// Lecture des fiches : retombe sur les colonnes d'avant si `specialites` ou
-// `metier` n'existent pas encore (migration_prestataires_specialites / _metier.sql).
-const COLONNES_RECENTES = /specialites|metier/;
+// Lecture des fiches : retombe sur les colonnes d'avant si `specialites`,
+// `metier` ou `vehicules` n'existent pas encore (migrations prestataires_*).
+const COLONNES_RECENTES = /specialites|metier|vehicules/;
 async function lirePrestataires(db: SupabaseClient, filtre?: { userId: string }) {
   const lire = (colonnes: string) => {
     const q = db.from('prestataires').select(colonnes);
@@ -248,7 +248,10 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         return ko('Création impossible (migration_prestataires.sql exécutée ?).', 500);
       }
       const metier = metierValide(b.metier);
-      if (cree) await db.from('prestataires').update({ metier, specialites: specialitesValides(b.specialites, metier) }).eq('id', cree.id);
+      if (cree) await db.from('prestataires').update({
+        metier, specialites: specialitesValides(b.specialites, metier),
+        ...(Array.isArray(b.vehicules) ? { vehicules: vehiculesValides(b.vehicules) } : {}),
+      }).eq('id', cree.id);
       return ok();
     }
 
@@ -273,6 +276,8 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       if (b.hourlyRate !== undefined) patch.hourly_rate = Math.max(0, Number(b.hourlyRate) || 0);
       if (b.sapDeclare !== undefined) patch.sap_declare = b.sapDeclare === true;
       if (b.metier !== undefined) patch.metier = metierValide(b.metier);
+      // [] = pas véhiculé ; null = on ne sait pas.
+      if (b.vehicules !== undefined) patch.vehicules = b.vehicules === null ? null : vehiculesValides(b.vehicules);
       if (b.specialites !== undefined) patch.specialites = specialitesValides(b.specialites, patch.metier as Metier | undefined);
       if (b.status !== undefined) {
         if (b.status !== 'active' && b.status !== 'suspended') return ko('Statut invalide.');
@@ -280,7 +285,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       }
       let { data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle();
       if (error && COLONNES_RECENTES.test(error.message)) {   // base pas encore migrée
-        delete patch.specialites; delete patch.metier;
+        delete patch.specialites; delete patch.metier; delete patch.vehicules;
         ({ data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle());
       }
       if (error || !data) return ko('Enregistrement impossible.', 500);

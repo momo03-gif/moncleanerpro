@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { hashPassword } from '@/lib/password';
 import { notifyAdminsNouveauPrestataire } from '@/lib/notificationEvents';
-import { specialitesValides, metierValide } from '@/lib/prestataireRegles';
+import { specialitesValides, metierValide, vehiculesValides } from '@/lib/prestataireRegles';
 import { normalizePhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
@@ -30,6 +30,11 @@ export async function POST(req: Request) {
   const specialites = specialitesValides(b.specialites, metier);
   if (type === 'prestataire' && !specialites.length) {
     return NextResponse.json({ error: 'Choisissez au moins une spécialité.' }, { status: 400 });
+  }
+  // Véhiculé ? Réponse obligatoire ; si oui, au moins un véhicule.
+  const vehicules = b.vehicule === true ? vehiculesValides(b.vehicules) : [];
+  if (type === 'prestataire' && (typeof b.vehicule !== 'boolean' || (b.vehicule && !vehicules.length))) {
+    return NextResponse.json({ error: b.vehicule ? 'Indiquez votre ou vos véhicules.' : 'Dites-nous si vous êtes véhiculé.' }, { status: 400 });
   }
 
   const db = getSupabaseAdmin();
@@ -62,8 +67,8 @@ export async function POST(req: Request) {
         console.error('register/prestataire:', pErr?.message);
         return NextResponse.json({ error: 'Inscription impossible pour le moment.' }, { status: 500 });
       }
-      // Best-effort : sans effet si les migrations specialites / metier ne sont pas passées.
-      await db.from('prestataires').update({ specialites, metier }).eq('id', pr.id);
+      // Best-effort : sans effet si les migrations specialites / metier / vehicules ne sont pas passées.
+      await db.from('prestataires').update({ specialites, metier, vehicules }).eq('id', pr.id);
       await notifyAdminsNouveauPrestataire(b.name);
     } else if (type === 'hotel') {
       const { data: h, error: hErr } = await db.from('hotels').insert({

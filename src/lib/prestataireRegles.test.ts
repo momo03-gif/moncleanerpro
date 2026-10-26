@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides, specialitesPourMission, metierValide, correspondSpecialite } from './prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides, specialitesPourMission, metierValide, vehiculesValides, libelleVehicules, correspondSpecialite } from './prestataireRegles';
 
 describe('prestataires — règles', () => {
   it('doit au prestataire son taux × durée, au centime', () => {
@@ -94,5 +94,12 @@ describe('prestataires — vigilance', () => {
     expect(tous).toContain('peinture');
     expect(tous).not.toContain('vitrerie');
     expect(specialitesPourMission({ service: 'repair', repairSpecialite: 'vitrerie' })).toEqual(tous);
+  });
+
+  it('range les véhicules et distingue « non véhiculé » de « non renseigné »', () => {
+    expect(vehiculesValides(['camionnette', 'velo', 'velo', 'avion'])).toEqual(['velo', 'camionnette']);
+    expect(libelleVehicules(['voiture', 'scooter'])).toBe('Scooter, Voiture');
+    expect(libelleVehicules([])).toBe('Non véhiculé');
+    expect(libelleVehicules(null)).toBe('Non renseigné');
   });
 });

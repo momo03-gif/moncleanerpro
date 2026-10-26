@@ -24,7 +24,7 @@ import { inputStyle } from '@/lib/ui';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import { appelPrestataire, type Prestataire } from '@/lib/prestataireApi';
-import { specialitesPourMission, correspondSpecialite, specialitesDuMetier, libelleSpecialite } from '@/lib/prestataireRegles';
+import { specialitesPourMission, correspondSpecialite, specialitesDuMetier, libelleSpecialite, libelleVehicules } from '@/lib/prestataireRegles';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
@@ -1021,7 +1021,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   const adaptes = choix.filter(p => correspondSpecialite(p.specialites, attendues));
                   const autres = choix.filter(p => !adaptes.includes(p));
                   const option = (p: Prestataire) => (
-                    <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h{p.sap_declare ? ' · SAP' : ''}</option>
+                    <option key={p.id} value={p.id}>{p.name} · {money(p.hourly_rate)}/h{p.sap_declare ? ' · SAP' : ''}{p.vehicules != null ? ` · ${libelleVehicules(p.vehicules)}` : ''}</option>
                   );
                   if (!adaptes.length) return autres.map(option);
                   return (<>
