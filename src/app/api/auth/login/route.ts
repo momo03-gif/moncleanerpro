@@ -103,7 +103,7 @@ export async function POST(req: Request) {
   }
 
   const sessionUser: SessionUser = {
-    id: u.id, name: u.name, email: u.email ?? '', role: u.role,
+    id: u.id, name: u.name, email: u.email, role: u.role,
     phone: u.phone ?? undefined, isActive: u.status === 'active',
     ...(agent ? { agent: true } : {}),
   };

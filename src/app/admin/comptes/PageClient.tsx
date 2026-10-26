@@ -403,8 +403,8 @@ function CreatePrestataireForm({ onClose }: { onClose: () => void }) {
   const [cree, setCree] = useState<string | null>(null);
 
   async function submit() {
-    if (!f.name.trim() || !f.phone.trim() || f.password.length < 6) {
-      setErr('Nom, téléphone et mot de passe (6 caractères min) requis.'); return;
+    if (!f.name.trim() || !f.phone.trim() || !f.email.trim() || f.password.length < 6) {
+      setErr('Nom, téléphone, email et mot de passe (6 caractères min) requis.'); return;
     }
     if (!(Number(f.hourlyRate) > 0)) { setErr('Indiquez le taux horaire payé au prestataire.'); return; }
     setBusy(true); setErr(null);
@@ -437,7 +437,7 @@ function CreatePrestataireForm({ onClose }: { onClose: () => void }) {
         <input value={f.name} onChange={e => setF(s => ({ ...s, name: e.target.value }))} placeholder="Raison sociale" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.contactName} onChange={e => setF(s => ({ ...s, contactName: e.target.value }))} placeholder="Nom du contact" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.phone} onChange={e => setF(s => ({ ...s, phone: e.target.value }))} placeholder="Téléphone (identifiant de connexion)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
-        <input value={f.email} onChange={e => setF(s => ({ ...s, email: e.target.value }))} placeholder="Email (facultatif)" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
+        <input value={f.email} onChange={e => setF(s => ({ ...s, email: e.target.value }))} placeholder="Email" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.siret} onChange={e => setF(s => ({ ...s, siret: e.target.value }))} placeholder="SIRET" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <input value={f.password} onChange={e => setF(s => ({ ...s, password: e.target.value }))} placeholder="Mot de passe provisoire" className="px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
         <div className="flex items-center gap-2">

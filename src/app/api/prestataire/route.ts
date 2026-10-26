@@ -80,12 +80,12 @@ function bornes(periode: string): [string, string] {
 
 /** Crée un compte `users` ; renvoie son id ou un message d'erreur lisible. */
 async function creerCompte(db: SupabaseClient, f: {
-  email?: string; password: string; name: string; phone?: string; role: string;
+  email: string; password: string; name: string; phone?: string; role: string;
   /** Téléphone normalisé servant d'identifiant de connexion (prestataires). */
   loginPhone?: string | null;
 }) {
   const { data, error } = await db.from('users').insert({
-    email: f.email ?? null, password_hash: await hashPassword(f.password), role: f.role,
+    email: f.email, password_hash: await hashPassword(f.password), role: f.role,
     name: f.name, phone: f.phone ?? null, status: 'active',
     ...(f.loginPhone ? { login_phone: f.loginPhone } : {}),
   }).select('id').single();
@@ -231,14 +231,14 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
 
     case 'create': {
       const name = str(b.name), email = str(b.email)?.toLowerCase(), password = str(b.password);
-      // Il se connecte avec son téléphone ; l'email est facultatif.
+      // Il se connecte avec son téléphone ; son email est demandé aussi.
       const loginPhone = normalizePhone(str(b.phone));
-      if (!name || !loginPhone) return ko('Nom et numéro de téléphone obligatoires.');
+      if (!name || !email || !loginPhone) return ko('Nom, téléphone et email obligatoires.');
       if (!password || password.length < MDP_MIN) return ko(`Mot de passe : ${MDP_MIN} caractères minimum.`);
       const compte = await creerCompte(db, { email, password, name, phone: str(b.phone), role: 'prestataire', loginPhone });
       if (compte.error) return ko(compte.error);
       const { data: cree, error } = await db.from('prestataires').insert({
-        user_id: compte.id, name, email: email ?? null, phone: str(b.phone) ?? null,
+        user_id: compte.id, name, email, phone: str(b.phone) ?? null,
         contact_name: str(b.contactName) ?? null, siret: str(b.siret) ?? null,
         hourly_rate: Math.max(0, Number(b.hourlyRate) || 0), status: 'active',
       }).select('id').single();
@@ -264,7 +264,11 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         patch.phone = str(b.phone);
       }
       if (b.siret !== undefined) patch.siret = str(b.siret) ?? null;
-      if (b.email !== undefined) patch.email = str(b.email)?.toLowerCase() ?? null;
+      if (b.email !== undefined) {
+        const e = str(b.email)?.toLowerCase();
+        if (!e || !e.includes('@')) return ko('Email invalide.');
+        patch.email = e;
+      }
       // Le nouveau taux vaut pour les missions confiées À PARTIR DE MAINTENANT.
       if (b.hourlyRate !== undefined) patch.hourly_rate = Math.max(0, Number(b.hourlyRate) || 0);
       if (b.sapDeclare !== undefined) patch.sap_declare = b.sapDeclare === true;

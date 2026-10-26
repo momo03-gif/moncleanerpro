@@ -19,7 +19,7 @@ const CHAMPS: { label: string; key: keyof typeof VIDE; type: string; placeholder
   { label: 'Nom ou raison sociale', key: 'name', type: 'text', placeholder: 'Votre entreprise ou votre nom', required: true },
   { label: 'Nom du contact', key: 'contactName', type: 'text', placeholder: 'Prénom Nom', required: true },
   { label: 'Téléphone (pour vous connecter)', key: 'phone', type: 'tel', placeholder: '06 12 34 56 78', required: true },
-  { label: 'Email (facultatif)', key: 'email', type: 'email', placeholder: 'contact@entreprise.fr', required: false },
+  { label: 'Email', key: 'email', type: 'email', placeholder: 'contact@entreprise.fr', required: true },
   { label: 'SIRET', key: 'siret', type: 'text', placeholder: '14 chiffres', required: true },
   { label: 'Mot de passe', key: 'password', type: 'password', placeholder: '••••••••', required: true },
   { label: 'Confirmer', key: 'confirm', type: 'password', placeholder: '••••••••', required: true },
