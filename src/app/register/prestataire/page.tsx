@@ -116,7 +116,7 @@ export default function RegisterPrestatairePage() {
             </div>
 
             <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#1A1A1A', color: '#6A6058' }}>
-              Une fois validé, vous recevez nos missions. Si vous avez une équipe, vous ajoutez vos agents : chacun reçoit ses identifiants pour l’application terrain.
+              Une fois votre compte validé, nous vous confions des prestations. Si vous avez une équipe, vous ajoutez vos agents : chacun reçoit ses identifiants pour l’application terrain.
             </p>
 
             {error && <p className="text-xs text-center py-2 px-3 rounded-lg" style={{ backgroundColor: '#3A1A1A', color: '#F87171' }}>{error}</p>}

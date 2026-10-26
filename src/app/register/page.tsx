@@ -23,7 +23,7 @@ const OPTIONS: { type: string; icon: IconName; title: string; desc: string; href
     type: 'prestataire',
     icon: 'cleaners',
     title: 'Prestataire / indépendant',
-    desc: 'Entreprise de nettoyage ou indépendant : réalisez nos missions.',
+    desc: 'Entreprise de nettoyage ou indépendant : devenez partenaire.',
     href: '/register/prestataire',
   },
 ];
