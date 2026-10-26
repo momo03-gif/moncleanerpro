@@ -9,6 +9,7 @@ import Loading from '@/components/Loading';
 import ReleveMois from '@/components/ReleveMois';
 import DocumentsPrestataire from '@/components/DocumentsPrestataire';
 import { useFeedback } from '@/contexts/FeedbackContext';
+import { SPECIALITES, libelleSpecialite } from '@/lib/prestataireRegles';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Prestataires (sous-traitants) — entreprises extérieures à qui l'on confie
@@ -17,7 +18,7 @@ import { useFeedback } from '@/contexts/FeedbackContext';
 //  On confie une mission depuis sa fiche (Missions › « Confier à un prestataire »).
 // ════════════════════════════════════════════════════════════════════════════
 
-const VIDE = { name: '', contactName: '', email: '', phone: '', siret: '', hourlyRate: '', password: '' };
+const VIDE = { name: '', contactName: '', email: '', phone: '', siret: '', hourlyRate: '', password: '', specialites: [] as string[] };
 
 export default function PrestatairesPage() {
   const { toast } = useFeedback();
@@ -85,6 +86,9 @@ export default function PrestatairesPage() {
             <Champ label="Taux horaire payé (€/h) *"><input required type="number" min="0" step="0.5" inputMode="decimal" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
             <Champ label="Mot de passe *"><input required minLength={6} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="6 caractères minimum" className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
           </div>
+          <div className="mt-3">
+            <ChoixSpecialites valeur={form.specialites} onChange={v => setForm(f => ({ ...f, specialites: v }))} />
+          </div>
           <button type="submit" disabled={envoi} className="mt-5 px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             {envoi ? 'Création…' : 'Créer le prestataire'}
           </button>
@@ -124,6 +128,43 @@ function Champ({ label, children }: { label: string; children: React.ReactNode }
       <span className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>{label}</span>
       {children}
     </label>
+  );
+}
+
+// Spécialités déclarées par le prestataire : pour savoir à qui confier quoi.
+function ChoixSpecialites({ valeur, onChange }: { valeur: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div>
+      <span className="block text-xs mb-1.5" style={{ color: '#A8A09A' }}>Spécialités</span>
+      <div className="flex flex-wrap gap-2">
+        {SPECIALITES.map(sp => {
+          const choisi = valeur.includes(sp.key);
+          return (
+            <button key={sp.key} type="button" aria-pressed={choisi}
+              onClick={() => onChange(choisi ? valeur.filter(k => k !== sp.key) : [...valeur, sp.key])}
+              className="px-3 py-1.5 rounded-full text-xs border"
+              style={choisi
+                ? { backgroundColor: '#C9A84C', borderColor: '#C9A84C', color: '#1A1A1A' }
+                : { backgroundColor: '#FFFFFF', borderColor: '#E8E4DC', color: '#7A7068' }}>
+              {sp.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Specialites({ keys }: { keys?: string[] }) {
+  if (!keys?.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
+      {keys.map(k => (
+        <span key={k} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
+          {libelleSpecialite(k)}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -167,6 +208,7 @@ function CarteDemande({ p, onChange }: { p: Prestataire; onChange: () => Promise
             {[p.contact_name, p.email, p.phone].filter(Boolean).join(' · ')}
           </p>
           {p.siret && <p className="text-xs" style={{ color: '#A8A09A' }}>SIRET {p.siret}</p>}
+          <Specialites keys={p.specialites} />
         </div>
         {p.created_at && (
           <span className="text-[11px]" style={{ color: '#A8A09A' }}>
@@ -199,6 +241,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
   const [form, setForm] = useState({
     name: p.name, contactName: p.contact_name ?? '', email: p.email ?? '', phone: p.phone ?? '',
     siret: p.siret ?? '', hourlyRate: String(p.hourly_rate ?? 0), sapDeclare: p.sap_declare === true,
+    specialites: p.specialites ?? [],
   });
   const [mdp, setMdp] = useState('');
   const [agents, setAgents] = useState<Agent[] | null>(null);
@@ -265,6 +308,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
           <p className="text-xs truncate" style={{ color: '#A8A09A' }}>
             {money(p.hourly_rate)}/h · {p.agents ?? 0} agent{(p.agents ?? 0) > 1 ? 's' : ''}{p.contact_name ? ` · ${p.contact_name}` : ''}
           </p>
+          <Specialites keys={p.specialites} />
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-semibold" style={{ color: '#C9A84C' }}>{money(p.duMois ?? 0)}</p>
@@ -293,6 +337,7 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
                 <Champ label="SIRET"><input value={form.siret} onChange={e => setForm(f => ({ ...f, siret: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
                 <Champ label="Taux horaire payé (€/h)"><input type="number" min="0" step="0.5" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
               </div>
+              <ChoixSpecialites valeur={form.specialites} onChange={v => setForm(f => ({ ...f, specialites: v }))} />
               <label className="flex items-start gap-3 cursor-pointer select-none">
                 <input type="checkbox" checked={form.sapDeclare} onChange={e => setForm(f => ({ ...f, sapDeclare: e.target.checked }))}
                   className="mt-0.5 w-4 h-4 accent-[#C9A84C]" />

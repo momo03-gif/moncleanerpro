@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
 import { hashPassword } from '@/lib/password';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance } from '@/lib/prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides } from '@/lib/prestataireRegles';
 import {
   notifyCleanerNewMission, notifyCleanerMissionUnassigned,
   notifyPrestataireMissionConfiee, notifyPrestataireMissionReprise, notifyPrestatairePaiement,
@@ -33,7 +33,20 @@ const ko = (error: string, status = 400) => NextResponse.json({ error }, { statu
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const MDP_MIN = 6;
 
-const PRESTATAIRE_COLONNES = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at';
+const PRESTATAIRE_COLONNES_BASE = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at';
+const PRESTATAIRE_COLONNES = `${PRESTATAIRE_COLONNES_BASE}, specialites`;
+
+// Lecture des fiches : retombe sur les colonnes d'avant si la colonne
+// `specialites` n'existe pas encore (migration_prestataires_specialites.sql).
+async function lirePrestataires(db: SupabaseClient, filtre?: { userId: string }) {
+  const lire = (colonnes: string) => {
+    const q = db.from('prestataires').select(colonnes);
+    return filtre ? q.eq('user_id', filtre.userId) : q.order('name');
+  };
+  const r = await lire(PRESTATAIRE_COLONNES);
+  if (!r.error || !/specialites/.test(r.error.message)) return r;
+  return lire(PRESTATAIRE_COLONNES_BASE);
+}
 
 /** Demande d'inscription pas encore validée : le compte de connexion est 'pending'. */
 async function enAttente(db: SupabaseClient, userId: unknown): Promise<boolean> {
@@ -151,7 +164,8 @@ export async function POST(req: Request) {
   try {
     if (session.role === 'admin') return await opAdmin(db, op, b);
     if (session.role === 'prestataire') {
-      const { data: moi } = await db.from('prestataires').select(PRESTATAIRE_COLONNES).eq('user_id', session.id).maybeSingle();
+      const { data: lignes } = await lirePrestataires(db, { userId: session.id });
+      const moi = (lignes?.[0] ?? null) as Record<string, unknown> | null;
       if (!moi) return ko('Compte prestataire introuvable.', 403);
       if (moi.status !== 'active') return ko('Compte suspendu. Contactez MonCleanerPro.', 403);
       if (await enAttente(db, session.id)) return ko('Compte en attente de validation.', 403);
@@ -170,7 +184,8 @@ export async function POST(req: Request) {
 async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
   switch (op) {
     case 'list': {
-      const { data, error } = await db.from('prestataires').select(PRESTATAIRE_COLONNES).order('name');
+      const { data: lues, error } = await lirePrestataires(db);
+      const data = lues as Record<string, unknown>[] | null;
       if (error) return ko('Lecture impossible (migration_prestataires.sql exécutée ?).', 500);
       const ids = (data ?? []).map(p => p.id as string);
       // Demandes d'inscription en attente (compte de connexion 'pending').
@@ -211,16 +226,18 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       if (!password || password.length < MDP_MIN) return ko(`Mot de passe : ${MDP_MIN} caractères minimum.`);
       const compte = await creerCompte(db, { email, password, name, phone: str(b.phone), role: 'prestataire' });
       if (compte.error) return ko(compte.error);
-      const { error } = await db.from('prestataires').insert({
+      const { data: cree, error } = await db.from('prestataires').insert({
         user_id: compte.id, name, email, phone: str(b.phone) ?? null,
         contact_name: str(b.contactName) ?? null, siret: str(b.siret) ?? null,
         hourly_rate: Math.max(0, Number(b.hourlyRate) || 0), status: 'active',
-      });
+      }).select('id').single();
       if (error) {
         await db.from('users').delete().eq('id', compte.id);   // pas de compte orphelin
         console.error('prestataire/create:', error.message);
         return ko('Création impossible (migration_prestataires.sql exécutée ?).', 500);
       }
+      const specialites = specialitesValides(b.specialites);
+      if (specialites.length && cree) await db.from('prestataires').update({ specialites }).eq('id', cree.id);
       return ok();
     }
 
@@ -236,11 +253,16 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       // Le nouveau taux vaut pour les missions confiées À PARTIR DE MAINTENANT.
       if (b.hourlyRate !== undefined) patch.hourly_rate = Math.max(0, Number(b.hourlyRate) || 0);
       if (b.sapDeclare !== undefined) patch.sap_declare = b.sapDeclare === true;
+      if (b.specialites !== undefined) patch.specialites = specialitesValides(b.specialites);
       if (b.status !== undefined) {
         if (b.status !== 'active' && b.status !== 'suspended') return ko('Statut invalide.');
         patch.status = b.status;
       }
-      const { data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle();
+      let { data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle();
+      if (error && /specialites/.test(error.message)) {   // base pas encore migrée
+        delete patch.specialites;
+        ({ data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle());
+      }
       if (error || !data) return ko('Enregistrement impossible.', 500);
       // Le compte de connexion suit le nom / l'email / le téléphone.
       const compte: Record<string, unknown> = {};

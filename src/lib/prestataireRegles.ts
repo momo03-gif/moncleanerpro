@@ -101,3 +101,31 @@ export function etatVigilance(docs: DocumentVigilance[], aujourdhui: string): {
   });
   return { aJour: details.every(d => d.etat === 'ok'), details };
 }
+
+// ── Spécialités ─────────────────────────────────────────────────────────────
+// Ce que le prestataire sait faire, déclaré à l'inscription : aide l'admin à
+// savoir à qui confier quelle mission. Clés stockées en base (prestataires.specialites).
+export const SPECIALITES = [
+  { key: 'location_courte', label: 'Ménage location courte durée' },
+  { key: 'hotellerie', label: 'Hôtellerie' },
+  { key: 'bureaux', label: 'Bureaux et locaux pro' },
+  { key: 'fin_chantier', label: 'Fin de chantier / remise en état' },
+  { key: 'vitrerie', label: 'Vitrerie' },
+  { key: 'domicile', label: 'Ménage chez les particuliers' },
+  { key: 'copropriete', label: 'Parties communes / copropriété' },
+  { key: 'textile', label: 'Moquettes, tapis, canapés' },
+  { key: 'linge', label: 'Linge / blanchisserie' },
+  { key: 'livraison', label: 'Livraison' },
+] as const;
+
+export type Specialite = (typeof SPECIALITES)[number]['key'];
+
+/** Garde uniquement les clés connues, sans doublon, dans l'ordre de la liste. */
+export function specialitesValides(v: unknown): Specialite[] {
+  const recu = new Set(Array.isArray(v) ? v.map(String) : []);
+  return SPECIALITES.map(s => s.key).filter(k => recu.has(k));
+}
+
+export function libelleSpecialite(key: string): string {
+  return SPECIALITES.find(s => s.key === key)?.label ?? key;
+}

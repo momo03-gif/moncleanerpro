@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance } from './prestataireRegles';
+import { gainPrestataire, attribuable, releveDuMois, peutConfier, etatVigilance, specialitesValides } from './prestataireRegles';
 
 describe('prestataires — règles', () => {
   it('doit au prestataire son taux × durée, au centime', () => {
@@ -62,5 +62,11 @@ describe('prestataires — vigilance', () => {
     const r = etatVigilance([{ kind: 'urssaf', delivered_on: '2026-04-01' }, { kind: 'kbis', uploaded_at: '2026-04-01T10:00:00Z' }], '2026-10-02');
     expect(r.details[0]).toEqual({ kind: 'urssaf', etat: 'expire', jusqu: '2026-10-01' });
     expect(r.aJour).toBe(false);
+  });
+
+  it('ne garde que les spécialités connues, sans doublon', () => {
+    expect(specialitesValides(['vitrerie', 'bureaux', 'vitrerie', 'pirate'])).toEqual(['bureaux', 'vitrerie']);
+    expect(specialitesValides('bureaux')).toEqual([]);
+    expect(specialitesValides(undefined)).toEqual([]);
   });
 });
