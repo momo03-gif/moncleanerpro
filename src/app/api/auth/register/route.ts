@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { hashPassword } from '@/lib/password';
 import { notifyAdminsNouveauPrestataire } from '@/lib/notificationEvents';
 import { specialitesValides, metierValide } from '@/lib/prestataireRegles';
+import { normalizePhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -17,9 +18,13 @@ export async function POST(req: Request) {
 
   const type = b.type;
   const email = (b.email ?? '').toLowerCase().trim();
-  if ((type !== 'hotel' && type !== 'airbnb' && type !== 'prestataire') || !email || !b.password || !b.name) {
-    return NextResponse.json({ error: 'Champs manquants.' }, { status: 400 });
+  // Prestataire : il se connecte avec son TÉLÉPHONE ; l'email est facultatif.
+  const loginPhone = type === 'prestataire' ? normalizePhone(b.phone) : null;
+  if ((type !== 'hotel' && type !== 'airbnb' && type !== 'prestataire') || !b.password || !b.name
+    || (type === 'prestataire' ? !loginPhone : !email)) {
+    return NextResponse.json({ error: type === 'prestataire' && b.phone ? 'Numéro de téléphone invalide.' : 'Champs manquants.' }, { status: 400 });
   }
+  if (email && !email.includes('@')) return NextResponse.json({ error: 'Email invalide.' }, { status: 400 });
 
   const metier = metierValide(b.metier);
   const specialites = specialitesValides(b.specialites, metier);
@@ -31,10 +36,15 @@ export async function POST(req: Request) {
   try {
     const hash = await hashPassword(b.password);
     const { data: user, error } = await db.from('users')
-      .insert({ email, password_hash: hash, role: type, name: b.name, phone: b.phone ?? null, status: 'pending' })
+      .insert({
+        email: email || null, password_hash: hash, role: type, name: b.name, phone: b.phone ?? null, status: 'pending',
+        ...(loginPhone ? { login_phone: loginPhone } : {}),
+      })
       .select('id').single();
     if (error || !user) {
-      const msg = /duplicate|unique/i.test(error?.message ?? '') ? 'Un compte existe déjà avec cet email.' : (error?.message ?? 'Création impossible.');
+      const msg = /login_phone/i.test(error?.message ?? '') ? 'Un compte existe déjà avec ce numéro.'
+        : /duplicate|unique/i.test(error?.message ?? '') ? 'Un compte existe déjà avec cet email.'
+        : (error?.message ?? 'Création impossible.');
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
@@ -44,7 +54,7 @@ export async function POST(req: Request) {
       // (cf. /api/auth/login) — la fiche, elle, n'a pas de taux tant que ce
       // n'est pas validé.
       const { data: pr, error: pErr } = await db.from('prestataires').insert({
-        user_id: user.id, name: b.name, email, phone: b.phone ?? null,
+        user_id: user.id, name: b.name, email: email || null, phone: b.phone ?? null,
         contact_name: b.contactName ?? null, siret: b.siret ?? null, hourly_rate: 0, status: 'active',
       }).select('id').single();
       if (pErr || !pr) {

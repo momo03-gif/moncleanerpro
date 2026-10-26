@@ -9,6 +9,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { createSession } from '@/lib/session';
 import type { SessionUser } from '@/lib/sessionToken';
+import { normalizePhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -26,12 +27,18 @@ export async function POST(req: Request) {
   let body: { email?: string; password?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 }); }
 
-  const email = (body.email ?? '').toLowerCase().trim();
+  // Identifiant : un email, ou un numéro de téléphone (comptes prestataires,
+  // cf. users.login_phone). Le champ garde son nom `email` côté navigateur.
+  const identifiant = (body.email ?? '').toLowerCase().trim();
   const password = body.password ?? '';
-  if (!email || !password) return NextResponse.json(INVALID, { status: 401 });
+  if (!identifiant || !password) return NextResponse.json(INVALID, { status: 401 });
+  const telephone = identifiant.includes('@') ? null : normalizePhone(identifiant);
+  if (!identifiant.includes('@') && !telephone) return NextResponse.json(INVALID, { status: 401 });
 
   const db = serverDb();
-  const { data: u, error } = await db.from('users').select('*').eq('email', email).single();
+  const { data: u, error } = telephone
+    ? await db.from('users').select('*').eq('login_phone', telephone).maybeSingle()
+    : await db.from('users').select('*').eq('email', identifiant).maybeSingle();
   if (error || !u) return NextResponse.json(INVALID, { status: 401 });
 
   // Compte supprimé par son titulaire : il ne se rouvre jamais, même si un
@@ -96,7 +103,7 @@ export async function POST(req: Request) {
   }
 
   const sessionUser: SessionUser = {
-    id: u.id, name: u.name, email: u.email, role: u.role,
+    id: u.id, name: u.name, email: u.email ?? '', role: u.role,
     phone: u.phone ?? undefined, isActive: u.status === 'active',
     ...(agent ? { agent: true } : {}),
   };

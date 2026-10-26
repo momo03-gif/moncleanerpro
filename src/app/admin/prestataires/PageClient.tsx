@@ -48,7 +48,7 @@ export default function PrestatairesPage() {
     const r = await appelPrestataire('create', { ...form, hourlyRate: Number(form.hourlyRate) || 0 });
     setEnvoi(false);
     if (!r.ok) { toast(r.error, 'error'); return; }
-    toast(`Prestataire créé. Il se connecte avec ${form.email}.`, 'success');
+    toast(`Prestataire créé. Il se connecte avec ${form.phone} et son mot de passe.`, 'success');
     setForm(VIDE); setAjout(false);
     await charger();
   }
@@ -80,8 +80,8 @@ export default function PrestatairesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Champ label="Raison sociale *"><input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
             <Champ label="Contact"><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
-            <Champ label="Email (identifiant) *"><input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
-            <Champ label="Téléphone"><input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
+            <Champ label="Téléphone (identifiant) *"><input required type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
+            <Champ label="Email (facultatif)"><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
             <Champ label="SIRET"><input value={form.siret} onChange={e => setForm(f => ({ ...f, siret: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
             <Champ label="Taux horaire payé (€/h) *"><input required type="number" min="0" step="0.5" inputMode="decimal" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
             <Champ label="Mot de passe *"><input required minLength={6} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="6 caractères minimum" className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
@@ -348,8 +348,8 @@ function CartePrestataire({ p, periode, ouvert, onToggle, onChange }: {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Champ label="Raison sociale"><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
                 <Champ label="Contact"><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
-                <Champ label="Email (identifiant)"><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
-                <Champ label="Téléphone"><input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
+                <Champ label="Email (facultatif)"><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
+                <Champ label="Téléphone (identifiant)"><input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
                 <Champ label="SIRET"><input value={form.siret} onChange={e => setForm(f => ({ ...f, siret: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
                 <Champ label="Taux horaire payé (€/h)"><input type="number" min="0" step="0.5" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm" style={inputStyle} /></Champ>
               </div>

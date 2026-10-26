@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
+import { normalizePhone } from '@/lib/phone';
 import { hashPassword } from '@/lib/password';
 import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, type Metier } from '@/lib/prestataireRegles';
 import {
@@ -78,13 +79,20 @@ function bornes(periode: string): [string, string] {
 }
 
 /** Crée un compte `users` ; renvoie son id ou un message d'erreur lisible. */
-async function creerCompte(db: SupabaseClient, f: { email: string; password: string; name: string; phone?: string; role: string }) {
+async function creerCompte(db: SupabaseClient, f: {
+  email?: string; password: string; name: string; phone?: string; role: string;
+  /** Téléphone normalisé servant d'identifiant de connexion (prestataires). */
+  loginPhone?: string | null;
+}) {
   const { data, error } = await db.from('users').insert({
-    email: f.email, password_hash: await hashPassword(f.password), role: f.role,
+    email: f.email ?? null, password_hash: await hashPassword(f.password), role: f.role,
     name: f.name, phone: f.phone ?? null, status: 'active',
+    ...(f.loginPhone ? { login_phone: f.loginPhone } : {}),
   }).select('id').single();
   if (error || !data) {
-    return { error: /duplicate|unique/i.test(error?.message ?? '') ? 'Un compte existe déjà avec cet email.' : 'Création impossible.' };
+    const msg = error?.message ?? '';
+    return { error: /login_phone/i.test(msg) ? 'Un compte existe déjà avec ce numéro.'
+      : /duplicate|unique/i.test(msg) ? 'Un compte existe déjà avec cet email.' : 'Création impossible.' };
   }
   return { id: data.id as string };
 }
@@ -223,12 +231,14 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
 
     case 'create': {
       const name = str(b.name), email = str(b.email)?.toLowerCase(), password = str(b.password);
-      if (!name || !email) return ko('Nom et email obligatoires.');
+      // Il se connecte avec son téléphone ; l'email est facultatif.
+      const loginPhone = normalizePhone(str(b.phone));
+      if (!name || !loginPhone) return ko('Nom et numéro de téléphone obligatoires.');
       if (!password || password.length < MDP_MIN) return ko(`Mot de passe : ${MDP_MIN} caractères minimum.`);
-      const compte = await creerCompte(db, { email, password, name, phone: str(b.phone), role: 'prestataire' });
+      const compte = await creerCompte(db, { email, password, name, phone: str(b.phone), role: 'prestataire', loginPhone });
       if (compte.error) return ko(compte.error);
       const { data: cree, error } = await db.from('prestataires').insert({
-        user_id: compte.id, name, email, phone: str(b.phone) ?? null,
+        user_id: compte.id, name, email: email ?? null, phone: str(b.phone) ?? null,
         contact_name: str(b.contactName) ?? null, siret: str(b.siret) ?? null,
         hourly_rate: Math.max(0, Number(b.hourlyRate) || 0), status: 'active',
       }).select('id').single();
@@ -248,7 +258,11 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const patch: Record<string, unknown> = {};
       if (b.name !== undefined) { const n = str(b.name); if (!n) return ko('Le nom est obligatoire.'); patch.name = n; }
       if (b.contactName !== undefined) patch.contact_name = str(b.contactName) ?? null;
-      if (b.phone !== undefined) patch.phone = str(b.phone) ?? null;
+      if (b.phone !== undefined) {
+        // Le téléphone est l'identifiant de connexion : jamais vide ni illisible.
+        if (!normalizePhone(str(b.phone))) return ko('Numéro de téléphone invalide.');
+        patch.phone = str(b.phone);
+      }
       if (b.siret !== undefined) patch.siret = str(b.siret) ?? null;
       if (b.email !== undefined) patch.email = str(b.email)?.toLowerCase() ?? null;
       // Le nouveau taux vaut pour les missions confiées À PARTIR DE MAINTENANT.
@@ -270,10 +284,11 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const compte: Record<string, unknown> = {};
       if (patch.name) compte.name = patch.name;
       if (patch.email) compte.email = patch.email;
-      if (b.phone !== undefined) compte.phone = patch.phone;
+      if (b.phone !== undefined) { compte.phone = patch.phone; compte.login_phone = normalizePhone(patch.phone as string); }
       if (Object.keys(compte).length) {
         const { error: uErr } = await db.from('users').update(compte).eq('id', data.user_id);
-        if (uErr) return ko(/duplicate|unique/i.test(uErr.message) ? 'Un compte existe déjà avec cet email.' : 'Enregistrement impossible.');
+        if (uErr) return ko(/login_phone/i.test(uErr.message) ? 'Un compte existe déjà avec ce numéro.'
+          : /duplicate|unique/i.test(uErr.message) ? 'Un compte existe déjà avec cet email.' : 'Enregistrement impossible.');
       }
       return ok();
     }

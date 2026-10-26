@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import Icon from '@/components/Icon';
 import { METIERS, specialitesDuMetier, type Metier } from '@/lib/prestataireRegles';
+import { normalizePhone } from '@/lib/phone';
 
 // Inscription d'un prestataire (sous-traitant). Le compte reste en attente :
 // l'admin le valide et fixe alors le taux horaire. Volontairement absente du
@@ -17,8 +18,8 @@ const inputDark = { backgroundColor: '#1A1A1A', border: '1px solid #2E2E2E', col
 const CHAMPS: { label: string; key: keyof typeof VIDE; type: string; placeholder: string; required: boolean }[] = [
   { label: 'Nom ou raison sociale', key: 'name', type: 'text', placeholder: 'Votre entreprise ou votre nom', required: true },
   { label: 'Nom du contact', key: 'contactName', type: 'text', placeholder: 'Prénom Nom', required: true },
-  { label: 'Email', key: 'email', type: 'email', placeholder: 'contact@entreprise.fr', required: true },
-  { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '06 12 34 56 78', required: true },
+  { label: 'Téléphone (pour vous connecter)', key: 'phone', type: 'tel', placeholder: '06 12 34 56 78', required: true },
+  { label: 'Email (facultatif)', key: 'email', type: 'email', placeholder: 'contact@entreprise.fr', required: false },
   { label: 'SIRET', key: 'siret', type: 'text', placeholder: '14 chiffres', required: true },
   { label: 'Mot de passe', key: 'password', type: 'password', placeholder: '••••••••', required: true },
   { label: 'Confirmer', key: 'confirm', type: 'password', placeholder: '••••••••', required: true },
@@ -39,6 +40,7 @@ export default function RegisterPrestatairePage() {
     setError('');
     if (form.password !== form.confirm) { setError('Les mots de passe ne correspondent pas.'); return; }
     if (form.password.length < 6) { setError('Mot de passe minimum 6 caractères.'); return; }
+    if (!normalizePhone(form.phone)) { setError('Numéro de téléphone invalide.'); return; }
     if (form.siret.replace(/\s/g, '').length !== 14) { setError('Le SIRET compte 14 chiffres.'); return; }
     if (!specialites.length) { setError('Choisissez au moins une spécialité.'); return; }
 
@@ -48,7 +50,7 @@ export default function RegisterPrestatairePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'prestataire', name: form.name.trim(), contactName: form.contactName.trim(),
-          email: form.email, phone: form.phone.trim(), siret: form.siret.replace(/\s/g, ''), metier, specialites, password: form.password,
+          email: form.email.trim(), phone: form.phone.trim(), siret: form.siret.replace(/\s/g, ''), metier, specialites, password: form.password,
         }),
       });
       const data = await res.json().catch(() => ({}));

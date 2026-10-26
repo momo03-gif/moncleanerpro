@@ -45,9 +45,11 @@ export default function LoginPage() {
           <h2 className="text-lg font-semibold mb-6" style={{ color: '#F5F5F5' }}>Connexion</h2>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: '#6A6058' }}>Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                placeholder="votre@email.com" className="w-full px-4 py-3 rounded-xl text-sm transition-all"
+              {/* Email, ou numéro de téléphone pour les intervenants de notre réseau. */}
+              <label className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: '#6A6058' }}>Email ou téléphone</label>
+              <input type="text" value={email} onChange={e => setEmail(e.target.value)} required
+                autoComplete="username" autoCapitalize="none" spellCheck={false}
+                placeholder="votre@email.com ou 06 12 34 56 78" className="w-full px-4 py-3 rounded-xl text-sm transition-all"
                 style={inputDark}
                 onFocus={e => (e.currentTarget.style.borderColor = '#C9A84C')}
                 onBlur={e => (e.currentTarget.style.borderColor = '#2E2E2E')} />
