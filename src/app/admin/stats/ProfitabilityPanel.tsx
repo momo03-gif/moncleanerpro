@@ -199,13 +199,13 @@ export default function ProfitabilityPanel() {
             {/* No show : le voyageur n'est pas venu, logement propre, aucun ménage.
                 Forfaits par défaut — l'admin peut les ajuster mission par mission. */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>No show — facturé au client (€)</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>No show / prolongation — facturé au client (€)</label>
               <input type="number" min={0} step={0.5} value={form.noShowClientFee ?? 0}
                 onChange={e => setForm(f => ({ ...f!, noShowClientFee: Number(e.target.value) || 0 }))}
                 className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>No show — payé au cleaner (€)</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>No show / prolongation — payé au cleaner (€)</label>
               <input type="number" min={0} step={0.5} value={form.noShowCleanerFee ?? 0}
                 onChange={e => setForm(f => ({ ...f!, noShowCleanerFee: Number(e.target.value) || 0 }))}
                 className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />

@@ -110,4 +110,7 @@ describe('missionReadiness — cas neutres', () => {
   it('une intervention n’annonce jamais le logement prêt', () => {
     expect(missionReadiness({ status: 'completed', date: '2026-08-14', service: 'repair' }, at('2026-08-14T14:00:00'))).toBeNull();
   });
+  it('une prolongation n’annonce pas le logement prêt', () => {
+    expect(missionReadiness({ status: 'completed', date: '2026-08-14', noShowReason: 'prolongation' }, at('2026-08-14T14:00:00'))).toBeNull();
+  });
 });

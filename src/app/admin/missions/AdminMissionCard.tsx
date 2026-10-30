@@ -12,7 +12,8 @@ import {
   decideMissionRequestDB, unassignMissionDB, declareNoShowDB, cancelNoShowDB,
 } from '@/lib/db';
 import { getProfitConfigDB } from '@/lib/profitability';
-import { noShowPossible, NO_SHOW_LABEL } from '@/lib/noShow';
+import { noShowPossible, NO_SHOW_BOUTON, titreNoShow, motifNoShow, type NoShowMotif } from '@/lib/noShow';
+import NoShowMotifChoix from '@/components/NoShowMotifChoix';
 import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -217,7 +218,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   const [deciding, setDeciding] = useState(false);
   // No show : forfaits pré-remplis depuis les paramètres, modifiables pour cette mission.
   const [noShowOpen, setNoShowOpen] = useState(false);
-  const [noShowForm, setNoShowForm] = useState({ clientFee: '', cleanerFee: '', note: '' });
+  const [noShowForm, setNoShowForm] = useState({ clientFee: '', cleanerFee: '', note: '', motif: 'no_show' as NoShowMotif });
   const [editForm, setEditForm] = useState({
     date: mission.date, time: mission.time,
     durationMinutes: String(mission.missionDurationMinutes ?? 60),
@@ -323,7 +324,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   async function ouvrirNoShow() {
     setNoShowOpen(true); setActionError('');
     const cfg = await getProfitConfigDB();
-    setNoShowForm({ clientFee: String(cfg.noShowClientFee ?? 0), cleanerFee: String(cfg.noShowCleanerFee ?? 0), note: '' });
+    setNoShowForm({ clientFee: String(cfg.noShowClientFee ?? 0), cleanerFee: String(cfg.noShowCleanerFee ?? 0), note: '', motif: 'no_show' });
   }
 
   async function handleNoShow() {
@@ -331,11 +332,12 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(true); setActionError('');
     const res = await declareNoShowDB(mission.id, {
       clientFee: fee(noShowForm.clientFee), cleanerFee: fee(noShowForm.cleanerFee), note: noShowForm.note,
+      motif: noShowForm.motif,
     });
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     setNoShowOpen(false);
-    toast('Mission passée en no show.', 'success');
+    toast(noShowForm.motif === 'prolongation' ? 'Mission clôturée : voyageur encore présent.' : 'Mission passée en no show.', 'success');
     onRefresh();
   }
 
@@ -608,7 +610,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         {mission.noShow && (
           <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: '#8A6BB040', backgroundColor: '#8A6BB00D' }}>
             <p className="text-xs font-semibold" style={{ color: '#8A6BB0' }}>
-              {NO_SHOW_LABEL} — {mission.noShowBy === 'cleaner' ? `constaté par ${mission.cleanerName ?? 'le cleaner'}` : 'déclaré par l’administration'}
+              {titreNoShow(mission.noShowReason)} — {mission.noShowBy === 'cleaner' ? `constaté par ${mission.cleanerName ?? 'le cleaner'}` : 'déclaré par l’administration'}
               {mission.noShowAt ? ` à ${formatClock(mission.noShowAt)}` : ''}
             </p>
             {mission.noShowNote && <p className="text-xs mt-1" style={{ color: '#7A7068' }}>{mission.noShowNote}</p>}
@@ -1108,20 +1110,20 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   {mission.service === 'delivery' ? '✓ Marquer livré' : '✓ Terminer'}
                 </button>
               )}
-              {/* No show : logement non utilisé, clôture au forfait déplacement. */}
+              {/* No show / prolongation : clôture sans ménage, au forfait déplacement. */}
               {(mission.status === 'pending' || mission.status === 'accepted' || mission.status === 'in_progress')
                 && noShowPossible(mission.service) && !noShowOpen && (
                 <button onClick={ouvrirNoShow} disabled={busy}
                   className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
                   style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
-                  No show
+                  {NO_SHOW_BOUTON}
                 </button>
               )}
               {mission.noShow && mission.status === 'completed' && (
                 <button onClick={handleCancelNoShow} disabled={busy}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-50"
                   style={{ borderColor: '#8A6BB0', color: '#8A6BB0' }}>
-                  Annuler le no show
+                  {motifNoShow(mission.noShowReason) === 'prolongation' ? 'Annuler (prolongation)' : 'Annuler le no show'}
                 </button>
               )}
               {/* Mission terminée : l'admin peut la reprendre (« en cours »). */}
@@ -1144,7 +1146,8 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
 
             {noShowOpen && (
               <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
-                <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_LABEL}</p>
+                <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_BOUTON}</p>
+                <NoShowMotifChoix valeur={noShowForm.motif} onChange={m => setNoShowForm(f => ({ ...f, motif: m }))} />
                 <p className="text-[11px]" style={{ color: '#7A7068' }}>
                   La mission est clôturée sans ménage. Le client paie le forfait déplacement, le cleaner touche son forfait.
                 </p>
@@ -1169,7 +1172,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   <button onClick={handleNoShow} disabled={busy}
                     className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
                     style={{ backgroundColor: '#8A6BB0', color: '#FFFFFF' }}>
-                    {busy ? '...' : 'Passer en no show'}
+                    {busy ? '...' : noShowForm.motif === 'prolongation' ? 'Clôturer : voyageur encore présent' : 'Passer en no show'}
                   </button>
                   <button onClick={() => { setNoShowOpen(false); setActionError(''); }} disabled={busy}
                     className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>

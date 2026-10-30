@@ -471,24 +471,31 @@ export async function notifyMissionCompleted(missionId: string) {
 
 // E bis. No show (logement non utilisé) → admins + partenaire. Le partenaire
 // doit comprendre qu'aucun ménage n'a été fait, et pourquoi il est facturé.
-export async function notifyMissionNoShow(missionId: string, by: 'cleaner' | 'admin') {
+export async function notifyMissionNoShow(missionId: string, by: 'cleaner' | 'admin', motif: 'no_show' | 'prolongation' = 'no_show') {
   try {
     const ctx = await loadMissionContext(missionId);
     if (!ctx) return;
+    const prolongation = motif === 'prolongation';
     const rows: NotifInput[] = [];
     if (by === 'cleaner') {
       const admins = await adminUserIds();
-      const message = `${ctx.cleanerName ?? 'Le cleaner'} signale que le logement ${ctx.place} n'a pas été utilisé : aucun ménage nécessaire.`;
+      const message = prolongation
+        ? `${ctx.cleanerName ?? 'Le cleaner'} signale que le voyageur est encore dans le logement ${ctx.place} : ménage impossible.`
+        : `${ctx.cleanerName ?? 'Le cleaner'} signale que le logement ${ctx.place} n'a pas été utilisé : aucun ménage nécessaire.`;
       rows.push(...admins.map(id => ({
-        userId: id, role: 'admin' as const, title: 'No show — logement non utilisé', message, type: 'mission_no_show', missionId,
+        userId: id, role: 'admin' as const,
+        title: prolongation ? 'Prolongation — voyageur encore présent' : 'No show — logement non utilisé',
+        message, type: 'mission_no_show', missionId,
       })));
     }
     const partnerRecipient = ctx.partnerId ?? ctx.createdBy;
     if (partnerRecipient) {
       rows.push({
         userId: partnerRecipient, role: 'partner',
-        title: 'Logement non utilisé',
-        message: `Nous sommes passés à ${ctx.place} : le logement n'a pas été utilisé, aucun ménage n'était nécessaire. Le déplacement est facturé au forfait.`,
+        title: prolongation ? 'Voyageur encore présent' : 'Logement non utilisé',
+        message: prolongation
+          ? `Nous sommes passés à ${ctx.place} : le voyageur était encore dans le logement, le ménage n'a pas pu être fait. Le déplacement est facturé au forfait.`
+          : `Nous sommes passés à ${ctx.place} : le logement n'a pas été utilisé, aucun ménage n'était nécessaire. Le déplacement est facturé au forfait.`,
         type: 'mission_no_show', missionId,
       });
     }

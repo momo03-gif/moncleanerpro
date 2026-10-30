@@ -45,6 +45,7 @@ export const MISSION_TYPE_LABEL: Record<string, string> = {
   repair: 'Intervention / petits travaux',
   // Pas un type de mission : la colonne « Prestation » d'une facture pour un no show.
   no_show: 'Déplacement — logement non utilisé',
+  no_show_prolongation: 'Déplacement — voyageur encore présent',
 };
 
 export function missionTypeLabel(type: string | undefined | null): string {

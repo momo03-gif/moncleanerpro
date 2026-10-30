@@ -10,7 +10,7 @@ import {
 } from './geo';
 import { photosApresExigees, PHOTOS_APRES_MIN, PHOTOS_REQUISES_ERROR } from './photosRegles';
 import { gainPrestataire } from './prestataireRegles';
-import { noShowPossible, patchNoShow, patchAnnulerNoShow, NO_SHOW_PHOTO_ERROR, type NoShowFees } from './noShow';
+import { noShowPossible, patchNoShow, patchAnnulerNoShow, NO_SHOW_PHOTO_ERROR, type NoShowFees, motifNoShow } from './noShow';
 import {
   notifyPartnerCreatedMission, notifyCleanerNewMission, notifyMissionModified, notifyMissionCancelled,
   notifyMissionCompleted, notifyMissionWithdrawn, notifyExtraTimeRequested, notifyExtraTimeResolved,
@@ -348,13 +348,14 @@ const ACTIONS: Record<string, Action> = {
     if (estAdmin && num(b.clientFee) != null) fees.client = num(b.clientFee)!;
     if (estAdmin && num(b.cleanerFee) != null) fees.cleaner = num(b.cleanerFee)!;
 
-    const patch = patchNoShow(m, fees, { at: horodatage(b.at), by: estAdmin ? 'admin' : 'cleaner', note: str(b.note) ?? null });
+    const motif = motifNoShow(b.motif);
+    const patch = patchNoShow(m, fees, { at: horodatage(b.at), by: estAdmin ? 'admin' : 'cleaner', note: str(b.note) ?? null, motif });
     let q = db.from('missions').update(patch).eq('id', missionId).not('status', 'in', '(done,cancelled)');
     if (cleanerId) q = q.eq('cleaner_id', cleanerId);
     const { data, error } = await q.select('id');
     if (error) { console.error('missions/no-show:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Mission déjà clôturée.');
-    await notifyMissionNoShow(missionId, estAdmin ? 'admin' : 'cleaner');
+    await notifyMissionNoShow(missionId, estAdmin ? 'admin' : 'cleaner', motif);
     return ok();
   },
 

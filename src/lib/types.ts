@@ -138,6 +138,8 @@ export interface Mission {
   noShow?: boolean;
   noShowAt?: string;
   noShowBy?: 'cleaner' | 'admin';
+  /** Motif : 'no_show' (voyageur jamais venu) ou 'prolongation' (encore présent). */
+  noShowReason?: 'no_show' | 'prolongation';
   noShowNote?: string;
 }
 

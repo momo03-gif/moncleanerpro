@@ -18,9 +18,30 @@ import type { MissionService } from './types';
 
 export const NO_SHOW_LABEL = 'Logement non utilisé';
 export const NO_SHOW_CFG = { label: 'No show', color: '#8A6BB0', bg: '#8A6BB018' };
+/** Libellé du bouton : couvre les deux motifs. */
+export const NO_SHOW_BOUTON = 'No show / prolongation';
+
+// Deux motifs, même clôture et mêmes forfaits (le cleaner s'est déplacé pour
+// rien) ; seuls les textes changent. En base : missions.no_show_reason
+// (NULL sur les anciens = 'no_show').
+export const NO_SHOW_MOTIFS = [
+  { key: 'no_show', label: 'Le voyageur n’est jamais venu', titre: 'Logement non utilisé' },
+  { key: 'prolongation', label: 'Le voyageur est encore là (prolongation)', titre: 'Prolongation du voyageur' },
+] as const;
+
+export type NoShowMotif = (typeof NO_SHOW_MOTIFS)[number]['key'];
+
+export function motifNoShow(v: unknown): NoShowMotif {
+  return v === 'prolongation' ? 'prolongation' : 'no_show';
+}
+
+/** « Logement non utilisé » ou « Prolongation du voyageur ». */
+export function titreNoShow(v: unknown): string {
+  return NO_SHOW_MOTIFS.find(m => m.key === motifNoShow(v))!.titre;
+}
 
 export const NO_SHOW_PHOTO_ERROR =
-  'Ajoutez au moins une photo du logement tel que vous l’avez trouvé : c’est la preuve qu’il n’a pas été utilisé.';
+  'Ajoutez au moins une photo : le logement tel que vous l’avez trouvé, ou la porte si le voyageur est encore là. C’est la preuve de votre passage.';
 
 /** Le no show ne concerne qu'un ménage : une livraison ou un rendez-vous n'a pas de logement à constater. */
 export function noShowPossible(service: MissionService | string | null | undefined): boolean {
@@ -52,7 +73,7 @@ interface LigneArgent {
  */
 export function patchNoShow(
   m: LigneArgent, fees: NoShowFees,
-  o: { at: string; by: 'cleaner' | 'admin'; note?: string | null },
+  o: { at: string; by: 'cleaner' | 'admin'; note?: string | null; motif?: NoShowMotif },
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {
     status: 'done',
@@ -60,6 +81,7 @@ export function patchNoShow(
     no_show: true,
     no_show_at: o.at,
     no_show_by: o.by,
+    no_show_reason: o.motif ?? 'no_show',
     no_show_note: o.note?.trim() || null,
     no_show_prev_price: Number(m.price) || 0,
     no_show_prev_gain: Number(m.cleaner_gain) || 0,
@@ -82,7 +104,7 @@ export function patchAnnulerNoShow(m: {
   no_show_prev_prestataire_gain?: unknown; prestataire_id?: unknown;
 }): Record<string, unknown> {
   const patch: Record<string, unknown> = {
-    no_show: false, no_show_at: null, no_show_by: null, no_show_note: null,
+    no_show: false, no_show_at: null, no_show_by: null, no_show_reason: null, no_show_note: null,
     no_show_prev_price: null, no_show_prev_gain: null, no_show_prev_prestataire_gain: null,
     price: Number(m.no_show_prev_price) || 0,
     cleaner_gain: Number(m.no_show_prev_gain) || 0,

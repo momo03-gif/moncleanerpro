@@ -140,7 +140,8 @@ export default function FacturationPage() {
       logement: m.property || (m.source === 'hotel' ? (m.requestedBy || 'Chambre') : 'Logement'),
       // No show : on facture le déplacement, pas un ménage — et pas de linge.
       // Intervention : facturée comme telle, sans linge non plus.
-      type: m.noShow ? 'no_show' : m.service === 'repair' ? 'repair' : m.type,
+      type: m.noShow ? (m.noShowReason === 'prolongation' ? 'no_show_prolongation' : 'no_show')
+        : m.service === 'repair' ? 'repair' : m.type,
       cleaner: m.cleanerName || '—',
       prix: m.price || 0,
       fourniture: m.noShow || m.service === 'repair' ? null : (fournitures[m.id] ?? null),

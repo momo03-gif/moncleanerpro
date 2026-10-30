@@ -21,7 +21,8 @@ import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import { PHOTOS_REQUISES_ERROR, photosApresExigees } from '@/lib/photosRegles';
-import { noShowPossible, NO_SHOW_LABEL } from '@/lib/noShow';
+import { noShowPossible, NO_SHOW_BOUTON, type NoShowMotif } from '@/lib/noShow';
+import NoShowMotifChoix from '@/components/NoShowMotifChoix';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
@@ -199,6 +200,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
   // No show : le voyageur n'est pas venu, le logement est propre.
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowNote, setNoShowNote] = useState('');
+  const [noShowMotif, setNoShowMotif] = useState<NoShowMotif>('no_show');
   const [noShowError, setNoShowError] = useState('');
   const canNoShow = (canStart || canFinish) && noShowPossible(mission.service);
 
@@ -224,7 +226,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
     }
     setBusy(true);
     const pos = await getApproxPosition();
-    const res = await declareNoShowDB(mission.id, { coords: pos, note: noShowNote });
+    const res = await declareNoShowDB(mission.id, { coords: pos, note: noShowNote, motif: noShowMotif });
     setBusy(false);
     if (res.photosRequises) { setPhotosRequises(true); setNoShowError(res.error ?? ''); return; }
     if (res.error) { setNoShowError(res.error); return; }
@@ -675,13 +677,15 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               {photosRequises ? 'Ajoutez une photo « après » dans le panneau Photos ci-dessus, puis terminez.' : 'Une photo « après » au minimum est demandée pour terminer.'}
             </p>
           )}
-          {/* No show : le logement n'a pas été utilisé — rien à nettoyer. */}
+          {/* No show / prolongation : ménage impossible ou inutile — clôture sans ménage. */}
           {canNoShow && (noShowOpen ? (
             <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
-              <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_LABEL}</p>
+              <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_BOUTON}</p>
+              <NoShowMotifChoix valeur={noShowMotif} onChange={setNoShowMotif} />
               <p className="text-[11px] leading-snug" style={{ color: '#7A7068' }}>
-                Le voyageur n&apos;est pas venu et le logement est propre ? Prenez au moins une photo du logement
-                tel que vous l&apos;avez trouvé (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.
+                {noShowMotif === 'prolongation'
+                  ? <>Le voyageur est encore dans le logement ? N&apos;entrez pas. Prenez une photo de la porte (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.</>
+                  : <>Le voyageur n&apos;est pas venu et le logement est propre ? Prenez au moins une photo du logement tel que vous l&apos;avez trouvé (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.</>}
               </p>
               <input value={noShowNote} onChange={e => setNoShowNote(e.target.value)}
                 placeholder="Ce que vous avez constaté (facultatif)"
@@ -692,7 +696,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
                 <button onClick={declareNoShow} disabled={busy}
                   className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
                   style={{ backgroundColor: '#8A6BB0', color: '#FFFFFF' }}>
-                  {busy ? '...' : 'Confirmer : logement non utilisé'}
+                  {busy ? '...' : noShowMotif === 'prolongation' ? 'Confirmer : voyageur encore présent' : 'Confirmer : logement non utilisé'}
                 </button>
                 <button onClick={() => { setNoShowOpen(false); setNoShowError(''); }} disabled={busy}
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
@@ -704,7 +708,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
             <button onClick={() => setNoShowOpen(true)} disabled={busy}
               className="w-full py-2.5 rounded-xl text-xs font-semibold border disabled:opacity-50"
               style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
-              {NO_SHOW_LABEL} (no show)
+              {NO_SHOW_BOUTON}
             </button>
           ))}
           {/* Seule sortie possible pour le cleaner : rendre la mission à l'admin.

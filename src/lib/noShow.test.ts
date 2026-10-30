@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { noShowPossible, patchNoShow, patchAnnulerNoShow } from './noShow';
+import { noShowPossible, patchNoShow, patchAnnulerNoShow, motifNoShow, titreNoShow } from './noShow';
 
 const AT = '2026-10-25T10:00:00.000Z';
 
@@ -37,5 +37,22 @@ describe('no show — règles', () => {
   it('annuler rend les montants d’avant et efface les marques', () => {
     const p = patchAnnulerNoShow({ no_show_prev_price: 65, no_show_prev_gain: 28.5, prestataire_id: 'p1', no_show_prev_prestataire_gain: 30 });
     expect(p).toMatchObject({ no_show: false, no_show_at: null, price: 65, cleaner_gain: 28.5, prestataire_gain: 30 });
+  });
+});
+
+describe('No show / prolongation — le motif', () => {
+  const AT2 = '2026-10-31T10:00:00.000Z';
+  it('enregistre le motif, « no show » par défaut', () => {
+    expect(patchNoShow({ price: 65 }, { client: 25, cleaner: 12 }, { at: AT2, by: 'cleaner' }).no_show_reason).toBe('no_show');
+    expect(patchNoShow({ price: 65 }, { client: 25, cleaner: 12 }, { at: AT2, by: 'cleaner', motif: 'prolongation' }).no_show_reason).toBe('prolongation');
+  });
+  it('efface le motif quand on annule', () => {
+    expect(patchAnnulerNoShow({ no_show_prev_price: 65 }).no_show_reason).toBeNull();
+  });
+  it('lit les anciens no show (sans motif) comme « logement non utilisé »', () => {
+    expect(motifNoShow(null)).toBe('no_show');
+    expect(motifNoShow('n’importe quoi')).toBe('no_show');
+    expect(titreNoShow(undefined)).toBe('Logement non utilisé');
+    expect(titreNoShow('prolongation')).toBe('Prolongation du voyageur');
   });
 });

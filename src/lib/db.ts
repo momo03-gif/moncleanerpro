@@ -167,6 +167,7 @@ function rowToMission(row: any): Mission {
     noShow: row.no_show === true || undefined,
     noShowAt: row.no_show_at ?? undefined,
     noShowBy: row.no_show_by ?? undefined,
+    noShowReason: row.no_show_reason ?? undefined,
     noShowNote: row.no_show_note ?? undefined,
   };
 }
@@ -603,7 +604,7 @@ export async function finishMissionDB(
 // fixer les forfaits de cette mission (sinon : ceux des paramètres).
 export async function declareNoShowDB(
   missionId: string,
-  o: { coords?: GeoPoint | null; note?: string; clientFee?: number; cleanerFee?: number } = {},
+  o: { coords?: GeoPoint | null; note?: string; clientFee?: number; cleanerFee?: number; motif?: 'no_show' | 'prolongation' } = {},
 ): Promise<{ error: string | null; tooFar?: boolean; photosRequises?: boolean }> {
   const res = await ecrireMission({ action: 'no-show', missionId, ...o, coords: o.coords ?? null });
   return {
