@@ -67,3 +67,61 @@ export function montantTicket(v: unknown): number | null {
 export function primeCourse(m: { service?: unknown; errand_bonus?: unknown } | null | undefined): number {
   return m?.service === 'errand' ? centimes(Number(m.errand_bonus) || 0) : 0;
 }
+
+// ── Récapitulatifs (page « Courses & avances ») ──────────────────────────────
+// Deux circuits d'argent qu'on ne mélange jamais :
+//   • l'intervenant a avancé → on lui DOIT un remboursement (note de frais) ;
+//   • la carte de la société a payé → rien à rembourser, mais à pointer avec
+//     le relevé bancaire, mois par mois.
+
+interface CourseLigne {
+  id: string; date: string; status: string;
+  cleanerId?: string; cleanerName?: string;
+  errandSpent?: number; errandPaidBy?: string; errandReimbursedAt?: string;
+}
+
+const avecTicket = <T extends CourseLigne>(m: T) => m.status !== 'cancelled' && (Number(m.errandSpent) || 0) > 0;
+
+export interface AvancesCleaner<T> {
+  cleanerId: string; cleanerName: string;
+  /** Ce qu'on lui doit encore. */
+  aRembourser: number;
+  /** Ce qu'on lui a déjà remboursé. */
+  rembourse: number;
+  courses: T[];
+}
+
+/** Avances des intervenants, par intervenant — ceux à qui on doit le plus d'abord. */
+export function avancesParCleaner<T extends CourseLigne>(missions: T[]): AvancesCleaner<T>[] {
+  const parCleaner = new Map<string, AvancesCleaner<T>>();
+  for (const m of missions) {
+    if (m.errandPaidBy !== 'cleaner' || !avecTicket(m)) continue;
+    const cle = m.cleanerId ?? 'inconnu';
+    const g = parCleaner.get(cle) ?? { cleanerId: cle, cleanerName: m.cleanerName ?? 'Intervenant', aRembourser: 0, rembourse: 0, courses: [] };
+    if (m.errandReimbursedAt) g.rembourse = centimes(g.rembourse + Number(m.errandSpent));
+    else g.aRembourser = centimes(g.aRembourser + Number(m.errandSpent));
+    g.courses.push(m);
+    parCleaner.set(cle, g);
+  }
+  return [...parCleaner.values()]
+    .map(g => ({ ...g, courses: [...g.courses].sort((a, b) => b.date.localeCompare(a.date)) }))
+    .sort((a, b) => b.aRembourser - a.aRembourser || a.cleanerName.localeCompare(b.cleanerName));
+}
+
+export interface DepensesMois<T> { mois: string; total: number; courses: T[] }
+
+/** Dépenses payées avec la carte de la société, par mois (YYYY-MM), le plus récent d'abord. */
+export function depensesSocieteParMois<T extends CourseLigne>(missions: T[]): DepensesMois<T>[] {
+  const parMois = new Map<string, DepensesMois<T>>();
+  for (const m of missions) {
+    if (m.errandPaidBy !== 'company' || !avecTicket(m)) continue;
+    const mois = m.date.slice(0, 7);
+    const g = parMois.get(mois) ?? { mois, total: 0, courses: [] };
+    g.total = centimes(g.total + Number(m.errandSpent));
+    g.courses.push(m);
+    parMois.set(mois, g);
+  }
+  return [...parMois.values()]
+    .map(g => ({ ...g, courses: [...g.courses].sort((a, b) => b.date.localeCompare(a.date)) }))
+    .sort((a, b) => b.mois.localeCompare(a.mois));
+}

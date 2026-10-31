@@ -65,6 +65,7 @@ const navGroups: NavGroup[] = [
       { href: '/admin/facturation', label: 'Facturation', icon: 'invoice' },
       { href: '/admin/tarification', label: 'Tarification', icon: 'invoice' },
       { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
+      { href: '/admin/courses', label: 'Courses & avances', icon: 'wallet' },
       { href: '/admin/parking', label: 'Parking', icon: 'parking' },
       { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
     ],

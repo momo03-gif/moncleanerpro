@@ -136,7 +136,7 @@ export async function lireDuCleaner(db: SupabaseClient, cleanerId: string, since
   return data ?? [];
 }
 
-export type Portee = 'all' | 'cleaner' | 'partner' | 'prestataire' | 'open' | 'requests' | 'ranking' | 'supplies' | 'one';
+export type Portee = 'all' | 'cleaner' | 'partner' | 'prestataire' | 'open' | 'requests' | 'ranking' | 'supplies' | 'one' | 'errands';
 
 /**
  * Lecture pour une session donnée. Renvoie `null` si la portée est refusée à
@@ -205,6 +205,16 @@ export async function lirePourSession(
       if (error) ({ data, error } = await lire(false));   // base pas encore migrée
       if (error) throw new Error(error.message);
       return admin ? (data ?? []) : pourCleaner(data ?? []);
+    }
+
+    case 'errands': {
+      // Courses / achats (avances des cleaners, carte de la société) : toutes,
+      // quelle que soit leur date — une avance non remboursée ne se périme pas.
+      if (!admin) return null;
+      const { data, error } = await db.from('missions').select(MISSION_SELECT)
+        .eq('service', 'errand').order('date_from', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
     }
 
     case 'requests': {

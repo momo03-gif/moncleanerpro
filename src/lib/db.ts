@@ -204,6 +204,16 @@ export async function getMissionsDB(sinceDate?: string): Promise<Mission[]> {
   }
 }
 
+/** Admin : toutes les courses / achats (page « Courses & avances »). */
+export async function getErrandMissionsDB(): Promise<Mission[]> {
+  try {
+    return ((await lireMissions({ scope: 'errands' })) ?? []).map(rowToMission);
+  } catch (e) {
+    console.error('getErrandMissionsDB:', e);
+    return [];
+  }
+}
+
 /**
  * Une seule mission, relue par le serveur (mise à jour ciblée du planning).
  * `{ mission: null }` = elle n'existe plus (ou plus pour vous) ; `null` = on ne
