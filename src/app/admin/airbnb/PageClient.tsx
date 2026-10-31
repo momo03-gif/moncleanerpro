@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB, setAirbnbCoordsDB, recalcGroupMissionsDB } from '@/lib/db';
+import { getAirbnbs, createAirbnb, updateAirbnb, deleteAirbnb, getPartnerNamesDB, setAirbnbCoordsDB, recalcGroupMissionsDB, assignAirbnbPrestataire } from '@/lib/db';
+import { appelPrestataire, type Prestataire } from '@/lib/prestataireApi';
 import { geocodeAddress, ZONE_PALETTE } from '@/lib/zones';
 import type { Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
@@ -27,6 +28,8 @@ const emptyForm = {
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
   structureType: 'apartment', structureLabel: '', productCostCents: '',
   creditImpot: false,
+  // Prestataire attitré : '' = aucun (ménages à assigner comme d'habitude).
+  prestataireId: '',
   // Maison à annonces multiples : '' = logement indépendant.
   parentAirbnbId: '',
   // Forfaits par nombre de chambres, sur l'annonce « maison entière ».
@@ -56,6 +59,7 @@ function aptToForm(a: Apartment): FormState {
     structureLabel: a.structureLabel ?? '',
     productCostCents: a.productCostCents != null ? String(a.productCostCents) : '',
     creditImpot: a.creditImpot === true,
+    prestataireId: a.prestataireId ?? '',
     partnerName: a.partnerName ?? '',
     portalCode: a.portalCode ?? '',
     keyboxCode: a.keyboxCode ?? '',
@@ -130,12 +134,18 @@ export default function AirbnbPage() {
   const [visibleCount, setVisibleCount] = useState(60);
   const [mapsModal, setMapsModal] = useState<string | null>(null);
 
+  // Prestataires qui peuvent recevoir des missions (actifs et validés).
+  const [prestataires, setPrestataires] = useState<Prestataire[]>([]);
   const load = useCallback(async () => {
-    const [a, names] = await Promise.all([getAirbnbs(), getPartnerNamesDB()]);
+    const [a, names, pr] = await Promise.all([
+      getAirbnbs(), getPartnerNamesDB(), appelPrestataire<{ prestataires: Prestataire[] }>('list'),
+    ]);
     setApartments(a);
     setPartnerNames(names);
+    setPrestataires(pr.ok ? pr.prestataires.filter(x => x.status === 'active' && !x.en_attente) : []);
     setLoading(false);
   }, []);
+  const nomPrestataire = (id?: string) => prestataires.find(x => x.id === id)?.name;
 
   useEffect(() => { load(); }, [load]);
   // Réinitialise la pagination quand la recherche / le filtre change.
@@ -220,6 +230,18 @@ export default function AirbnbPage() {
 
     // Identifiant de l'appartement (existant ou nouvellement créé) pour le géocodage.
     const aptId = editingId ? (await updateAirbnb(editingId, payload), editingId) : await createAirbnb(payload);
+    // Prestataire attitré changé : action dédiée (contrôles + ménages déjà
+    // prévus confiés tout de suite).
+    const avant = editingId ? apartments.find(a => a.id === editingId)?.prestataireId ?? '' : '';
+    if (aptId && form.prestataireId !== avant) {
+      const res = await assignAirbnbPrestataire(aptId, form.prestataireId || null);
+      if (res.error) toast(res.error, 'error');
+      else if (form.prestataireId) {
+        toast(`Prestataire attitré : ${nomPrestataire(form.prestataireId) ?? 'enregistré'}.`
+          + (res.count > 0 ? ` ${res.count} ménage${res.count > 1 ? 's' : ''} déjà prévu${res.count > 1 ? 's' : ''} lui ${res.count > 1 ? 'ont' : 'a'} été confié${res.count > 1 ? 's' : ''}.` : ''), 'success');
+      } else toast('Plus de prestataire attitré : les prochains ménages seront à assigner.', 'success');
+    }
+
     // Géocode l'adresse → lat/long (zone calculée ensuite via « Générer les zones »).
     if (aptId) {
       const geo = await geocodeAddress(form.address);
@@ -537,6 +559,22 @@ export default function AirbnbPage() {
               <span className="block text-xs" style={{ color: '#A8A09A' }}>Ses ménages ne pourront être confiés qu’à un prestataire déclaré services à la personne.</span>
             </span>
           </label>
+          {/* Prestataire attitré : chaque ménage prévu ici lui est confié d'office. */}
+          <div className="mb-4 max-w-md">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#7A7068' }}>Prestataire attitré — optionnel</label>
+            <select value={form.prestataireId} onChange={e => setForm(p => ({ ...p, prestataireId: e.target.value }))}
+              className="w-full px-4 py-3 rounded-xl text-sm border appearance-none"
+              style={{ ...inputStyle, color: form.prestataireId ? '#1A1A1A' : '#A8A09A' }}>
+              <option value="">Aucun — ménages à assigner</option>
+              {prestataires
+                .filter(x => !form.creditImpot || x.sap_declare || x.id === form.prestataireId)
+                .map(x => <option key={x.id} value={x.id}>{x.name}{x.sap_declare ? ' · SAP' : ''}</option>)}
+            </select>
+            <p className="text-xs mt-1.5" style={{ color: '#A8A09A' }}>
+              Chaque ménage prévu sur ce logement (réservations, récurrents, création manuelle) lui est confié automatiquement, s’il n’est attribué à personne. Il choisit ensuite son agent.
+              {form.creditImpot && ' Domicile d’un particulier : seuls les prestataires SAP sont proposés.'}
+            </p>
+          </div>
           <button type="submit" disabled={saving} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             {saving ? 'Enregistrement...' : editingId ? 'Enregistrer' : 'Ajouter le site'}
           </button>
@@ -582,7 +620,7 @@ export default function AirbnbPage() {
               {g.open && (
                 <div className="px-3 pb-3 pt-1 space-y-2 border-t" style={{ borderColor: '#F2EFE9' }}>
                   {g.shown.map(apt => (
-                    <SiteRow key={apt.id} apt={apt} prixKit={prixKit}
+                    <SiteRow key={apt.id} apt={apt} prixKit={prixKit} prestataire={nomPrestataire(apt.prestataireId)}
                       onEdit={() => openEdit(apt)} onDelete={() => handleDelete(apt.id)} onMaps={() => setMapsModal(apt.address)} />
                   ))}
                 </div>
@@ -604,8 +642,10 @@ export default function AirbnbPage() {
 }
 
 // ── Ligne compacte d'un site : résumé + détail au clic. ──────────────────────────
-function SiteRow({ apt, onEdit, onDelete, onMaps, prixKit = 0 }: {
+function SiteRow({ apt, onEdit, onDelete, onMaps, prixKit = 0, prestataire }: {
   apt: Apartment;
+  /** Nom du prestataire attitré, s'il y en a un. */
+  prestataire?: string;
   /** Prix d'un kit (réglage global), pour afficher ce que la fourniture facture. */
   prixKit?: number;
   onEdit: () => void;
@@ -644,6 +684,12 @@ function SiteRow({ apt, onEdit, onDelete, onMaps, prixKit = 0 }: {
         {apt.creditImpot && (
           <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#5A8A6A14', color: '#3F6B4F' }}>
             crédit d’impôt
+          </span>
+        )}
+        {prestataire && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0 truncate max-w-[160px]" style={{ backgroundColor: '#C9A84C18', color: '#9A7B22' }}
+            title={`Ménages confiés d’office à ${prestataire}`}>
+            {prestataire}
           </span>
         )}
         {apt.clientPrice != null && (

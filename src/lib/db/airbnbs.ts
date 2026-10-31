@@ -25,6 +25,7 @@ function rowToApartment(a: any): Apartment {
     entryDirectives: a.entry_instructions ?? '',
     cleanerId: a.cleaner_id,
     cleanerName: a.cleaners?.name,
+    prestataireId: a.prestataire_id ?? undefined,
     clientPrice: a.client_price != null ? Number(a.client_price) : undefined,
     estimatedCleaningMinutes: a.estimated_cleaning_minutes != null ? Number(a.estimated_cleaning_minutes) : undefined,
     cleanerGain: 0,
@@ -65,7 +66,7 @@ function rowToApartment(a: any): Apartment {
 // les redemanderait et la requête entière serait refusée.
 export const APT_SELECT = 'id, name, address, structure_type, structure_label, product_cost_cents, credit_impot, '
   + 'linge_mode, linge_kits, linge_forfait, linge_libelle, '
-  + 'cleaner_id, partner_id, partner_name, bedrooms, beds, sofa_beds, client_price, '
+  + 'cleaner_id, prestataire_id, partner_id, partner_name, bedrooms, beds, sofa_beds, client_price, '
   + 'estimated_cleaning_minutes, latitude, longitude, zone_id, zone_color, zone_name, '
   + 'access_video_url, access_video_path, parent_airbnb_id, group_tiers, created_at, cleaners(name)';
 
@@ -146,14 +147,14 @@ export async function recalcGroupMissionsDB(houseId: string): Promise<{ updated:
 // clients. Les écritures passent par /api/airbnbs, qui vérifie la session et,
 // pour un partenaire, que le logement lui appartient — et qui ignore les
 // champs qui nous sont propres (prix facturé, temps de ménage, zone).
-async function ecrireLogement(payload: Record<string, unknown>): Promise<{ error: string | null; id?: string | null }> {
+async function ecrireLogement(payload: Record<string, unknown>): Promise<{ error: string | null; id?: string | null; count?: number }> {
   try {
     const res = await fetch('/api/airbnbs', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { error: String(data.error ?? 'Enregistrement impossible.') };
-    return { error: null, id: (data.id as string) ?? null };
+    return { error: null, id: (data.id as string) ?? null, count: typeof data.count === 'number' ? data.count : undefined };
   } catch {
     return { error: 'Connexion impossible. Réessayez.' };
   }
@@ -326,6 +327,16 @@ export async function deleteAirbnb(id: string) {
 export async function assignAirbnbCleaner(airbnbId: string, cleanerId: string | null) {
   const res = await ecrireLogement({ action: 'assign-cleaner', id: airbnbId, cleanerId });
   if (res.error) console.error('assignAirbnbCleaner error:', res.error);
+}
+
+/**
+ * Prestataire attitré d'un logement (admin). Ses ménages à venir encore
+ * attribués à personne lui sont confiés tout de suite ; `count` = combien.
+ * null = plus de prestataire attitré (les missions déjà confiées restent).
+ */
+export async function assignAirbnbPrestataire(airbnbId: string, prestataireId: string | null): Promise<{ error: string | null; count: number }> {
+  const res = await ecrireLogement({ action: 'assign-prestataire', id: airbnbId, prestataireId });
+  return { error: res.error, count: res.count ?? 0 };
 }
 
 // ── ZONES GÉOGRAPHIQUES ─────────────────────────────────────────────────────────

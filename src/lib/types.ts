@@ -284,6 +284,8 @@ export interface Apartment {
   id: string;
   name: string;
   address: string;
+  /** Prestataire attitré (admin seulement) : ses ménages lui sont confiés d'office. */
+  prestataireId?: string;
   // Type de structure (défaut : appartement). Voir StructureType.
   structureType?: StructureType;
   structureLabel?: string;   // libellé libre quand structureType = 'other'

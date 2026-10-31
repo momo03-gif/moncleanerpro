@@ -18,12 +18,13 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser } from '@/lib/session';
+import { chargerPrestataireConfiable, confierUneMission, notifierConfiees } from '@/lib/prestataireConfier';
 import { normalizePhone } from '@/lib/phone';
 import { hashPassword } from '@/lib/password';
-import { gainPrestataire, attribuable, releveDuMois, peutConfier, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, vehiculesValides, type Metier } from '@/lib/prestataireRegles';
+import { attribuable, releveDuMois, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, vehiculesValides, type Metier } from '@/lib/prestataireRegles';
 import {
   notifyCleanerNewMission, notifyCleanerMissionUnassigned,
-  notifyPrestataireMissionConfiee, notifyPrestataireMissionReprise, notifyPrestatairePaiement,
+  notifyPrestataireMissionReprise, notifyPrestatairePaiement,
 } from '@/lib/notificationEvents';
 
 export const runtime = 'nodejs';
@@ -56,15 +57,6 @@ async function enAttente(db: SupabaseClient, userId: unknown): Promise<boolean> 
   return data?.status === 'pending';
 }
 const AGENT_COLONNES = 'id, user_id, name, email, phone, status, created_at';
-
-/** Durée de la mission en minutes (même règle que l'affectation d'un cleaner). */
-function minutesDe(m: Record<string, unknown>): number {
-  const apt = (m.airbnbs as { estimated_cleaning_minutes?: number } | null)?.estimated_cleaning_minutes;
-  if (m.mission_duration_minutes != null) return Number(m.mission_duration_minutes) || 0;
-  if (apt != null) return Number(apt) || 0;
-  if (m.apartment_default_duration_snapshot != null) return Number(m.apartment_default_duration_snapshot) || 0;
-  return 60;
-}
 
 /** 'YYYY-MM' du mois courant, à Paris. */
 function moisCourant(): string {
@@ -397,42 +389,23 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const pid = str(b.prestataireId);
       const ids = Array.isArray(b.missionIds) ? (b.missionIds as unknown[]).map(String).filter(Boolean) : [];
       if (!pid || ids.length === 0) return ko('Mission ou prestataire manquant.');
-      const { data: pr } = await db.from('prestataires').select('id, user_id, name, hourly_rate, status, sap_declare').eq('id', pid).maybeSingle();
-      if (!pr) return ko('Prestataire introuvable.', 404);
-      if (pr.status !== 'active') return ko('Ce prestataire est suspendu.');
-      if (await enAttente(db, pr.user_id)) return ko('Ce prestataire n’est pas encore validé.');
-      const taux = Number(pr.hourly_rate) || 0;
+      const r = await chargerPrestataireConfiable(db, pid);
+      if (!('pr' in r)) return ko(r.erreur, r.code);
 
       let count = 0, bloquees = 0;
+      const confiees: string[] = [];
       for (const id of ids) {
         const { data: m } = await db.from('missions').select('*, airbnbs(estimated_cleaning_minutes, credit_impot)').eq('id', id).maybeSingle();
-        if (!m || !attribuable(m.status as string)) continue;
-        // Domicile d'un particulier : seulement à un prestataire déclaré SAP.
-        const creditImpot = (m.airbnbs as { credit_impot?: boolean } | null)?.credit_impot === true;
-        if (!peutConfier({ creditImpot, sapDeclare: pr.sap_declare === true })) { bloquees++; continue; }
-        const minutes = minutesDe(m);
-        const ancienCleaner = m.cleaner_id as string | null;
-        const ancienPresta = m.prestataire_id as string | null;
-        const { data: maj, error } = await db.from('missions').update({
-          prestataire_id: pr.id, prestataire_name: pr.name,
-          prestataire_rate_snapshot: taux, prestataire_gain: gainPrestataire(taux, minutes),
-          mission_duration_minutes: minutes, hours_worked: Math.round((minutes / 60) * 100) / 100,
-          // C'est le prestataire qui choisira l'agent : la mission repart « à attribuer ».
-          status: 'pending', cleaner_id: null, cleaner_name: null,
-          cleaner_gain: 0, cleaner_hourly_rate_snapshot: null,
-          pending_cleaner_id: null, pending_cleaner_name: null, pending_requested_at: null,
-        }).eq('id', id).in('status', ['pending', 'assigned']).select('id');
-        if (error) { console.error('prestataire/confier:', error.message); return ko('Attribution impossible.', 500); }
-        if (!maj?.length) continue;
+        if (!m) continue;
+        const res = await confierUneMission(db, m, r.pr);
+        if (res === 'erreur') return ko('Attribution impossible.', 500);
+        if (res === 'credit_impot') { bloquees++; continue; }
+        // Déjà chez ce prestataire : rien de neuf à lui annoncer, mais c'est fait.
+        if (res === 'ignoree') { if (m.prestataire_id === r.pr.id && attribuable(m.status as string)) count++; continue; }
         count++;
-        // Ceux qui la perdent l'apprennent de nous.
-        if (ancienCleaner) await notifyCleanerMissionUnassigned(id, ancienCleaner);
-        if (ancienPresta && ancienPresta !== pr.id) {
-          const { data: av } = await db.from('prestataires').select('user_id').eq('id', ancienPresta).maybeSingle();
-          if (av?.user_id) await notifyPrestataireMissionReprise(id, av.user_id as string);
-        }
-        if (ancienPresta !== pr.id) await notifyPrestataireMissionConfiee(id);
+        confiees.push(id);
       }
+      await notifierConfiees(r.pr, confiees);
       if (count === 0 && bloquees > 0) return ko(CREDIT_IMPOT_REFUS);
       return ok({ count, bloquees });
     }

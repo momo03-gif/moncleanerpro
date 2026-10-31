@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession } from '@/lib/apiGuard';
 import { APT_SELECT } from '@/lib/db/airbnbs';
+import { chargerPrestataireConfiable, confierAuPrestataireAttitre } from '@/lib/prestataireConfier';
+import { peutConfier, CREDIT_IMPOT_REFUS } from '@/lib/prestataireRegles';
 
 export const runtime = 'nodejs';
 
@@ -24,11 +26,12 @@ export async function POST(req: NextRequest) {
   if (sansSession) return sansSession;
 
   let b: {
-    action?: 'create' | 'update' | 'delete' | 'assign-cleaner' | 'set-coords' | 'set-zones' | 'access' | 'list' | 'coords';
+    action?: 'create' | 'update' | 'delete' | 'assign-cleaner' | 'assign-prestataire' | 'set-coords' | 'set-zones' | 'access' | 'list' | 'coords';
     id?: string;
     row?: Record<string, unknown>;
     patch?: Record<string, unknown>;
     cleanerId?: string | null;
+    prestataireId?: string | null;
     lat?: number; lng?: number;
     zones?: { id: string; zoneId: string | null; zoneColor: string | null; zoneName: string | null }[];
     ids?: string[];
@@ -53,6 +56,8 @@ export async function POST(req: NextRequest) {
     'client_price', 'estimated_cleaning_minutes', 'product_cost_cents',
     'zone_id', 'zone_color', 'zone_name', 'partner_id', 'partner_name',
     'parent_airbnb_id', 'group_tiers', 'cleaner_id',
+    // Sous-traitance : jamais fixée ni même vue par le client.
+    'prestataire_id',
     // La fourniture facturée est un prix : un partenaire ne la fixe pas.
     'linge_mode', 'linge_kits', 'linge_forfait', 'linge_libelle',
     // Régime fiscal du ménage : décidé par nous, pas par le client.
@@ -106,6 +111,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    case 'assign-prestataire': {
+      // Prestataire attitré : ses ménages lui sont confiés d'office (cf.
+      // lib/prestataireConfier.ts). Un logement a un prestataire OU un cleaner
+      // attitré, pas les deux.
+      if (!estAdmin) return refus('Réservé à l’administration.');
+      if (!b.id) return refus('Logement manquant.', 400);
+      const pid = b.prestataireId || null;
+      if (pid) {
+        const r = await chargerPrestataireConfiable(db, pid);
+        if (!('pr' in r)) return refus(r.erreur, r.code);
+        const { data: apt } = await db.from('airbnbs').select('credit_impot').eq('id', b.id).maybeSingle();
+        if (!peutConfier({ creditImpot: apt?.credit_impot === true, sapDeclare: r.pr.sap_declare })) return refus(CREDIT_IMPOT_REFUS, 400);
+      }
+      const { error } = await db.from('airbnbs')
+        .update(pid ? { prestataire_id: pid, cleaner_id: null } : { prestataire_id: null }).eq('id', b.id);
+      if (error) { console.error('airbnbs/assign-prestataire:', error.message); return refus('Enregistrement impossible (migration_prestataire_attitre.sql exécutée ?).', 500); }
+      if (!pid) return NextResponse.json({ ok: true, count: 0 });
+      // Les ménages déjà prévus sur ce logement, encore attribués à personne.
+      const { data: aVenir } = await db.from('missions').select('id')
+        .eq('airbnb_id', b.id).eq('status', 'pending').is('cleaner_id', null).is('prestataire_id', null)
+        .gte('date_from', new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date()));
+      const count = await confierAuPrestataireAttitre(db, (aVenir ?? []).map(m => m.id as string));
+      return NextResponse.json({ ok: true, count });
+    }
+
     case 'set-coords': {
       if (!b.id) return refus('Logement manquant.', 400);
       if (!(await autorise(b.id))) return refus('Ce logement ne vous appartient pas.');
@@ -140,7 +170,8 @@ export async function POST(req: NextRequest) {
       const { data, error } = await q;
       if (error) { console.error('airbnbs/list:', error.message); return refus('Lecture impossible.', 500); }
       const lignes = (data ?? []) as unknown as Record<string, unknown>[];
-      const rows = estAdmin ? lignes : lignes.map(r => ({ ...r, estimated_cleaning_minutes: null }));
+      // Une conciergerie ne voit ni la durée de ménage, ni qu'un logement est confié à un prestataire.
+      const rows = estAdmin ? lignes : lignes.map(r => ({ ...r, estimated_cleaning_minutes: null, prestataire_id: null }));
       return NextResponse.json({ data: rows }, { headers: { 'Cache-Control': 'no-store' } });
     }
 

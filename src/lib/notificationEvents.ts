@@ -270,6 +270,23 @@ export async function notifyPrestataireMissionConfiee(missionId: string) {
   } catch (e) { console.error('notifyPrestataireMissionConfiee:', e); }
 }
 
+/**
+ * Un lot de missions confiées d'un coup (prestataire attitré d'un logement,
+ * ménages récurrents…) : UNE notification, pas une par mission.
+ */
+export async function notifyPrestataireMissionsConfiees(prestataireUserId: string, missionIds: string[]) {
+  if (missionIds.length === 0) return;
+  if (missionIds.length === 1) return notifyPrestataireMissionConfiee(missionIds[0]);
+  try {
+    await dispatch([{
+      userId: prestataireUserId, role: 'prestataire',
+      title: `${missionIds.length} nouvelles missions à attribuer`,
+      message: `${missionIds.length} missions vous ont été confiées. Choisissez l'agent qui s'en charge pour chacune.`,
+      type: 'mission_new', missionId: missionIds[0],
+    }]);
+  } catch (e) { console.error('notifyPrestataireMissionsConfiees:', e); }
+}
+
 export async function notifyPrestataireMissionReprise(missionId: string, prestataireUserId: string) {
   try {
     const ctx = await loadMissionContext(missionId);

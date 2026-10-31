@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from './supabaseAdmin';
 import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { detectPlatform } from './icalUrl';
 import { serviceParts } from './service';
+import { confierAuPrestataireAttitre } from './prestataireConfier';
 import type { MissionService } from './types';
 import {
   departCredible, estRefletDUnSejour, nuitsAFermerAilleurs,
@@ -708,6 +709,8 @@ export async function materializeMissions(): Promise<MaterializeResult> {
 
     // Notifie les admins (réutilise le canal « mission créée par un partenaire »).
     await notifyPartnerCreatedMission('La synchronisation automatique', date, DEFAULT_CHECKOUT_TIME, mission.id);
+    // Logement avec un prestataire attitré : le ménage lui est confié d'office.
+    await confierAuPrestataireAttitre(db, [mission.id]);
 
     result.created++;
     result.details.push({ reservationId: first.id, missionId: mission.id, airbnbId: targetAirbnbId, date });

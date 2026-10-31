@@ -10,6 +10,7 @@
 import { getServerDb } from './serverDb';
 const supabase = getServerDb();
 import { computeCleanerGain } from './pay';
+import { confierAuPrestataireAttitre } from './prestataireConfier';
 import { parisToday, addDaysStr, occurrenceDates } from './recurringDates';
 import type { RecurringMission } from './types';
 
@@ -161,7 +162,11 @@ export async function generateRecurringMissions(horizonDays = 180): Promise<{ cr
     if (rows.length > 0) {
       const { data: ins, error } = await supabase.from('missions').insert(rows).select('id');
       if (error) console.error('generateRecurringMissions insert:', error.message);
-      else created += ins?.length ?? 0;
+      else {
+        created += ins?.length ?? 0;
+        // Sans cleaner : le prestataire attitré du logement, s'il y en a un.
+        if (!r.cleaner_id) await confierAuPrestataireAttitre(supabase, (ins ?? []).map(m => m.id as string));
+      }
     }
     await supabase.from('recurring_missions').update({ last_generated_date: horizon }).eq('id', r.id);
   }

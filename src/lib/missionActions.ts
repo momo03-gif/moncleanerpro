@@ -4,6 +4,7 @@ import type { SessionUser } from './sessionToken';
 import type { MissionService, MissionStatus } from './types';
 import { computeMissionGain, computeCleanerGain, billableHotelPrice } from './pay';
 import { canCleanerDoService, sansControleAdresse } from './service';
+import { confierAuPrestataireAttitre } from './prestataireConfier';
 import { primeCourse, montantTicket, payeurValide, COURSE_TICKET_ERROR } from './course';
 import {
   distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR,
@@ -512,6 +513,7 @@ const ACTIONS: Record<string, Action> = {
     }).select('id').single();
     if (error) { console.error('missions/create-airbnb:', error.message); return ko('Création impossible.', 500); }
     await notifyPartnerCreatedMission(s.name || 'Un partenaire Airbnb', dateFrom, str(b.timeFrom) ?? '', data?.id ?? null);
+    if (data?.id) await confierAuPrestataireAttitre(db, [data.id as string]);
     return ok({ id: data?.id });
   },
 
@@ -785,6 +787,8 @@ const ACTIONS: Record<string, Action> = {
     }).select('id').single();
     if (error) { console.error('missions/create:', error.message); return ko(error.message, 500); }
     if (cleanerId && data?.id) await notifyCleanerNewMission(data.id as string);
+    // Personne de choisi : le prestataire attitré du logement, s'il y en a un.
+    if (!cleanerId && data?.id) await confierAuPrestataireAttitre(db, [data.id as string]);
     return ok({ id: data?.id });
   },
 
@@ -864,6 +868,7 @@ const ACTIONS: Record<string, Action> = {
     const { data, error } = await db.from('missions').insert(rows).select('id');
     if (error) { console.error('missions/create-batch:', error.message); return ko(error.message, 500); }
     if (cleanerId) for (const r of data ?? []) await notifyCleanerNewMission(r.id as string);
+    else await confierAuPrestataireAttitre(db, (data ?? []).map(r => r.id as string));
     return ok({ ids: (data ?? []).map(r => r.id) });
   },
 
