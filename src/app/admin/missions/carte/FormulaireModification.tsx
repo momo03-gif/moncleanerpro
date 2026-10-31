@@ -25,6 +25,8 @@ export default function FormulaireModification({ mission, cleaners, source, onEr
 }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
+  // Course terminée : l'admin corrige les comptes, sans changer de prestation.
+  const courseClose = mission.service === 'errand' && mission.status === 'completed';
   const [editForm, setEditForm] = useState({
     date: mission.date, time: mission.time,
     durationMinutes: String(mission.missionDurationMinutes ?? 60),
@@ -83,6 +85,11 @@ export default function FormulaireModification({ mission, cleaners, source, onEr
   return (
     /* Formulaire de modification (admin) */
     <div className="space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
+      {courseClose && (
+        <p className="text-[11px] px-2.5 py-2 rounded-lg" style={{ backgroundColor: '#B07A4A12', color: '#8A5A2E' }}>
+          Course terminée : vous pouvez corriger les montants, le budget, la prime ou la date. Ni l’intervenant ni le client ne sont prévenus.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <div>
           <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
@@ -137,16 +144,18 @@ export default function FormulaireModification({ mission, cleaners, source, onEr
           </select>
         </div>
         )}
-        <div>
-          <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prestation</label>
-          <select value={editForm.service} onChange={e => setEditForm(f => ({ ...f, service: e.target.value as MissionService }))}
-            className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
-            <option value="cleaning">Nettoyage</option>
-            <option value="delivery">Livraison</option>
-            <option value="repair">Intervention</option>
-            <option value="errand">Course / achat</option>
-          </select>
-        </div>
+        {!courseClose && (
+          <div>
+            <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prestation</label>
+            <select value={editForm.service} onChange={e => setEditForm(f => ({ ...f, service: e.target.value as MissionService }))}
+              className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
+              <option value="cleaning">Nettoyage</option>
+              <option value="delivery">Livraison</option>
+              <option value="repair">Intervention</option>
+              <option value="errand">Course / achat</option>
+            </select>
+          </div>
+        )}
         {/* Livraison : jamais facturée au client → pas de prix client. */}
         {editForm.service !== 'delivery' && (
         <div>

@@ -547,6 +547,11 @@ const ACTIONS: Record<string, Action> = {
     if (clos && !estAdmin) {
       return ko(`Cette mission est ${row.status === 'done' ? 'terminée' : 'annulée'} et ne peut plus être modifiée.`);
     }
+    // Exception : une COURSE terminée reste corrigeable par l'admin (ticket,
+    // frais de service, budget, prime, date…) — on règle ces comptes après coup.
+    // Mais elle reste une course terminée du même intervenant : ni type de
+    // prestation, ni statut, ni intervenant, ni logement ne changent ici.
+    const courseClose = estAdmin && row.service === 'errand' && row.status === 'done';
     const surSonLogement = s.role === 'airbnb' && !!row.airbnb_id
       && (await logementsDuPartenaire(db, s.id)).includes(row.airbnb_id as string);
     if (!estAdmin && row.created_by !== s.id && row.partner_id !== s.id && !surSonLogement) {
@@ -610,11 +615,17 @@ const ACTIONS: Record<string, Action> = {
       }
     }
 
+    if (courseClose) {
+      for (const k of ['service', 'status', 'cleaner_id', 'cleaner_name', 'airbnb_id', 'type']) delete patch[k];
+    }
+
     if (Object.keys(patch).length > 0) {
       // Garde atomique : une mission clôturée ne se modifie pas ici, même par
-      // l'admin (il la rouvre d'abord) — comportement repris tel quel.
-      const { data, error } = await db.from('missions').update(patch)
-        .eq('id', missionId).not('status', 'in', '(done,cancelled)').select('id');
+      // l'admin (il la rouvre d'abord) — sauf une course terminée (cf. plus haut),
+      // qui ne doit pas pour autant avoir été annulée entre-temps.
+      let q = db.from('missions').update(patch).eq('id', missionId);
+      q = courseClose ? q.eq('status', 'done') : q.not('status', 'in', '(done,cancelled)');
+      const { data, error } = await q.select('id');
       if (error) { console.error('missions/update:', error.message); return ko('Enregistrement impossible.', 500); }
       if (!data || data.length === 0) return ko('Cette mission est clôturée et ne peut plus être modifiée.');
     } else if (!paie) {
@@ -623,7 +634,9 @@ const ACTIONS: Record<string, Action> = {
     // La paie, après l'enregistrement : le nouveau cleaner est en base.
     let argent: string | null = null;
     if (paie) argent = (await appliquerDuree(db, missionId, paie)).error;
-    await notifyMissionModified(missionId, s.role, s.id);
+    // Une course terminée corrigée après coup : c'est de la comptabilité, on ne
+    // dérange ni l'intervenant ni le client.
+    if (!courseClose) await notifyMissionModified(missionId, s.role, s.id);
     return ok(argent ? { argent } : {});
   },
 
