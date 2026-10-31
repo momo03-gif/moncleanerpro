@@ -102,4 +102,8 @@ describe('prestataires — vigilance', () => {
     expect(libelleVehicules([])).toBe('Non véhiculé');
     expect(libelleVehicules(null)).toBe('Non renseigné');
   });
+
+  it('propose ceux qui livrent ou font de tout pour une course', () => {
+    expect(specialitesPourMission({ service: 'errand' })).toEqual(['livraison', 'multiservice']);
+  });
 });

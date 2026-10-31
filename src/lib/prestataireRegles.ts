@@ -174,6 +174,8 @@ export function libelleSpecialite(key: string): string {
 export function specialitesPourMission(m: {
   source?: string | null; siteType?: string | null; service?: string | null; repairSpecialite?: string | null;
 }): Specialite[] {
+  // Course / achat : quelqu'un qui se déplace et livre, ou un « homme à tout faire ».
+  if (m.service === 'errand') return ['livraison', 'multiservice'];
   // Intervention : la spécialité visée, ou à défaut n'importe quel artisan.
   if (m.service === 'repair') {
     const visee = specialitesValides([m.repairSpecialite], 'artisan');

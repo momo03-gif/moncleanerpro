@@ -11,6 +11,7 @@ export const DEFAULT_PROFIT_CONFIG: ProfitConfig = {
   cdiChargeRate: 0.45, vatRate: 0.20,
   linenKitPrice: 0, linenKitCost: 0,
   noShowClientFee: 0, noShowCleanerFee: 0,
+  errandFeePercent: 15, errandFeeMin: 20, errandBonus: 0,
 };
 
 // ── Calculateur de prix rentable (hôtels / EHPAD : seul coût = le cleaner) ────────
@@ -91,8 +92,9 @@ export function computeApartmentProfitability(params: {
 
     const cleaningMs = ms.filter(m => serviceParts(m.service).cleaning);
     const deliveryMs = ms.filter(m => serviceParts(m.service).delivery);
-    // Interventions (petits travaux) : facturées et payées au temps, sans produits.
-    const repairMs = ms.filter(m => m.service === 'repair');
+    // Interventions (petits travaux) et courses : facturées (frais de service —
+    // les achats se refacturent au réel, hors marge) et payées au temps, sans produits.
+    const repairMs = ms.filter(m => m.service === 'repair' || m.service === 'errand');
     if (cleaningMs.length === 0 && deliveryMs.length === 0 && repairMs.length === 0) continue;
 
     const revenue = round2([...cleaningMs, ...repairMs].reduce((s, m) => s + (m.price || 0), 0));

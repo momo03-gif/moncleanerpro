@@ -179,6 +179,13 @@ function CarteMission({ mission: m, agents, onChange }: { mission: Mission; agen
         )}
       </div>
 
+      {m.service === 'errand' && m.errandDetails && (
+        <div className="text-sm mb-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#B07A4A12' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#8A5A2E' }}>Course à faire</p>
+          <p className="whitespace-pre-line" style={{ color: '#1A1A1A' }}>{m.errandDetails}</p>
+        </div>
+      )}
+
       {m.service === 'repair' && (
         <div className="text-sm mb-3 px-3 py-2 rounded-lg" style={{ backgroundColor: '#4A6A8A12' }}>
           <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#3F5A78' }}>

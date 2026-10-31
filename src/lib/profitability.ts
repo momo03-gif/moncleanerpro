@@ -35,6 +35,10 @@ export async function getProfitConfigDB(): Promise<ProfitConfig> {
     // No show : forfaits par défaut (cf. lib/noShow.ts).
     noShowClientFee: data.no_show_client_fee != null ? Number(data.no_show_client_fee) : 0,
     noShowCleanerFee: data.no_show_cleaner_fee != null ? Number(data.no_show_cleaner_fee) : 0,
+    // Course / achat : frais de service proposés et prime (cf. lib/course.ts).
+    errandFeePercent: data.errand_fee_percent != null ? Number(data.errand_fee_percent) : 15,
+    errandFeeMin: data.errand_fee_min != null ? Number(data.errand_fee_min) : 20,
+    errandBonus: data.errand_bonus != null ? Number(data.errand_bonus) : 0,
   };
 }
 

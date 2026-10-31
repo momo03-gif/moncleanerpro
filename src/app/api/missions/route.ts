@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeMissionGain } from '@/lib/pay';
+import { primeCourse } from '@/lib/course';
 import { executerActionMission, appliquerDuree, cloturerArgent } from '@/lib/missionActions';
 import { lirePourSession } from '@/lib/missionRead';
 import { notifyCleanerNewMission, notifyCleanerMissionUnassigned, notifyMissionCancelled, notifyMissionsTransferees, notifyPrestataireMissionReprise } from '@/lib/notificationEvents';
@@ -153,6 +154,7 @@ export async function POST(req: NextRequest) {
           cleaner_gain: computeMissionGain({
             service: m.service as MissionService | undefined,
             hourlyRate: rate, deliveryRate, durationMinutes: minutes,
+            bonus: primeCourse(m),
           }),
           cleaner_hourly_rate_snapshot: rate,
           mission_duration_minutes: minutes,
@@ -191,7 +193,7 @@ export async function POST(req: NextRequest) {
       }).format(new Date());
 
       const { data: aBouger, error: errLecture } = await db.from('missions')
-        .select('id, status, date_from, service, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)')
+        .select('id, status, date_from, service, errand_bonus, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)')
         .eq('cleaner_id', b.fromCleanerId)
         .in('status', ['pending', 'assigned'])
         .gte('date_from', aujourdhui)
@@ -235,6 +237,7 @@ export async function POST(req: NextRequest) {
           cleaner_gain: computeMissionGain({
             service: m.service as MissionService | undefined,
             hourlyRate: rate, deliveryRate, durationMinutes: minutes,
+            bonus: primeCourse(m),
           }),
           cleaner_hourly_rate_snapshot: rate,
           mission_duration_minutes: minutes,

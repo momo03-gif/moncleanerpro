@@ -16,13 +16,15 @@ import { serviceLabel, SERVICE_BADGE, serviceParts, estAuTemps } from '@/lib/ser
 import { libelleSpecialite } from '@/lib/prestataireRegles';
 import { cacheMissions, readCachedMissions, cacheTerrain, readCachedTerrain } from '@/lib/offline/store';
 import { MISSION_TYPE_LABEL, missionStatusCfg, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
-import { formatDuration, formatHour } from '@/lib/format';
+import { formatDuration, formatHour, money } from '@/lib/format';
 import { getApproxPosition } from '@/lib/geo';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import { PHOTOS_REQUISES_ERROR, photosApresExigees } from '@/lib/photosRegles';
 import { noShowPossible, NO_SHOW_BOUTON, type NoShowMotif } from '@/lib/noShow';
 import NoShowMotifChoix from '@/components/NoShowMotifChoix';
+import TicketCourse from '@/components/TicketCourse';
+import { aRembourser } from '@/lib/course';
 import MissionReport from '@/components/MissionReport';
 import RepairsPanel from '@/components/RepairsPanel';
 import ChecklistPanel from '@/components/ChecklistPanel';
@@ -470,6 +472,24 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
             videoUrl={(terrain?.accessVideoUrl ?? mission.accessVideoUrl)!} mode="view" />
         )}
 
+        {/* Course / achat : quoi acheter ou faire, et dans quel budget. */}
+        {mission.service === 'errand' && (
+          <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#B07A4A12' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A5A2E' }}>Course à faire</p>
+            {mission.errandDetails && <p className="text-sm leading-snug whitespace-pre-wrap" style={{ color: '#4A4540' }}>{mission.errandDetails}</p>}
+            {mission.errandBudget != null && (
+              <p className="text-xs mt-1" style={{ color: '#7A7068' }}>Budget maximum : <b>{money(mission.errandBudget)}</b> — ne pas dépasser sans accord.</p>
+            )}
+            {mission.status === 'completed' && mission.errandPaidBy === 'cleaner' && (mission.errandSpent ?? 0) > 0 && (
+              <p className="text-xs mt-1 font-medium" style={{ color: aRembourser(mission) ? '#C48A2A' : '#3F6B4F' }}>
+                {aRembourser(mission)
+                  ? `Avance de ${money(mission.errandSpent ?? 0)} : remboursement en attente.`
+                  : `Avance de ${money(mission.errandSpent ?? 0)} remboursée le ${new Date(mission.errandReimbursedAt!).toLocaleDateString('fr-FR')}.`}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Intervention : le travail à faire, en premier plan. */}
         {mission.service === 'repair' && (
           <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#4A6A8A12' }}>
@@ -665,8 +685,10 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               {busy ? '...' : 'Démarrer la mission'}
             </button>
           )}
+          {/* Course : le ticket d'abord, puis « Terminer ». */}
+          {canFinish && mission.service === 'errand' && <TicketCourse mission={mission} onSaved={onUpdate} />}
           {canFinish && (
-            <button onClick={finish} disabled={busy}
+            <button onClick={finish} disabled={busy || (mission.service === 'errand' && !(mission.errandSpent != null && mission.errandPaidBy))}
               className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
               {busy ? '...' : <><Icon name="check" size={16} /> Terminer la mission</>}

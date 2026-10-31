@@ -18,6 +18,7 @@ describe('Règle métier : facturation client', () => {
   it('un legacy ménage+livraison garde sa part ménage facturable', () => expect(estFacturable('cleaning_delivery')).toBe(true));
   it('une intervention est facturable, un rendez-vous non', () => {
     expect(estFacturable('repair')).toBe(true);
+    expect(estFacturable('errand')).toBe(true);   // ses frais de service
     expect(estFacturable('appointment')).toBe(false);
   });
 });
@@ -27,6 +28,7 @@ describe('Intervention (petits travaux)', () => {
   it('se paie au temps, comme un ménage', () => {
     expect(estAuTemps('repair')).toBe(true);
     expect(estAuTemps('cleaning')).toBe(true);
+    expect(estAuTemps('errand')).toBe(true);
     expect(estAuTemps('delivery')).toBe(false);
     expect(estAuTemps('appointment')).toBe(false);
   });

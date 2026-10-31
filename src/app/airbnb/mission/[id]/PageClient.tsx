@@ -17,7 +17,7 @@ import type { Mission, MissionReport } from '@/lib/types';
 import { missionStatusCfg, missionStatusLabel, missionTypeLabel } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import { libelleSpecialite } from '@/lib/prestataireRegles';
-import { formatHour } from '@/lib/format';
+import { formatHour, money } from '@/lib/format';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import MissionPhotos from '@/components/MissionPhotos';
 import ChecklistPanel from '@/components/ChecklistPanel';
@@ -141,6 +141,7 @@ export default function PartnerMissionDetailClient() {
             <p className="font-semibold text-ink">
               {mission.service === 'repair'
                 ? (mission.repairSpecialite ? libelleSpecialite(mission.repairSpecialite) : 'Intervention')
+                : mission.service === 'errand' ? 'Course / achat'
                 : isDelivery ? 'Livraison' : missionTypeLabel(mission.type)}
             </p>
           </div>
@@ -150,6 +151,16 @@ export default function PartnerMissionDetailClient() {
           </div>
         </div>
       </Card>
+
+      {mission.service === 'errand' && (mission.errandDetails || mission.errandSpent != null) && (
+        <Card className="p-5 mb-5">
+          <p className="text-[11px] text-muted mb-1">Course demandée</p>
+          {mission.errandDetails && <p className="text-sm text-ink whitespace-pre-wrap">{mission.errandDetails}</p>}
+          {mission.errandSpent != null && (
+            <p className="text-sm text-ink mt-2">Achats avancés : <b>{money(mission.errandSpent)}</b> <span className="text-muted">(ticket dans les photos)</span></p>
+          )}
+        </Card>
+      )}
 
       {mission.service === 'repair' && mission.repairDetails && (
         <Card className="p-5 mb-5">

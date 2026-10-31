@@ -66,7 +66,7 @@ function gapLabel(minutes: number): string {
 export function missionReadiness(m: ReadinessInput, now: Date = new Date()): Readiness | null {
   if (m.status === 'cancelled') return null;
   // Intervention (petits travaux) : pas un ménage, elle ne rend pas le logement « prêt ».
-  if (m.service === 'repair') return null;
+  if (m.service === 'repair' || m.service === 'errand') return null;
   // Prolongation : le voyageur est resté, le logement n'a pas été refait.
   if (m.noShowReason === 'prolongation') return null;
 

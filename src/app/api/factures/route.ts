@@ -151,8 +151,8 @@ export async function POST(req: NextRequest) {
       const aFiger: { id: string; montant: number; libelle: string; kits: number }[] = [];
 
       for (const m of missions ?? []) {
-        // Une intervention (petits travaux) ne change pas le linge.
-        if (sansLinge.has(m.id as string) || m.service === 'repair') continue;
+        // Une intervention ou une course ne change pas le linge.
+        if (sansLinge.has(m.id as string) || m.service === 'repair' || m.service === 'errand') continue;
         const fige = Number(m.supplies_amount) || 0;
         if (fige > 0) {
           fournitures[m.id] = {

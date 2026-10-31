@@ -9,6 +9,7 @@ import { vueFacture } from '@/lib/factureStatut';
 import { inputStyle } from '@/lib/ui';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import { estFacturable } from '@/lib/service';
+import { LIBELLE_ACHATS } from '@/lib/course';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 import { InvoiceDoc } from '@/components/InvoiceDoc';
@@ -141,10 +142,14 @@ export default function FacturationPage() {
       // No show : on facture le déplacement, pas un ménage — et pas de linge.
       // Intervention : facturée comme telle, sans linge non plus.
       type: m.noShow ? (m.noShowReason === 'prolongation' ? 'no_show_prolongation' : 'no_show')
-        : m.service === 'repair' ? 'repair' : m.type,
+        : m.service === 'repair' || m.service === 'errand' ? m.service : m.type,
       cleaner: m.cleanerName || '—',
       prix: m.price || 0,
-      fourniture: m.noShow || m.service === 'repair' ? null : (fournitures[m.id] ?? null),
+      // Course : les achats refacturés au réel, sur leur propre ligne (hors base
+      // du crédit d'impôt, comme le linge). Intervention, no show : rien.
+      fourniture: m.service === 'errand'
+        ? ((m.errandSpent ?? 0) > 0 ? { montant: m.errandSpent!, libelle: LIBELLE_ACHATS, kits: 0 } : null)
+        : m.noShow || m.service === 'repair' ? null : (fournitures[m.id] ?? null),
     })),
     amounts,
   );

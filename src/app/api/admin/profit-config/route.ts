@@ -56,6 +56,10 @@ export async function POST(req: Request) {
   // les fournit, pour qu'une base pas encore migrée continue d'enregistrer le reste.
   if (b.noShowClientFee != null) ligne.no_show_client_fee = Math.max(0, nombre(b.noShowClientFee));
   if (b.noShowCleanerFee != null) ligne.no_show_cleaner_fee = Math.max(0, nombre(b.noShowCleanerFee));
+  // Course / achat : colonnes de migration_course.sql, même précaution.
+  if (b.errandFeePercent != null) ligne.errand_fee_percent = Math.max(0, nombre(b.errandFeePercent));
+  if (b.errandFeeMin != null) ligne.errand_fee_min = Math.max(0, nombre(b.errandFeeMin));
+  if (b.errandBonus != null) ligne.errand_bonus = Math.max(0, nombre(b.errandBonus));
   const { error } = await db.from('profit_config').upsert(ligne, { onConflict: 'id' });
 
   if (error) {

@@ -30,7 +30,10 @@ export type MissionSource = 'hotel' | 'airbnb';
 // 'repair' = intervention / petits travaux (serrure, peinture, matelas…) :
 // facturée au client, payée au taux horaire × durée, confiée en général à un
 // prestataire artisan ; jamais proposée d'office à l'équipe (cf. lib/service.ts).
-export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery' | 'appointment' | 'repair';
+// 'errand' = course / achat pour le client (machine à café, double de clé…) :
+// achats refacturés au réel À PART, frais de service = le prix, intervenant
+// payé au temps + une prime (cf. lib/course.ts).
+export type MissionService = 'cleaning' | 'delivery' | 'cleaning_delivery' | 'appointment' | 'repair' | 'errand';
 
 export interface Mission {
   id: string;
@@ -86,6 +89,18 @@ export interface Mission {
   // SPECIALITES, lib/prestataireRegles) et description du travail à faire.
   repairSpecialite?: string;
   repairDetails?: string;
+  // Course / achat (service 'errand') — cf. lib/course.ts.
+  errandDetails?: string;
+  /** Maximum accepté par le client (€). */
+  errandBudget?: number;
+  /** Montant réel du ticket (€), refacturé au réel. */
+  errandSpent?: number;
+  /** Qui a payé au magasin : l'intervenant (note de frais) ou la carte de la société. */
+  errandPaidBy?: 'cleaner' | 'company';
+  /** Prime de l'intervenant pour cette course (€), comprise dans cleanerGain. */
+  errandBonus?: number;
+  /** Note de frais remboursée à l'intervenant (horodatage). */
+  errandReimbursedAt?: string;
   // Intervention ponctuelle multi-cleaners : les lignes d'un même group_id sont
   // une seule intervention (un cleaner par ligne). Voir createOneShotMissionDB.
   groupId?: string;
@@ -472,6 +487,12 @@ export interface ProfitConfig {
   noShowClientFee?: number;
   /** No show : forfait payé au cleaner (€). */
   noShowCleanerFee?: number;
+  /** Course / achat : frais de service proposés = ce % du budget… */
+  errandFeePercent?: number;
+  /** … sans descendre sous ce minimum (€). */
+  errandFeeMin?: number;
+  /** Course / achat : prime fixe de l'intervenant (€). */
+  errandBonus?: number;
 }
 
 export type NotificationType =

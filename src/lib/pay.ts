@@ -50,9 +50,11 @@ export function computeMissionGain(params: {
   hourlyRate: number;
   deliveryRate: number;
   durationMinutes: number;
+  /** Prime fixe (course / achat : cf. lib/course.ts). */
+  bonus?: number;
 }): number {
   const parts = serviceParts(params.service);
-  let gain = 0;
+  let gain = Math.max(0, Number(params.bonus) || 0);
   // Ménage ou intervention : au temps passé.
   if (estAuTemps(params.service)) gain += (Number(params.hourlyRate) || 0) * (Number(params.durationMinutes) || 0) / 60;
   if (parts.delivery) gain += Number(params.deliveryRate) || 0;

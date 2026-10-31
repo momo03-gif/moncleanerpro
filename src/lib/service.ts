@@ -10,6 +10,7 @@ export const SERVICE_LABEL: Record<MissionService, string> = {
   cleaning_delivery: 'Nettoyage + livraison',
   appointment: 'Rendez-vous',
   repair: 'Intervention',
+  errand: 'Course / achat',
 };
 
 // Couleurs des badges (cohérentes avec la charte sobre de l'app).
@@ -19,6 +20,7 @@ export const SERVICE_BADGE: Record<MissionService, { color: string; bg: string }
   cleaning_delivery: { color: '#5A8A6A', bg: '#5A8A6A15' },
   appointment:       { color: '#7C5CBF', bg: '#7C5CBF15' },
   repair:            { color: '#3F5A78', bg: '#4A6A8A14' },
+  errand:            { color: '#8A5A2E', bg: '#B07A4A14' },
 };
 
 export function serviceLabel(service?: MissionService | null): string {
@@ -31,15 +33,22 @@ export function serviceParts(service?: MissionService | null): { cleaning: boole
   return { cleaning: s === 'cleaning' || s === 'cleaning_delivery', delivery: s === 'delivery' || s === 'cleaning_delivery' };
 }
 
-// Facturée au client ? Le ménage et les interventions, jamais la livraison ni
-// le rendez-vous. Source unique pour le CA, la compta et la facturation.
+// Facturée au client ? Le ménage, les interventions et les courses (leurs frais
+// de service — les achats se refacturent à part), jamais la livraison ni le
+// rendez-vous. Source unique pour le CA, la compta et la facturation.
 export function estFacturable(service?: MissionService | null): boolean {
-  return serviceParts(service).cleaning || service === 'repair';
+  return serviceParts(service).cleaning || service === 'repair' || service === 'errand';
 }
 
-// Payée au taux horaire × durée (ménage ou intervention), et pointable en RH.
+// Payée au taux horaire × durée (ménage, intervention, course), et pointable en RH.
 export function estAuTemps(service?: MissionService | null): boolean {
-  return serviceParts(service).cleaning || service === 'repair';
+  return serviceParts(service).cleaning || service === 'repair' || service === 'errand';
+}
+
+// Sans contrôle GPS à l'adresse : la livraison (forfait) et la course, qui se
+// fait d'abord au magasin.
+export function sansControleAdresse(service?: MissionService | string | null): boolean {
+  return service === 'delivery' || service === 'errand';
 }
 
 // Un cleaner peut-il réaliser une mission de ce service ? Il doit savoir faire

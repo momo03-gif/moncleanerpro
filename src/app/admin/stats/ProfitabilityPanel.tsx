@@ -210,6 +210,26 @@ export default function ProfitabilityPanel() {
                 onChange={e => setForm(f => ({ ...f!, noShowCleanerFee: Number(e.target.value) || 0 }))}
                 className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
             </div>
+            {/* Course / achat : frais de service proposés (déplacement compris) et
+                prime de l'intervenant. Ajustables course par course. */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Course — frais de service (% du budget)</label>
+              <input type="number" min={0} step={1} value={form.errandFeePercent ?? 15}
+                onChange={e => setForm(f => ({ ...f!, errandFeePercent: Number(e.target.value) || 0 }))}
+                className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Course — frais de service minimum (€)</label>
+              <input type="number" min={0} step={0.5} value={form.errandFeeMin ?? 20}
+                onChange={e => setForm(f => ({ ...f!, errandFeeMin: Number(e.target.value) || 0 }))}
+                className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Course — prime de l’intervenant (€)</label>
+              <input type="number" min={0} step={0.5} value={form.errandBonus ?? 0}
+                onChange={e => setForm(f => ({ ...f!, errandBonus: Number(e.target.value) || 0 }))}
+                className="w-full px-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
+            </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={labelStyle}>Produits / ménage (centimes)</label>
               <input type="number" min={0} value={form.productCostCents}

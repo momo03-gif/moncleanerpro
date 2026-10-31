@@ -132,6 +132,12 @@ function rowToMission(row: any): Mission {
     deliveryInstructions: row.delivery_instructions ?? undefined,
     repairSpecialite: row.repair_specialite ?? undefined,
     repairDetails: row.repair_details ?? undefined,
+    errandDetails: row.errand_details ?? undefined,
+    errandBudget: row.errand_budget != null ? Number(row.errand_budget) : undefined,
+    errandSpent: row.errand_spent != null ? Number(row.errand_spent) : undefined,
+    errandPaidBy: row.errand_paid_by ?? undefined,
+    errandBonus: row.errand_bonus != null ? Number(row.errand_bonus) : undefined,
+    errandReimbursedAt: row.errand_reimbursed_at ?? undefined,
     groupId: row.group_id ?? undefined,
     recurringId: row.recurring_id ?? undefined,
     assigneeUserId: row.assignee_user_id ?? undefined,
@@ -383,6 +389,7 @@ export async function createMissionDB(fields: {
   nextArrival?: string; nextArrivalTime?: string;
   service?: MissionService; deliveryInstructions?: string;
   repairSpecialite?: string; repairDetails?: string;
+  errandDetails?: string; errandBudget?: number; errandBonus?: number;
   addressLat?: number; addressLng?: number;
   createdBy?: string; createdByRole?: string;
   // Maison louée à la chambre : périmètre du ménage, identique à ce que produit
@@ -614,6 +621,22 @@ export async function declareNoShowDB(
   };
 }
 
+// Course / achat : le ticket (montant + qui a payé). Le cleaner l'enregistre
+// avant de terminer — en ligne uniquement, c'est de l'argent ; l'admin peut le
+// corriger à tout moment.
+export async function saveErrandTicketDB(
+  missionId: string, o: { spent: number; paidBy: 'cleaner' | 'company' },
+): Promise<{ error: string | null }> {
+  const res = await ecrireMission({ action: 'errand-ticket', missionId, ...o });
+  return { error: res.error };
+}
+
+// Admin : note de frais d'une course remboursée à l'intervenant (ou annulée).
+export async function setErrandReimbursedDB(missionId: string, reimbursed: boolean): Promise<{ error: string | null }> {
+  const res = await ecrireMission({ action: 'errand-reimburse', missionId, reimbursed });
+  return { error: res.error };
+}
+
 // Admin : annuler un no show déclaré par erreur → montants d'avant, mission à refaire.
 export async function cancelNoShowDB(missionId: string): Promise<{ error: string | null }> {
   const res = await ecrireMission({ action: 'cancel-no-show', missionId });
@@ -666,6 +689,9 @@ export interface MissionUpdateFields {
   deliveryInstructions?: string;
   repairSpecialite?: string;
   repairDetails?: string;
+  errandDetails?: string;
+  errandBudget?: number | null;
+  errandBonus?: number | null;
   airbnbId?: string | null;
   propertyName?: string;
   address?: string;

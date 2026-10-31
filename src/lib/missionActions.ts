@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SessionUser } from './sessionToken';
 import type { MissionService, MissionStatus } from './types';
 import { computeMissionGain, computeCleanerGain, billableHotelPrice } from './pay';
-import { canCleanerDoService } from './service';
+import { canCleanerDoService, sansControleAdresse } from './service';
+import { primeCourse, montantTicket, payeurValide, COURSE_TICKET_ERROR } from './course';
 import {
   distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR,
   GPS_REQUIRED_ERROR, type GeoPoint,
@@ -122,6 +123,7 @@ export async function appliquerDuree(
     const { rate, deliveryRate } = await taux(db, m.cleaner_id as string);
     patch.cleaner_gain = computeMissionGain({
       service: m.service as MissionService | undefined, hourlyRate: rate, deliveryRate, durationMinutes: minutes,
+      bonus: primeCourse(m),
     });
     patch.cleaner_hourly_rate_snapshot = rate;
   }
@@ -206,7 +208,7 @@ const ACTIONS: Record<string, Action> = {
       .select('service, address_lat, address_lng, airbnbs(latitude, longitude)').eq('id', missionId).maybeSingle();
     const coords = point(b.coords);
     const addr = m ? adresseMission(m as Record<string, unknown>) : null;
-    if (m?.service !== 'delivery' && addr) {
+    if (!sansControleAdresse(m?.service as string | null) && addr) {
       if (!coords) return ko(GPS_REQUIRED_ERROR);
       if (distanceMeters(addr, coords) > TRACKING_TOLERANCE_METERS) return ko(ADDRESS_PROXIMITY_ERROR, 400, { tooFar: true });
     }
@@ -243,10 +245,20 @@ const ACTIONS: Record<string, Action> = {
     if (!cleanerId) return ko('Cleaner introuvable.', 403);
 
     const { data: m } = await db.from('missions')
-      .select('started_at, start_lat, start_lng, cleaner_id, status, service, address_lat, address_lng, airbnbs(latitude, longitude)')
+      .select('*, airbnbs(latitude, longitude)')
       .eq('id', missionId).maybeSingle();
     if (!m || m.cleaner_id !== cleanerId) return ko('Mission introuvable.');
     if (m.status === 'done' || m.status === 'cancelled') return ko('Mission déjà clôturée.');
+
+    // Course : le ticket (montant, qui a payé) et sa photo, avant de clôturer —
+    // c'est le justificatif remis au client.
+    if (m.service === 'errand') {
+      const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true })
+        .eq('mission_id', missionId).eq('kind', 'after');
+      if (!(Number(m.errand_spent) > 0) || !m.errand_paid_by || (count ?? 0) < 1) {
+        return ko(COURSE_TICKET_ERROR, 400, { ticketRequis: true, photosRequises: (count ?? 0) < 1 });
+      }
+    }
 
     // Photos « après » obligatoires pour un ménage : la preuve du travail rendu.
     if (photosApresExigees(m.service as string | null)) {
@@ -257,7 +269,7 @@ const ACTIONS: Record<string, Action> = {
 
     // Contrôle GPS (ménage) : contre l'adresse, à défaut début ↔ fin.
     const coords = point(b.coords);
-    if (m.service !== 'delivery') {
+    if (!sansControleAdresse(m.service as string | null)) {
       const addr = adresseMission(m as Record<string, unknown>);
       if (addr) {
         if (!coords) return ko(GPS_REQUIRED_ERROR);
@@ -356,6 +368,48 @@ const ACTIONS: Record<string, Action> = {
     if (error) { console.error('missions/no-show:', error.message); return ko('Enregistrement impossible.', 500); }
     if (!data || data.length === 0) return ko('Mission déjà clôturée.');
     await notifyMissionNoShow(missionId, estAdmin ? 'admin' : 'cleaner', motif);
+    return ok();
+  },
+
+  // Course / achat : le ticket. Le cleaner l'enregistre sur SA mission avant de
+  // la terminer ; l'admin le corrige à tout moment. Passer à « carte de la
+  // société » efface un remboursement qui n'a plus lieu d'être.
+  async 'errand-ticket'(db, s, b) {
+    const missionId = str(b.missionId);
+    if (!missionId) return ko('Mission manquante.');
+    const spent = montantTicket(b.spent);
+    const paidBy = payeurValide(b.paidBy);
+    if (spent == null || !paidBy) return ko(COURSE_TICKET_ERROR);
+    const estAdmin = s.role === 'admin';
+    const { data: m } = await db.from('missions')
+      .select('service, cleaner_id, status, errand_reimbursed_at').eq('id', missionId).maybeSingle();
+    if (!m || m.service !== 'errand') return ko('Mission introuvable.', 404);
+    if (!estAdmin) {
+      const cleanerId = await idCleaner(db, s.id);
+      if (!cleanerId || m.cleaner_id !== cleanerId) return ko('Mission introuvable.', 404);
+      if (m.status === 'done' || m.status === 'cancelled') return ko('Mission clôturée : contactez l’administration pour corriger le ticket.');
+      if (m.errand_reimbursed_at) return ko('Note de frais déjà remboursée : contactez l’administration.');
+    }
+    const patch: Record<string, unknown> = { errand_spent: spent, errand_paid_by: paidBy };
+    if (paidBy === 'company') patch.errand_reimbursed_at = null;
+    const { error } = await db.from('missions').update(patch).eq('id', missionId);
+    if (error) { console.error('missions/errand-ticket:', error.message); return ko('Enregistrement impossible.', 500); }
+    return ok();
+  },
+
+  // Admin : la note de frais d'une course est remboursée à l'intervenant (ou on
+  // revient dessus). Jamais mêlée à sa paie.
+  async 'errand-reimburse'(db, s, b) {
+    if (s.role !== 'admin') return reserveAdmin;
+    const missionId = str(b.missionId);
+    if (!missionId) return ko('Mission manquante.');
+    const { data: m } = await db.from('missions')
+      .select('service, errand_paid_by, errand_spent').eq('id', missionId).maybeSingle();
+    if (!m || m.service !== 'errand') return ko('Mission introuvable.', 404);
+    if (m.errand_paid_by !== 'cleaner' || !(Number(m.errand_spent) > 0)) return ko('Aucune avance à rembourser sur cette course.');
+    const { error } = await db.from('missions')
+      .update({ errand_reimbursed_at: b.reimbursed === false ? null : new Date().toISOString() }).eq('id', missionId);
+    if (error) { console.error('missions/errand-reimburse:', error.message); return ko('Enregistrement impossible.', 500); }
     return ok();
   },
 
@@ -530,11 +584,15 @@ const ACTIONS: Record<string, Action> = {
         patch.cleaner_name = txt('cleanerName');
       }
       if (has('price')) paie = { ...(paie ?? {}), price: Number(f.price) || 0 };
+      // Course / achat : la description et le budget ; la prime touche la paie.
+      if (has('errandDetails')) patch.errand_details = txt('errandDetails') || null;
+      if (has('errandBudget')) patch.errand_budget = f.errandBudget == null ? null : Math.max(0, Number(f.errandBudget) || 0);
+      if (has('errandBonus')) patch.errand_bonus = f.errandBonus == null ? null : Math.max(0, Number(f.errandBonus) || 0);
       if (has('status') && txt('status')) {
         const st = STATUT_DB[txt('status') as MissionStatus];
         if (st) patch.status = st;
       }
-      const touchePaie = has('cleanerId') || has('airbnbId') || has('missionDurationMinutes') || has('service');
+      const touchePaie = has('cleanerId') || has('airbnbId') || has('missionDurationMinutes') || has('service') || has('errandBonus');
       if (touchePaie) {
         let aptDefault: number | null = row.apartment_default_duration_snapshot != null
           ? Number(row.apartment_default_duration_snapshot) : null;
@@ -670,7 +728,8 @@ const ACTIONS: Record<string, Action> = {
     const service = (str(f.service) ?? 'cleaning') as MissionService;
     const minutes = Math.max(0, Number(f.missionDurationMinutes) || 0);
     const { rate, deliveryRate } = cleanerId ? await taux(db, cleanerId) : { rate: 0, deliveryRate: 0 };
-    const gain = cleanerId ? computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes }) : 0;
+    const errandBonus = service === 'errand' ? Math.max(0, Number(f.errandBonus) || 0) : 0;
+    const gain = cleanerId ? computeMissionGain({ service, hourlyRate: rate, deliveryRate, durationMinutes: minutes, bonus: errandBonus }) : 0;
     const coveredUnits = str(f.coveredUnits);
     // Mission sur un logement : le client est le PROPRIÉTAIRE du logement, pas
     // ce que dit le formulaire.
@@ -688,6 +747,11 @@ const ACTIONS: Record<string, Action> = {
       ...(service === 'repair' ? {
         repair_specialite: str(f.repairSpecialite) ?? null,
         repair_details: str(f.repairDetails) ?? null,
+      } : {}),
+      ...(service === 'errand' ? {
+        errand_details: str(f.errandDetails) ?? null,
+        errand_budget: num(f.errandBudget) != null ? Math.max(0, num(f.errandBudget)!) : null,
+        errand_bonus: errandBonus,
       } : {}),
       airbnb_id: str(f.airbnbId) ?? null,
       partner_id: partnerId,

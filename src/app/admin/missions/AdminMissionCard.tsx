@@ -10,10 +10,12 @@ import {
   updateMissionStatusDB, assignCleanerToMissionDB, updateMissionDB,
   deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
   decideMissionRequestDB, unassignMissionDB, declareNoShowDB, cancelNoShowDB,
+  saveErrandTicketDB, setErrandReimbursedDB,
 } from '@/lib/db';
 import { getProfitConfigDB } from '@/lib/profitability';
 import { noShowPossible, NO_SHOW_BOUTON, titreNoShow, motifNoShow, type NoShowMotif } from '@/lib/noShow';
 import NoShowMotifChoix from '@/components/NoShowMotifChoix';
+import { COURSE_PAYEURS, libellePayeur, depasseBudget, aRembourser, montantTicket, type CoursePayeur } from '@/lib/course';
 import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -226,8 +228,13 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     service: mission.service ?? 'cleaning' as MissionService,
     deliveryInstructions: mission.deliveryInstructions ?? '',
     repairSpecialite: mission.repairSpecialite ?? '', repairDetails: mission.repairDetails ?? '',
+    errandDetails: mission.errandDetails ?? '', errandBudget: mission.errandBudget != null ? String(mission.errandBudget) : '',
+    errandBonus: mission.errandBonus != null ? String(mission.errandBonus) : '',
     nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
   });
+  // Course : correction du ticket par l'admin (montant, qui a payé).
+  const [ticketOpen, setTicketOpen] = useState(false);
+  const [ticket, setTicket] = useState<{ spent: string; paidBy: CoursePayeur }>({ spent: '', paidBy: 'cleaner' });
   const st = missionStatusCfg(mission.status, mission.noShow);
   // Codes d'accès : servis par /api/missions/terrain. Repli sur les notes de la
   // mission pour les anciennes missions dont le texte les contient encore.
@@ -253,6 +260,8 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
       service: mission.service ?? 'cleaning',
       deliveryInstructions: mission.deliveryInstructions ?? '',
       repairSpecialite: mission.repairSpecialite ?? '', repairDetails: mission.repairDetails ?? '',
+      errandDetails: mission.errandDetails ?? '', errandBudget: mission.errandBudget != null ? String(mission.errandBudget) : '',
+      errandBonus: mission.errandBonus != null ? String(mission.errandBonus) : '',
       nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
     });
     setActionError('');
@@ -266,6 +275,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     hourlyRate: editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0,
     deliveryRate: editCleaner?.delivery_rate ?? 0,
     durationMinutes: Number(editForm.durationMinutes) || 0,
+    bonus: editForm.service === 'errand' ? Number(editForm.errandBonus) || 0 : 0,
   });
 
   async function saveEdit() {
@@ -282,6 +292,11 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
       ...(editForm.service === 'repair' ? {
         repairSpecialite: editForm.repairSpecialite,
         repairDetails: editForm.repairDetails.trim(),
+      } : {}),
+      ...(editForm.service === 'errand' ? {
+        errandDetails: editForm.errandDetails.trim(),
+        errandBudget: Number(editForm.errandBudget) > 0 ? Number(editForm.errandBudget) : null,
+        errandBonus: Math.max(0, Number(editForm.errandBonus) || 0),
       } : {}),
       price: Number(editForm.price) || 0,  // prix CLIENT uniquement
       // Arrivée suivante : saisie à la main uniquement. Pour un ménage issu de
@@ -338,6 +353,33 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     setNoShowOpen(false);
     toast(noShowForm.motif === 'prolongation' ? 'Mission clôturée : voyageur encore présent.' : 'Mission passée en no show.', 'success');
+    onRefresh();
+  }
+
+  function ouvrirTicket() {
+    setTicket({ spent: mission.errandSpent != null ? String(mission.errandSpent) : '', paidBy: mission.errandPaidBy ?? 'cleaner' });
+    setTicketOpen(true);
+  }
+
+  async function enregistrerTicket() {
+    const spent = montantTicket(ticket.spent);
+    if (spent == null) { toast('Indiquez le montant du ticket.', 'error'); return; }
+    setBusy(true);
+    const res = await saveErrandTicketDB(mission.id, { spent, paidBy: ticket.paidBy });
+    setBusy(false);
+    if (res.error) { toast(res.error, 'error'); return; }
+    setTicketOpen(false);
+    toast('Ticket enregistré.', 'success');
+    onRefresh();
+  }
+
+  async function basculerRemboursement() {
+    const rembourse = !mission.errandReimbursedAt;
+    setBusy(true);
+    const res = await setErrandReimbursedDB(mission.id, rembourse);
+    setBusy(false);
+    if (res.error) { toast(res.error, 'error'); return; }
+    toast(rembourse ? 'Note de frais marquée remboursée.' : 'Remboursement annulé.', 'success');
     onRefresh();
   }
 
@@ -538,9 +580,9 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               {missionOriginLabel(mission)}
             </span>
           )}
-          {mission.service !== 'appointment' && mission.service !== 'repair' && <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>}
+          {mission.service !== 'appointment' && mission.service !== 'repair' && mission.service !== 'errand' && <span className="text-xs" style={{ color: '#A8A09A' }}>{TYPE_LABEL[mission.type] ?? mission.type}</span>}
           {/* Badge prestation : livraison, rendez-vous ou intervention (distinct). */}
-          {(serviceParts(mission.service).delivery || mission.service === 'appointment' || mission.service === 'repair') && (
+          {(serviceParts(mission.service).delivery || mission.service === 'appointment' || mission.service === 'repair' || mission.service === 'errand') && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg font-semibold"
               style={{ backgroundColor: SERVICE_BADGE[mission.service ?? 'cleaning'].bg, color: SERVICE_BADGE[mission.service ?? 'cleaning'].color }}>
               {serviceParts(mission.service).delivery && <Icon name="delivery" size={12} />} {serviceLabel(mission.service)}
@@ -585,7 +627,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
         {/* Date / heure / durée */}
         <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: '#7A7068' }}>
           <span>{formatDate(mission.date)}</span>
-          {mission.time && <span className="inline-flex items-center gap-1">{source === 'airbnb' && mission.service !== 'repair' ? 'Départ ' : <Icon name="clock" size={14} />}{formatHour(mission.time)}</span>}
+          {mission.time && <span className="inline-flex items-center gap-1">{source === 'airbnb' && mission.service !== 'repair' && mission.service !== 'errand' ? 'Départ ' : <Icon name="clock" size={14} />}{formatHour(mission.time)}</span>}
           {(mission.missionDurationMinutes ?? 0) > 0 && <span className="inline-flex items-center gap-1"><Icon name="timer" size={14} />{formatDuration(mission.missionDurationMinutes)}</span>}
         </div>
 
@@ -596,6 +638,64 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               {mission.repairSpecialite ? libelleSpecialite(mission.repairSpecialite) : 'Intervention'}
             </p>
             {mission.repairDetails && <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: '#4A4540' }}>{mission.repairDetails}</p>}
+          </div>
+        )}
+
+        {/* Course / achat : quoi, budget, ticket, qui a payé, remboursement. */}
+        {mission.service === 'errand' && (
+          <div className="rounded-xl border px-3 py-2.5 space-y-2" style={{ borderColor: '#B07A4A30', backgroundColor: '#B07A4A0A' }}>
+            <p className="text-xs font-semibold" style={{ color: '#8A5A2E' }}>Course / achat</p>
+            {mission.errandDetails && <p className="text-sm whitespace-pre-wrap" style={{ color: '#4A4540' }}>{mission.errandDetails}</p>}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: '#7A7068' }}>
+              <span>Budget accepté : <b style={{ color: '#1A1A1A' }}>{mission.errandBudget != null ? money(mission.errandBudget) : '—'}</b></span>
+              <span>Frais de service : <b style={{ color: '#1A1A1A' }}>{money(mission.price ?? 0)}</b></span>
+              <span>Ticket : <b style={{ color: depasseBudget(mission.errandSpent, mission.errandBudget) ? '#B85A50' : '#1A1A1A' }}>
+                {mission.errandSpent != null ? money(mission.errandSpent) : 'pas encore'}</b></span>
+              <span>Payé : <b style={{ color: '#1A1A1A' }}>{mission.errandPaidBy ? libellePayeur(mission.errandPaidBy) : '—'}</b></span>
+            </div>
+            {depasseBudget(mission.errandSpent, mission.errandBudget) && (
+              <p className="text-[11px] font-semibold" style={{ color: '#B85A50' }}>Le ticket dépasse le budget accepté par le client.</p>
+            )}
+            {mission.errandPaidBy === 'cleaner' && (mission.errandSpent ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
+                  style={aRembourser(mission)
+                    ? { backgroundColor: '#C48A2A15', color: '#C48A2A' }
+                    : { backgroundColor: '#5A8A6A15', color: '#3F6B4F' }}>
+                  {aRembourser(mission)
+                    ? `À rembourser à ${mission.cleanerName ?? 'l’intervenant'} : ${money(mission.errandSpent ?? 0)}`
+                    : `Remboursé le ${new Date(mission.errandReimbursedAt!).toLocaleDateString('fr-FR')}`}
+                </span>
+                <button onClick={basculerRemboursement} disabled={busy}
+                  className="text-[11px] px-2.5 py-1 rounded-lg border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  {aRembourser(mission) ? 'Marquer remboursé' : 'Annuler le remboursement'}
+                </button>
+              </div>
+            )}
+            {ticketOpen ? (
+              <div className="space-y-2 pt-1">
+                <input inputMode="decimal" value={ticket.spent} onChange={e => setTicket(t => ({ ...t, spent: e.target.value }))}
+                  placeholder="Montant du ticket (€)" className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
+                  {COURSE_PAYEURS.map(pp => (
+                    <button key={pp.key} type="button" onClick={() => setTicket(t => ({ ...t, paidBy: pp.key }))}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                      style={{ backgroundColor: ticket.paidBy === pp.key ? '#FFFFFF' : 'transparent', color: ticket.paidBy === pp.key ? '#1A1A1A' : '#A8A09A' }}>
+                      {pp.admin}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={enregistrerTicket} disabled={busy}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
+                  <button onClick={() => setTicketOpen(false)} className="px-3 py-1.5 rounded-lg text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={ouvrirTicket} disabled={busy} className="text-[11px] font-medium" style={{ color: '#C9A84C' }}>
+                {mission.errandSpent != null ? 'Corriger le ticket' : 'Saisir le ticket'}
+              </button>
+            )}
           </div>
         )}
 
@@ -899,8 +999,8 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{source === 'airbnb' && editForm.service !== 'repair' ? 'Heure départ clients' : 'Heure'}</label>
-                {source === 'airbnb' && editForm.service !== 'repair' ? (
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{source === 'airbnb' && editForm.service !== 'repair' && editForm.service !== 'errand' ? 'Heure départ clients' : 'Heure'}</label>
+                {source === 'airbnb' && editForm.service !== 'repair' && editForm.service !== 'errand' ? (
                   <select value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
                     <option value="">Choisir</option>
@@ -929,12 +1029,12 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
               {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
               {estAuTemps(editForm.service) && (
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{editForm.service === 'repair' ? 'Durée estimée (min)' : 'Temps de nettoyage (min)'}</label>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{editForm.service === 'repair' || editForm.service === 'errand' ? 'Durée estimée (min)' : 'Temps de nettoyage (min)'}</label>
                 <input type="number" min="5" step="5" value={editForm.durationMinutes} onChange={e => setEditForm(f => ({ ...f, durationMinutes: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
               )}
-              {editForm.service !== 'repair' && (
+              {editForm.service !== 'repair' && editForm.service !== 'errand' && (
               <div>
                 <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type</label>
                 <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value as MissionType }))}
@@ -953,12 +1053,13 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                   <option value="cleaning">Nettoyage</option>
                   <option value="delivery">Livraison</option>
                   <option value="repair">Intervention</option>
+                  <option value="errand">Course / achat</option>
                 </select>
               </div>
               {/* Livraison : jamais facturée au client → pas de prix client. */}
               {editForm.service !== 'delivery' && (
               <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prix client (€)</label>
+                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{editForm.service === 'errand' ? 'Frais de service (€)' : 'Prix client (€)'}</label>
                 <input type="number" min="0" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
               </div>
@@ -970,6 +1071,27 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
                 </div>
               </div>
             </div>
+            {editForm.service === 'errand' && (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Course à faire</label>
+                  <textarea value={editForm.errandDetails} onChange={e => setEditForm(f => ({ ...f, errandDetails: e.target.value }))}
+                    rows={3} className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Budget max accepté (€)</label>
+                    <input type="number" min="0" value={editForm.errandBudget} onChange={e => setEditForm(f => ({ ...f, errandBudget: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prime intervenant (€)</label>
+                    <input type="number" min="0" value={editForm.errandBonus} onChange={e => setEditForm(f => ({ ...f, errandBonus: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
+                  </div>
+                </div>
+              </div>
+            )}
             {editForm.service === 'repair' && (
               <div className="space-y-2">
                 <div>

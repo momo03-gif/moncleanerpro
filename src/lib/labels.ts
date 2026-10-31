@@ -43,6 +43,8 @@ export const MISSION_TYPE_LABEL: Record<string, string> = {
   appointment: 'Rendez-vous',
   // Pas un type de mission : la colonne « Prestation » d'une facture d'intervention.
   repair: 'Intervention / petits travaux',
+  // La ligne « frais de service » d'une course ; les achats ont leur propre ligne.
+  errand: 'Course / achat — frais de service',
   // Pas un type de mission : la colonne « Prestation » d'une facture pour un no show.
   no_show: 'Déplacement — logement non utilisé',
   no_show_prolongation: 'Déplacement — voyageur encore présent',
