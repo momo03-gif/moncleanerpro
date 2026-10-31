@@ -17,6 +17,7 @@ import type { Mission, MissionReport } from '@/lib/types';
 import { missionStatusCfg, missionStatusLabel, missionTypeLabel } from '@/lib/labels';
 import { serviceParts } from '@/lib/service';
 import { libelleSpecialite } from '@/lib/prestataireRegles';
+import { prixClientTotal } from '@/lib/course';
 import { formatHour, money } from '@/lib/format';
 import { missionReadiness, READINESS_STYLE } from '@/lib/readiness';
 import MissionPhotos from '@/components/MissionPhotos';
@@ -158,6 +159,12 @@ export default function PartnerMissionDetailClient() {
           {mission.errandDetails && <p className="text-sm text-ink whitespace-pre-wrap">{mission.errandDetails}</p>}
           {mission.errandSpent != null && (
             <p className="text-sm text-ink mt-2">Achats avancés : <b>{money(mission.errandSpent)}</b> <span className="text-muted">(ticket dans les photos)</span></p>
+          )}
+          {mission.errandSpent != null && (
+            <p className="text-sm text-ink mt-1">
+              Total : <b>{money(prixClientTotal(mission))}</b>{' '}
+              <span className="text-muted">({money(mission.price ?? 0)} de frais de service + achats au réel)</span>
+            </p>
           )}
         </Card>
       )}

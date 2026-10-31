@@ -13,6 +13,7 @@ import {
 import { getProfitConfigDB } from '@/lib/profitability';
 import { noShowPossible, NO_SHOW_BOUTON, titreNoShow, motifNoShow, type NoShowMotif } from '@/lib/noShow';
 import NoShowMotifChoix from '@/components/NoShowMotifChoix';
+import { prixClientTotal } from '@/lib/course';
 import type { Mission, MissionStatus } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
@@ -348,8 +349,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             {formatDuration(cReal)}{cEcart != null && Math.abs(cEcart) > 5 ? ` (${cEcart > 0 ? '+' : ''}${cEcart})` : ''}
           </span>
         )}
-        {billable && (mission.price ?? 0) > 0 && (
-          <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A' }}>{mission.price} €</span>
+        {billable && prixClientTotal(mission) > 0 && (
+          <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A' }}>{prixClientTotal(mission)} €</span>
         )}
         <span className="shrink-0 transition-transform" style={{ color: '#A8A09A', transform: expanded ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={16} /></span>
       </div>
@@ -553,7 +554,13 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           {mission.service !== 'delivery' && (
           <div>
             <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>Prix client</p>
-            <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{money(mission.price)}</p>
+            <p className="text-sm font-semibold" style={{ color: '#5A8A6A' }}>{money(prixClientTotal(mission))}</p>
+            {/* Course : frais de service + ticket refacturé au réel. */}
+            {mission.service === 'errand' && (
+              <p className="text-[11px]" style={{ color: '#A8A09A' }}>
+                {money(mission.price ?? 0)} de frais{(mission.errandSpent ?? 0) > 0 ? ` + ${money(mission.errandSpent ?? 0)} d’achats` : ' + le ticket'}
+              </p>
+            )}
           </div>
           )}
           <div>

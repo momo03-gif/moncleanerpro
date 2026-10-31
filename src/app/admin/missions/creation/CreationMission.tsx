@@ -401,7 +401,7 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
               {errandCfg
                 ? `Frais de service proposés : ${errandCfg.pct} % du budget, ${money(errandCfg.min)} minimum, déplacement compris — modifiables. `
                 : ''}
-              Les achats sont refacturés au réel sur leur propre ligne, sur la photo du ticket. Ne rien acheter au-delà du budget sans l&apos;accord du client.
+              Le client paiera les frais de service + le montant du ticket, refacturé au réel sur sa propre ligne (photo du ticket). Ne rien acheter au-delà du budget sans l&apos;accord du client.
             </p>
           </div>
         )}

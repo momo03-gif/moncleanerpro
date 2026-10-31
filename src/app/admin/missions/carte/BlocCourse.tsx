@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { saveErrandTicketDB, setErrandReimbursedDB } from '@/lib/db';
-import { COURSE_PAYEURS, libellePayeur, depasseBudget, aRembourser, montantTicket, type CoursePayeur } from '@/lib/course';
+import { COURSE_PAYEURS, libellePayeur, depasseBudget, aRembourser, montantTicket, prixClientTotal, type CoursePayeur } from '@/lib/course';
 import type { Mission } from '@/lib/types';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import { money } from '@/lib/format';
@@ -55,6 +55,8 @@ export default function BlocCourse({ mission, onRefresh }: { mission: Mission; o
         <span>Ticket : <b style={{ color: depasseBudget(mission.errandSpent, mission.errandBudget) ? '#B85A50' : '#1A1A1A' }}>
           {mission.errandSpent != null ? money(mission.errandSpent) : 'pas encore'}</b></span>
         <span>Payé : <b style={{ color: '#1A1A1A' }}>{mission.errandPaidBy ? libellePayeur(mission.errandPaidBy) : '—'}</b></span>
+        <span className="col-span-2">Facturé au client : <b style={{ color: '#5A8A6A' }}>{money(prixClientTotal(mission))}</b>
+          {(mission.errandSpent ?? 0) > 0 ? ' (frais + ticket)' : ' (frais, + le ticket une fois saisi)'}</span>
       </div>
       {depasseBudget(mission.errandSpent, mission.errandBudget) && (
         <p className="text-[11px] font-semibold" style={{ color: '#B85A50' }}>Le ticket dépasse le budget accepté par le client.</p>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fraisServiceCourse, depasseBudget, aRembourser, montantTicket, payeurValide, libellePayeur, primeCourse, avancesParCleaner, depensesSocieteParMois } from './course';
+import { fraisServiceCourse, depasseBudget, aRembourser, montantTicket, payeurValide, libellePayeur, primeCourse, avancesParCleaner, depensesSocieteParMois, prixClientTotal } from './course';
 
 describe('Course / achat — l’argent', () => {
   it('propose des frais de service au % du budget, avec un minimum', () => {
@@ -42,6 +42,16 @@ describe('Course / achat — l’argent', () => {
     expect(primeCourse({ service: 'errand', errand_bonus: 5 })).toBe(5);
     expect(primeCourse({ service: 'cleaning', errand_bonus: 5 })).toBe(0);
     expect(primeCourse(null)).toBe(0);
+  });
+});
+
+describe('Course / achat — prix client', () => {
+  it('additionne les frais de service et le ticket', () => {
+    expect(prixClientTotal({ service: 'errand', price: 45, errandSpent: 289.9 })).toBe(334.9);
+    expect(prixClientTotal({ service: 'errand', price: 20 })).toBe(20);   // pas encore de ticket
+  });
+  it('ne touche pas aux autres missions', () => {
+    expect(prixClientTotal({ service: 'cleaning', price: 65, errandSpent: 10 })).toBe(65);
   });
 });
 

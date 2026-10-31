@@ -39,6 +39,17 @@ export function libellePayeur(v: unknown, cote: 'admin' | 'cleaner' = 'admin'): 
   return cote === 'admin' ? p.admin : p.label;
 }
 
+/**
+ * Ce que le client paie pour une mission. Pour une course : les frais de
+ * service (le prix) + le ticket refacturé au réel. Pour toute autre mission :
+ * son prix. Les achats restent HORS chiffre d'affaires — ce total sert à
+ * l'affichage et à la facture, pas au CA ni à la marge.
+ */
+export function prixClientTotal(m: { service?: string | null; price?: number | null; errandSpent?: number | null }): number {
+  const prix = Number(m.price) || 0;
+  return m.service === 'errand' ? centimes(prix + (Number(m.errandSpent) || 0)) : prix;
+}
+
 /** Frais de service proposés : `pourcent` % du budget, jamais moins que `minimum`. */
 export function fraisServiceCourse(budget: number, pourcent: number, minimum: number): number {
   const parPourcent = centimes((Number(budget) || 0) * (Number(pourcent) || 0) / 100);
