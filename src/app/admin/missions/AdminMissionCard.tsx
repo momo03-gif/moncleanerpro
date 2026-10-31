@@ -1,40 +1,37 @@
 'use client';
 
-// Carte mission (vue admin) et son panneau d'incidents. Extrait de la page
-// Missions pour l'alléger : ce fichier ne contient QUE l'affichage/édition d'une
-// mission côté admin. Aucune logique de page (onglets, formulaires de création)
-// ici. Réutilise les mêmes libs (db, labels, service, pay…).
+// Carte mission (vue admin) : l'affichage d'une mission et ses actions. Les
+// blocs autonomes vivent dans ./carte/ (incidents, course / achat, formulaire
+// de modification). Aucune logique de page (onglets, création) ici.
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, memo } from 'react';
 import {
-  updateMissionStatusDB, assignCleanerToMissionDB, updateMissionDB,
+  updateMissionStatusDB, assignCleanerToMissionDB,
   deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
   decideMissionRequestDB, unassignMissionDB, declareNoShowDB, cancelNoShowDB,
-  saveErrandTicketDB, setErrandReimbursedDB,
 } from '@/lib/db';
 import { getProfitConfigDB } from '@/lib/profitability';
 import { noShowPossible, NO_SHOW_BOUTON, titreNoShow, motifNoShow, type NoShowMotif } from '@/lib/noShow';
 import NoShowMotifChoix from '@/components/NoShowMotifChoix';
-import { COURSE_PAYEURS, libellePayeur, depasseBudget, aRembourser, montantTicket, type CoursePayeur } from '@/lib/course';
-import type { Mission, MissionService, MissionStatus, MissionType } from '@/lib/types';
+import type { Mission, MissionStatus } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedback } from '@/contexts/FeedbackContext';
-import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts, estAuTemps } from '@/lib/service';
-import { computeMissionGain } from '@/lib/pay';
-import { formatDuration, formatHour, DEPARTURE_TIMES, money } from '@/lib/format';
-import ArriveeSuivante from '@/components/ArriveeSuivante';
+import { serviceLabel, SERVICE_BADGE, canCleanerDoService, serviceParts } from '@/lib/service';
+import { formatDuration, formatHour, money } from '@/lib/format';
 import { inputStyle } from '@/lib/ui';
 import type { TerrainInfo } from '@/lib/fieldContact';
 import Icon from '@/components/Icon';
 import { appelPrestataire, type Prestataire } from '@/lib/prestataireApi';
-import { specialitesPourMission, correspondSpecialite, specialitesDuMetier, libelleSpecialite, libelleVehicules } from '@/lib/prestataireRegles';
+import { specialitesPourMission, correspondSpecialite, libelleSpecialite, libelleVehicules } from '@/lib/prestataireRegles';
 import MapsModal from '@/components/MapsModal';
 import MissionPhotos from '@/components/MissionPhotos';
 import MissionReport from '@/components/MissionReport';
 import ChecklistPanel from '@/components/ChecklistPanel';
 import RepairsPanel from '@/components/RepairsPanel';
+import MissionIncidentPanel from './carte/IncidentsMission';
+import BlocCourse from './carte/BlocCourse';
+import FormulaireModification from './carte/FormulaireModification';
 import { MISSION_TYPE_LABEL, missionStatusCfg, missionStatusLabel, missionOriginLabel } from '@/lib/labels';
-import { getMissionIncidentsDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncidentType, type RhIncident } from '@/lib/rhApi';
 
 const TYPE_LABEL = MISSION_TYPE_LABEL;
 
@@ -59,128 +56,6 @@ function formatDate(d: string) {
 function formatClock(iso: string | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
-}
-
-// ── Incidents d'une mission (admin) ─────────────────────────────────────────────
-// Signalement depuis la mission, avec distinction « lié au cleaner » (impacte ses
-// stats RH) vs « externe » (cleaner_id NULL → aucun impact sur le cleaner).
-const MISSION_INCIDENT_TYPES: RhIncidentType[] = [
-  'retour_negatif', 'oubli', 'qualite_insuffisante', 'degradation_non_signalee', 'incident_externe', 'autre',
-];
-
-function MissionIncidentPanel({ mission }: { mission: Mission }) {
-  const [open, setOpen] = useState(false);
-  const [list, setList] = useState<RhIncident[]>([]);
-  const [type, setType] = useState<RhIncidentType>('retour_negatif');
-  const [linked, setLinked] = useState(true);   // lié au travail du cleaner
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const hasCleaner = !!mission.cleanerId;
-  // Un incident externe n'est jamais attribué ; sans cleaner assigné non plus.
-  const effectiveLinked = linked && type !== 'incident_externe' && hasCleaner;
-
-  const load = useCallback(async () => {
-    setList(await getMissionIncidentsDB(mission.id));
-  }, [mission.id]);
-
-  useEffect(() => { if (open) load(); }, [open, load]);
-
-  async function submit() {
-    setBusy(true);
-    await createIncidentDB({
-      missionId: mission.id,
-      cleanerId: effectiveLinked ? mission.cleanerId : null,
-      type,
-      note: note.trim() || undefined,
-    });
-    setNote(''); setType('retour_negatif'); setLinked(true);
-    setBusy(false);
-    await load();
-  }
-
-  async function remove(inc: RhIncident) {
-    await deleteIncidentDB(inc.id, inc.cleanerId ?? null);
-    await load();
-  }
-
-  return (
-    <div className="px-5 pb-4">
-      {!open ? (
-        <button onClick={() => setOpen(true)}
-          className="w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5"
-          style={{ borderColor: '#B85A5040', backgroundColor: '#B85A5008', color: '#B85A50' }}>
-          <Icon name="plus" size={14} /> Signaler un incident
-        </button>
-      ) : (
-        <div className="rounded-xl p-3 space-y-3" style={{ backgroundColor: '#F8F6F2' }}>
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7A7068' }}>Signaler un incident</p>
-            <button onClick={() => setOpen(false)} style={{ color: '#A8A09A' }}><Icon name="close" size={14} /></button>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {MISSION_INCIDENT_TYPES.map(t => (
-              <button key={t} onClick={() => setType(t)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ backgroundColor: type === t ? '#B85A50' : '#FFFFFF', color: type === t ? '#FFFFFF' : '#7A7068', border: '1px solid #E8E4DC' }}>
-                {INCIDENT_LABEL[t]}
-              </button>
-            ))}
-          </div>
-
-          {/* Responsabilité : lié au cleaner (impacte ses stats) ou externe. */}
-          <div>
-            <button type="button"
-              onClick={() => setLinked(v => !v)}
-              disabled={type === 'incident_externe' || !hasCleaner}
-              className="flex items-center gap-2 text-xs font-medium disabled:opacity-50"
-              style={{ color: '#1A1A1A' }}>
-              <span className="w-4 h-4 rounded flex items-center justify-center" style={{ backgroundColor: effectiveLinked ? '#C9A84C' : '#E8E4DC', color: '#1A1A1A' }}>
-                {effectiveLinked && <Icon name="check" size={11} />}
-              </span>
-              Lié au travail du cleaner{mission.cleanerName ? ` (${mission.cleanerName})` : ''}
-            </button>
-            <p className="text-[11px] mt-1" style={{ color: '#A8A09A' }}>
-              {effectiveLinked
-                ? 'Comptera dans les statistiques RH du cleaner.'
-                : type === 'incident_externe'
-                  ? 'Incident externe : aucun impact sur le cleaner.'
-                  : !hasCleaner ? 'Aucun cleaner assigné : incident externe.' : 'Incident non imputé au cleaner.'}
-            </p>
-          </div>
-
-          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (facultatif)"
-            className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-          <button onClick={submit} disabled={busy}
-            className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ backgroundColor: '#B85A50', color: '#FFFFFF' }}>
-            {busy ? '...' : "Enregistrer l'incident"}
-          </button>
-        </div>
-      )}
-
-      {/* Liste des incidents de la mission. */}
-      {list.length > 0 && (
-        <div className="mt-2 space-y-1.5">
-          {list.map(inc => (
-            <div key={inc.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ backgroundColor: '#FAFAF8' }}>
-              <div className="min-w-0">
-                <p className="text-xs font-medium" style={{ color: '#1A1A1A' }}>
-                  {INCIDENT_LABEL[inc.type as RhIncidentType] ?? inc.type}
-                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
-                    style={{ backgroundColor: inc.cleanerId ? '#B85A5015' : '#6B728018', color: inc.cleanerId ? '#B85A50' : '#6B7280' }}>
-                    {inc.cleanerId ? 'Cleaner' : 'Externe'}
-                  </span>
-                </p>
-                <p className="text-[11px] truncate" style={{ color: '#A8A09A' }}>{inc.date}{inc.note ? ` · ${inc.note}` : ''}</p>
-              </div>
-              <button onClick={() => remove(inc)} style={{ color: '#A8A09A' }} aria-label="Supprimer"><Icon name="close" size={14} /></button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ── Carte mission admin ───────────────────────────────────────────────────────
@@ -228,20 +103,6 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   // No show : forfaits pré-remplis depuis les paramètres, modifiables pour cette mission.
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowForm, setNoShowForm] = useState({ clientFee: '', cleanerFee: '', note: '', motif: 'no_show' as NoShowMotif });
-  const [editForm, setEditForm] = useState({
-    date: mission.date, time: mission.time,
-    durationMinutes: String(mission.missionDurationMinutes ?? 60),
-    type: mission.type, price: String(mission.price ?? 0),
-    service: mission.service ?? 'cleaning' as MissionService,
-    deliveryInstructions: mission.deliveryInstructions ?? '',
-    repairSpecialite: mission.repairSpecialite ?? '', repairDetails: mission.repairDetails ?? '',
-    errandDetails: mission.errandDetails ?? '', errandBudget: mission.errandBudget != null ? String(mission.errandBudget) : '',
-    errandBonus: mission.errandBonus != null ? String(mission.errandBonus) : '',
-    nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
-  });
-  // Course : correction du ticket par l'admin (montant, qui a payé).
-  const [ticketOpen, setTicketOpen] = useState(false);
-  const [ticket, setTicket] = useState<{ spent: string; paidBy: CoursePayeur }>({ spent: '', paidBy: 'cleaner' });
   const st = missionStatusCfg(mission.status, mission.noShow);
   // Codes d'accès : servis par /api/missions/terrain. Repli sur les notes de la
   // mission pour les anciennes missions dont le texte les contient encore.
@@ -260,63 +121,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   }
 
   function openEdit() {
-    setEditForm({
-      date: mission.date, time: mission.time,
-      durationMinutes: String(mission.missionDurationMinutes ?? 60),
-      type: mission.type, price: String(mission.price ?? 0),
-      service: mission.service ?? 'cleaning',
-      deliveryInstructions: mission.deliveryInstructions ?? '',
-      repairSpecialite: mission.repairSpecialite ?? '', repairDetails: mission.repairDetails ?? '',
-      errandDetails: mission.errandDetails ?? '', errandBudget: mission.errandBudget != null ? String(mission.errandBudget) : '',
-      errandBonus: mission.errandBonus != null ? String(mission.errandBonus) : '',
-      nextArrival: mission.nextArrival ?? '', nextArrivalTime: mission.nextArrivalTime ?? '',
-    });
     setActionError('');
     setEditOpen(true);
-  }
-
-  // Aperçu du gain recalculé en direct dans le formulaire d'édition.
-  const editCleaner = cleaners.find(c => c.id === mission.cleanerId);
-  const editGainPreview = computeMissionGain({
-    service: editForm.service,
-    hourlyRate: editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0,
-    deliveryRate: editCleaner?.delivery_rate ?? 0,
-    durationMinutes: Number(editForm.durationMinutes) || 0,
-    bonus: editForm.service === 'errand' ? Number(editForm.errandBonus) || 0 : 0,
-  });
-
-  async function saveEdit() {
-    if (!user) return;
-    setBusy(true); setActionError('');
-    const res = await updateMissionDB(mission.id, { id: user.id, role: 'admin' }, {
-      dateFrom: editForm.date,
-      timeFrom: editForm.time,
-      // Livraison : forfait, on ne suit aucun temps → durée 0.
-      missionDurationMinutes: editForm.service === 'delivery' ? 0 : (Number(editForm.durationMinutes) || 0),
-      type: editForm.type,
-      service: editForm.service,
-      deliveryInstructions: serviceParts(editForm.service).delivery ? editForm.deliveryInstructions : '',
-      ...(editForm.service === 'repair' ? {
-        repairSpecialite: editForm.repairSpecialite,
-        repairDetails: editForm.repairDetails.trim(),
-      } : {}),
-      ...(editForm.service === 'errand' ? {
-        errandDetails: editForm.errandDetails.trim(),
-        errandBudget: Number(editForm.errandBudget) > 0 ? Number(editForm.errandBudget) : null,
-        errandBonus: Math.max(0, Number(editForm.errandBonus) || 0),
-      } : {}),
-      price: Number(editForm.price) || 0,  // prix CLIENT uniquement
-      // Arrivée suivante : saisie à la main uniquement. Pour un ménage issu de
-      // la synchro, elle est recalculée depuis les réservations — on n'y touche pas.
-      ...(mission.autoSynced ? {} : {
-        nextArrival: editForm.nextArrival || null,
-        nextArrivalTime: editForm.nextArrival ? (editForm.nextArrivalTime || null) : null,
-      }),
-    });
-    setBusy(false);
-    if (res.error) { setActionError(res.error); return; }
-    setEditOpen(false);
-    onRefresh(mission.id);
   }
 
   async function handleDelete() {
@@ -360,33 +166,6 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     setNoShowOpen(false);
     toast(noShowForm.motif === 'prolongation' ? 'Mission clôturée : voyageur encore présent.' : 'Mission passée en no show.', 'success');
-    onRefresh(mission.id);
-  }
-
-  function ouvrirTicket() {
-    setTicket({ spent: mission.errandSpent != null ? String(mission.errandSpent) : '', paidBy: mission.errandPaidBy ?? 'cleaner' });
-    setTicketOpen(true);
-  }
-
-  async function enregistrerTicket() {
-    const spent = montantTicket(ticket.spent);
-    if (spent == null) { toast('Indiquez le montant du ticket.', 'error'); return; }
-    setBusy(true);
-    const res = await saveErrandTicketDB(mission.id, { spent, paidBy: ticket.paidBy });
-    setBusy(false);
-    if (res.error) { toast(res.error, 'error'); return; }
-    setTicketOpen(false);
-    toast('Ticket enregistré.', 'success');
-    onRefresh(mission.id);
-  }
-
-  async function basculerRemboursement() {
-    const rembourse = !mission.errandReimbursedAt;
-    setBusy(true);
-    const res = await setErrandReimbursedDB(mission.id, rembourse);
-    setBusy(false);
-    if (res.error) { toast(res.error, 'error'); return; }
-    toast(rembourse ? 'Note de frais marquée remboursée.' : 'Remboursement annulé.', 'success');
     onRefresh(mission.id);
   }
 
@@ -649,62 +428,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
         )}
 
         {/* Course / achat : quoi, budget, ticket, qui a payé, remboursement. */}
-        {mission.service === 'errand' && (
-          <div className="rounded-xl border px-3 py-2.5 space-y-2" style={{ borderColor: '#B07A4A30', backgroundColor: '#B07A4A0A' }}>
-            <p className="text-xs font-semibold" style={{ color: '#8A5A2E' }}>Course / achat</p>
-            {mission.errandDetails && <p className="text-sm whitespace-pre-wrap" style={{ color: '#4A4540' }}>{mission.errandDetails}</p>}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: '#7A7068' }}>
-              <span>Budget accepté : <b style={{ color: '#1A1A1A' }}>{mission.errandBudget != null ? money(mission.errandBudget) : '—'}</b></span>
-              <span>Frais de service : <b style={{ color: '#1A1A1A' }}>{money(mission.price ?? 0)}</b></span>
-              <span>Ticket : <b style={{ color: depasseBudget(mission.errandSpent, mission.errandBudget) ? '#B85A50' : '#1A1A1A' }}>
-                {mission.errandSpent != null ? money(mission.errandSpent) : 'pas encore'}</b></span>
-              <span>Payé : <b style={{ color: '#1A1A1A' }}>{mission.errandPaidBy ? libellePayeur(mission.errandPaidBy) : '—'}</b></span>
-            </div>
-            {depasseBudget(mission.errandSpent, mission.errandBudget) && (
-              <p className="text-[11px] font-semibold" style={{ color: '#B85A50' }}>Le ticket dépasse le budget accepté par le client.</p>
-            )}
-            {mission.errandPaidBy === 'cleaner' && (mission.errandSpent ?? 0) > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
-                  style={aRembourser(mission)
-                    ? { backgroundColor: '#C48A2A15', color: '#C48A2A' }
-                    : { backgroundColor: '#5A8A6A15', color: '#3F6B4F' }}>
-                  {aRembourser(mission)
-                    ? `À rembourser à ${mission.cleanerName ?? 'l’intervenant'} : ${money(mission.errandSpent ?? 0)}`
-                    : `Remboursé le ${new Date(mission.errandReimbursedAt!).toLocaleDateString('fr-FR')}`}
-                </span>
-                <button onClick={basculerRemboursement} disabled={busy}
-                  className="text-[11px] px-2.5 py-1 rounded-lg border disabled:opacity-50" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  {aRembourser(mission) ? 'Marquer remboursé' : 'Annuler le remboursement'}
-                </button>
-              </div>
-            )}
-            {ticketOpen ? (
-              <div className="space-y-2 pt-1">
-                <input inputMode="decimal" value={ticket.spent} onChange={e => setTicket(t => ({ ...t, spent: e.target.value }))}
-                  placeholder="Montant du ticket (€)" className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ backgroundColor: '#F5F3EF' }}>
-                  {COURSE_PAYEURS.map(pp => (
-                    <button key={pp.key} type="button" onClick={() => setTicket(t => ({ ...t, paidBy: pp.key }))}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                      style={{ backgroundColor: ticket.paidBy === pp.key ? '#FFFFFF' : 'transparent', color: ticket.paidBy === pp.key ? '#1A1A1A' : '#A8A09A' }}>
-                      {pp.admin}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={enregistrerTicket} disabled={busy}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Enregistrer</button>
-                  <button onClick={() => setTicketOpen(false)} className="px-3 py-1.5 rounded-lg text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={ouvrirTicket} disabled={busy} className="text-[11px] font-medium" style={{ color: '#C9A84C' }}>
-                {mission.errandSpent != null ? 'Corriger le ticket' : 'Saisir le ticket'}
-              </button>
-            )}
-          </div>
-        )}
+        {mission.service === 'errand' && <BlocCourse mission={mission} onRefresh={onRefresh} />}
 
         {/* Maison louée à la chambre : périmètre exact du ménage. */}
         {mission.coveredUnits && (
@@ -997,146 +721,10 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
         )}
 
         {editOpen ? (
-          /* Formulaire de modification (admin) */
-          <div className="space-y-3 rounded-xl p-3" style={{ backgroundColor: '#F8F6F2' }}>
-            <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Date</label>
-                <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{source === 'airbnb' && editForm.service !== 'repair' && editForm.service !== 'errand' ? 'Heure départ clients' : 'Heure'}</label>
-                {source === 'airbnb' && editForm.service !== 'repair' && editForm.service !== 'errand' ? (
-                  <select value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
-                    <option value="">Choisir</option>
-                    {DEPARTURE_TIMES.map(t => <option key={t} value={t}>{formatHour(t)}</option>)}
-                  </select>
-                ) : (
-                  <input type="time" value={editForm.time} onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                )}
-              </div>
-              {serviceParts(editForm.service).cleaning && (
-              <div className="col-span-2">
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prochaine arrivée d&apos;un voyageur</label>
-                {mission.autoSynced ? (
-                  <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#FFFFFF', color: '#7A7068', border: '1px solid #E8E4DC' }}>
-                    Calculée à partir des réservations synchronisées, mise à jour chaque heure.
-                  </p>
-                ) : (
-                  <ArriveeSuivante dateMenage={editForm.date}
-                    value={{ date: editForm.nextArrival, time: editForm.nextArrivalTime }}
-                    onChange={v => setEditForm(f => ({ ...f, nextArrival: v.date, nextArrivalTime: v.time }))}
-                    champClass="w-full px-3 py-2 rounded-lg text-sm border appearance-none" champStyle={inputStyle} />
-                )}
-              </div>
-              )}
-              {/* Livraison : forfait fixe, la durée n'est pas prise en compte → champ masqué. */}
-              {estAuTemps(editForm.service) && (
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{editForm.service === 'repair' || editForm.service === 'errand' ? 'Durée estimée (min)' : 'Temps de nettoyage (min)'}</label>
-                <input type="number" min="5" step="5" value={editForm.durationMinutes} onChange={e => setEditForm(f => ({ ...f, durationMinutes: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-              </div>
-              )}
-              {editForm.service !== 'repair' && editForm.service !== 'errand' && (
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type</label>
-                <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value as MissionType }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
-                  <option value="regular">Ménage</option>
-                  <option value="checkout">Check-out</option>
-                  <option value="checkin">Check-in</option>
-                  <option value="deep_clean">Grand ménage</option>
-                </select>
-              </div>
-              )}
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prestation</label>
-                <select value={editForm.service} onChange={e => setEditForm(f => ({ ...f, service: e.target.value as MissionService }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
-                  <option value="cleaning">Nettoyage</option>
-                  <option value="delivery">Livraison</option>
-                  <option value="repair">Intervention</option>
-                  <option value="errand">Course / achat</option>
-                </select>
-              </div>
-              {/* Livraison : jamais facturée au client → pas de prix client. */}
-              {editForm.service !== 'delivery' && (
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>{editForm.service === 'errand' ? 'Frais de service (€)' : 'Prix client (€)'}</label>
-                <input type="number" min="0" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-              </div>
-              )}
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Gain cleaner (auto)</label>
-                <div className="w-full px-3 py-2 rounded-lg text-sm border font-semibold" style={{ ...inputStyle, color: '#C9A84C' }}>
-                  {money(editGainPreview)}
-                </div>
-              </div>
-            </div>
-            {editForm.service === 'errand' && (
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Course à faire</label>
-                  <textarea value={editForm.errandDetails} onChange={e => setEditForm(f => ({ ...f, errandDetails: e.target.value }))}
-                    rows={3} className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Budget max accepté (€)</label>
-                    <input type="number" min="0" value={editForm.errandBudget} onChange={e => setEditForm(f => ({ ...f, errandBudget: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Prime intervenant (€)</label>
-                    <input type="number" min="0" value={editForm.errandBonus} onChange={e => setEditForm(f => ({ ...f, errandBonus: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg text-sm border" style={inputStyle} />
-                  </div>
-                </div>
-              </div>
-            )}
-            {editForm.service === 'repair' && (
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Type d&apos;intervention</label>
-                  <select value={editForm.repairSpecialite} onChange={e => setEditForm(f => ({ ...f, repairSpecialite: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg text-sm border appearance-none" style={inputStyle}>
-                    <option value="">Non précisé</option>
-                    {specialitesDuMetier('artisan').map(sp => <option key={sp.key} value={sp.key}>{sp.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Travail à faire</label>
-                  <textarea value={editForm.repairDetails} onChange={e => setEditForm(f => ({ ...f, repairDetails: e.target.value }))}
-                    rows={3} className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
-                </div>
-              </div>
-            )}
-            {serviceParts(editForm.service).delivery && (
-              <div>
-                <label className="block text-[11px] font-medium mb-1" style={{ color: '#A8A09A' }}>Consignes de livraison</label>
-                <textarea value={editForm.deliveryInstructions} onChange={e => setEditForm(f => ({ ...f, deliveryInstructions: e.target.value }))}
-                  rows={2} className="w-full px-3 py-2 rounded-lg text-sm border resize-none" style={inputStyle} />
-              </div>
-            )}
-            <p className="text-[11px]" style={{ color: '#A8A09A' }}>
-              {editForm.service === 'delivery'
-                ? <>Gain = forfait livraison {money(editCleaner?.delivery_rate ?? 0)} par livraison (montant fixe, sans durée). Livraison non facturée au client.</>
-                : <>Gain = taux cleaner {money(editCleaner?.hourly_rate ?? mission.cleanerHourlyRateSnapshot ?? 0)}/h × {editForm.durationMinutes || 0} min ÷ 60. Le prix client est indépendant.</>}
-            </p>
-            <div className="flex gap-2">
-              <button onClick={saveEdit} disabled={busy}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                {busy ? '...' : 'Enregistrer'}
-              </button>
-              <button onClick={() => { setEditOpen(false); setActionError(''); }} disabled={busy}
-                className="px-4 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>Annuler</button>
-            </div>
-          </div>
+          <FormulaireModification mission={mission} cleaners={cleaners} source={source}
+            onError={setActionError}
+            onSaved={() => { setEditOpen(false); onRefresh(mission.id); }}
+            onCancel={() => { setEditOpen(false); setActionError(''); }} />
         ) : confierOpen ? (
           /* Confier la mission à un prestataire (sous-traitant) */
           <div className="space-y-2">
