@@ -9,6 +9,7 @@ import {
   createHotelAccountDB, createAirbnbAccountDB,
   type PartnerAccount,
 } from '@/lib/db';
+import { addDaysStr } from '@/lib/dateRange';
 import type { Mission, Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { generatePassword, buildAccessMessage, copyToClipboard, APP_LOGIN_URL } from '@/lib/partnerAccess';
@@ -51,7 +52,7 @@ export default function ComptesPage() {
 
   async function load() {
     const [pendHotels, partners, allMissions, partnerAccounts, apts] = await Promise.all([
-      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getMissionsDB(), getPartnerAccountsDB(), getAirbnbs(),
+      getPendingHotelsDB(), getPendingAirbnbPartnersDB(), getMissionsDB(addDaysStr(-90)), getPartnerAccountsDB(), getAirbnbs(),
     ]);
     const list: PendingPartner[] = [
       ...pendHotels.map((h: any) => ({ ...h, kind: 'hotel' as const })),
@@ -101,6 +102,7 @@ export default function ComptesPage() {
     return Math.round(total * 100) / 100;
   }
 
+  // Missions : 90 jours + le futur suffisent (CA et heures du mois, missions récentes).
   useEffect(() => { load(); }, []);
 
   // On ne marque « traité » qu'après confirmation du serveur : afficher un succès

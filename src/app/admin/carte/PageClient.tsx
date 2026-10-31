@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { getAirbnbs, getMissionsDB, setAirbnbCoordsDB, regenerateZonesDB } from '@/lib/db';
+import { addDaysStr } from '@/lib/dateRange';
 import { geocodeAddress } from '@/lib/zones';
 import type { Apartment, Mission } from '@/lib/types';
 import Loading from "@/components/Loading";
@@ -21,7 +22,9 @@ export default function CartePage() {
   const [progress, setProgress] = useState('');
 
   const load = useCallback(async () => {
-    const [a, m] = await Promise.all([getAirbnbs(), getMissionsDB()]);
+    // Seules les missions à venir ou pas encore clôturées comptent ici : un mois
+    // en arrière suffit (les retards plus vieux se traitent depuis Missions).
+    const [a, m] = await Promise.all([getAirbnbs(), getMissionsDB(addDaysStr(-30))]);
     setApartments(a);
     setMissions(m);
     setLoading(false);

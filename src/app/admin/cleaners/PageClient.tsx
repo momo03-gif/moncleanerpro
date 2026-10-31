@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getCleaners, getMissionsDB, getPaymentsDB, createCleaner, setCleanerActive, updateCleanerHourlyRateDB, updateCleanerPasswordDB, updateCleanerInfoDB, updateCleanerCapabilitiesDB, updateCleanerDeliveryRateDB, updateCleanerEmploymentTypeDB, deleteCleanerDB, createPaymentDB, reassignCleanerMissionsDB } from '@/lib/db';
+import { addDaysStr } from '@/lib/dateRange';
+
 import type { Mission, Payment, CleanerRow } from '@/lib/types';
 import { capabilitiesLabel, estAuTemps } from '@/lib/service';
 import { apercuTransfert, refusTransfert } from '@/lib/reassign';
@@ -12,6 +14,9 @@ import { formatDuration, money } from '@/lib/format';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 import { useFeedback } from '@/contexts/FeedbackContext';
+
+// Fenêtre de missions chargée (jours en arrière ; le futur est toujours inclus).
+const JOURS_CLEANERS = 90;
 
 const emptyForm = { name: '', email: '', phone: '', password: '', hourlyRate: '', canClean: true, canDeliver: false, deliveryRate: '' };
 
@@ -44,7 +49,9 @@ export default function CleanersPage() {
   const month = currentMonth();
 
   const load = useCallback(async () => {
-    const [c, m, p] = await Promise.all([getCleaners(), getMissionsDB(), getPaymentsDB()]);
+    // 90 jours + le futur : le mois en cours (heures, paie), les missions à venir
+    // (transfert) et un récent « Terminées » — pas tout l'historique.
+    const [c, m, p] = await Promise.all([getCleaners(), getMissionsDB(addDaysStr(-JOURS_CLEANERS)), getPaymentsDB()]);
     setCleaners(c as CleanerRow[]);
     setMissions(m);
     setPayments(p);
@@ -263,7 +270,7 @@ export default function CleanersPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 px-4 md:px-6 pb-5">
-                    {[{ v: completed, l: 'Terminées', c: '#1A1A1A' }, { v: upcoming, l: 'À venir', c: '#1A1A1A' }, { v: `${hoursMonth}h`, l: 'Ce mois', c: '#C9A84C' }].map(s => (
+                    {[{ v: completed, l: `Terminées · ${JOURS_CLEANERS} j`, c: '#1A1A1A' }, { v: upcoming, l: 'À venir', c: '#1A1A1A' }, { v: `${hoursMonth}h`, l: 'Ce mois', c: '#C9A84C' }].map(s => (
                       <div key={s.l} className="rounded-xl p-3 text-center" style={{ backgroundColor: '#F8F6F2' }}>
                         <p className="text-xl font-bold" style={{ color: s.c }}>{s.v}</p>
                         <p className="text-xs mt-0.5" style={{ color: '#A8A09A' }}>{s.l}</p>
