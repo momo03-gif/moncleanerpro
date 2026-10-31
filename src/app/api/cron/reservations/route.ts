@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runReservationSync } from '@/lib/reservationSync';
-import { generateRecurringMissions } from '@/lib/recurring';
+import { genererRecurrents } from '@/lib/recurringServer';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const result = await runReservationSync();
     const imported = result.feeds.reduce((s, f) => s + f.imported, 0);
     let recurringGenerated = 0;
-    try { recurringGenerated = (await generateRecurringMissions()).created; }
+    try { recurringGenerated = (await genererRecurrents()).created; }
     catch (e) { console.error('recurring generation:', e); }
     return NextResponse.json({
       ok: true,

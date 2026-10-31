@@ -17,7 +17,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerAdmin } from '@/lib/apiGuard';
-import { generateRecurringMissions } from '@/lib/recurring';
+import { genererRecurrents } from '@/lib/recurringServer';
 
 export const runtime = 'nodejs';
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
         ...enLigne(f), service: 'cleaning', created_by: f.createdBy || null,
       });
       if (error) { console.error('recurring/create:', error.message); return refus('Création impossible.', 500); }
-      const gen = await generateRecurringMissions();
+      const gen = await genererRecurrents();
       return NextResponse.json({ ok: true, generated: gen.created });
     }
 
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
         .in('status', ['pending', 'assigned']);
       if (purge) console.error('recurring/purge:', purge.message);
 
-      const gen = await generateRecurringMissions();
+      const gen = await genererRecurrents();
       return NextResponse.json({ ok: true, generated: gen.created });
     }
 
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
       const { error } = await db.from('recurring_missions').update({ active: !!b.active }).eq('id', b.id);
       if (error) { console.error('recurring/setActive:', error.message); return refus('Modification impossible.', 500); }
       // Réactiver, c'est vouloir revoir les ménages tout de suite.
-      const gen = b.active ? await generateRecurringMissions() : { created: 0 };
+      const gen = b.active ? await genererRecurrents() : { created: 0 };
       return NextResponse.json({ ok: true, generated: gen.created });
     }
 

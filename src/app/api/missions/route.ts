@@ -327,8 +327,8 @@ export async function POST(req: NextRequest) {
       // La génération des missions récurrentes calcule elle aussi des gains : elle
       // tourne donc ici, en service_role, et plus dans le navigateur.
       if (!estAdmin) return refus('Réservé à l’administration.');
-      const { generateRecurringMissions } = await import('@/lib/recurring');
-      const res = await generateRecurringMissions();
+      const { genererRecurrents } = await import('@/lib/recurringServer');
+      const res = await genererRecurrents();
       return NextResponse.json({ ok: true, created: res.created });
     }
 

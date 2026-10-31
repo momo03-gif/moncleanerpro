@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendPushToUser } from '@/lib/webpush';
 import { deleteExpiredMissionPhotosDB } from '@/lib/missionPhotos';
 import { runReservationSync } from '@/lib/reservationSync';
-import { generateRecurringMissions } from '@/lib/recurring';
+import { genererRecurrents } from '@/lib/recurringServer';
 import { runFunnelHealthCheck } from '@/lib/funnelHealth';
 
 export const runtime = 'nodejs';
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   // Génération des missions récurrentes (ménages programmés à jours fixes), sur un
   // horizon glissant. Piggyback best-effort : un échec ne casse pas les rappels.
   let recurringGenerated = 0;
-  try { recurringGenerated = (await generateRecurringMissions()).created; }
+  try { recurringGenerated = (await genererRecurrents()).created; }
   catch (e) { console.error('recurring generation (piggyback):', e); }
 
   // Surveillance de l’entonnoir de devis (piggyback : les 2 crons de l’offre

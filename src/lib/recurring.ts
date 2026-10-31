@@ -10,7 +10,6 @@
 import { getServerDb } from './serverDb';
 const supabase = getServerDb();
 import { computeCleanerGain } from './pay';
-import { confierAuPrestataireAttitre } from './prestataireConfier';
 import { parisToday, addDaysStr, occurrenceDates } from './recurringDates';
 import type { RecurringMission } from './types';
 
@@ -96,12 +95,18 @@ export async function updateRecurringDB(id: string, fields: {
 // dédoublonne via (recurring_id, date_from) → jamais de doublon si le cron repasse.
 // Horizon glissant : on matérialise ~6 mois à l'avance (sans date de fin, le planning
 // est perpétuel — le cron repousse l'horizon chaque jour). Dédoublonnage garanti.
-export async function generateRecurringMissions(horizonDays = 180): Promise<{ created: number }> {
+/**
+ * `sansCleaner` : les missions créées sans cleaner — à confier au prestataire
+ * attitré de leur logement (cf. genererRecurrents, lib/recurringServer.ts ; ce
+ * fichier est aussi chargé dans le navigateur, il n'importe rien de serveur).
+ */
+export async function generateRecurringMissions(horizonDays = 180): Promise<{ created: number; sansCleaner: string[] }> {
   const today = parisToday();
   const horizon = addDaysStr(today, horizonDays);
 
   const { data: recs } = await supabase.from('recurring_missions').select('*').eq('active', true);
-  if (!recs || recs.length === 0) return { created: 0 };
+  const sansCleaner: string[] = [];
+  if (!recs || recs.length === 0) return { created: 0, sansCleaner: [] };
 
   // Taux horaire des cleaners (pour le gain), chargé une fois.
   const { data: cls } = await supabase.from('cleaners').select('id, name, hourly_rate');
@@ -164,11 +169,10 @@ export async function generateRecurringMissions(horizonDays = 180): Promise<{ cr
       if (error) console.error('generateRecurringMissions insert:', error.message);
       else {
         created += ins?.length ?? 0;
-        // Sans cleaner : le prestataire attitré du logement, s'il y en a un.
-        if (!r.cleaner_id) await confierAuPrestataireAttitre(supabase, (ins ?? []).map(m => m.id as string));
+        if (!r.cleaner_id) sansCleaner.push(...(ins ?? []).map(m => m.id as string));
       }
     }
     await supabase.from('recurring_missions').update({ last_generated_date: horizon }).eq('id', r.id);
   }
-  return { created };
+  return { created, sansCleaner };
 }
