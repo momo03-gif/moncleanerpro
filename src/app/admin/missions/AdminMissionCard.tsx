@@ -5,7 +5,7 @@
 // mission côté admin. Aucune logique de page (onglets, formulaires de création)
 // ici. Réutilise les mêmes libs (db, labels, service, pay…).
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   updateMissionStatusDB, assignCleanerToMissionDB, updateMissionDB,
   deleteMissionDB, reopenMissionDB, resolveExtraTimeDB, addMissionTimeDB,
@@ -185,22 +185,29 @@ function MissionIncidentPanel({ mission }: { mission: Mission }) {
 
 // ── Carte mission admin ───────────────────────────────────────────────────────
 
-export default function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, onToggleSelect,
-  position, canMoveUp, canMoveDown, onMoveUp, onMoveDown, terrain }: {
+// Mémoïsée : la page passe des props stables (mission inchangée = même objet,
+// fonctions useCallback) — taper dans un filtre ne redessine plus 60 cartes.
+export default memo(AdminMissionCard);
+
+function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, onToggleSelect,
+  position, canMoveUp, canMoveDown, onMove, terrain }: {
   mission: Mission;
   /** Codes d'accès et contacts, servis par /api/missions/terrain. */
   terrain?: TerrainInfo;
   cleaners: any[];
-  onRefresh: () => void;
+  /** Après une action : la page relit CETTE mission (et ses sœurs de groupe), pas tout le planning. */
+  onRefresh: (missionId: string) => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   position?: number;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
+  /** Classement dans la journée (absent s'il n'y a qu'une mission ce jour-là). */
+  onMove?: (missionId: string, dir: -1 | 1) => void;
 }) {
+  const onMoveUp = onMove ? () => onMove(mission.id, -1) : undefined;
+  const onMoveDown = onMove ? () => onMove(mission.id, 1) : undefined;
   const { user } = useAuth();
   const { confirm, toast } = useFeedback();
   const [expanded, setExpanded] = useState(false);
@@ -248,7 +255,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
   async function changeStatus(s: MissionStatus) {
     setBusy(true);
     await updateMissionStatusDB(mission.id, s, { id: user?.id ?? '', role: 'admin' });
-    onRefresh();
+    onRefresh(mission.id);
     setBusy(false);
   }
 
@@ -309,7 +316,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (res.error) { setActionError(res.error); return; }
     setEditOpen(false);
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function handleDelete() {
@@ -321,7 +328,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     toast('Mission supprimée.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   // Admin : reprendre une mission terminée → repasse « en cours ».
@@ -333,7 +340,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     const res = await reopenMissionDB(mission.id, { id: user.id, role: 'admin' });
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function ouvrirNoShow() {
@@ -353,7 +360,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     setNoShowOpen(false);
     toast(noShowForm.motif === 'prolongation' ? 'Mission clôturée : voyageur encore présent.' : 'Mission passée en no show.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   function ouvrirTicket() {
@@ -370,7 +377,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     if (res.error) { toast(res.error, 'error'); return; }
     setTicketOpen(false);
     toast('Ticket enregistré.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function basculerRemboursement() {
@@ -380,7 +387,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (res.error) { toast(res.error, 'error'); return; }
     toast(rembourse ? 'Note de frais marquée remboursée.' : 'Remboursement annulé.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function handleCancelNoShow() {
@@ -395,7 +402,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     toast('No show annulé.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   // Décision sur la demande d'un cleaner. Valider = attribuer la mission ;
@@ -406,7 +413,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setDeciding(false);
     if (res.error) { setActionError(res.error); return; }
     toast(approve ? `Mission attribuée à ${mission.pendingCleanerName}.` : 'Demande refusée — mission de nouveau disponible.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   // Retrait d'une mission à son cleaner. Confirmation demandée : il a pu
@@ -423,7 +430,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (res.error) { setActionError(res.error); toast(res.error, 'error'); return; }
     toast('Mission retirée — de nouveau disponible.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function ouvrirConfier() {
@@ -444,7 +451,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     if (!r.count) { toast('Mission déjà démarrée : impossible de la confier.', 'error'); return; }
     toast('Mission confiée — le prestataire choisit son agent.', 'success');
     setConfierOpen(false); setNewPrestataire('');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function handleReprendre() {
@@ -459,7 +466,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (!r.ok) { setActionError(r.error); toast(r.error, 'error'); return; }
     toast('Mission reprise.', 'success');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function handleAssign() {
@@ -470,7 +477,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     await assignCleanerToMissionDB(mission.id, newCleaner, c?.name ?? '');
     setAssignOpen(false);
     setNewCleaner('');
-    onRefresh();
+    onRefresh(mission.id);
     setBusy(false);
   }
 
@@ -483,7 +490,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     setBusy(false);
     if (res.error) { setActionError(res.error); return; }
     setAddTimeOpen(false); setAddTimeVal('30');
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   async function resolveExtra(approve: boolean) {
@@ -492,7 +499,7 @@ export default function AdminMissionCard({ mission, cleaners, onRefresh, selecta
     const res = await resolveExtraTimeDB(mission.id, approve, { id: user.id, role: 'admin' });
     setBusy(false);
     if (res.error) { setActionError(res.error); return; }
-    onRefresh();
+    onRefresh(mission.id);
   }
 
   const source = mission.source ?? 'hotel';

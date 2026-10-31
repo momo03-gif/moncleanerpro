@@ -43,6 +43,20 @@ const ST_REQ: Record<string, { label: string; color: string }> = {
 
 const TABS = ['Demandes hôtel', 'Missions', 'Créer'] as const;
 
+// Fenêtre de missions chargée par défaut : les 60 derniers jours + tout le futur.
+const JOURS_CHARGES = 60;
+
+// Pied de liste : dit ce qui est chargé, et propose tout l'historique.
+function FenetreChargee({ depuis, onToutCharger }: { depuis: string; onToutCharger: () => void }) {
+  if (!depuis) return null;
+  return (
+    <p className="text-center text-xs pt-1" style={{ color: '#A8A09A' }}>
+      Missions chargées depuis le {new Date(`${depuis}T12:00:00`).toLocaleDateString('fr-FR')}.{' '}
+      <button onClick={onToutCharger} className="font-medium underline" style={{ color: '#7A7068' }}>Charger tout l’historique</button>
+    </p>
+  );
+}
+
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function MissionsPage() {
@@ -71,6 +85,14 @@ export default function MissionsPage() {
   const [visibleCount, setVisibleCount] = useState(60);
   // Nombre d'enregistrements de classement en cours (suspend le rechargement temps réel).
   const savingOrder = useRef(0);
+  // FENÊTRE CHARGÉE : les missions depuis cette date (et tout le futur), pas
+  // tout l'historique — ~500 missions de plus chaque mois. Elle s'élargit
+  // d'elle-même si la période choisie remonte plus loin ; '' = tout l'historique.
+  const [depuis, setDepuis] = useState(() => addDaysStr(-JOURS_CHARGES));
+  const chargeDepuis = useRef(depuis);
+  // Dernières valeurs, lues par les callbacks stables (rafraîchir une carte, la déplacer).
+  const missionsRef = useRef<Mission[]>([]);
+  const visiblesRef = useRef<Mission[]>([]);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const [loading, setLoading] = useState(true);
@@ -94,7 +116,7 @@ export default function MissionsPage() {
 
   const load = useCallback(async () => {
     const [m, r, c, h, a, s, rec] = await Promise.all([
-      getMissionsDB(), getHotelRequestsDB(), getActiveCleanersDB(),
+      getMissionsDB(chargeDepuis.current || undefined), getHotelRequestsDB(), getActiveCleanersDB(),
       getApprovedHotelsDB(), getAirbnbs(), getAssignableStaffDB(), listRecurringDB(),
     ]);
     setMissions(m); setRequests(r); setCleaners(c); setStaff(s); setRecurrings(rec);
@@ -137,6 +159,30 @@ export default function MissionsPage() {
     return () => { clearTimeout(timer); supabase.removeChannel(ch1); stop(); };
   }, [load, rafraichirMissions]);
 
+  // Période qui remonte avant la fenêtre chargée : on élargit, puis on recharge.
+  useEffect(() => {
+    if (!chargeDepuis.current || range.start >= chargeDepuis.current) return;
+    chargeDepuis.current = range.start;
+    setDepuis(range.start);
+    void load();
+  }, [range.start, load]);
+
+  function chargerToutLHistorique() {
+    chargeDepuis.current = '';
+    setDepuis('');
+    void load();
+  }
+
+  useEffect(() => { missionsRef.current = missions; }, [missions]);
+
+  // Après une action sur UNE carte : on ne relit que cette mission — et les
+  // autres lignes de son intervention ponctuelle (group_id), qui bougent avec.
+  const rafraichirCarte = useCallback((missionId: string) => {
+    const m = missionsRef.current.find(x => x.id === missionId);
+    const soeurs = m?.groupId ? missionsRef.current.filter(x => x.groupId === m.groupId).map(x => x.id) : [];
+    void rafraichirMissions(Array.from(new Set([missionId, ...soeurs])));
+  }, [rafraichirMissions]);
+
   // Réinitialise la pagination quand la portée de la vue change.
   useEffect(() => { setVisibleCount(60); }, [tab, filter, zoneFilter, range]);
 
@@ -177,6 +223,8 @@ export default function MissionsPage() {
     : dateScoped.filter(m => m.status === filter);
   const filtered = zoneFilter === 'all' ? statusScoped : statusScoped.filter(m => (m.zoneName ?? '') === zoneFilter);
 
+  useEffect(() => { visiblesRef.current = filtered; }, [filtered]);
+
   // Groupes par cleaner, tronqués à visibleCount (pagination « Afficher plus »).
   const allGroups = groupMissionsByCleaner(filtered);
   const shownGroups: typeof allGroups = [];
@@ -197,13 +245,13 @@ export default function MissionsPage() {
   })();
 
   // ── Sélection groupée (tournée par zone) ──
-  function toggleSelect(id: string) {
+  const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-  }
+  }, []);
   function selectAllVisible() {
     setSelectedIds(new Set(filtered.filter(m => m.status !== 'completed' && m.status !== 'cancelled').map(m => m.id)));
   }
@@ -239,6 +287,18 @@ export default function MissionsPage() {
       await load();
     }
   }
+
+  // Classement depuis une carte (callback stable) : la journée VISIBLE de ce
+  // cleaner est reconstruite à partir de la liste filtrée courante.
+  const reorderRef = useRef(reorderDay);
+  useEffect(() => { reorderRef.current = reorderDay; });
+  const deplacerCarte = useCallback((missionId: string, dir: -1 | 1) => {
+    const m = visiblesRef.current.find(x => x.id === missionId);
+    if (!m) return;
+    const groupe = groupMissionsByCleaner(visiblesRef.current).find(g => (g.cleanerId ?? null) === (m.cleanerId ?? null));
+    const journee = (groupe?.missions ?? []).filter(x => x.date === m.date);
+    void reorderRef.current(m, journee, dir);
+  }, []);
 
   // Personnes éligibles à l'assignation groupée : doivent pouvoir réaliser le
   // service de CHAQUE mission cochée (livraisons → livreurs ; ménages → cleaners ;
@@ -486,6 +546,7 @@ export default function MissionsPage() {
           {filtered.length === 0 ? (
             <div className="rounded-2xl p-10 text-center border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
               <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune mission pour cette période</p>
+              {depuis && range.start < depuis && <p className="text-xs mt-1" style={{ color: '#A8A09A' }}>Chargement de l’historique…</p>}
               {outOfRangeCount > 0 && allDates.length > 0 && (
                 <button onClick={() => setRange({ start: allDates[0], end: allDates[allDates.length - 1] })}
                   className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
@@ -520,7 +581,7 @@ export default function MissionsPage() {
                       const dayIndex = dayList.indexOf(m);
                       const many = dayList.length > 1;
                       return (
-                      <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={load}
+                      <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={rafraichirCarte}
                         terrain={terrain[m.id]}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
                         selected={selectedIds.has(m.id)}
@@ -528,8 +589,7 @@ export default function MissionsPage() {
                         position={many ? dayIndex + 1 : undefined}
                         canMoveUp={dayIndex > 0}
                         canMoveDown={dayIndex < dayList.length - 1}
-                        onMoveUp={many ? () => reorderDay(m, dayList, -1) : undefined}
-                        onMoveDown={many ? () => reorderDay(m, dayList, 1) : undefined} />
+                        onMove={many ? deplacerCarte : undefined} />
                       );
                     })}
                   </div>
@@ -543,6 +603,7 @@ export default function MissionsPage() {
                   </button>
                 </div>
               )}
+              <FenetreChargee depuis={depuis} onToutCharger={chargerToutLHistorique} />
             </div>
           )}
         </>
