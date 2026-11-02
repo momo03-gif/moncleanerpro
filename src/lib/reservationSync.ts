@@ -315,7 +315,7 @@ export async function syncFeed(feed: {
       if (status === 'confirmed') {
         const before = prev.get(ev.uid);
         if (before?.mission_id && (before.check_out !== ev.end || (before.check_out_time ?? null) !== (ev.endTime ?? null))) {
-          await applyReservationDateChange(before.mission_id, ev.end, ev.endTime ?? null);
+          await applyReservationDateChange(before.mission_id, ev.end, ev.endTime ?? null, { feedId: feed.id, uid: ev.uid });
         }
       }
     }
@@ -399,12 +399,33 @@ async function handleCancelledReservationMission(missionId: string) {
 
 // FIX #1 — le départ d'une réservation déjà matérialisée a changé. Mission non
 // assignée → on la déplace à la nouvelle date. Mission assignée → on alerte l'admin
-// (on ne bouge jamais en douce le planning d'un cleaner).
-async function applyReservationDateChange(missionId: string, newDate: string, newTime: string | null) {
+// (on ne bouge jamais en douce le planning d'un cleaner). Mission déjà TERMINÉE
+// ou ANNULÉE et départ repoussé (prolongation) → l'ancien ménage ne couvre plus
+// ce départ : on détache la réservation, et l'étape 2 lui crée un nouveau ménage
+// à la nouvelle date (sinon le vrai départ n'aurait aucun ménage — Baraban, 27/10).
+async function applyReservationDateChange(
+  missionId: string, newDate: string, newTime: string | null,
+  resa: { feedId: string; uid: string },
+) {
   const db = getSupabaseAdmin();
   const { data: m } = await db.from('missions')
-    .select('status, auto_synced, prestataire_id, airbnbs(name)').eq('id', missionId).single();
+    .select('status, auto_synced, prestataire_id, date_from, airbnbs(name)').eq('id', missionId).single();
   if (!m || !m.auto_synced) return;
+
+  if ((m.status === 'done' || m.status === 'cancelled') && newDate > (m.date_from as string)) {
+    const { error } = await db.from('reservations')
+      .update({ mission_id: null, mission_created_at: null })
+      .eq('feed_id', resa.feedId).eq('external_uid', resa.uid).eq('mission_id', missionId);
+    if (error) { console.error('date change detach:', error.message); return; }
+    const place = (m.airbnbs as { name?: string } | null)?.name ?? 'un logement';
+    // Départ déjà passé : l'étape 2 ne crée pas de ménage dans le passé.
+    const suite = newDate >= parisToday()
+      ? 'Un nouveau ménage est prévu à la nouvelle date.'
+      : 'Ce départ est déjà passé : vérifiez que le logement a bien été refait.';
+    await notifyAdminsSync('Prolongation détectée',
+      `Le départ du voyageur de ${place} est repoussé au ${fmtDateFr(newDate)}, après le ménage du ${fmtDateFr(m.date_from as string)}. ${suite}`, missionId);
+    return;
+  }
 
   // Mission partagée par plusieurs réservations (cf. handleCancelledReservationMission) :
   // la déplacer priverait les autres départs de leur ménage. On alerte plutôt.
