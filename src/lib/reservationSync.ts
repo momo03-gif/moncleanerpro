@@ -28,7 +28,7 @@ import { fetchBeds24Reservations } from './pms/beds24';
 import { fetchLodgifyReservations } from './pms/lodgify';
 import { REST_CONNECTORS } from './pms/catalog';
 import { memoryTokenStore, type TokenStore, type PmsCallOptions } from './pms/rest';
-import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync, notifyPrestataireSync } from './notificationEvents';
+import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSync, notifyPrestataireSync, notifyCleanerSync } from './notificationEvents';
 import { gainPrestataire } from './prestataireRegles';
 import { parseAirbnbDescription } from './guestContact';
 import { shouldRealign } from './missionDefaults';
@@ -397,9 +397,10 @@ async function handleCancelledReservationMission(missionId: string) {
   }
 }
 
-// FIX #1 — le départ d'une réservation déjà matérialisée a changé. Mission non
-// assignée → on la déplace à la nouvelle date. Mission assignée → on alerte l'admin
-// (on ne bouge jamais en douce le planning d'un cleaner). Mission déjà TERMINÉE
+// FIX #1 — le départ d'une réservation déjà matérialisée a changé. Mission pas
+// encore commencée (à assigner OU assignée) → on la déplace à la vraie date de
+// départ ; un cleaner / prestataire déjà dessus est PRÉVENU (jamais en douce).
+// Mission en cours → on alerte l'admin (le cleaner est sur place). Mission déjà TERMINÉE
 // ou ANNULÉE et départ repoussé (prolongation) → l'ancien ménage ne couvre plus
 // ce départ : on détache la réservation, et l'étape 2 lui crée un nouveau ménage
 // à la nouvelle date (sinon le vrai départ n'aurait aucun ménage — Baraban, 27/10).
@@ -440,19 +441,24 @@ async function applyReservationDateChange(
     return;
   }
 
-  if (m.status === 'pending') {
-    await db.from('missions').update({
+  if (m.status === 'pending' || m.status === 'assigned') {
+    // Garde : elle n'a pas démarré entre-temps.
+    const { data: deplacee } = await db.from('missions').update({
       date_from: newDate, time_from: newTime || DEFAULT_CHECKOUT_TIME,
-    }).eq('id', missionId);
-    if (m.prestataire_id) {
-      const place = (m as any).airbnbs?.name ?? 'un logement';
-      await notifyPrestataireSync(missionId, 'Mission déplacée',
-        `Le départ du voyageur de ${place} a changé : la mission est déplacée au ${fmtDateFr(newDate)}.`);
+    }).eq('id', missionId).in('status', ['pending', 'assigned']).select('id');
+    if (!deplacee?.length) return;
+    const place = (m.airbnbs as { name?: string } | null)?.name ?? 'un logement';
+    const message = `Le départ du voyageur de ${place} a changé : la mission est déplacée au ${fmtDateFr(newDate)}.`;
+    if (m.prestataire_id) await notifyPrestataireSync(missionId, 'Mission déplacée', message);
+    if (m.status === 'assigned') {
+      await notifyCleanerSync(missionId, 'Mission déplacée', message);
+      await notifyAdminsSync('Mission déplacée (départ modifié)',
+        `${message} Le cleaner assigné a été prévenu.`, missionId);
     }
   } else if (m.status !== 'cancelled' && m.status !== 'done') {
     const place = (m as any).airbnbs?.name ?? 'un logement';
-    await notifyAdminsSync('Changement de date — mission assignée',
-      `Le départ de ${place} a changé (nouveau départ : ${newDate}). La mission est déjà assignée — vérifie le planning du cleaner.`, missionId);
+    await notifyAdminsSync('Changement de date — mission en cours',
+      `Le départ de ${place} a changé (nouveau départ : ${fmtDateFr(newDate)}) alors que le ménage est en cours : voyez avec le cleaner sur place.`, missionId);
   }
 }
 

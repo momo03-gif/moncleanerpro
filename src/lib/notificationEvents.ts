@@ -322,6 +322,15 @@ export async function notifyPrestataireSync(missionId: string, title: string, me
   } catch (e) { console.error('notifyPrestataireSync:', e); }
 }
 
+/** La synchro des réservations a changé la mission d'un cleaner (date…) → ce cleaner. */
+export async function notifyCleanerSync(missionId: string, title: string, message: string) {
+  try {
+    const ctx = await loadMissionContext(missionId);
+    if (!ctx?.cleanerUserId) return;
+    await dispatch([{ userId: ctx.cleanerUserId, role: 'cleaner', title, message, type: 'mission_modified', missionId }]);
+  } catch (e) { console.error('notifyCleanerSync:', e); }
+}
+
 /** Le relevé d'un mois est marqué payé → le prestataire. */
 export async function notifyPrestatairePaiement(userId: string, periode: string, montant: number) {
   try {
