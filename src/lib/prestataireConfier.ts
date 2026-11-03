@@ -16,6 +16,7 @@ import type { MissionService } from './types';
 import {
   notifyCleanerMissionUnassigned, notifyPrestataireMissionReprise, notifyPrestataireMissionsConfiees,
 } from './notificationEvents';
+import { assurerAgentPerso, emailAgentPerso } from './agentPerso';
 
 export interface PrestataireConfiable {
   id: string; user_id: string; name: string; hourly_rate: number; sap_declare: boolean;
@@ -83,9 +84,40 @@ export async function confierUneMission(
   return ancienPresta === pr.id ? 'ignoree' : 'confiee';
 }
 
-/** Une notification pour le lot (« 12 nouvelles missions »), pas une par mission. */
-export async function notifierConfiees(pr: PrestataireConfiable, missionIds: string[]): Promise<void> {
-  if (missionIds.length) await notifyPrestataireMissionsConfiees(pr.user_id, missionIds);
+/** Le prestataire travaille-t-il SEUL (aucun agent actif, hors sa fiche « moi-même ») ? */
+export async function travailleSeul(db: SupabaseClient, prestataireId: string): Promise<boolean> {
+  const { data } = await db.from('cleaners').select('email').eq('prestataire_id', prestataireId).eq('status', 'active');
+  const perso = emailAgentPerso(prestataireId);
+  return !(data ?? []).some(a => a.email !== perso);
+}
+
+/**
+ * Prestataire SEUL : ses missions à attribuer sont à son nom d'office (sa fiche
+ * « moi-même », cf. lib/agentPerso.ts) — elles apparaissent directement dans
+ * son mode terrain, sans qu'il ait à se les attribuer une à une. Avec des
+ * agents, c'est lui qui choisit : on ne touche à rien. Renvoie le nombre de
+ * missions mises à son nom.
+ */
+export async function attribuerAuPrestataireSeul(db: SupabaseClient, prestataireId: string, missionIds: string[]): Promise<number> {
+  if (!missionIds.length || !(await travailleSeul(db, prestataireId))) return 0;
+  const { data: pr } = await db.from('prestataires').select('id, name, contact_name, phone').eq('id', prestataireId).maybeSingle();
+  if (!pr) return 0;
+  const perso = await assurerAgentPerso(db, pr as { id: string; name: string; contact_name?: string | null; phone?: string | null });
+  if ('erreur' in perso) return 0;
+  const { data: maj } = await db.from('missions').update({
+    cleaner_id: perso.cleanerId, cleaner_name: perso.name, status: 'assigned', cleaner_gain: 0, cleaner_hourly_rate_snapshot: 0,
+  }).in('id', missionIds).eq('prestataire_id', prestataireId).eq('status', 'pending').is('cleaner_id', null).select('id');
+  return maj?.length ?? 0;
+}
+
+/**
+ * Après avoir confié un lot : à son nom s'il travaille seul, puis UNE
+ * notification pour le lot (« 12 nouvelles missions »), pas une par mission.
+ */
+export async function notifierConfiees(db: SupabaseClient, pr: PrestataireConfiable, missionIds: string[]): Promise<void> {
+  if (!missionIds.length) return;
+  await attribuerAuPrestataireSeul(db, pr.id, missionIds);
+  await notifyPrestataireMissionsConfiees(pr.user_id, missionIds);
 }
 
 /**
@@ -116,7 +148,7 @@ export async function confierAuPrestataireAttitre(db: SupabaseClient, missionIds
       if (!('pr' in r)) continue;
       const confiees: string[] = [];
       for (const m of ms) if (await confierUneMission(db, m, r.pr) === 'confiee') confiees.push(m.id as string);
-      await notifierConfiees(r.pr, confiees);
+      await notifierConfiees(db, r.pr, confiees);
       total += confiees.length;
     }
     return total;

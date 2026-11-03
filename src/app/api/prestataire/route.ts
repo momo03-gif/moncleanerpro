@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSessionUser, createSession } from '@/lib/session';
 import { assurerAgentPerso, lireAgentPerso, emailAgentPerso } from '@/lib/agentPerso';
-import { chargerPrestataireConfiable, confierUneMission, notifierConfiees } from '@/lib/prestataireConfier';
+import { chargerPrestataireConfiable, confierUneMission, notifierConfiees, attribuerAuPrestataireSeul } from '@/lib/prestataireConfier';
 import { normalizePhone } from '@/lib/phone';
 import { hashPassword } from '@/lib/password';
 import { attribuable, releveDuMois, CREDIT_IMPOT_REFUS, etatVigilance, specialitesValides, metierValide, vehiculesValides, type Metier } from '@/lib/prestataireRegles';
@@ -408,7 +408,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         count++;
         confiees.push(id);
       }
-      await notifierConfiees(r.pr, confiees);
+      await notifierConfiees(db, r.pr, confiees);
       if (count === 0 && bloquees > 0) return ko(CREDIT_IMPOT_REFUS);
       return ok({ count, bloquees });
     }
@@ -470,6 +470,12 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
     case 'mode-terrain': {
       const perso = await assurerAgentPerso(db, moi as { id: string; name: string; contact_name?: string | null; phone?: string | null });
       if ('erreur' in perso) return ko(perso.erreur, 500);
+      // Seul : tout ce qui attend un agent (y compris un peu en retard) est à
+      // son nom, pour le trouver DIRECTEMENT dans l'appli terrain.
+      const depuis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(Date.now() - 30 * 864e5));
+      const { data: enAttente } = await db.from('missions').select('id')
+        .eq('prestataire_id', pid).eq('status', 'pending').is('cleaner_id', null).gte('date_from', depuis);
+      await attribuerAuPrestataireSeul(db, pid, (enAttente ?? []).map(m => m.id as string));
       await createSession({ id: perso.userId, name: perso.name, email: perso.email, role: 'cleaner', isActive: true, agent: true, agentPerso: true });
       return ok({ redirect: '/cleaner' });
     }
