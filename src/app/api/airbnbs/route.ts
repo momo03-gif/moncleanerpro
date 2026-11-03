@@ -49,6 +49,14 @@ export async function POST(req: NextRequest) {
     return !!data?.partner_id && data.partner_id === appelant!.id;
   }
 
+  /** Nom de la conciergerie (airbnb_partners) par compte utilisateur. */
+  async function nomPartenaire(userIds: string[]): Promise<Record<string, string>> {
+    const { data } = await db.from('airbnb_partners').select('user_id, partner_name').in('user_id', userIds);
+    const out: Record<string, string> = {};
+    (data ?? []).forEach((p: any) => { if (p.partner_name) out[p.user_id] = p.partner_name; });
+    return out;
+  }
+
   // Colonnes qu'un partenaire ne fixe jamais lui-même : elles nous sont propres
   // (prix facturé, temps de ménage qui détermine la paie, coût produits, zone,
   // rattachement). Un formulaire partenaire ne les envoie pas ; on s'assure ici
@@ -75,7 +83,12 @@ export async function POST(req: NextRequest) {
     case 'create': {
       const row = filtrer(b.row ?? {});
       // Un partenaire crée toujours POUR LUI : on impose le rattachement.
-      if (!estAdmin) row.partner_id = appelant!.id;
+      // Le nom aussi, fixé ici : sans lui, l'admin rangeait le logement dans
+      // « Sans partenaire » (partner_name est filtré plus haut).
+      if (!estAdmin) {
+        row.partner_id = appelant!.id;
+        row.partner_name = (await nomPartenaire([appelant!.id]))[appelant!.id] ?? appelant!.name ?? null;
+      }
       if (!row.name || !row.address) return refus('Nom et adresse requis.', 400);
 
       const { data, error } = await db.from('airbnbs').insert(row).select('id').single();
@@ -171,6 +184,19 @@ export async function POST(req: NextRequest) {
       const { data, error } = await q;
       if (error) { console.error('airbnbs/list:', error.message); return refus('Lecture impossible.', 500); }
       const lignes = (data ?? []) as unknown as Record<string, unknown>[];
+      // Logements créés par une conciergerie avant que le serveur ne pose le
+      // nom : rattachés (partner_id) mais sans partner_name. On complète depuis
+      // le compte, à l'écran et en base (une seule fois).
+      const orphelins = lignes.filter(r => r.partner_id && !r.partner_name);
+      if (estAdmin && orphelins.length > 0) {
+        const noms = await nomPartenaire([...new Set(orphelins.map(r => r.partner_id as string))]);
+        for (const r of orphelins) {
+          const nom = noms[r.partner_id as string];
+          if (!nom) continue;
+          r.partner_name = nom;
+          await db.from('airbnbs').update({ partner_name: nom }).eq('id', r.id as string).is('partner_name', null);
+        }
+      }
       // Une conciergerie ne voit ni la durée de ménage, ni qu'un logement est confié à un prestataire.
       const rows = estAdmin ? lignes : lignes.map(r => ({ ...r, estimated_cleaning_minutes: null, prestataire_id: null }));
       return NextResponse.json({ data: rows }, { headers: { 'Cache-Control': 'no-store' } });
