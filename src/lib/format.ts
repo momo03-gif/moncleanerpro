@@ -59,3 +59,16 @@ export function money(value: number | string | null | undefined): string {
   const body = rounded.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
   return `${body} €`;
 }
+
+/**
+ * Montant TOUJOURS au centime (« 80,00 € ») : factures, devis, paie, dépenses —
+ * des documents où une colonne de montants doit rester alignée.
+ */
+export function moneyCentimes(n: number): string {
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+/** Montant arrondi à l'euro (« 120 € ») : fourchettes d'estimation du devis en ligne. */
+export function moneyArrondi(n: number): string {
+  return Math.round(n).toLocaleString('fr-FR') + ' €';
+}

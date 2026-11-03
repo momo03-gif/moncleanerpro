@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import type { CompanyInfo, InvoiceLine } from '@/lib/types';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
+import { moneyCentimes as money } from '@/lib/format';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Document imprimable FACTURE / DEVIS — gabarit unique, une seule identité.
@@ -25,9 +26,6 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string; b
   overdue: { label: 'En retard',  color: '#B85A50', bg: '#FBECEA', border: '#EAC4BE' },
 };
 
-function money(n: number) {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-}
 
 function fmtDateFR(d: string) {
   if (!d) return '—';

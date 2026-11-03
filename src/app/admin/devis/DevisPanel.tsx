@@ -13,6 +13,7 @@ import { parseTarifsCsv } from '@/lib/tarifsCsv';
 import { DEVIS_PENDING_EVENT } from '@/lib/events';
 import { InvoiceDoc } from '@/components/InvoiceDoc';
 import { originLabel } from '@/lib/origin';
+import { moneyCentimes as money } from '@/lib/format';
 
 // Modèle CSV téléchargeable (mêmes colonnes que l'export de la grille MonCleanerPro).
 const CSV_TEMPLATE = `Prestation;Unité;Prix;Mots-clés;Actif
@@ -22,11 +23,8 @@ Fin de chantier;m2;5-12;travaux, rénovation, chantier;oui
 Ménage régulier;heure;25-35;récurrent, entretien, heure;oui
 `;
 
-// Montants de DOCUMENT (devis, facture) : les centimes sont toujours affichés,
-// « 80,00 € » et non « 80 € ». C'est la convention comptable, et c'est ce qui
-// distingue cette fonction de `money()` dans src/lib/format.ts, qui sert aux
-// écrans de pilotage et masque les décimales inutiles. Ne pas les fusionner.
-function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+// Montants de DOCUMENT (devis, facture) : `moneyCentimes`, « 80,00 € » et non
+// « 80 € » — la convention comptable. `money()` sert aux écrans de pilotage.
 
 // Lien public du devis : accepter ET réserver son créneau se font au même endroit.
 // Il ne change JAMAIS, même après correction — le client garde une seule adresse.

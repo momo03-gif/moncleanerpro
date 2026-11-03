@@ -5,13 +5,11 @@ import { resolvePrimeRequestDB, currentPeriod, type PrimeRequest } from '@/lib/r
 import { loadPayrollDB, recomputeAllCleanerRhDB, setPayAdjustmentDB, type Payslip } from '@/lib/payrollApi';
 import Loading from "@/components/Loading";
 import CleanerPayDetail from './CleanerPayDetail';
+import { moneyCentimes as money } from '@/lib/format';
 
 // ── Fiche de paie mensuelle par cleaner (admin uniquement, LOT 3bis B/C). ───────
 // Le cleaner ne voit JAMAIS ces montants : panneau réservé à l'écran admin.
 
-function money(n: number) {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-}
 
 // Minutes → « 12h30 » (ou « 0h » si rien).
 function hm(min: number) {

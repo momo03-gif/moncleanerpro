@@ -9,6 +9,7 @@ import { resolveOrigin } from '@/lib/origin';
 import type { SimulatorConfig } from '@/lib/devisConfig';
 import { trackConversion } from '@/lib/adsTracking';
 import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './AirbnbSimulator';
+import { moneyArrondi as money } from '@/lib/format';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Page publique « Demander un devis » — sélecteur structuré (catégories →
@@ -22,7 +23,6 @@ import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './Airb
 //  (enregistrement en brouillon + notification admin).
 // ════════════════════════════════════════════════════════════════════════════
 
-const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
 const num = (n: number) => n.toLocaleString('fr-FR');
 
 // ── Icônes (trait sobre) ────────────────────────────────────────────────────────

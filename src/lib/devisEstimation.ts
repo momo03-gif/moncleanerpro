@@ -13,6 +13,7 @@
 import type { Tarif, DevisLine } from './devis';
 import { modeFor, displayName } from './devisCatalog';
 import type { SimulatorConfig, SimulatorState, Quote } from './devisSimulator';
+import { moneyArrondi as euros } from './format';
 
 /** Ce que le visiteur a coché : nom de prestation → quantité (m² pour une surface). */
 export type Selection = Record<string, { qty: number }>;
@@ -117,8 +118,6 @@ export function etatSimulationValide(cfg: SimulatorConfig, s: Partial<SimulatorS
     urgencyId: s?.urgencyId && urgences.has(s.urgencyId) ? s.urgencyId : null,
   };
 }
-
-const euros = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
 
 /** Les lignes d'une simulation, pour la demande de devis (mise en forme d'avant). */
 export function lignesSimulation(q: Quote): DevisLine[] {

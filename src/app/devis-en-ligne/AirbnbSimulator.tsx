@@ -16,8 +16,8 @@
 import { useState } from 'react';
 import { initialState, zoneForCommune, type SimulatorConfig, type SimulatorState } from '@/lib/devisSimulator';
 import { useSimulation } from '@/lib/devisEstimationClient';
+import { moneyArrondi as money } from '@/lib/format';
 
-const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
 // Une fourchette s'écrit « 30 – 35 € » ; quand les deux bornes se rejoignent,
 // afficher « 30 – 30 € » ferait douter du sérieux du chiffrage.
 const range = (min: number, max: number) => (max > min ? `${money(min)} – ${money(max)}` : money(min));

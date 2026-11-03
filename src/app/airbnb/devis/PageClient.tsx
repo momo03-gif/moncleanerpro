@@ -24,8 +24,8 @@ import type { Apartment } from '@/lib/types';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
 import { Badge, Button, Card, EmptyState, FIELD, Label, PageTitle, SectionTitle } from '@/components/ui';
+import { moneyArrondi as money } from '@/lib/format';
 
-const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
 const num = (n: number) => n.toLocaleString('fr-FR');
 
 type Sel = Record<string, { qty: number }>;

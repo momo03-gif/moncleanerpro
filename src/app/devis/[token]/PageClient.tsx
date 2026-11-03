@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation';
 import { getDevisByTokenDB, setDevisStatusByTokenDB, type Devis } from '@/lib/devis';
 import { getAppointmentForDevisDB } from '@/lib/appointments';
 import Loading from "@/components/Loading";
+import { moneyCentimes as money } from '@/lib/format';
 
-function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 function frDate(dateISO: string) {
   return new Date(dateISO + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }

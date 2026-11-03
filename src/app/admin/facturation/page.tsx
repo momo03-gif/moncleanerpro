@@ -13,6 +13,7 @@ import { LIBELLE_ACHATS } from '@/lib/course';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
 import { InvoiceDoc } from '@/components/InvoiceDoc';
+import { moneyCentimes as money } from '@/lib/format';
 
 // Perf : couche données importée en différé → supabase hors du chemin critique.
 const loadDb = () => import('@/lib/db');
@@ -36,9 +37,6 @@ function fmtDateFR(d: string) {
 
 const TYPE_LABEL = MISSION_TYPE_LABEL;
 
-function money(n: number) {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-}
 
 // Demande au serveur la fourniture de chaque ménage. `figer` n'est vrai qu'au
 // moment où la facture part : le montant est alors écrit sur la mission et ne

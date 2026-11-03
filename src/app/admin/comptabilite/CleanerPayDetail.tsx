@@ -3,14 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { loadCleanerDetailDB, type PayDetail } from '@/lib/payrollApi';
 import Loading from '@/components/Loading';
+import { moneyCentimes as money } from '@/lib/format';
 
 // ── Fiche cleaner ouverte au clic depuis la paie (admin uniquement). ─────────────
 // Récapitule les missions terminées sur une plage de dates : nombre, temps accordé
 // vs temps réel travaillé, et gain. Information admin seule (le cleaner ne voit rien).
 
-function money(n: number) {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-}
 
 // Minutes → « 12h30 » (ou « 0h »).
 function hm(min: number) {

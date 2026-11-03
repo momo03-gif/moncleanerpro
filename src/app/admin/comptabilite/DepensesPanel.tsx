@@ -10,8 +10,8 @@ import type { Mission, InvoiceRecord, CompanyInfo } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import Loading from "@/components/Loading";
 import { coutMainOeuvre } from '@/lib/pay';
+import { moneyCentimes as money } from '@/lib/format';
 
-function money(n: number) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 function thisMonth() { return new Date().toISOString().slice(0, 7); }
 
 // Dépenses & TVA + bénéfice net tout compris (ADMIN). Calculs vérifiables/exportables.
