@@ -17,7 +17,8 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { getSessionUser } from '@/lib/session';
+import { getSessionUser, createSession } from '@/lib/session';
+import { assurerAgentPerso, lireAgentPerso, emailAgentPerso } from '@/lib/agentPerso';
 import { chargerPrestataireConfiable, confierUneMission, notifierConfiees } from '@/lib/prestataireConfier';
 import { normalizePhone } from '@/lib/phone';
 import { hashPassword } from '@/lib/password';
@@ -334,7 +335,9 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const id = str(b.id);
       if (!id) return ko('Prestataire manquant.');
       const { data } = await db.from('cleaners').select(AGENT_COLONNES).eq('prestataire_id', id).order('name');
-      return ok({ agents: data ?? [] });
+      // Sa fiche « moi-même » (mode terrain) n'est pas un agent.
+      const perso = emailAgentPerso(id);
+      return ok({ agents: (data ?? []).filter(a => (a as { email?: string | null }).email !== perso) });
     }
 
     case 'releve': {
@@ -455,12 +458,28 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
   }
 
   switch (op) {
-    case 'me':
-      return ok({ prestataire: { name: moi.name, contactName: moi.contact_name, email: moi.email, phone: moi.phone, hourlyRate: Number(moi.hourly_rate) || 0 } });
+    case 'me': {
+      const perso = await lireAgentPerso(db, pid);
+      return ok({
+        prestataire: { name: moi.name, contactName: moi.contact_name, email: moi.email, phone: moi.phone, hourlyRate: Number(moi.hourly_rate) || 0 },
+        moiAgentId: perso?.cleanerId ?? null,
+      });
+    }
+
+    // ── Le prestataire fait la mission lui-même : l'appli terrain sur SA fiche ──
+    case 'mode-terrain': {
+      const perso = await assurerAgentPerso(db, moi as { id: string; name: string; contact_name?: string | null; phone?: string | null });
+      if ('erreur' in perso) return ko(perso.erreur, 500);
+      await createSession({ id: perso.userId, name: perso.name, email: perso.email, role: 'cleaner', isActive: true, agent: true, agentPerso: true });
+      return ok({ redirect: '/cleaner' });
+    }
 
     case 'agents': {
       const { data } = await db.from('cleaners').select(AGENT_COLONNES).eq('prestataire_id', pid).order('name');
-      return ok({ agents: data ?? [] });
+      // Sa fiche « moi-même » n'est pas un agent à gérer (filtré ici : un
+      // `neq` SQL écarterait aussi les agents sans email).
+      const perso = emailAgentPerso(pid);
+      return ok({ agents: (data ?? []).filter(a => (a as { email?: string | null }).email !== perso) });
     }
 
     case 'agent-create': {
@@ -535,7 +554,13 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
       if (!m || m.prestataire_id !== pid) return ko('Mission introuvable.', 404);
       if (!attribuable(m.status as string)) return ko('Mission déjà démarrée, terminée ou annulée.');
 
-      const cleanerId = str(b.cleanerId);
+      let cleanerId = str(b.cleanerId);
+      // « Moi-même » : le prestataire fait la mission, sur sa fiche personnelle.
+      if (cleanerId === 'moi') {
+        const perso = await assurerAgentPerso(db, moi as { id: string; name: string; contact_name?: string | null; phone?: string | null });
+        if ('erreur' in perso) return ko(perso.erreur, 500);
+        cleanerId = perso.cleanerId;
+      }
       let patch: Record<string, unknown>;
       if (cleanerId) {
         const agent = await monAgent(cleanerId);
@@ -553,7 +578,7 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
       const ancien = m.cleaner_id as string | null;
       if (ancien && ancien !== cleanerId) await notifyCleanerMissionUnassigned(missionId, ancien, String(moi.name ?? 'votre prestataire'));
       if (cleanerId && ancien !== cleanerId) await notifyCleanerNewMission(missionId);
-      return ok();
+      return ok({ cleanerId: cleanerId ?? null });
     }
 
     case 'releve': {

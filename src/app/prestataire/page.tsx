@@ -7,7 +7,7 @@ import type { TerrainInfo } from '@/lib/fieldContact';
 import { formatDuration, formatHour, money } from '@/lib/format';
 import { serviceLabel, SERVICE_BADGE } from '@/lib/service';
 import { libelleSpecialite } from '@/lib/prestataireRegles';
-import { appelPrestataire, type Agent } from '@/lib/prestataireApi';
+import { appelPrestataire, passerEnModeTerrain, type Agent } from '@/lib/prestataireApi';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
 
@@ -42,15 +42,19 @@ function dateLongue(d: string): string {
 export default function PrestataireMissionsPage() {
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
+  // Sa fiche « moi-même », s'il a déjà fait une mission lui-même (sinon null).
+  const [moiId, setMoiId] = useState<string | null>(null);
   const [erreur, setErreur] = useState('');
   const [onglet, setOnglet] = useState<Onglet>('attribuer');
 
   const charger = useCallback(async () => {
     const { getMissionsForPrestataireDB } = await loadDb();
-    const [m, a] = await Promise.all([
+    const [m, a, me] = await Promise.all([
       getMissionsForPrestataireDB({ since: il_y_a(45) }),
       appelPrestataire<{ agents: Agent[] }>('agents'),
+      appelPrestataire<{ moiAgentId: string | null }>('me'),
     ]);
+    if (me.ok) setMoiId(me.moiAgentId);
     if (m === null) setErreur('Impossible de charger vos missions. Réessayez.');
     else setErreur('');
     setMissions(m ?? []);
@@ -108,8 +112,8 @@ export default function PrestataireMissionsPage() {
         <Loading variant="skeleton" rows={3} />
       ) : agents.length === 0 && onglet === 'attribuer' && listes.attribuer.length > 0 ? (
         <div className="rounded-2xl border p-5 mb-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>Ajoutez d’abord vos agents</p>
-          <p className="text-sm mb-3" style={{ color: '#7A7068' }}>Chaque agent reçoit ses propres identifiants pour l’application terrain. Vous travaillez seul ? Ajoutez-vous comme agent (avec une autre adresse email) pour réaliser vous-même les missions.</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>Qui fait les missions ?</p>
+          <p className="text-sm mb-3" style={{ color: '#7A7068' }}>Vous travaillez seul ? Choisissez « Moi-même » sur la mission, puis « Passer en mode terrain » pour la réaliser. Vous avez une équipe ? Ajoutez vos agents : chacun reçoit ses identifiants pour l’application terrain.</p>
           <Link href="/prestataire/agents" className="inline-block px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
             Gérer mes agents
           </Link>
@@ -124,15 +128,20 @@ export default function PrestataireMissionsPage() {
 
       <div className="space-y-3">
         {affichees.map(m => (
-          <CarteMission key={m.id} mission={m} agents={agents} onChange={charger} />
+          <CarteMission key={m.id} mission={m} agents={agents} moiId={moiId} onChange={charger} />
         ))}
       </div>
     </div>
   );
 }
 
-function CarteMission({ mission: m, agents, onChange }: { mission: Mission; agents: Agent[]; onChange: () => Promise<void> }) {
-  const [choix, setChoix] = useState(m.cleanerId ?? '');
+function CarteMission({ mission: m, agents, moiId, onChange }: {
+  mission: Mission; agents: Agent[]; moiId: string | null; onChange: () => Promise<void>;
+}) {
+  // « moi » = sa fiche personnelle (créée côté serveur au premier choix).
+  const actuel = m.cleanerId && m.cleanerId === moiId ? 'moi' : (m.cleanerId ?? '');
+  const [choix, setChoix] = useState(actuel);
+  const [terrain, setTerrain] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState('');
   const [acces, setAcces] = useState<TerrainInfo | null | 'chargement'>(null);
@@ -204,10 +213,11 @@ function CarteMission({ mission: m, agents, onChange }: { mission: Mission; agen
           <select value={choix} onChange={e => setChoix(e.target.value)} disabled={envoi}
             className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm border" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A' }}>
             <option value="">— Choisir un agent —</option>
+            <option value="moi">Moi-même</option>
             {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            {m.cleanerId && !agents.some(a => a.id === m.cleanerId) && <option value={m.cleanerId}>{m.cleanerName ?? 'Agent'}</option>}
+            {m.cleanerId && actuel !== 'moi' && !agents.some(a => a.id === m.cleanerId) && <option value={m.cleanerId}>{m.cleanerName ?? 'Agent'}</option>}
           </select>
-          {choix !== (m.cleanerId ?? '') && (
+          {choix !== actuel && (
             <button onClick={() => attribuer(choix)} disabled={envoi}
               className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
               {envoi ? '…' : choix ? 'Attribuer' : 'Retirer'}
@@ -215,8 +225,16 @@ function CarteMission({ mission: m, agents, onChange }: { mission: Mission; agen
           )}
         </div>
       ) : m.cleanerName ? (
-        <p className="text-sm flex items-center gap-1.5" style={{ color: '#7A7068' }}><Icon name="user" size={14} /> {m.cleanerName}</p>
+        <p className="text-sm flex items-center gap-1.5" style={{ color: '#7A7068' }}><Icon name="user" size={14} /> {actuel === 'moi' ? 'Moi-même' : m.cleanerName}</p>
       ) : null}
+      {/* Mission à son nom : il la réalise depuis l'appli terrain. */}
+      {actuel === 'moi' && m.status !== 'cancelled' && m.status !== 'completed' && (
+        <button onClick={async () => { setTerrain(true); const e = await passerEnModeTerrain(); if (e) { setErreur(e); setTerrain(false); } }}
+          disabled={terrain}
+          className="mt-3 w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#1A1A1A', color: '#FFFFFF' }}>
+          {terrain ? '…' : 'Passer en mode terrain pour la réaliser'}
+        </button>
+      )}
       {erreur && <p className="text-xs mt-2" style={{ color: '#B85A50' }}>{erreur}</p>}
 
       {m.status !== 'cancelled' && m.status !== 'completed' && (

@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
 import Icon, { type IconName } from '@/components/Icon';
 import Logo from '@/components/Logo';
+import { passerEnModeTerrain } from '@/lib/prestataireApi';
+import { useFeedback } from '@/contexts/FeedbackContext';
 
 // Espace PRESTATAIRE (sous-traitant) : les missions qu'on lui confie, ses
 // agents, et ce qu'on lui doit.
@@ -20,6 +22,8 @@ export default function PrestataireNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { toast } = useFeedback();
+  const alerte = (m: string) => toast(m, 'error');
 
   async function handleLogout() { await logout(); router.push('/login'); }
 
@@ -28,6 +32,11 @@ export default function PrestataireNav() {
       <header className="flex items-center justify-between px-5 py-4 border-b sticky top-0 z-20" style={{ backgroundColor: '#FAFAF8', borderColor: '#E8E4DC' }}>
         <Logo size={28} />
         <div className="flex items-center gap-2">
+          {/* Il fait lui-même des missions : l'appli terrain, sur sa fiche. */}
+          <button onClick={async () => { const e = await passerEnModeTerrain(); if (e) alerte(e); }}
+            className="px-3 h-9 rounded-xl text-xs font-semibold shrink-0" style={{ backgroundColor: '#1A1A1A', color: '#FFFFFF' }}>
+            Mode terrain
+          </button>
           <NotificationBell />
           <span className="text-sm font-medium truncate max-w-28" style={{ color: '#1A1A1A' }}>{user?.name}</span>
           <button onClick={handleLogout} aria-label="Déconnexion"

@@ -18,6 +18,8 @@ export interface SessionUser {
   isActive?: boolean;
   /** Cleaner rattaché à un prestataire (sous-traitant) : hors équipe. */
   agent?: boolean;
+  /** Le prestataire lui-même, en mode terrain (cf. lib/agentPerso.ts) : il peut revenir à son espace. */
+  agentPerso?: boolean;
 }
 
 function secretKey(): Uint8Array {

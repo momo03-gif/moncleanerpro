@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
 import Icon, { type IconName } from '@/components/Icon';
 import Logo from '@/components/Logo';
+import { revenirEspacePrestataire } from '@/lib/prestataireApi';
+import { useFeedback } from '@/contexts/FeedbackContext';
 
 const navItems: { href: string; label: string; icon: IconName }[] = [
   { href: '/cleaner', label: "Aujourd'hui", icon: 'today' },
@@ -18,6 +20,7 @@ export default function CleanerNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { toast } = useFeedback();
 
   // Des actions (photos, fin de ménage…) attendent encore le réseau : on tente
   // de les envoyer ; s'il en reste, le cleaner décide — sinon elles seraient
@@ -45,6 +48,13 @@ export default function CleanerNav() {
         <Logo size={28} />
         <div className="flex items-center gap-2">
           <NotificationBell />
+          {/* Prestataire en mode terrain : retour à son espace, sans se reconnecter. */}
+          {user?.agentPerso && (
+            <button onClick={async () => { const e = await revenirEspacePrestataire(); if (e) toast(e, 'error'); }}
+              className="px-3 h-9 rounded-xl text-xs font-semibold shrink-0" style={{ backgroundColor: '#1A1A1A', color: '#FFFFFF' }}>
+              Espace prestataire
+            </button>
+          )}
           <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{user?.name?.split(' ')[0]}</span>
           <button onClick={handleLogout} aria-label="Déconnexion"
             className="w-9 h-9 flex items-center justify-center rounded-xl" style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>

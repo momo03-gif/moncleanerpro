@@ -17,6 +17,8 @@ export interface User {
   pendingStatus?: PendingStatus;
   /** Cleaner AGENT d'un prestataire (sous-traitant) : hors équipe, hors paie. */
   agent?: boolean;
+  /** Le prestataire lui-même, en mode terrain : bouton « Retour à mon espace prestataire ». */
+  agentPerso?: boolean;
 }
 
 export type MissionStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';

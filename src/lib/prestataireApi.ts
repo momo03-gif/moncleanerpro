@@ -31,6 +31,27 @@ export interface Prestataire {
   vigilance_ok?: boolean;
 }
 
+/** Le prestataire fait la mission lui-même : l'appli terrain, sur sa fiche personnelle. */
+export async function passerEnModeTerrain(): Promise<string | null> {
+  const r = await appelPrestataire<{ redirect: string }>('mode-terrain');
+  if (!r.ok) return r.error;
+  window.location.href = r.redirect;   // rechargement complet : nouvelle session
+  return null;
+}
+
+/** Depuis l'appli terrain, retour à l'espace prestataire. */
+export async function revenirEspacePrestataire(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/auth/retour-prestataire', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return String(data.error ?? 'Retour impossible.');
+    window.location.href = String(data.redirect ?? '/prestataire');
+    return null;
+  } catch {
+    return 'Connexion impossible. Réessayez.';
+  }
+}
+
 export interface Agent {
   id: string;
   user_id?: string;
