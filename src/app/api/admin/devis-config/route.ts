@@ -14,6 +14,13 @@ async function requireAdmin() {
   return session;
 }
 
+// GET → la configuration complète du simulateur, prix compris (admin uniquement).
+export async function GET() {
+  if (!await requireAdmin()) return NextResponse.json({ error: 'Réservé à l’administration.' }, { status: 403 });
+  const { getSimulatorConfigDB } = await import('@/lib/devisConfig');
+  return NextResponse.json({ config: await getSimulatorConfigDB(getSupabaseAdmin()) }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
 export async function POST(req: NextRequest) {
   if (!await requireAdmin()) {
     return NextResponse.json({ error: 'Réservé à l’administration.' }, { status: 403 });

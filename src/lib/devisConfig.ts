@@ -1,13 +1,13 @@
 // ── Configuration du simulateur de devis — accès données ──────────────────────
 //
-// Lecture seule côté navigateur : les quatre tables sont publiques en SELECT
-// (le simulateur est une page publique) mais fermées en écriture. L'admin
-// enregistre ses modifications par /api/admin/devis-config, qui vérifie la
-// session et écrit avec la clé de service.
+// Les quatre tables ne sont plus lisibles depuis le navigateur : la page
+// publique reçoit une config SANS prix et demande son chiffrage au serveur
+// (lib/devisEstimation.ts) ; l'écran admin lit et écrit par
+// /api/admin/devis-config (session admin vérifiée, clé de service).
 //
 // Le calcul lui-même est dans devisSimulator.ts (pur, testé).
 
-import { supabase } from './supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   SimulatorConfig, SurfaceTier, QuoteZone, QuoteOption, CapacityStep, BathroomStep, UrgencyLevel,
 } from './devisSimulator';
@@ -56,12 +56,23 @@ function rowToOption(r: Record<string, unknown>): QuoteOption {
  * vide : mieux vaut afficher « configuration en cours » qu'un simulateur qui
  * chiffrerait à zéro.
  */
-export async function getSimulatorConfigDB(): Promise<SimulatorConfig | null> {
+export async function getSimulatorConfigDB(db?: SupabaseClient): Promise<SimulatorConfig | null> {
+  // Navigateur (écran admin) : par la route réservée — les tables ne sont plus
+  // lisibles avec la clé publique. Serveur : `db` = client de service.
+  if (!db) {
+    try {
+      const res = await fetch('/api/admin/devis-config', { cache: 'no-store' });
+      if (!res.ok) return null;
+      return ((await res.json()).config ?? null) as SimulatorConfig | null;
+    } catch {
+      return null;
+    }
+  }
   const [tiersRes, zonesRes, optionsRes, settingsRes] = await Promise.all([
-    supabase.from('devis_surface_tiers').select('*').eq('active', true).order('max_m2'),
-    supabase.from('devis_zones').select('*').eq('active', true).order('position'),
-    supabase.from('devis_options').select('*').eq('active', true).order('position'),
-    supabase.from('devis_settings').select('*').eq('id', 1).maybeSingle(),
+    db.from('devis_surface_tiers').select('*').eq('active', true).order('max_m2'),
+    db.from('devis_zones').select('*').eq('active', true).order('position'),
+    db.from('devis_options').select('*').eq('active', true).order('position'),
+    db.from('devis_settings').select('*').eq('id', 1).maybeSingle(),
   ]);
 
   if (tiersRes.error) { console.error('getSimulatorConfigDB(tiers):', tiersRes.error.message); return null; }

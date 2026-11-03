@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { evaluerSpam } from '@/lib/spamScore';
+import { grilleTarifs, configSimulateur } from '@/lib/devisServeur';
+import { lignesSelection, lignesSimulation, etatSimulationValide, type Selection } from '@/lib/devisEstimation';
+import { computeQuote, type SimulatorState } from '@/lib/devisSimulator';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Demande de devis — route SERVEUR (service_role). Sert DEUX entrées :
@@ -29,8 +32,23 @@ export async function POST(req: Request) {
   const clientPhone = String(body?.clientPhone ?? '').trim();
   const clientAddress = String(body?.clientAddress ?? '').trim();
   const description = String(body?.description ?? '').trim();
-  const lines: Line[] = Array.isArray(body?.lines) ? (body.lines as Line[]) : [];
-  const total = Number(body?.total) || 0;
+  // Les LIGNES et le TOTAL se recalculent ici depuis la grille : le navigateur
+  // n'envoie que ce qui a été choisi (cases cochées, ou réglages du simulateur),
+  // il n'a plus les prix. `lines`/`total` bruts ne restent acceptés que pour une
+  // page encore ouverte sur l'ancienne version (brouillon revu par l'admin).
+  let lines: Line[] = Array.isArray(body?.lines) ? (body.lines as Line[]) : [];
+  let total = Number(body?.total) || 0;
+  if (body?.selection && typeof body.selection === 'object') {
+    lines = lignesSelection(await grilleTarifs(), body.selection as Selection);
+    total = Math.round(lines.reduce((t, l) => t + l.total, 0) * 100) / 100;
+  } else if (body?.simulation && typeof body.simulation === 'object') {
+    const cfg = await configSimulateur();
+    if (cfg) {
+      const q = computeQuote(cfg, etatSimulationValide(cfg, body.simulation as Partial<SimulatorState>));
+      lines = lignesSimulation(q);
+      total = q.total;
+    }
+  }
   // Origine de la demande. 'devis' = visiteur du site ; 'airbnb' = partenaire
   // connecté. `source` reste 'public' : la colonne n'accepte que admin|public
   // (contrainte CHECK) et le sens attendu côté admin est bien « à traiter ».

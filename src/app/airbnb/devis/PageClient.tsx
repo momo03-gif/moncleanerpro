@@ -2,8 +2,8 @@
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Espace partenaire — « Demander un devis ».
-//  Même moteur que la page publique (grille `tarifs` + agent d'estimation local
-//  via `@/lib/devisCatalog`), mais dans la charte de l'espace conciergerie et
+//  Même moteur que la page publique (catalogue sans prix + fourchette calculée
+//  par le serveur, cf. lib/devisEstimation.ts), mais dans la charte de l'espace conciergerie et
 //  SANS re-saisie d'identité : le partenaire est connecté, on connaît son nom,
 //  son email et ses logements.
 //  Sert les demandes qui sortent du ménage récurrent : maison en colocation,
@@ -16,8 +16,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTarifsDB, estimateFromDescription, type Tarif } from '@/lib/devis';
+import type { Tarif } from '@/lib/devis';
 import { buildCatalog, displayName, modeFor, type Item } from '@/lib/devisCatalog';
+import { chargerCatalogueDevis, reconnaitreDescription, useEstimation } from '@/lib/devisEstimationClient';
 import { getAirbnbsForPartner } from '@/lib/db';
 import type { Apartment } from '@/lib/types';
 import Icon from '@/components/Icon';
@@ -65,9 +66,9 @@ export default function PartnerDevisClient() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getTarifsDB(true), getAirbnbsForPartner(user.id)])
-      .then(([t, a]) => {
-        setTarifs(t); setApartments(a);
+    Promise.all([chargerCatalogueDevis(), getAirbnbsForPartner(user.id)])
+      .then(([c, a]) => {
+        setTarifs(c.tarifs); setApartments(a);
         setPhone(p => p || user.phone || '');
         // Deep-link ?logement=<id> (depuis la fiche logement) → bien pré-sélectionné.
         const id = new URLSearchParams(window.location.search).get('logement');
@@ -81,20 +82,8 @@ export default function PartnerDevisClient() {
   const catalog = useMemo(() => buildCatalog(tarifs), [tarifs]);
   const byName = useMemo(() => new Map(tarifs.map(t => [t.nom, t])), [tarifs]);
 
-  // ── Fourchette de la sélection ──
-  const totals = useMemo(() => {
-    let min = 0, max = 0; const quote: string[] = []; const incomplete: string[] = [];
-    for (const nom of Object.keys(sel)) {
-      const t = byName.get(nom); if (!t) continue;
-      const m = modeFor(t);
-      if (m === 'quote') { quote.push(nom); continue; }
-      const q = sel[nom].qty;
-      if (m === 'm2' && q <= 0) { incomplete.push(nom); continue; }
-      if (q <= 0) continue;
-      min += (t.prixMin ?? t.prix) * q; max += (t.prixMax ?? t.prix) * q;
-    }
-    return { min, max, quote, incomplete, count: Object.keys(sel).length };
-  }, [sel, byName]);
+  // ── Fourchette de la sélection : calculée par le serveur ──
+  const totals = useEstimation(tarifs, sel);
 
   function itemMode(nom: string) { const t = byName.get(nom); return t ? modeFor(t) : 'forfait'; }
   function toggle(nom: string, single: boolean, siblings: string[]) {
@@ -120,10 +109,10 @@ export default function PartnerDevisClient() {
     if (!desc.trim()) setDesc(seedDescription(a));
   }
 
-  // Agent local : description → prestations cochées.
-  function runAgent() {
+  // Agent (côté serveur) : description → prestations cochées.
+  async function runAgent() {
     setAgentMsg('');
-    const found = estimateFromDescription(desc, tarifs);
+    const found = await reconnaitreDescription(desc);
     if (found.length === 0) { setAgentMsg('Aucune prestation reconnue — parcourez les catégories ci-dessous.'); return; }
     setSel(s => {
       const n = { ...s };
@@ -138,16 +127,6 @@ export default function PartnerDevisClient() {
     setErr('');
     if (!phone.trim()) { setErr('Indiquez un téléphone : c’est par là que nous revenons vers vous.'); return; }
     const apt = apartments.find(x => x.id === aptId);
-    const lines = Object.keys(sel).map(nom => {
-      const t = byName.get(nom)!; const m = modeFor(t); const q = sel[nom].qty || (m === 'm2' ? 0 : 1);
-      const pu = t.prix > 0 ? t.prix : 0;
-      return {
-        nom: displayName(t) + (m === 'm2' && q > 0 ? ` (${num(q)} m²)` : ''),
-        quantite: Math.max(1, q || 1), prix_unitaire: pu,
-        total: Math.round(pu * (q || 1) * 100) / 100,
-      };
-    });
-    const total = lines.reduce((s, l) => s + l.total, 0);
     setBusy(true);
     try {
       const res = await fetch('/api/devis-request', {
@@ -163,7 +142,8 @@ export default function PartnerDevisClient() {
             desc, note,
             `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`,
           ].filter(Boolean).join(' — '),
-          lines, total,
+          // Le serveur recalcule lignes et total depuis la grille.
+          selection: sel,
           partnerType: 'airbnb',
           partnerLabel: user.name,
         }),
@@ -219,7 +199,7 @@ export default function PartnerDevisClient() {
         <PageTitle title="Votre estimation" subtitle={`${totals.count} prestation${totals.count > 1 ? 's' : ''} sélectionnée${totals.count > 1 ? 's' : ''}`} />
 
         <Card className="p-5 mb-4">
-          <SelectionLines sel={sel} byName={byName} onRemove={remove} showPrice />
+          <SelectionLines sel={sel} byName={byName} onRemove={remove} showPrice prix={totals.parNom} />
           <div className="mt-4 pt-4 border-t border-hairline flex items-baseline justify-between gap-3">
             <span className="text-xs text-muted">Estimation indicative</span>
             <strong className="text-xl font-bold text-gold-ink">{money(totals.min)} – {money(totals.max)}</strong>
@@ -371,9 +351,12 @@ export default function PartnerDevisClient() {
 
 // Lignes de la sélection. `showPrice` n'est activé qu'à l'écran d'estimation :
 // pendant la sélection, aucun montant n'est affiché.
-function SelectionLines({ sel, byName, onRemove, showPrice = false }: {
+function SelectionLines({ sel, byName, onRemove, showPrice = false, prix = {} }: {
   sel: Sel; byName: Map<string, Tarif>; onRemove: (n: string) => void; showPrice?: boolean;
+  /** Fourchette de chaque ligne, chiffrée par le serveur. */
+  prix?: Record<string, { min: number; max: number }>;
 }) {
+  const fourchette = (p?: { min: number; max: number }) => (p ? `${money(p.min)} – ${money(p.max)}` : '…');
   const names = Object.keys(sel);
   if (names.length === 0) return <p className="text-xs text-muted">Aucune prestation sélectionnée.</p>;
   return (
@@ -383,8 +366,8 @@ function SelectionLines({ sel, byName, onRemove, showPrice = false }: {
         const m = modeFor(t); const q = sel[nom].qty;
         let price = '', meta = '';
         if (m === 'quote') price = 'Sur devis';
-        else if (m === 'm2') { price = q > 0 ? `${money((t.prixMin ?? t.prix) * q)} – ${money((t.prixMax ?? t.prix) * q)}` : 'à préciser'; meta = q > 0 ? `${num(q)} m²` : 'surface à indiquer'; }
-        else { price = `${money((t.prixMin ?? t.prix) * q)} – ${money((t.prixMax ?? t.prix) * q)}`; meta = q > 1 ? `×${q}` : ''; }
+        else if (m === 'm2') { price = q > 0 ? fourchette(prix[nom]) : 'à préciser'; meta = q > 0 ? `${num(q)} m²` : 'surface à indiquer'; }
+        else { price = fourchette(prix[nom]); meta = q > 1 ? `×${q}` : ''; }
         return (
           <div key={nom} className="flex items-start justify-between gap-3 py-2.5">
             <div className="min-w-0 flex-1">

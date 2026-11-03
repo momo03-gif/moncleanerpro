@@ -13,8 +13,9 @@
 // quelques éléments propres au simulateur ont leur propre feuille, préfixée
 // `sim-`, injectée par le parent.
 
-import { useState, useMemo } from 'react';
-import { computeQuote, initialState, zoneForCommune, type SimulatorConfig, type SimulatorState } from '@/lib/devisSimulator';
+import { useState } from 'react';
+import { initialState, zoneForCommune, type SimulatorConfig, type SimulatorState } from '@/lib/devisSimulator';
+import { useSimulation } from '@/lib/devisEstimationClient';
 
 const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
 // Une fourchette s'écrit « 30 – 35 € » ; quand les deux bornes se rejoignent,
@@ -22,6 +23,8 @@ const money = (n: number) => Math.round(n).toLocaleString('fr-FR') + ' €';
 const range = (min: number, max: number) => (max > min ? `${money(min)} – ${money(max)}` : money(min));
 
 export interface SimulatorSubmission {
+  /** Les réglages : c'est d'eux que le serveur recalcule le devis enregistré. */
+  state: SimulatorState;
   lines: { nom: string; quantite: number; prix_unitaire: number; total: number }[];
   /** Bas de la fourchette — c'est lui qui sert de montant au devis enregistré. */
   total: number;
@@ -42,7 +45,9 @@ export default function AirbnbSimulator({ config, onContinue }: {
   const [state, setState] = useState<SimulatorState>(() => ({ ...initialState(config), urgencyId: null }));
   const [commune, setCommune] = useState('');
 
-  const quote = useMemo(() => computeQuote(config, state), [config, state]);
+  // Le chiffrage se demande au serveur : `config` ne porte que de quoi afficher
+  // (bornes, zones, libellés), jamais la grille (cf. lib/devisEstimation.ts).
+  const quote = useSimulation(state);
   const zone = config.zones.find(z => z.id === state.zoneId);
 
   // Ce que le prix du palier comprend déjà : le visiteur doit le savoir AVANT de
@@ -83,6 +88,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
     ].filter(Boolean).join(' · ');
 
     onContinue({
+      state,
       lines: quote.lines.map(l => ({
         nom: l.label + (l.amountMax && l.amountMax > l.amount ? ` (${money(l.amount)} à ${money(l.amountMax)})` : ''),
         quantite: 1, prix_unitaire: l.amount, total: l.amount,
@@ -111,7 +117,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
           style={{ ['--pct' as string]: `${((state.surface - config.minM2) / Math.max(1, config.maxM2 - config.minM2)) * 100}%` }}
           onChange={e => set('surface', parseInt(e.target.value, 10))} />
         <p className="sim-hint">
-          {quote.tier ? `${quote.tier.label}${quote.tier.capText ? ` · capacité indicative ${quote.tier.capText}` : ''}` : 'Surface hors grille'}
+          {quote.tier ? `${quote.tier.label}${quote.tier.capText ? ` · capacité indicative ${quote.tier.capText}` : ''}` : quote.enCours ? 'Calcul…' : 'Surface hors grille'}
         </p>
       </div>
 
@@ -198,7 +204,7 @@ export default function AirbnbSimulator({ config, onContinue }: {
           confirmé avant toute intervention.
         </p>
 
-        <button className="dv-btn dv-btn-primary dv-block" onClick={submit}>
+        <button className="dv-btn dv-btn-primary dv-block" onClick={submit} disabled={quote.enCours}>
           Continuer ma demande
         </button>
       </div>

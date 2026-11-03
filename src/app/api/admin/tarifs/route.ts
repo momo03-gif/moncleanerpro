@@ -7,7 +7,8 @@ export const runtime = 'nodejs';
 // Écriture de la grille de prestations (`tarifs`). Elle était modifiable avec la
 // clé publique, celle qui part dans le navigateur : n'importe qui pouvait changer
 // les prix du site. Tout passe désormais par ici, après vérification de la
-// session admin. La lecture, elle, reste publique — la page de devis en a besoin.
+// session admin. La LECTURE aussi est réservée à l'admin (GET) : les pages de
+// devis n'ont plus la grille, le serveur chiffre pour elles (lib/devisEstimation.ts).
 
 interface TarifInput {
   id?: string;
@@ -32,6 +33,17 @@ function toRow(t: TarifInput): Record<string, unknown> {
   if (t.categorie !== undefined) row.categorie = t.categorie || null;
   if (t.actif !== undefined) row.actif = t.actif;
   return row;
+}
+
+// GET ?actifs=1 → la grille complète, prix compris (admin uniquement).
+export async function GET(req: NextRequest) {
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') return NextResponse.json({ error: 'Réservé à l’administration.' }, { status: 403 });
+  let q = getSupabaseAdmin().from('tarifs').select('*').order('created_at');
+  if (new URL(req.url).searchParams.get('actifs') === '1') q = q.eq('actif', true);
+  const { data, error } = await q;
+  if (error) { console.error('admin/tarifs GET:', error.message); return NextResponse.json({ error: 'Lecture impossible.' }, { status: 500 }); }
+  return NextResponse.json({ data: data ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: NextRequest) {

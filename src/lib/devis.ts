@@ -1,4 +1,3 @@
-import { supabase } from './supabase';
 import { saveInvoiceDB } from './db';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -32,7 +31,7 @@ export interface Devis {
   previousLines?: DevisLine[]; previousTotal?: number;
 }
 
-const toTarif = (r: any): Tarif => ({
+export const toTarif = (r: any): Tarif => ({
   id: r.id, nom: r.nom_prestation, unite: r.unite, prix: Number(r.prix_unitaire) || 0, actif: !!r.actif,
   motsCles: r.mots_cles ?? undefined,
   prixMin: r.prix_min != null ? Number(r.prix_min) : null,
@@ -53,12 +52,18 @@ const toDevis = (r: any): Devis => ({
 });
 
 // ── TARIFS ────────────────────────────────────────────────────────────────────
+// Grille complète, prix compris : ÉCRANS ADMIN seulement (route réservée).
+// Les pages de devis passent par lib/devisEstimationClient.ts, sans les prix.
 export async function getTarifsDB(activeOnly = false): Promise<Tarif[]> {
-  let q = supabase.from('tarifs').select('*').order('created_at');
-  if (activeOnly) q = q.eq('actif', true);
-  const { data, error } = await q;
-  if (error) { console.error('getTarifsDB:', error.code, error.message); return []; }
-  return (data ?? []).map(toTarif);
+  try {
+    const res = await fetch(`/api/admin/tarifs${activeOnly ? '?actifs=1' : ''}`, { cache: 'no-store' });
+    if (!res.ok) { console.error('getTarifsDB:', res.status); return []; }
+    const { data } = await res.json();
+    return (Array.isArray(data) ? data : []).map(toTarif);
+  } catch (e) {
+    console.error('getTarifsDB:', e);
+    return [];
+  }
 }
 // L'ÉCRITURE de la grille passe par /api/admin/tarifs (session admin vérifiée,
 // service_role). Elle se faisait avec la clé publique : n'importe qui pouvait
