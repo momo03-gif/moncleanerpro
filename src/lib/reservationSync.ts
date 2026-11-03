@@ -358,8 +358,9 @@ export async function syncFeed(feed: {
   }
 }
 
-// FIX #3 — réservation annulée. Mission auto non assignée → on l'annule (pas de
-// ménage fantôme). Mission déjà assignée à un cleaner → on n'y touche pas mais on
+// FIX #3 — réservation annulée. Mission auto non assignée → on la supprime (pas de
+// ménage fantôme, ni de carte « annulée » dans le planning ; recréée si la
+// réservation est reconfirmée). Mission déjà assignée à un cleaner → on n'y touche pas mais on
 // ALERTE l'admin (sinon le cleaner se déplace pour rien).
 async function handleCancelledReservationMission(missionId: string) {
   const db = getSupabaseAdmin();
@@ -383,12 +384,30 @@ async function handleCancelledReservationMission(missionId: string) {
     .select('status, auto_synced, cleaner_name, prestataire_id, date_from, airbnbs(name)').eq('id', missionId).single();
   if (!m || !m.auto_synced) return;
   if (m.status === 'pending') {
-    await db.from('missions').update({ status: 'cancelled' }).eq('id', missionId);
-    // Confiée à un prestataire (agent pas encore choisi) : il doit le savoir.
+    // Confiée à un prestataire (agent pas encore choisi) : il doit le savoir —
+    // AVANT la suppression, qui emporte le contexte de la mission.
     if (m.prestataire_id) {
-      const place = (m as any).airbnbs?.name ?? 'un logement';
+      const place = (m.airbnbs as { name?: string } | null)?.name ?? 'un logement';
       await notifyPrestataireSync(missionId, 'Mission annulée',
         `La réservation de ${place} a été annulée : la mission du ${fmtDateFr(m.date_from as string)} n'aura pas lieu.`);
+    }
+    // Ménage pas encore assigné d'une réservation annulée : on le SUPPRIME (pas
+    // de carte « annulée » qui encombre le planning). Les réservations liées
+    // sont détachées en effaçant aussi mission_created_at : si la réservation
+    // est reconfirmée, l'étape 2 lui recrée un ménage (une suppression À LA
+    // MAIN, elle, garde cette date et n'est pas recréée — cf. materializeMissions).
+    const { data: liees } = await db.from('reservations').select('id').eq('mission_id', missionId);
+    // Garde : toujours non assignée au moment de supprimer.
+    const { data: supprimee, error: errSup } = await db.from('missions')
+      .delete().eq('id', missionId).eq('status', 'pending').select('id');
+    if (errSup) {
+      console.error('suppression ménage annulé:', errSup.message);
+      await db.from('missions').update({ status: 'cancelled' }).eq('id', missionId).eq('status', 'pending');
+      return;
+    }
+    // La clé étrangère a déjà effacé mission_id ; on efface aussi la date.
+    if (supprimee?.length && liees?.length) {
+      await db.from('reservations').update({ mission_created_at: null }).in('id', liees.map(x => x.id as string));
     }
   } else if (m.status !== 'cancelled' && m.status !== 'done') {
     const place = (m as any).airbnbs?.name ?? 'un logement';
@@ -493,11 +512,17 @@ export async function materializeMissions(): Promise<MaterializeResult> {
   // flux Booking. Les doublons d'une même date sont fusionnés plus bas, et la
   // mission naît en `pending` : le faux positif se referme d'un clic, le ménage
   // manqué se découvre par un voyageur devant un logement sale.
+  //
+  // `mission_created_at` renseigné SANS `mission_id` = ce départ a eu un ménage,
+  // supprimé à la main depuis (la clé étrangère s'efface, pas la date). On ne le
+  // recrée pas en douce : « Forcer le ménage » le remet si c'était une erreur.
+  // (Un départ repoussé, lui, efface les deux — cf. applyReservationDateChange.)
   const { data: toutesDepartures } = await db
     .from('reservations')
     .select('id, feed_id, airbnb_id, partner_id, platform, status, check_in, check_out, check_out_time')
     .or(FILTRE_OCCUPATION)
     .is('mission_id', null)
+    .is('mission_created_at', null)
     .gte('check_out', today)
     .lte('check_out', horizon)
     .order('check_out');
@@ -776,8 +801,9 @@ export async function forcerMenagePourReservation(
   if (!r) return { ok: false, error: 'Réservation introuvable.' };
   if (r.mission_id) return { ok: false, error: 'Un ménage est déjà rattaché à cette réservation.' };
 
+  // Forcer = vouloir CE ménage, même si un précédent avait été supprimé.
   const { error } = await db.from('reservations')
-    .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+    .update({ status: 'confirmed', mission_created_at: null, updated_at: new Date().toISOString() })
     .eq('id', reservationId);
   if (error) return { ok: false, error: error.message };
 

@@ -128,7 +128,13 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
 
   async function handleDelete() {
     if (!user) return;
-    const ok = await confirm({ title: 'Supprimer cette mission ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', danger: true });
+    const ok = await confirm({
+      title: 'Supprimer cette mission ?',
+      message: mission.autoSynced
+        ? 'Cette action est définitive. La synchronisation ne recréera pas ce ménage ; pour le remettre : Réservations › Forcer le ménage.'
+        : 'Cette action est définitive.',
+      confirmLabel: 'Supprimer', danger: true,
+    });
     if (!ok) return;
     setBusy(true); setActionError('');
     const res = await deleteMissionDB(mission.id, { id: user.id, role: 'admin' });
