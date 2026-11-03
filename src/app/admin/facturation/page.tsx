@@ -88,12 +88,26 @@ export default function FacturationPage() {
   const [savingCompany, setSavingCompany] = useState(false);
 
   async function loadAll() {
-    const { getMissionsDB, getCompanyInfoDB, getInvoicesDB, getPartnerAccountsDB } = await loadDb();
-    const [m, c, inv, acc] = await Promise.all([getMissionsDB(), getCompanyInfoDB(), getInvoicesDB(), getPartnerAccountsDB()]);
-    setMissions(m); setCompany(c); setCompanyForm(c); setInvoices(inv); setAccounts(acc);
+    const { getCompanyInfoDB, getInvoicesDB, getPartnerAccountsDB } = await loadDb();
+    const [c, inv, acc] = await Promise.all([getCompanyInfoDB(), getInvoicesDB(), getPartnerAccountsDB()]);
+    setCompany(c); setCompanyForm(c); setInvoices(inv); setAccounts(acc);
     setLoading(false);
   }
   useEffect(() => { loadAll(); }, []);
+
+  // Les missions : seulement depuis le début de la période, pas tout l'historique.
+  // On ne recharge que si la période recule avant ce qui est déjà en mémoire.
+  const [missionsDepuis, setMissionsDepuis] = useState<string | null>(null);
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || (missionsDepuis && from >= missionsDepuis)) return;
+    let annule = false;
+    (async () => {
+      const { getMissionsDB } = await loadDb();
+      const m = await getMissionsDB(from);
+      if (!annule) { setMissions(m); setMissionsDepuis(from); }
+    })();
+    return () => { annule = true; };
+  }, [from, missionsDepuis]);
 
   // Les livraisons ne sont JAMAIS facturées au client : elles sont à la charge de
   // l'entreprise. On facture les ménages (y compris un éventuel legacy « ménage +
@@ -287,7 +301,7 @@ export default function FacturationPage() {
     setSavingCompany(false);
   }
 
-  if (loading) return <Loading className="p-6 text-sm" />;
+  if (loading || missionsDepuis === null) return <Loading className="p-6 text-sm" />;
 
   const COMPANY_FIELDS: { label: string; key: keyof CompanyInfo; placeholder: string }[] = [
     { label: 'Nom / Raison sociale', key: 'name', placeholder: 'MonCleanerPro SARL' },
