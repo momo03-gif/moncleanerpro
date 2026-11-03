@@ -100,19 +100,17 @@ export async function POST(req: Request) {
   // 5) Canaux de notification : plus aucun message ne doit partir vers cet
   //    appareil ou cette adresse.
   await db.from('push_subscriptions').delete().eq('user_id', row.id);
-  try { await db.from('native_push_tokens').delete().eq('user_id', row.id); } catch { /* migration non passée */ }
+  await db.from('native_push_tokens').delete().eq('user_id', row.id);
   await db.from('notifications').delete().eq('user_id', row.id);
 
   // 6) Preuve de traitement (sans donnée personnelle) : exigée en cas de
   //    réclamation RGPD comme en cas de contrôle Apple/Google.
-  try {
-    await db.from('account_deletions').insert({
-      user_id: row.id,
-      role: row.role,
-      reason: (b.reason ?? '').slice(0, 500) || null,
-      requested_from: b.from ?? 'web',
-    });
-  } catch { /* migration non passée */ }
+  await db.from('account_deletions').insert({
+    user_id: row.id,
+    role: row.role,
+    reason: (b.reason ?? '').slice(0, 500) || null,
+    requested_from: b.from ?? 'web',
+  });
 
   await deleteSession();
   return NextResponse.json({ ok: true });

@@ -134,7 +134,6 @@ export async function POST(req: NextRequest) {
       const deliveryRate = Number(cleaner.delivery_rate) || 0;
 
       for (const id of ids) {
-        // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
         const { data: m } = await db.from('missions')
           .select('*, airbnbs(estimated_cleaning_minutes)')
           .eq('id', id).maybeSingle();

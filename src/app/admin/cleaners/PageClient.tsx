@@ -9,7 +9,7 @@ import { capabilitiesLabel, estAuTemps } from '@/lib/service';
 import { apercuTransfert, refusTransfert } from '@/lib/reassign';
 import { getIncidentsForCleanerDB, createIncidentDB, deleteIncidentDB, INCIDENT_LABEL, type RhIncident, type RhIncidentType } from '@/lib/rhApi';
 import { inputStyle } from '@/lib/ui';
-import { currentMonth } from '@/lib/mockData';
+import { moisParis } from '@/lib/dateParis';
 import { formatDuration, money } from '@/lib/format';
 import Icon from '@/components/Icon';
 import Loading from "@/components/Loading";
@@ -46,7 +46,7 @@ export default function CleanersPage() {
   const [transfertVers, setTransfertVers] = useState('');
   const [transfertEnCours, setTransfertEnCours] = useState(false);
 
-  const month = currentMonth();
+  const month = moisParis();
 
   const load = useCallback(async () => {
     // 90 jours + le futur : le mois en cours (heures, paie), les missions à venir

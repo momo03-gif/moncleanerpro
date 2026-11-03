@@ -225,21 +225,16 @@ export async function getBillingProfileDB(userId?: string, kind?: 'hotel' | 'air
   catch { return null; }
 }
 
-/**
- * `addressSkipped` vaut true tant que migration_partner_billing.sql n'a pas été
- * exécutée : le reste de la fiche est enregistré, l'adresse non. On le remonte
- * pour le dire au partenaire plutôt que de lui laisser croire que c'est passé.
- */
 export async function saveBillingProfileDB(
   fields: {
     name: string; email: string; phone: string; address: string;
     siret?: string; tvaIntracom?: string;
     userId?: string; kind?: 'hotel' | 'airbnb';
   },
-): Promise<{ error: string | null; addressSkipped?: boolean; colonnesIgnorees?: string[] }> {
+): Promise<{ error: string | null }> {
   try {
-    const d = await postServer('/api/partners', { op: 'updateBilling', ...fields });
-    return { error: null, addressSkipped: !!d?.addressSkipped, colonnesIgnorees: d?.colonnesIgnorees ?? [] };
+    await postServer('/api/partners', { op: 'updateBilling', ...fields });
+    return { error: null };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Enregistrement impossible.' };
   }

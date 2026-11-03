@@ -7,7 +7,7 @@ import { getProfitConfigDB, saveProfitConfigDB, computeApartmentProfitability, r
 import { geocodeAddress } from '@/lib/zones';
 import type { Mission, Apartment, ProfitConfig } from '@/lib/types';
 import { formatDuration } from '@/lib/format';
-import { currentMonth } from '@/lib/mockData';
+import { moisParis } from '@/lib/dateParis';
 import Loading from '@/components/Loading';
 
 const eur = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
@@ -54,7 +54,7 @@ export default function ProfitabilityPanel() {
 
   if (loading || !config || !form) return <Loading className="text-sm" />;
 
-  const month = currentMonth();
+  const month = moisParis();
   const completed = missions.filter(m => m.status === 'completed' && (period === 'all' || m.date.startsWith(month)));
   const rows = computeApartmentProfitability({ missions: completed, apartments, parkingByMission, config, cleaners });
 

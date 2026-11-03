@@ -41,8 +41,8 @@ async function tracer(
       note: champs.note ?? null,
     });
   } catch (e) {
-    // La table n'existe pas encore (migration non jouée) : on ne fait pas
-    // échouer la réception pour autant — le séjour compte plus que sa trace.
+    // On ne fait pas échouer la réception pour une trace : le séjour compte
+    // plus que sa trace.
     console.warn('webhook: trace impossible', (e as Error)?.message);
   }
 }

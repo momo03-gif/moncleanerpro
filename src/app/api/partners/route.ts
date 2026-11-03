@@ -69,9 +69,8 @@ async function ownsHotel(db: SupabaseClient, hotelId: string, sessionUserId: str
 // Statut EFFECTIF d'une demande hôtel, dérivé de ses missions liées
 // (colonne missions.request_id). Une demande « acceptée » (validated) passe à
 // « en cours » dès qu'une mission démarre, et à « terminée » quand TOUTES ses
-// missions sont terminées. Mute `row.status` sur place. Robuste : si la colonne
-// request_id n'existe pas encore (migration non lancée) ou s'il n'y a pas de
-// mission liée, on conserve le statut stocké.
+// missions sont terminées. Mute `row.status` sur place. Sans mission liée (ou
+// si la lecture échoue), on conserve le statut stocké.
 async function applyEffectiveStatus(db: SupabaseClient, rows: { id: string; status: string }[]): Promise<void> {
   const validatedIds = rows.filter(r => r.status === 'validated').map(r => r.id);
   if (validatedIds.length === 0) return;
@@ -367,28 +366,9 @@ export async function POST(req: Request) {
           tva_intracom: tva || null,
         };
 
-        // Une colonne peut manquer tant que sa migration n'est pas passée
-        // (`address` → migration_partner_billing, `siret`/`tva_intracom` →
-        // migration_profil_partenaire). Plutôt que de perdre TOUTE la saisie du
-        // client, on retire la colonne que Postgres signale et on réessaie, puis
-        // on lui dit précisément ce qui n'a pas été enregistré.
-        const ignorees: string[] = [];
-        let error: { message: string } | null = null;
-        for (let essai = 0; essai < 4; essai++) {
-          ({ error } = await db.from(table).update(patch).eq('user_id', target));
-          if (!error) break;
-          const manquante = Object.keys(patch).find(
-            c => c !== 'hotel_name' && c !== 'partner_name' && error!.message.includes(c));
-          if (!manquante) break;
-          delete patch[manquante];
-          ignorees.push(manquante);
-        }
+        const { error } = await db.from(table).update(patch).eq('user_id', target);
         if (error) throw error;
-        return NextResponse.json({
-          ok: true,
-          addressSkipped: ignorees.includes('address'),
-          colonnesIgnorees: ignorees,
-        });
+        return NextResponse.json({ ok: true });
       }
       case 'refuseAirbnbPartner': {
         if (!isAdmin) return adminOnly();

@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       }
       const { error } = await db.from('airbnbs')
         .update(pid ? { prestataire_id: pid, cleaner_id: null } : { prestataire_id: null }).eq('id', b.id);
-      if (error) { console.error('airbnbs/assign-prestataire:', error.message); return refus('Enregistrement impossible (migration_prestataire_attitre.sql exécutée ?).', 500); }
+      if (error) { console.error('airbnbs/assign-prestataire:', error.message); return refus('Enregistrement impossible.', 500); }
       if (!pid) return NextResponse.json({ ok: true, count: 0 });
       // Les ménages déjà prévus sur ce logement, encore attribués à personne.
       const { data: aVenir } = await db.from('missions').select('id')

@@ -200,16 +200,11 @@ export const PMS_LIST: PmsDefinition[] = [
     kind: 'pms',
     hosts: [/(^|\.)superhote\.com$/i],
     icalHelp: 'Superhote → Logement → Synchronisation → lien iCal.',
-    // ÉTABLI le 01/10/2026 en lisant le bundle public de leur application.
-    // Leur API applicative (`/rentals`, `/bookings`) s'authentifie par un JETON
-    // DE CONNEXION : aucune clé client ne l'ouvre, inutile de réessayer.
-    // Mais deux endpoints suffisent, et ils sont ouverts :
-    //   · `get-availabilities` accepte la « SH apiKey » et rend les logements ;
-    //   · `get-not-available-dates` est PUBLIC et rend leurs périodes occupées.
-    // Le connecteur n'a donc besoin que de la SH apiKey.
+    // API V2 publique (connect.superhote.com) : un jeton en lecture seule créé
+    // par le client. L'ancienne « SH apiKey » n'est plus prise (cf. pms/superhote.ts).
     api: {
-      fields: [{ name: 'apiKey', label: 'SH apiKey' }],
-      help: 'SuperHote → Paramètres Utilisateur → SH apiKey.',
+      fields: [{ name: 'apiKey', label: 'Jeton API (12345|…)' }],
+      help: 'SuperHote → Plateformes → API → Créer un token (lecture des logements et des réservations).',
       verified: false,
     },
   },

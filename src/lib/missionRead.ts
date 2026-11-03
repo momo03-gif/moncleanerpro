@@ -193,16 +193,12 @@ export async function lirePourSession(
       if (!admin && session.role !== 'cleaner') return null;
       // Les agents d'un prestataire ne reçoivent que ce que leur prestataire leur donne.
       if (!admin && (await ficheCleaner(db, session.id))?.agent) return [];
-      const lire = (sansConfiees: boolean) => {
-        let q = db.from('missions').select(MISSION_SELECT).eq('status', 'pending').is('pending_cleaner_id', null)
-          // Une intervention (artisan) se confie, elle ne se propose pas à l'équipe.
-          .or('service.is.null,service.neq.repair');
+      const { data, error } = await db.from('missions').select(MISSION_SELECT).eq('status', 'pending').is('pending_cleaner_id', null)
+        // Une intervention (artisan) se confie, elle ne se propose pas à l'équipe.
+        .or('service.is.null,service.neq.repair')
         // Une mission confiée à un prestataire n'est plus proposée à l'équipe.
-        if (sansConfiees) q = q.is('prestataire_id', null);
-        return q.order('date_from');
-      };
-      let { data, error } = await lire(true);
-      if (error) ({ data, error } = await lire(false));   // base pas encore migrée
+        .is('prestataire_id', null)
+        .order('date_from');
       if (error) throw new Error(error.message);
       return admin ? (data ?? []) : pourCleaner(data ?? []);
     }

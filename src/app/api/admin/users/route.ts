@@ -119,9 +119,8 @@ export async function POST(req: Request) {
           user_id: user.id, partner_name: b.name, email, phone: b.phone ?? null, status_account: 'approved',
         });
         if (pErr) return NextResponse.json({ error: pErr.message }, { status: 400 });
-        // Adresse de facturation : écrite à part et sans bloquer. Si la colonne
-        // n'existe pas encore, le compte est créé quand même et l'adresse se
-        // renseigne depuis /airbnb/profil une fois la migration passée.
+        // Adresse de facturation : écrite à part et sans bloquer — au pire, elle
+        // se renseigne ensuite depuis /airbnb/profil.
         if (b.address) {
           const { error: aErr } = await db.from('airbnb_partners').update({ address: b.address }).eq('user_id', user.id);
           if (aErr) console.warn('createAirbnbAccount address:', aErr.message);

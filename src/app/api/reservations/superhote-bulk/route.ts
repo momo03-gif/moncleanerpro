@@ -14,10 +14,8 @@ export const runtime = 'nodejs';
 // c'est l'exploitant qui le fait, parce que la conciergerie ne sait pas aller
 // chercher ses identifiants. Autant lui montrer la liste et lui laisser cocher.
 //
-// SuperHote ne rend pas le NOM de ses logements : seulement des numéros. On
-// joint donc à chacun sa prochaine période occupée, qui est ce qui permet de le
-// reconnaître — « celui qui est pris du 12 au 15 », c'est identifiable ; un
-// numéro seul ne l'est pas.
+// On joint à chaque logement sa prochaine période occupée : « celui qui est pris
+// du 12 au 15 » se reconnaît mieux qu'un nom approximatif.
 //
 // Body JSON : { action: 'lister' | 'connecter', partnerId, apiKey, choix? }
 export async function POST(req: NextRequest) {
@@ -59,10 +57,8 @@ export async function POST(req: NextRequest) {
       for (const l of logements) {
         let prochaine: string | null = null;
         // Un logement sans aucun séjour à venir sur quatre mois ne tourne pas.
-        // Sur un vrai compte, 39 biens sur 75 sont dans ce cas — SuperHote les
-        // marque par un blocage « 2010-01-01 → aujourd'hui », que le connecteur
-        // écarte déjà. Les signaler évite de chercher les siens parmi des
-        // logements qui n'existent plus que dans leur base.
+        // Les signaler évite de chercher les siens parmi des logements qui
+        // n'existent plus que dans leur base.
         let inactif = true;
         try {
           const sejours = await fetchSuperhoteReservations({ apiKey }, l.id, { from: aujourdhui, to: horizon });

@@ -84,8 +84,8 @@ export async function POST(req: Request) {
     }
   }
   if (u.role === 'cleaner') {
-    // Agent d'un prestataire : best-effort (sans la migration, la colonne
-    // n'existe pas et la requête échoue — le cleaner reste un cleaner).
+    // Agent d'un prestataire : best-effort (si la lecture échoue, le cleaner
+    // reste un cleaner).
     const { data: c } = await db.from('cleaners').select('prestataire_id, prestataires(status)')
       .eq('user_id', u.id).maybeSingle();
     if (c?.prestataire_id) {

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMissionsForCleanerDB, getCleanerByUserId, updateCleanerStatusDB, updateCleanerAvailableDaysDB, updateCleanerLicensePlateDB } from '@/lib/db';
 import type { Mission } from '@/lib/types';
-import { currentMonth } from '@/lib/mockData';
+import { moisParis } from '@/lib/dateParis';
 import { serviceParts } from '@/lib/service';
 import { formatDuration } from '@/lib/format';
 import Icon from '@/components/Icon';
@@ -64,7 +64,7 @@ export default function CleanerProfil() {
   if (!user) return null;
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;
 
-  const month = currentMonth();
+  const month = moisParis();
   const completed = missions.filter(m => m.status === 'completed');
   // Heures à payer ce mois = somme des durées (temps accordé, ajustements admin inclus)
   // des ménages terminés du mois. Les livraisons (payées au forfait) sont comptées à part.

@@ -75,10 +75,7 @@ describe('Registre des logiciels de gestion', () => {
       const api = findPms(id)!.api;
       expect(api !== false && api.verified).toBe(false);
     }
-    // SuperHote : son API applicative est fermée (jeton de connexion), mais
-    // `get-availabilities` accepte la clé du client et `get-not-available-dates`
-    // est public — de quoi lister les logements et lire leurs périodes
-    // occupées. Marqué non confirmé tant qu'un compte n'a pas tourné.
+    // SuperHote : API V2 par jeton client. Toujours marquée non confirmée.
     expect(supportsApi('superhote')).toBe(true);
     const sh = findPms('superhote')!.api;
     expect(sh !== false && sh.verified).toBe(false);

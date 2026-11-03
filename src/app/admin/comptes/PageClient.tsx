@@ -13,7 +13,7 @@ import { addDaysStr } from '@/lib/dateRange';
 import type { Mission, Apartment } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
 import { generatePassword, buildAccessMessage, copyToClipboard, APP_LOGIN_URL } from '@/lib/partnerAccess';
-import { currentMonth } from '@/lib/mockData';
+import { moisParis } from '@/lib/dateParis';
 import Link from 'next/link';
 import { appelPrestataire } from '@/lib/prestataireApi';
 import Icon from '@/components/Icon';
@@ -65,7 +65,7 @@ export default function ComptesPage() {
     setLoading(false);
   }
 
-  const month = currentMonth();
+  const month = moisParis();
   // Heures RÉALISÉES (missions terminées) pour un hôtel, ce mois — base de la facturation.
   function hotelHoursThisMonth(hotelName: string): number {
     const mins = missions

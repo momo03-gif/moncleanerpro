@@ -72,15 +72,13 @@ interface PropertyGroup {
 let groupCache: Map<string, PropertyGroup> | null = null;
 
 // Construit la table « id de logement → groupe ». Renvoie une table VIDE si la
-// colonne n'existe pas encore (migration non jouée) : aucun regroupement, donc
-// aucun changement de comportement.
+// lecture échoue : aucun regroupement, la synchro continue.
 async function loadPropertyGroups(): Promise<Map<string, PropertyGroup>> {
   if (groupCache) return groupCache;
   const db = getSupabaseAdmin();
   const map = new Map<string, PropertyGroup>();
   const { data, error } = await db.from('airbnbs').select('id, name, parent_airbnb_id');
   if (error) {
-    // Colonne absente (42703) → on log une fois et on continue sans regroupement.
     console.warn('loadPropertyGroups (regroupement desactive):', error.message);
     groupCache = map;
     return map;
@@ -128,8 +126,8 @@ async function fetchFromIcal(icalUrl: string | null): Promise<ICalEvent[]> {
  * redemandé sans cesse. Or Guesty n'en délivre que quelques-uns par 24 h et par
  * application — on couperait au client l'accès à son propre compte.
  *
- * Si les colonnes n'existent pas encore (migration_pms_token.sql non jouée), on
- * retombe silencieusement sur la mémoire : ça marche, c'est juste moins économe.
+ * Si la base ne répond pas, on retombe sur la mémoire : ça marche, c'est juste
+ * moins économe.
  */
 function feedTokenStore(feedId: string): TokenStore {
   const db = getSupabaseAdmin();
@@ -144,7 +142,7 @@ function feedTokenStore(feedId: string): TokenStore {
       const { error } = await db.from('reservation_feeds').update({
         api_token: token, api_token_expires_at: new Date(expiresAt).toISOString(),
       }).eq('id', feedId);
-      // Colonne absente : on garde au moins le jeton pour cette exécution.
+      // Écriture refusée : on garde au moins le jeton pour cette exécution.
       if (error) await memoryTokenStore.set(feedId, token, expiresAt);
     },
   };
@@ -197,28 +195,11 @@ const PMS_FETCHERS: Record<string, PmsFetcher> = {
   ),
 };
 
-// ── Contact du voyageur : colonnes optionnelles ───────────────────────────────
-// `guest_phone`, `guest_phone_last4` et `reservation_url` n'existent qu'une fois
-// migration_contact_terrain.sql jouée. Tant qu'elle ne l'est pas, la synchro doit
-// continuer à tourner — sans contact, mais sans casser. On le détecte une seule
-// fois (42703 : colonne inconnue) et on n'insiste plus de l'exécution.
-let guestContactColumns = true;
-const GUEST_CONTACT_FIELDS = ['guest_phone', 'guest_phone_last4', 'reservation_url'];
-
 async function upsertReservation(
   db: ReturnType<typeof getSupabaseAdmin>,
   row: Record<string, unknown>,
 ): Promise<{ error: { message: string } | null }> {
-  if (guestContactColumns) {
-    const { error } = await db.from('reservations').upsert(row, { onConflict: 'feed_id,external_uid' });
-    if (!error) return { error: null };
-    if (error.code !== '42703') return { error };
-    console.warn('Contact voyageur ignoré : migration_contact_terrain.sql pas encore jouée.');
-    guestContactColumns = false;
-  }
-  const stripped = { ...row };
-  for (const f of GUEST_CONTACT_FIELDS) delete stripped[f];
-  const { error } = await db.from('reservations').upsert(stripped, { onConflict: 'feed_id,external_uid' });
+  const { error } = await db.from('reservations').upsert(row, { onConflict: 'feed_id,external_uid' });
   return { error };
 }
 
@@ -710,8 +691,7 @@ export async function materializeMissions(): Promise<MaterializeResult> {
       .limit(1);
     const next = nextRes?.[0];
 
-    // `covered_units` / `whole_property` n'existent qu'une fois la migration jouée.
-    // On ne les envoie donc que pour un bien groupé — preuve que la colonne existe.
+    // Bien groupé seulement : quelles chambres ce ménage couvre.
     // `covered_unit_names` porte la liste brute des chambres (toutes si la maison
     // entière est à faire) : elle sert au rapport de fin de mission pour demander
     // au cleaner DANS QUELLE chambre il a constaté un dégât ou trouvé un objet.

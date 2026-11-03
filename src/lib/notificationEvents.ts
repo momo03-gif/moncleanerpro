@@ -67,7 +67,6 @@ interface MissionContext {
 async function loadMissionContext(missionId: string): Promise<MissionContext | null> {
   const { data, error } = await db()
     .from('missions')
-    // `*` plutôt qu'une liste : tolère une base pas encore migrée (prestataire_id).
     .select('*, airbnbs(name)')
     .eq('id', missionId)
     .single();

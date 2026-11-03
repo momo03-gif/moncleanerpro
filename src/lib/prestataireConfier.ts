@@ -133,7 +133,7 @@ export async function confierAuPrestataireAttitre(db: SupabaseClient, missionIds
     const { data: lignes, error } = await db.from('missions')
       .select('*, airbnbs(estimated_cleaning_minutes, credit_impot, prestataire_id)')
       .in('id', missionIds);
-    if (error) return 0;   // base pas encore migrée (airbnbs.prestataire_id)
+    if (error) return 0;
     const parPrestataire = new Map<string, Record<string, unknown>[]>();
     for (const m of lignes ?? []) {
       const pid = (m.airbnbs as { prestataire_id?: string | null } | null)?.prestataire_id;

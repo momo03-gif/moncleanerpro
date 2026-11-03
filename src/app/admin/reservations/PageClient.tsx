@@ -465,14 +465,14 @@ export default function AdminReservationsPage() {
         <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: '#FFFFFF', borderColor: '#C9A84C40' }}>
           <p className="text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>SuperHote — {shPour.name}</p>
           <p className="text-xs mb-3" style={{ color: '#A8A09A' }}>
-            SuperHote ne donne pas le nom de ses logements, seulement des numéros — sa prochaine période
-            occupée est affichée pour aider à le reconnaître, et ceux qui ne tournent plus sont signalés
+            Collez le jeton API de la conciergerie (SuperHote → Plateformes → API). Sa prochaine période
+            occupée est affichée à côté de chaque logement, et ceux qui ne tournent plus sont signalés
             inactifs et repoussés en bas. Rattachez chacun à un logement que vous avez déjà : en créer un
             second dédoublerait le planning.
           </p>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <input value={shCle} onChange={e => setShCle(e.target.value)} placeholder="SH apiKey"
+            <input value={shCle} onChange={e => setShCle(e.target.value)} placeholder="Jeton API (12345|…)"
               className="flex-1 min-w-[220px] px-3 py-2 rounded-xl text-sm border" style={inputStyle} />
             <button disabled={shBusy || !shCle.trim()} onClick={shLister}
               className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"

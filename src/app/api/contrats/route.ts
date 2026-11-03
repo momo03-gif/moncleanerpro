@@ -44,8 +44,7 @@ export async function GET(req: Request) {
   const { data, error } = await db.from('contrats').select(CHAMPS)
     .eq('client_id', clientId).order('version', { ascending: false });
 
-  // La table n'existe pas encore (migration_contrats.sql non lancée) : l'écran
-  // doit dire « aucun contrat », pas tomber en erreur.
+  // Lecture impossible : l'écran doit dire « aucun contrat », pas tomber en erreur.
   if (error) return NextResponse.json({ contrats: [], indisponible: true });
   return NextResponse.json({ contrats: data ?? [] });
 }

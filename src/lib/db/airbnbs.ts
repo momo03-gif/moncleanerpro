@@ -40,8 +40,7 @@ function rowToApartment(a: any): Apartment {
     beds: a.beds ?? undefined,
     sofaBeds: a.sofa_beds ?? undefined,
     notes: a.notes ?? undefined,
-    // Fiche d'accueil (migration_fiche_logement.sql). Colonnes absentes tant
-    // qu'elle n'est pas jouée : tout reste `undefined`, rien ne casse.
+    // Fiche d'accueil (migration_fiche_logement.sql).
     wifiSsid: a.wifi_ssid ?? undefined,
     wifiPassword: a.wifi_password ?? undefined,
     wifiSecurity: a.wifi_security ?? undefined,
@@ -136,11 +135,6 @@ export async function recalcGroupMissionsDB(houseId: string): Promise<{ updated:
   }
 }
 
-// ── Contact de secours : colonnes optionnelles ────────────────────────────────
-// `on_site_contact_name` / `on_site_contact_phone` n'existent qu'une fois
-// migration_contact_terrain.sql jouée. Tant qu'elle ne l'est pas, créer ou
-// modifier un logement doit continuer de marcher — sans le contact, pas d'échec.
-// On le détecte une fois (42703 : colonne inconnue) et on n'insiste plus.
 // ── Écritures : par le serveur ───────────────────────────────────────────────
 // Cette table porte l'adresse exacte, le code du portail, celui de la boîte à
 // clés et les directives d'entrée : de quoi entrer chez les clients de nos

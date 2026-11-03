@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Mission, Payment } from '@/lib/types';
-import { currentMonth } from '@/lib/mockData';
+import { moisParis } from '@/lib/dateParis';
 import { formatDuration, money } from '@/lib/format';
 import { estFacturable } from '@/lib/service';
 import type { PayrollRow } from '@/lib/payrollApi';
@@ -52,7 +52,7 @@ function GlobalView() {
   useEffect(() => {
     (async () => {
       const { getMissionsDB, getCleaners, getPaymentsDB, loadPayrollDB } = await loadComptaData();
-      const [m, c, p, pay] = await Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB(), loadPayrollDB(currentMonth())]);
+      const [m, c, p, pay] = await Promise.all([getMissionsDB(), getCleaners(), getPaymentsDB(), loadPayrollDB(moisParis())]);
       setMissions(m); setCleaners(c); setPayments(p);
       setPayroll(pay.rows ?? []);
       setLoading(false);
@@ -61,7 +61,7 @@ function GlobalView() {
 
   if (loading) return <Loading className="p-4 md:p-6 text-sm" />;
 
-  const month = currentMonth();
+  const month = moisParis();
 
   // Charges salariales RÉELLES du mois (fiches de paie) : primes, en plus du
   // salaire de base. Le bénéfice « ce mois » les déduit pour refléter le vrai

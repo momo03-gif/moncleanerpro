@@ -37,20 +37,12 @@ const ko = (error: string, status = 400) => NextResponse.json({ error }, { statu
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const MDP_MIN = 6;
 
-const PRESTATAIRE_COLONNES_BASE = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at';
-const PRESTATAIRE_COLONNES = `${PRESTATAIRE_COLONNES_BASE}, specialites, metier, vehicules`;
+const PRESTATAIRE_COLONNES = 'id, user_id, name, contact_name, email, phone, siret, hourly_rate, status, sap_declare, created_at, '
+  + 'specialites, metier, vehicules';
 
-// Lecture des fiches : retombe sur les colonnes d'avant si `specialites`,
-// `metier` ou `vehicules` n'existent pas encore (migrations prestataires_*).
-const COLONNES_RECENTES = /specialites|metier|vehicules/;
 async function lirePrestataires(db: SupabaseClient, filtre?: { userId: string }) {
-  const lire = (colonnes: string) => {
-    const q = db.from('prestataires').select(colonnes);
-    return filtre ? q.eq('user_id', filtre.userId) : q.order('name');
-  };
-  const r = await lire(PRESTATAIRE_COLONNES);
-  if (!r.error || !COLONNES_RECENTES.test(r.error.message)) return r;
-  return lire(PRESTATAIRE_COLONNES_BASE);
+  const q = db.from('prestataires').select(PRESTATAIRE_COLONNES);
+  return filtre ? q.eq('user_id', filtre.userId) : q.order('name');
 }
 
 /** Demande d'inscription pas encore validée : le compte de connexion est 'pending'. */
@@ -186,7 +178,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
     case 'list': {
       const { data: lues, error } = await lirePrestataires(db);
       const data = lues as Record<string, unknown>[] | null;
-      if (error) return ko('Lecture impossible (migration_prestataires.sql exécutée ?).', 500);
+      if (error) return ko('Lecture impossible.', 500);
       const ids = (data ?? []).map(p => p.id as string);
       // Demandes d'inscription en attente (compte de connexion 'pending').
       const userIds = (data ?? []).map(p => p.user_id as string).filter(Boolean);
@@ -236,7 +228,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       if (error) {
         await db.from('users').delete().eq('id', compte.id);   // pas de compte orphelin
         console.error('prestataire/create:', error.message);
-        return ko('Création impossible (migration_prestataires.sql exécutée ?).', 500);
+        return ko('Création impossible.', 500);
       }
       const metier = metierValide(b.metier);
       if (cree) await db.from('prestataires').update({
@@ -274,11 +266,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
         if (b.status !== 'active' && b.status !== 'suspended') return ko('Statut invalide.');
         patch.status = b.status;
       }
-      let { data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle();
-      if (error && COLONNES_RECENTES.test(error.message)) {   // base pas encore migrée
-        delete patch.specialites; delete patch.metier; delete patch.vehicules;
-        ({ data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle());
-      }
+      const { data, error } = await db.from('prestataires').update(patch).eq('id', id).select('user_id').maybeSingle();
       if (error || !data) return ko('Enregistrement impossible.', 500);
       // Le compte de connexion suit le nom / l'email / le téléphone.
       const compte: Record<string, unknown> = {};
@@ -355,7 +343,7 @@ async function opAdmin(db: SupabaseClient, op: string, b: Corps) {
       const { error } = await db.from('prestataire_paiements').upsert({
         prestataire_id: id, periode, montant, paid_at: new Date().toISOString(), note: str(b.note) ?? null,
       }, { onConflict: 'prestataire_id,periode' });
-      if (error) { console.error('prestataire/marquer-paye:', error.message); return ko('Enregistrement impossible (migration_prestataires_v2.sql exécutée ?).', 500); }
+      if (error) { console.error('prestataire/marquer-paye:', error.message); return ko('Enregistrement impossible.', 500); }
       const { data: pr } = await db.from('prestataires').select('user_id').eq('id', id).maybeSingle();
       if (pr?.user_id) await notifyPrestatairePaiement(pr.user_id as string, periode, montant);
       return ok();

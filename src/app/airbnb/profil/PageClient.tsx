@@ -97,14 +97,10 @@ export default function PartnerProfileClient() {
     setErr(''); setMsg('');
     if (!f.name.trim()) { setErr('Le nom de la structure est requis : c’est lui qui figure sur la facture.'); return; }
     setBusy(true);
-    const { error, colonnesIgnorees } = await saveBillingProfileDB(f);
+    const { error } = await saveBillingProfileDB(f);
     setBusy(false);
     if (error) { setErr(error); return; }
-    // Une colonne pas encore migrée : on le dit plutôt que de laisser croire
-    // que tout est passé. Le client verrait sa saisie disparaître au retour.
-    setMsg(colonnesIgnorees && colonnesIgnorees.length > 0
-      ? 'Enregistré, sauf une partie des informations : une mise à jour technique est encore en attente de notre côté. Nous la reprendrons.'
-      : 'Informations enregistrées. Elles figureront sur vos prochaines factures.');
+    setMsg('Informations enregistrées. Elles figureront sur vos prochaines factures.');
   }
 
   if (loading) return <Loading className="p-5 pt-8 text-sm" />;

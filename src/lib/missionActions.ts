@@ -94,7 +94,6 @@ export async function appliquerDuree(
   o: { minutes?: number | null; aptDefault?: number | null; price?: number | null },
 ): Promise<{ error: string | null; minutes: number | null }> {
   const minutes = o.minutes != null ? Math.max(0, Math.round(o.minutes)) : null;
-  // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
   const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
   if (!m) return { error: 'Mission introuvable.', minutes };
 
@@ -139,7 +138,6 @@ export async function appliquerDuree(
  * MAX(temps accordé, temps réel).
  */
 export async function cloturerArgent(db: SupabaseClient, missionId: string, actualMinutes: number): Promise<{ error: string | null }> {
-  // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
   const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
   if (!m) return { error: 'Mission introuvable.' };
 
@@ -304,7 +302,6 @@ const ACTIONS: Record<string, Action> = {
     if (!missionId) return ko('Mission manquante.');
     const cleanerId = await idCleaner(db, s.id);
     if (!cleanerId) return ko('Cleaner introuvable.', 403);
-    // `*` : tolère une base pas encore migrée (prestataire_id).
     const { data: avant } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
     const { data, error } = await db.from('missions')
       .update({ status: 'pending', cleaner_id: null, cleaner_name: null })
@@ -326,7 +323,6 @@ const ACTIONS: Record<string, Action> = {
     if (!missionId) return ko('Mission manquante.');
     const estAdmin = s.role === 'admin';
 
-    // `*` : tolère une base pas encore migrée (colonnes prestataire_*).
     const { data: m } = await db.from('missions')
       .select('*, airbnbs(latitude, longitude)').eq('id', missionId).maybeSingle();
     if (!m) return ko('Mission introuvable.', 404);
@@ -452,7 +448,6 @@ const ACTIONS: Record<string, Action> = {
   async request(db, s, b) {
     const missionId = str(b.missionId);
     if (!missionId) return ko('Mission manquante.');
-    // `*` : tolère une base pas encore migrée (prestataire_id).
     const { data: c } = await db.from('cleaners').select('*').eq('user_id', s.id).maybeSingle();
     if (!c) return ko('Cleaner introuvable.', 403);
     // L'agent d'un prestataire ne reçoit que ce que son prestataire lui donne.
