@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react';
 import type { CompanyInfo } from '@/lib/types';
 import { inputStyle } from '@/lib/ui';
@@ -229,8 +230,8 @@ export default function DevisPanel({ company }: { company: CompanyInfo }) {
               Les {tarifs.length} prestations y sont rangées par carte de la page de devis,
               avec le barème du simulateur Airbnb.
             </p>
-            <a href="/admin/tarification" className="inline-block mt-3 text-xs font-semibold px-3 py-2 rounded-lg"
-              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Ouvrir Tarification →</a>
+            <Link href="/admin/tarification" className="inline-block mt-3 text-xs font-semibold px-3 py-2 rounded-lg"
+              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>Ouvrir Tarification →</Link>
           </div>
           <TarifsManager tarifs={tarifs} onChanged={load} />
         </div>

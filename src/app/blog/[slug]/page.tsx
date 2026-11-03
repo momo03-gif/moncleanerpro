@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Motion from '../../accueil/Motion';
@@ -87,18 +88,18 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
 
       <header className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.85)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
         <div className="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
-          <a href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</a>
+          </Link>
+          <Link href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</Link>
         </div>
       </header>
 
       <article className="max-w-3xl mx-auto px-5 py-12 md:py-16">
         <nav aria-label="Fil d’Ariane" className="text-xs" style={{ color: MUTED }}>
-          <a href="/" className="hover:underline">Accueil</a> <span style={{ color: BORDER }}>/</span>{' '}
-          <a href="/blog" className="hover:underline">Blog</a>
+          <Link href="/" className="hover:underline">Accueil</Link> <span style={{ color: BORDER }}>/</span>{' '}
+          <Link href="/blog" className="hover:underline">Blog</Link>
         </nav>
         <h1 className="mt-4 text-3xl md:text-4xl font-bold leading-tight" style={{ letterSpacing: '-0.02em' }}>{p.title}</h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>{fmtDate(p.date)} · {p.readingMinutes} min de lecture</p>
@@ -121,7 +122,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
         <div className="mt-10 rounded-2xl p-7 md:p-8 text-center" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
           <p className="text-lg font-bold">Besoin d’un nettoyage professionnel à Lyon ?</p>
           <p className="mt-2 text-sm" style={{ color: '#B8B2A8' }}>Devis gratuit et transparent sous 24h, sans engagement.</p>
-          <a href="/devis-en-ligne" className="mt-5 inline-flex items-center px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Demander un devis gratuit</a>
+          <Link href="/devis-en-ligne" className="mt-5 inline-flex items-center px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Demander un devis gratuit</Link>
         </div>
       </article>
 
@@ -131,10 +132,10 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
           <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>À lire aussi</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {others.map(o => (
-              <a key={o.slug} href={`/blog/${o.slug}`} className="mcp-card block rounded-xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+              <Link key={o.slug} href={`/blog/${o.slug}`} className="mcp-card block rounded-xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
                 <h3 className="text-sm font-bold leading-snug">{o.title}</h3>
                 <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: GOLD }}>Lire <span aria-hidden>→</span></span>
-              </a>
+              </Link>
             ))}
           </div>
         </section>
@@ -142,7 +143,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
 
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
         <div className="max-w-3xl mx-auto px-5 py-10 flex flex-wrap items-center justify-between gap-4 text-sm">
-          <a href="/blog" className="hover:opacity-80">← Tous les articles</a>
+          <Link href="/blog" className="hover:opacity-80">← Tous les articles</Link>
           <CookieSettingsLink className="hover:opacity-80" />
           <span>07 83 43 17 00 · info@moncleanerpro.fr</span>
         </div>

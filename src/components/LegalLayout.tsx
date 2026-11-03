@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
 
@@ -21,16 +22,16 @@ export default function LegalLayout({ title, updated, children }: { title: strin
 
       <header className="border-b" style={{ backgroundColor: 'rgba(250,250,248,0.9)', borderColor: BORDER }}>
         <div className="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={32} height={32} style={{ width: 32, height: 32, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
-          <a href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</a>
+          </Link>
+          <Link href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</Link>
         </div>
       </header>
 
       <article className="max-w-3xl mx-auto px-5 py-12 md:py-16">
-        <a href="/" className="text-sm" style={{ color: GOLD }}>← Retour à l’accueil</a>
+        <Link href="/" className="text-sm" style={{ color: GOLD }}>← Retour à l’accueil</Link>
         <h1 className="mt-4 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>{title}</h1>
         <p className="mt-2 text-sm" style={{ color: MUTED }}>Dernière mise à jour : {updated}</p>
         <div className="legal-body mt-8">{children}</div>
@@ -38,13 +39,13 @@ export default function LegalLayout({ title, updated, children }: { title: strin
 
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
         <div className="max-w-3xl mx-auto px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-sm">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={30} height={30} style={{ width: 30, height: 30, borderRadius: 8 }} />
             <span className="font-bold" style={{ color: '#FFFFFF' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
+          </Link>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
-            <a href="/confidentialite" className="hover:opacity-80">Confidentialité</a>
+            <Link href="/mentions-legales" className="hover:opacity-80">Mentions légales</Link>
+            <Link href="/confidentialite" className="hover:opacity-80">Confidentialité</Link>
             <CookieSettingsLink className="hover:opacity-80" />
           </div>
         </div>

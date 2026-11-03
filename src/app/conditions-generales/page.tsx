@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import LegalLayout from '@/components/LegalLayout';
 
@@ -192,7 +193,7 @@ export default function ConditionsGeneralesPage() {
         Les données collectées dans le cadre d’une demande de devis ou d’une prestation sont traitées
         conformément au Règlement général sur la protection des données. Les finalités, durées de
         conservation et modalités d’exercice des droits sont détaillées dans notre{' '}
-        <a href="/confidentialite">politique de confidentialité</a>.
+        <Link href="/confidentialite">politique de confidentialité</Link>.
       </p>
 
       <h2>14. Médiation de la consommation</h2>

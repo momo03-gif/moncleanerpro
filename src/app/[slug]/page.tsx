@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Motion from '../accueil/Motion';
@@ -156,17 +157,17 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.85)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
         <div className="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
-          <a href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</a>
+          </Link>
+          <Link href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</Link>
         </div>
       </header>
 
       {/* Fil d'Ariane */}
       <nav aria-label="Fil d’Ariane" className="max-w-5xl mx-auto px-5 pt-6 text-xs" style={{ color: MUTED }}>
-        <a href="/" className="hover:underline">Accueil</a> <span style={{ color: BORDER }}>/</span> <span style={{ color: INK }}>{p.h1}</span>
+        <Link href="/" className="hover:underline">Accueil</Link> <span style={{ color: BORDER }}>/</span> <span style={{ color: INK }}>{p.h1}</span>
       </nav>
 
       {/* Hero */}
@@ -179,7 +180,7 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
           </h1>
           <p className="mcp-rise mt-6 max-w-2xl text-lg leading-relaxed" style={{ animationDelay: '160ms', color: '#B8B2A8' }}>{p.intro}</p>
           <div className="mcp-rise mt-8 flex flex-wrap gap-3" style={{ animationDelay: '240ms' }}>
-            <a href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit sous 24h</a>
+            <Link href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit sous 24h</Link>
             <a href={PHONE_HREF} className="mcp-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>{PHONE}</a>
           </div>
           {/* Preuve sociale au niveau du bouton : c'est là qu'elle lève l'hésitation. */}
@@ -270,10 +271,10 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {others.map(o => (
-            <a key={o.slug} href={`/${o.slug}`} data-reveal className="mcp-card flex items-center justify-between gap-3 rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+            <Link key={o.slug} href={`/${o.slug}`} data-reveal className="mcp-card flex items-center justify-between gap-3 rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
               <span className="text-sm font-semibold">{o.h1}</span>
               <span style={{ color: GOLD }} aria-hidden>→</span>
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -284,10 +285,10 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos conseils</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {posts.map(b => (
-                <a key={b.slug} href={`/blog/${b.slug}`} data-reveal className="mcp-card block rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+                <Link key={b.slug} href={`/blog/${b.slug}`} data-reveal className="mcp-card block rounded-xl border p-4" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
                   <span className="text-sm font-semibold leading-snug">{b.title}</span>
                   <span className="mt-2 block text-xs font-semibold" style={{ color: GOLD }}>Lire l’article →</span>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -300,7 +301,7 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
           <h2 className="text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un devis pour votre {p.eyebrow.toLowerCase()} ?</h2>
           <p className="mt-4 max-w-xl mx-auto" style={{ color: '#B8B2A8' }}>Estimation immédiate en ligne, devis confirmé sous 24h, sans engagement.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Demander un devis gratuit</a>
+            <Link href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Demander un devis gratuit</Link>
             <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer" className="mcp-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>Espace client</a>
           </div>
         </div>
@@ -309,13 +310,13 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
       {/* Footer */}
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
         <div className="max-w-5xl mx-auto px-5 py-10 flex flex-wrap items-center justify-between gap-5">
-          <a href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={36} height={36} style={{ width: 36, height: 36, borderRadius: 9 }} />
             <span className="font-bold" style={{ color: '#FFFFFF' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
+          </Link>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-            <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
-            <a href="/confidentialite" className="hover:opacity-80">Confidentialité</a>
+            <Link href="/mentions-legales" className="hover:opacity-80">Mentions légales</Link>
+            <Link href="/confidentialite" className="hover:opacity-80">Confidentialité</Link>
             <CookieSettingsLink className="hover:opacity-80" />
             <span>{PHONE} · {EMAIL}</span>
             <span>Depuis {SINCE}</span>

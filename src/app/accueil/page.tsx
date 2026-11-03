@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import Motion from './Motion';
 import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
@@ -272,14 +273,14 @@ export default function VitrinePage() {
             <a href="#prestations" className="mcp-link hover:opacity-70">Prestations</a>
             <a href="#process" className="mcp-link hover:opacity-70">Déroulé</a>
             <a href="#avis" className="mcp-link hover:opacity-70">Avis</a>
-            <a href="/blog" className="mcp-link hover:opacity-70">Blog</a>
+            <Link href="/blog" className="mcp-link hover:opacity-70">Blog</Link>
             <a href="#faq" className="mcp-link hover:opacity-70">FAQ</a>
           </nav>
           <div className="flex items-center gap-2.5">
             <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer"
               className="mcp-btn hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border"
               style={{ borderColor: BORDER, color: INK }}>Espace client</a>
-            <a href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</a>
+            <Link href="/devis-en-ligne" className="mcp-btn mcp-btn-gold inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</Link>
           </div>
         </div>
       </header>
@@ -578,9 +579,9 @@ export default function VitrinePage() {
           <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
             {SEO_PAGES.filter(p => getCityGeo(p.slug)?.withinCity).map((p, i, arr) => (
               <span key={p.slug}>
-                <a href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
+                <Link href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
                   {getCityGeo(p.slug)!.city}
-                </a>
+                </Link>
                 {i < arr.length - 1 ? ' · ' : ''}
               </span>
             ))}
@@ -590,9 +591,9 @@ export default function VitrinePage() {
           <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
             {SEO_PAGES.filter(p => p.cluster === 'communes').map((p, i, arr) => (
               <span key={p.slug}>
-                <a href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
+                <Link href={`/${p.slug}`} className="mcp-link hover:opacity-75" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
                   {getCityGeo(p.slug)!.city}
-                </a>
+                </Link>
                 {i < arr.length - 1 ? ' · ' : ''}
               </span>
             ))}
@@ -612,7 +613,7 @@ export default function VitrinePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos prestations à Lyon</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               {SEO_PAGES.filter(p => !getCityGeo(p.slug) && p.scope !== 'national').map(p => (
-                <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+                <Link key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</Link>
               ))}
             </div>
           </div>
@@ -620,7 +621,7 @@ export default function VitrinePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Nos interventions par commune</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               {SEO_PAGES.filter(p => getCityGeo(p.slug) && !getCityGeo(p.slug)!.withinCity && p.scope !== 'national').map(p => (
-                <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+                <Link key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</Link>
               ))}
             </div>
           </div>
@@ -633,7 +634,7 @@ export default function VitrinePage() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: GOLD }}>Gros chantiers — France entière</p>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
             {SEO_PAGES.filter(p => p.scope === 'national').map(p => (
-              <a key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</a>
+              <Link key={p.slug} href={`/${p.slug}`} className="mcp-link hover:opacity-80" style={{ color: '#B8B2A8' }}>{p.keyword}</Link>
             ))}
           </div>
         </div>
@@ -649,8 +650,8 @@ export default function VitrinePage() {
           <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm">
             <a href="#secteurs" className="mcp-link hover:opacity-80">Secteurs</a>
             <a href="#prestations" className="mcp-link hover:opacity-80">Prestations</a>
-            <a href="/blog" className="mcp-link hover:opacity-80">Blog</a>
-            <a href="/devis-en-ligne" className="mcp-link hover:opacity-80">Devis gratuit</a>
+            <Link href="/blog" className="mcp-link hover:opacity-80">Blog</Link>
+            <Link href="/devis-en-ligne" className="mcp-link hover:opacity-80">Devis gratuit</Link>
             <a href={`${APP_URL}/login`} target="_blank" rel="noopener noreferrer" className="mcp-link hover:opacity-80">Espace client</a>
           </div>
         </div>
@@ -658,8 +659,8 @@ export default function VitrinePage() {
           <div className="max-w-7xl mx-auto px-5 py-5 text-xs flex flex-wrap items-center justify-between gap-3">
             <span>MonCleanerPro — depuis {SINCE}. Tous droits réservés.</span>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-              <a href="/mentions-legales" className="mcp-link hover:opacity-80">Mentions légales</a>
-              <a href="/confidentialite" className="mcp-link hover:opacity-80">Confidentialité</a>
+              <Link href="/mentions-legales" className="mcp-link hover:opacity-80">Mentions légales</Link>
+              <Link href="/confidentialite" className="mcp-link hover:opacity-80">Confidentialité</Link>
               <CookieSettingsLink className="mcp-link hover:opacity-80" />
               <span>{PHONE} · {EMAIL}</span>
             </div>

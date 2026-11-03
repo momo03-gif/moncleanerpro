@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import Motion from '../accueil/Motion';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
@@ -50,11 +51,11 @@ export default function BlogIndexPage() {
 
       <header className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.85)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
         <div className="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
-          <a href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</a>
+          </Link>
+          <Link href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</Link>
         </div>
       </header>
 
@@ -71,25 +72,25 @@ export default function BlogIndexPage() {
 
       <section className="max-w-5xl mx-auto px-5 py-14 md:py-20 grid gap-6 md:grid-cols-2">
         {posts.map(p => (
-          <a key={p.slug} href={`/blog/${p.slug}`} data-reveal className="mcp-card flex flex-col rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
+          <Link key={p.slug} href={`/blog/${p.slug}`} data-reveal className="mcp-card flex flex-col rounded-2xl border p-7" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
             <div className="text-xs" style={{ color: MUTED }}>{fmtDate(p.date)} · {p.readingMinutes} min de lecture</div>
             <h2 className="mt-2 text-xl font-bold leading-snug">{p.title}</h2>
             <p className="mt-3 text-sm leading-relaxed flex-1" style={{ color: MUTED }}>{p.description}</p>
             <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: GOLD }}>Lire l’article <span aria-hidden>→</span></span>
-          </a>
+          </Link>
         ))}
       </section>
 
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
         <div className="max-w-5xl mx-auto px-5 py-10 flex flex-wrap items-center justify-between gap-4">
-          <a href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <img src="/logo-mark.png" alt="MonCleanerPro" width={32} height={32} style={{ width: 32, height: 32, borderRadius: 8 }} />
             <span className="font-bold" style={{ color: '#FFFFFF' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
-          </a>
+          </Link>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            <a href="/" className="hover:opacity-80">Accueil</a>
-            <a href="/devis-en-ligne" className="hover:opacity-80">Devis gratuit</a>
-            <a href="/mentions-legales" className="hover:opacity-80">Mentions légales</a>
+            <Link href="/" className="hover:opacity-80">Accueil</Link>
+            <Link href="/devis-en-ligne" className="hover:opacity-80">Devis gratuit</Link>
+            <Link href="/mentions-legales" className="hover:opacity-80">Mentions légales</Link>
             <CookieSettingsLink className="hover:opacity-80" />
           </div>
         </div>

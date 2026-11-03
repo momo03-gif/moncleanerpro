@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import LegalLayout from '@/components/LegalLayout';
 
@@ -57,7 +58,7 @@ export default function MentionsLegalesPage() {
       <h2>Données personnelles</h2>
       <p>
         Le traitement de vos données personnelles est décrit dans notre{' '}
-        <a href="/confidentialite">Politique de confidentialité</a>.
+        <Link href="/confidentialite">Politique de confidentialité</Link>.
       </p>
 
       <h2>Contact</h2>

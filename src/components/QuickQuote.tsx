@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { SOURCES } from '@/lib/proof';
 import { trackConversion } from '@/lib/adsTracking';
@@ -152,9 +153,9 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
 
       <p className="mt-3 text-xs text-center leading-relaxed" style={{ color: MUTED }}>
         Vous préférez une estimation chiffrée immédiate ?{' '}
-        <a href="/devis-en-ligne" className="mcp-link" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
+        <Link href="/devis-en-ligne" className="mcp-link" style={{ color: INK, textDecorationLine: 'underline', textDecorationColor: BORDER, textUnderlineOffset: 3 }}>
           Utilisez l’estimation en ligne
-        </a>.
+        </Link>.
       </p>
       {/* Champ piège anti-robot : masqué et retiré de la navigation clavier.
           Un humain ne le voit pas ; un robot remplit tout ce qu'il trouve. */}
