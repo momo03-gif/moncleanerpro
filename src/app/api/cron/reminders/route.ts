@@ -6,6 +6,7 @@ import { runReservationSync } from '@/lib/reservationSync';
 import { genererRecurrents } from '@/lib/recurringServer';
 import { runFunnelHealthCheck } from '@/lib/funnelHealth';
 import { aujourdhuiParis, dansJoursParis } from '@/lib/dateParis';
+import { purgerVieillesNotifications } from '@/lib/purgeNotifications';
 
 export const runtime = 'nodejs';
 
@@ -107,5 +108,13 @@ export async function GET(req: NextRequest) {
     catch (e) { console.error('funnel health (piggyback):', e); }
   }
 
-  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted, reservationsSync, recurringGenerated, funnelHealth });
+  // Purge quotidienne des notifications de plus de 40 jours (même run « today »,
+  // même principe que les photos). Best-effort.
+  let notificationsPurgees = 0;
+  if (when === 'today') {
+    try { notificationsPurgees = await purgerVieillesNotifications(supabase); }
+    catch (e) { console.error('purge notifications (piggyback):', e); }
+  }
+
+  return NextResponse.json({ ok: true, when, date, notified: results.length, results, photosDeleted, reservationsSync, recurringGenerated, funnelHealth, notificationsPurgees });
 }
