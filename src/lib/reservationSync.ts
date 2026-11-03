@@ -32,6 +32,7 @@ import { notifyPartnerCreatedMission, notifyPartnerDatesAFermer, notifyAdminsSyn
 import { gainPrestataire } from './prestataireRegles';
 import { parseAirbnbDescription } from './guestContact';
 import { shouldRealign } from './missionDefaults';
+import { aujourdhuiParis as parisToday } from './dateParis';
 
 // Horizon de matérialisation : on ne crée des missions que pour les départs
 // d'aujourd'hui jusqu'à J+90 (au-delà, les calendriers évoluent encore trop).
@@ -49,12 +50,6 @@ const FILTRE_OCCUPATION = 'status.eq.confirmed,and(status.eq.blocked,platform.eq
 const DEFAULT_CHECKOUT_TIME = '11:00';
 
 // Date du jour au fuseau Europe/Paris (YYYY-MM-DD).
-function parisToday(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
-}
-
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);

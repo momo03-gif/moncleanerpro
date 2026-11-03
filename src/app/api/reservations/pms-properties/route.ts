@@ -3,6 +3,7 @@ import { exigerAdmin } from '@/lib/apiGuard';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { PMS_LISTERS } from '@/lib/pms/catalog';
 import { diagnoseLodgify } from '@/lib/pms/lodgify';
+import { aujourdhuiParis, dansJoursParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -52,8 +53,8 @@ export async function POST(req: NextRequest) {
       if (feed.platform !== 'lodgify') {
         return NextResponse.json({ error: `Diagnostic non écrit pour ${feed.platform}.` }, { status: 400 });
       }
-      const aujourdhui = new Date().toLocaleDateString('en-CA');
-      const dans90 = new Date(Date.now() + 90 * 86400000).toLocaleDateString('en-CA');
+      const aujourdhui = aujourdhuiParis();
+      const dans90 = dansJoursParis(90);
       const d = await diagnoseLodgify(
         { apiKey: feed.api_key, apiSecret: feed.api_secret ?? undefined },
         String(feed.external_property_id ?? ''),

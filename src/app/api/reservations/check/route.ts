@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { classifyEvent, parseICal } from '@/lib/ical';
 import { normalizeIcalUrl, detectPlatform } from '@/lib/icalUrl';
+import { aujourdhuiParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     // est pire que pas de contrôle du tout.
     const platform = detectPlatform(url);
     const events = parseICal(text);
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = aujourdhuiParis();
     const classified = events.map(e => ({ ev: e, status: classifyEvent(e, false, platform) }));
     const reservations = classified.filter(c => c.status === 'confirmed').map(c => c.ev);
     const blocked = classified.filter(c => c.status === 'blocked').length;

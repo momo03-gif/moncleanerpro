@@ -7,6 +7,7 @@ import { executerActionMission, appliquerDuree, cloturerArgent } from '@/lib/mis
 import { lirePourSession } from '@/lib/missionRead';
 import { notifyCleanerNewMission, notifyCleanerMissionUnassigned, notifyMissionCancelled, notifyMissionsTransferees, notifyPrestataireMissionReprise } from '@/lib/notificationEvents';
 import type { MissionService } from '@/lib/types';
+import { aujourdhuiParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -113,9 +114,7 @@ export async function POST(req: NextRequest) {
       // l'administration : elle touche plusieurs journées d'un coup.
       if (!estAdmin) return refus('Réservé à l’administration.');
       if (!b.recurringId) return refus('Récurrence manquante.', 400);
-      const today = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
-      }).format(new Date());
+      const today = aujourdhuiParis();
       const { error } = await db.from('missions').delete()
         .eq('recurring_id', b.recurringId).gte('date_from', today).in('status', ['pending', 'assigned']);
       if (error) { console.error('missions/delete-recurring:', error.message); return refus('Suppression impossible.', 500); }
@@ -188,9 +187,7 @@ export async function POST(req: NextRequest) {
       if (!estAdmin) return refus('Réservé à l’administration.');
       if (!b.fromCleanerId) return refus('Intervenant de départ manquant.', 400);
 
-      const aujourdhui = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
-      }).format(new Date());
+      const aujourdhui = aujourdhuiParis();
 
       const { data: aBouger, error: errLecture } = await db.from('missions')
         .select('id, status, date_from, service, errand_bonus, mission_duration_minutes, apartment_default_duration_snapshot, airbnbs(estimated_cleaning_minutes)')

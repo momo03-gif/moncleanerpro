@@ -2,9 +2,7 @@
 // Déterministe en UTC → indépendant du fuseau du serveur. Isolé de recurring.ts
 // (qui importe supabase) pour rester testable sans charger la couche données.
 
-export function parisToday(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-}
+export { aujourdhuiParis as parisToday } from './dateParis';
 
 export function addDaysStr(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split('-').map(Number);

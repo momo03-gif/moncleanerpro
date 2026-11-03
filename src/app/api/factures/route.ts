@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession, exigerAdmin } from '@/lib/apiGuard';
 import { echeance } from '@/lib/factureStatut';
 import { ligneFourniture, prixKitDepuisTarifs } from '@/lib/linge';
+import { aujourdhuiParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -215,7 +216,7 @@ export async function POST(req: NextRequest) {
 
     // ── Échéance par défaut : trente jours, comme le contrat ─────────────────
     case 'echeance': {
-      const base = b.dueDate ?? new Date().toISOString().slice(0, 10);
+      const base = b.dueDate ?? aujourdhuiParis();
       return NextResponse.json({ dueDate: echeance(base) });
     }
 

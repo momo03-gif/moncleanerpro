@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exigerAdmin } from '@/lib/apiGuard';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { listSuperhoteProperties, fetchSuperhoteReservations } from '@/lib/pms/superhote';
+import { aujourdhuiParis, dansJoursParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -43,8 +44,8 @@ export async function POST(req: NextRequest) {
     // ── Lister, avec de quoi reconnaître chaque logement ──────────────────
     if ((body.action ?? 'lister') === 'lister') {
       const logements = await listSuperhoteProperties({ apiKey });
-      const aujourdhui = new Date().toLocaleDateString('en-CA');
-      const horizon = new Date(Date.now() + 120 * 86400000).toLocaleDateString('en-CA');
+      const aujourdhui = aujourdhuiParis();
+      const horizon = dansJoursParis(120);
 
       // Déjà branchés : on ne les repropose pas comme s'ils étaient neufs.
       const { data: feeds } = await db.from('reservation_feeds')

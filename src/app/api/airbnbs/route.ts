@@ -4,6 +4,7 @@ import { exigerSession } from '@/lib/apiGuard';
 import { APT_SELECT } from '@/lib/db/airbnbs';
 import { chargerPrestataireConfiable, confierAuPrestataireAttitre } from '@/lib/prestataireConfier';
 import { peutConfier, CREDIT_IMPOT_REFUS } from '@/lib/prestataireRegles';
+import { aujourdhuiParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
       // Les ménages déjà prévus sur ce logement, encore attribués à personne.
       const { data: aVenir } = await db.from('missions').select('id')
         .eq('airbnb_id', b.id).eq('status', 'pending').is('cleaner_id', null).is('prestataire_id', null)
-        .gte('date_from', new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date()));
+        .gte('date_from', aujourdhuiParis());
       const count = await confierAuPrestataireAttitre(db, (aVenir ?? []).map(m => m.id as string));
       return NextResponse.json({ ok: true, count });
     }

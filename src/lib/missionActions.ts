@@ -20,6 +20,7 @@ import {
   notifyMissionNoShow,
 } from './notificationEvents';
 import { logementsDuPartenaire, filtrePartenaire } from './missionRead';
+import { aujourdhuiParis as parisToday } from './dateParis';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Écritures sur `missions`, côté SERVEUR (service_role).
@@ -47,12 +48,6 @@ const ko = (error: string, status = 400, extra: Record<string, unknown> = {}): R
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v : undefined);
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const heures = (minutes: number) => Math.round((minutes / 60) * 100) / 100;
-
-function parisToday(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
-}
 
 /** Point GPS valide, ou null. */
 function point(v: unknown): GeoPoint | null {

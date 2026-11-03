@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { connexionsMuettes, RECUL_JOURS, type ConnexionMuette } from './syncSilence';
 import { notifyAdminsSync } from './notificationEvents';
+import { aujourdhuiParis as parisAujourdhui } from './dateParis';
 
 // ── Surveillance des connexions muettes (cf. syncSilence.ts pour la règle) ───
 //
@@ -19,10 +20,6 @@ const NOMS_LOGICIELS: Record<string, string> = {
 };
 const logiciel = (p: string) => NOMS_LOGICIELS[p] ?? (p.charAt(0).toUpperCase() + p.slice(1));
 const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-
-function parisAujourdhui(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-}
 
 export interface ConnexionMuetteNommee extends ConnexionMuette { conciergerie: string; logiciel: string }
 

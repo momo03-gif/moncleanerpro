@@ -18,15 +18,13 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerAdmin } from '@/lib/apiGuard';
 import { genererRecurrents } from '@/lib/recurringServer';
+import { aujourdhuiParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
 const refus = (m: string, code = 403) => NextResponse.json({ error: m }, { status: code });
 
 /** Aujourd'hui à Paris — la purge ne doit jamais toucher une journée passée. */
-const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
-}).format(new Date());
 
 interface ChampsPlanning {
   airbnbId?: string; propertyName?: string; address?: string;

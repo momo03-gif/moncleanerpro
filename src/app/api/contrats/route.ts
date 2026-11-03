@@ -19,6 +19,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerSession, exigerAdmin } from '@/lib/apiGuard';
 import { articlesContrat, totalParPassage, type DonneesContrat, type LogementContrat } from '@/lib/contrat';
 import { ligneFourniture, prixKitDepuisTarifs } from '@/lib/linge';
+import { aujourdhuiParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -210,7 +211,7 @@ async function construireDonnees(
       telephone: fiche.phone ?? undefined,
     },
     logements,
-    dateEffet: dateEffet || new Date().toISOString().slice(0, 10),
+    dateEffet: dateEffet || aujourdhuiParis(),
     fraisDeplacement: FRAIS_DEPLACEMENT,
   };
 }

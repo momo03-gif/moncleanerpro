@@ -5,6 +5,7 @@ import { deleteExpiredMissionPhotosDB } from '@/lib/missionPhotos';
 import { runReservationSync } from '@/lib/reservationSync';
 import { genererRecurrents } from '@/lib/recurringServer';
 import { runFunnelHealthCheck } from '@/lib/funnelHealth';
+import { aujourdhuiParis, dansJoursParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -28,12 +29,9 @@ export async function GET(req: NextRequest) {
 
   const when = new URL(req.url).searchParams.get('when') === 'tomorrow' ? 'tomorrow' : 'today';
 
-  // Date cible au fuseau Europe/Paris (au format YYYY-MM-DD)
-  const parisDate = (offsetDays: number) => {
-    const d = new Date(Date.now() + offsetDays * 86400000);
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-  };
-  const date = when === 'tomorrow' ? parisDate(1) : parisDate(0);
+  // Date cible à Paris (AAAA-MM-JJ) — demain = le lendemain au CALENDRIER,
+  // pas « maintenant + 24 h » (faux le jour d'un changement d'heure).
+  const date = when === 'tomorrow' ? dansJoursParis(1) : aujourdhuiParis();
 
   // Missions de ce jour, assignées à un cleaner, ni annulées ni terminées
   const { data: missions } = await supabase

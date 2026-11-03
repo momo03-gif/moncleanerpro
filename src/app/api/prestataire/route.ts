@@ -27,6 +27,7 @@ import {
   notifyCleanerNewMission, notifyCleanerMissionUnassigned,
   notifyPrestataireMissionReprise, notifyPrestatairePaiement,
 } from '@/lib/notificationEvents';
+import { aujourdhuiParis, moisParis, dansJoursParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -60,9 +61,7 @@ async function enAttente(db: SupabaseClient, userId: unknown): Promise<boolean> 
 const AGENT_COLONNES = 'id, user_id, name, email, phone, status, created_at';
 
 /** 'YYYY-MM' du mois courant, à Paris. */
-function moisCourant(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit' }).format(new Date());
-}
+const moisCourant = moisParis;
 
 /** Bornes [début, fin[ d'un mois 'YYYY-MM'. */
 function bornes(periode: string): [string, string] {
@@ -92,7 +91,6 @@ async function creerCompte(db: SupabaseClient, f: {
 
 const DOCS_BUCKET = 'prestataire_docs';
 const TYPES_DOC = ['urssaf', 'kbis', 'assurance', 'autre'];
-const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 
 /** Documents d'un prestataire, avec un lien de lecture signé (1 h) et l'état de vigilance. */
 async function documents(db: SupabaseClient, prestataireId: string) {
@@ -472,7 +470,7 @@ async function opPrestataire(db: SupabaseClient, op: string, b: Corps, moi: Reco
       if ('erreur' in perso) return ko(perso.erreur, 500);
       // Seul : tout ce qui attend un agent (y compris un peu en retard) est à
       // son nom, pour le trouver DIRECTEMENT dans l'appli terrain.
-      const depuis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(Date.now() - 30 * 864e5));
+      const depuis = dansJoursParis(-30);
       const { data: enAttente } = await db.from('missions').select('id')
         .eq('prestataire_id', pid).eq('status', 'pending').is('cleaner_id', null).gte('date_from', depuis);
       await attribuerAuPrestataireSeul(db, pid, (enAttente ?? []).map(m => m.id as string));

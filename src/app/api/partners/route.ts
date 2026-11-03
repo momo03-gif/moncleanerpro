@@ -14,6 +14,7 @@ import { computeCleanerGain } from '@/lib/pay';
 import { notifyPartnerCreatedMission, notifyCleanerNewMission, notifyHotelRequestDecision } from '@/lib/notificationEvents';
 import type { HotelAnnounce, AnnounceStatus } from '@/lib/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { aujourdhuiParis, debutMoisParis } from '@/lib/dateParis';
 
 export const runtime = 'nodejs';
 
@@ -201,10 +202,9 @@ export async function GET(req: Request) {
       const target = url.searchParams.get('userId') || session.id;
       if (!isAdmin && target !== session.id) return adminOnly();
 
-      const aujourdhui = new Date();
-      const debutMois = new Date(Date.UTC(aujourdhui.getUTCFullYear(), aujourdhui.getUTCMonth(), 1))
-        .toISOString().slice(0, 10);
-      const jour = aujourdhui.toISOString().slice(0, 10);
+      // Le mois et le jour À PARIS : à 00h30 le 1er, le serveur (UTC) serait encore le mois d'avant.
+      const debutMois = debutMoisParis();
+      const jour = aujourdhuiParis();
 
       const compte = async (p: PromiseLike<{ count: number | null; error: unknown }>): Promise<number | null> => {
         try { const { count, error } = await p; return error ? null : (count ?? 0); }
