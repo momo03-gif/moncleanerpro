@@ -126,6 +126,19 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     setEditOpen(true);
   }
 
+  // Annuler = retirer du planning (sauf une mission terminée, qui reste « annulée »).
+  async function annuler() {
+    const terminee = mission.status === 'completed';
+    const ok = await confirm({
+      title: 'Annuler cette mission ?',
+      message: terminee
+        ? 'Elle est déjà terminée : elle passe « annulée », ses photos et son rapport sont gardés.'
+        : 'Elle est retirée du planning' + (mission.cleanerName || mission.prestataireName ? ' et l’intervenant est prévenu' : '') + '. La synchronisation ne la recréera pas.',
+      confirmLabel: 'Annuler la mission', cancelLabel: 'Garder', danger: true,
+    });
+    if (ok) await changeStatus('cancelled');
+  }
+
   async function handleDelete() {
     if (!user) return;
     const ok = await confirm({
@@ -866,7 +879,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               )}
               {/* Annuler : dispo tant que la mission n'est pas déjà annulée. */}
               {mission.status !== 'cancelled' && (
-                <button onClick={() => changeStatus('cancelled')} disabled={busy}
+                <button onClick={annuler} disabled={busy}
                   className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
                   style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
                   Annuler

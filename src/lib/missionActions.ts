@@ -659,10 +659,20 @@ const ACTIONS: Record<string, Action> = {
     const missionId = str(b.missionId);
     const st = STATUT_DB[str(b.status) as MissionStatus];
     if (!missionId || !st) return ko('Mission ou statut manquant.');
+    // Annuler = SUPPRIMER (pas de carte « annulée » dans le planning), sauf une
+    // mission déjà terminée : ses photos, son rapport et sa paie restent, elle
+    // passe seulement « annulée ». Prévenir AVANT : la suppression emporte le
+    // contexte. Décision manuelle : la synchro ne la recrée pas.
+    if (st === 'cancelled') {
+      await notifyMissionCancelled(missionId, s.role, s.id);
+      const { data: sup, error: errSup } = await db.from('missions')
+        .delete().eq('id', missionId).neq('status', 'done').select('id');
+      if (errSup) { console.error('missions/set-status delete:', errSup.message); return ko('Suppression impossible.', 500); }
+      if (sup?.length) return ok({ supprimee: true });
+    }
     const { error } = await db.from('missions').update({ status: st }).eq('id', missionId);
     if (error) { console.error('missions/set-status:', error.message); return ko('Enregistrement impossible.', 500); }
-    if (st === 'cancelled') await notifyMissionCancelled(missionId, s.role, s.id);
-    else if (st === 'done') await notifyMissionCompleted(missionId);
+    if (st === 'done') await notifyMissionCompleted(missionId);
     return ok();
   },
 
