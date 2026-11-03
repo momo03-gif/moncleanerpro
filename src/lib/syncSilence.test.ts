@@ -64,4 +64,15 @@ describe('connexionsMuettes — un silence qui se voit, sans fausse alerte', () 
     const repris = [...superhote, ...resa('cc', 'superhote', ['2026-10-15'])];
     expect(connexionsMuettes(fluxSuperhote, repris, '2026-10-15')).toEqual([]);
   });
+
+  it('compte le jour à l’heure de Paris (réservation reçue à 00h05)', () => {
+    // Les Cocons Lyonnais, 03/11 : actifs presque tous les jours, dernière
+    // nouvelle réservation le 02/11 à 00h05 — soit 23h05 UTC le 01/11.
+    const jours = Array.from({ length: 30 }, (_, i) => `2026-10-${String(i + 2).padStart(2, '0')}`);
+    const r: ReservationSilence[] = [
+      ...resa('cl', 'hostify', jours),
+      { feedPartnerId: 'cl', feedPlatform: 'hostify', createdAt: '2026-11-01T23:05:00Z' },
+    ];
+    expect(connexionsMuettes(flux('cl', 'hostify', '2026-09-01T10:00:00Z'), r, '2026-11-03')).toEqual([]);
+  });
 });

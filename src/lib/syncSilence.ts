@@ -66,7 +66,11 @@ export interface ConnexionMuette {
   silenceAttendu: number;
 }
 
-const jour = (iso: string) => iso.slice(0, 10);
+// Le JOUR d'un horodatage, à PARIS : une réservation reçue à 00h05 (23h05 UTC la
+// veille) compte pour le bon jour — sinon le silence est surestimé d'un jour, de
+// quoi déclencher une fausse alerte chez une conciergerie très active.
+const jourParis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' });
+const jour = (iso: string) => (iso.length <= 10 ? iso : jourParis.format(new Date(iso)));
 const cle = (partnerId: string | null, platform: string) => `${partnerId ?? '-'}|${platform}`;
 const ecart = (a: string, b: string) =>
   Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
