@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
@@ -23,7 +24,7 @@ export default function LegalLayout({ title, updated, children }: { title: strin
       <header className="border-b" style={{ backgroundColor: 'rgba(250,250,248,0.9)', borderColor: BORDER }}>
         <div className="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/logo-mark.png" alt="MonCleanerPro" width={32} height={32} style={{ width: 32, height: 32, borderRadius: 8 }} />
+            <Image src="/logo-mark.png" alt="MonCleanerPro" width={32} height={32} style={{ width: 32, height: 32, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
           </Link>
           <Link href="/devis-en-ligne" className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Devis gratuit</Link>
@@ -40,7 +41,7 @@ export default function LegalLayout({ title, updated, children }: { title: strin
       <footer style={{ backgroundColor: INK, color: '#B8B2A8' }}>
         <div className="max-w-3xl mx-auto px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-sm">
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/logo-mark.png" alt="MonCleanerPro" width={30} height={30} style={{ width: 30, height: 30, borderRadius: 8 }} />
+            <Image src="/logo-mark.png" alt="MonCleanerPro" width={30} height={30} style={{ width: 30, height: 30, borderRadius: 8 }} />
             <span className="font-bold" style={{ color: '#FFFFFF' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
           </Link>
           <div className="flex flex-wrap gap-x-6 gap-y-2">

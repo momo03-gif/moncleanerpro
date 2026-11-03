@@ -3,6 +3,8 @@
 //  Image dans public/logo-mark.png ; le nom reste en texte (thème clair/sombre).
 // ════════════════════════════════════════════════════════════════════════════
 
+import Image from 'next/image';
+
 interface LogoProps {
   size?: number;            // côté de la tuile (px)
   showWordmark?: boolean;
@@ -17,7 +19,7 @@ export default function Logo({ size = 30, showWordmark = true, subtitle, tone = 
 
   return (
     <div className="flex items-center gap-2.5 min-w-0">
-      <img
+      <Image
         src="/logo-mark.png"
         alt="MonCleanerPro"
         width={size}

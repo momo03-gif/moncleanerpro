@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import Motion from './Motion';
@@ -265,7 +266,7 @@ export default function VitrinePage() {
       <header id="mcp-header" className="sticky top-0 z-40 border-b" style={{ backgroundColor: 'rgba(250,250,248,0.82)', borderColor: BORDER, backdropFilter: 'saturate(180%) blur(10px)' }}>
         <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 shrink-0">
-            <img src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
+            <Image src="/logo-mark.png" alt="MonCleanerPro" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 8 }} />
             <span className="font-bold text-[15px]" style={{ letterSpacing: '-0.01em' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></span>
           </a>
           <nav className="hidden md:flex items-center gap-7 text-sm" style={{ color: MUTED }}>
@@ -641,7 +642,7 @@ export default function VitrinePage() {
 
         <div className="max-w-7xl mx-auto px-5 py-12 flex flex-wrap items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <img src="/logo-mark.png" alt="MonCleanerPro" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 9 }} />
+            <Image src="/logo-mark.png" alt="MonCleanerPro" width={38} height={38} style={{ width: 38, height: 38, borderRadius: 9 }} />
             <div>
               <p className="font-bold text-[15px]" style={{ color: '#FFFFFF' }}>MonCleaner<span style={{ color: GOLD }}>Pro</span></p>
               <p className="text-xs">Nettoyage professionnel · Lyon &amp; Rhône-Alpes</p>
