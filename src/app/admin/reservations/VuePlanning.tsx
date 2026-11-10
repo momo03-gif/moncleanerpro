@@ -106,7 +106,7 @@ export default function VuePlanning({ reservations, aujourdhui, jours, onChoisir
                       backgroundColor: c.fond, color: c.texte, border: `1px solid ${c.bord}`,
                       borderRadius: coupeGauche ? '0 8px 8px 0' : 8,
                     }}>
-                    {w > 40 && (r.guestsCount ? `${r.guestsCount} voy.` : r.status === 'blocked' ? 'bloqué' : '')}
+                    {w > 40 && (r.guestsCount ? `${r.guestsCount} voy.` : r.status === 'blocked' ? 'fermé' : '')}
                   </div>
                 );
               })}
@@ -129,7 +129,7 @@ export default function VuePlanning({ reservations, aujourdhui, jours, onChoisir
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-t text-[11px]" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
         <span className="inline-flex items-center gap-1.5"><span className="w-4 h-2.5 rounded" style={{ backgroundColor: '#1A1A1A' }} /> Séjour confirmé</span>
         <span className="inline-flex items-center gap-1.5"><span className="w-4 h-2.5 rounded border" style={{ backgroundColor: '#FFF7E8', borderColor: '#C48A2A' }} /> À confirmer</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-4 h-2.5 rounded border" style={{ backgroundColor: '#EEECE8', borderColor: '#D6D1C8' }} /> Date bloquée</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-4 h-2.5 rounded border" style={{ backgroundColor: '#EEECE8', borderColor: '#D6D1C8' }} /> Date fermée (pas un séjour)</span>
         <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#5A8A6A' }} /> Ménage créé</span>
         <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#B85A50' }} /> Ménage manquant</span>
         <span className="ml-auto" style={{ color: '#A8A09A' }}>Cliquez sur un jour pour voir ses départs et arrivées.</span>

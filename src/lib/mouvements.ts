@@ -6,6 +6,7 @@
 // les deux — et non deux lignes éloignées l'une de l'autre.
 
 import type { Reservation } from './types';
+import { occupationsReelles } from './reservationDedupe';
 
 export type TypeMouvement = 'enchainement' | 'depart' | 'arrivee';
 
@@ -28,18 +29,24 @@ export interface JourMouvements {
 const ORDRE: Record<TypeMouvement, number> = { enchainement: 0, depart: 1, arrivee: 2 };
 
 /**
- * Les mouvements à partir d'aujourd'hui, jour par jour. Un départ compte quel
- * que soit son statut, sauf annulé : une date « bloquée » de Booking peut être
- * un vrai séjour, c'est l'exploitant qui tranche. Une arrivée ne compte que
- * si elle est confirmée ou à confirmer — une fermeture n'amène personne.
+ * Les mouvements à partir d'aujourd'hui, jour par jour — avec la MÊME règle que
+ * le moteur de synchro (occupationsReelles) : un séjour confirmé, ou une date
+ * fermée sur BOOKING (même intitulé pour un séjour et une fermeture, c'est
+ * l'exploitant qui tranche), sans les fermetures qui recopient un séjour vendu
+ * ailleurs. Une date fermée sur Airbnb ou un logiciel n'est jamais un séjour :
+ * personne ne part, personne n'arrive. S'y ajoutent les séjours à confirmer.
+ * Une arrivée ne compte que si elle est confirmée ou à confirmer.
  */
 export function mouvementsParJour(reservations: Reservation[], aujourdhui: string): JourMouvements[] {
   const parCle = new Map<string, Mouvement>();
   const cle = (r: Reservation, jour: string) => `${jour}|${r.airbnbId}`;
   const logement = (r: Reservation) => r.apartmentName ?? '—';
+  const retenues = [
+    ...occupationsReelles(reservations),
+    ...reservations.filter(r => r.status === 'tentative'),
+  ];
 
-  for (const r of reservations) {
-    if (r.status === 'cancelled') continue;
+  for (const r of retenues) {
     if (r.checkOut >= aujourdhui) {
       const k = cle(r, r.checkOut);
       const m = parCle.get(k) ?? { type: 'depart' as TypeMouvement, airbnbId: r.airbnbId, logement: logement(r) };

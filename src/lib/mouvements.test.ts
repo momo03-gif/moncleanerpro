@@ -42,10 +42,32 @@ describe('mouvementsParJour — qui part, qui arrive', () => {
     expect(jours).toHaveLength(0);
   });
 
-  it('une période bloquée est un départ possible, jamais une arrivée', () => {
-    const jours = mouvementsParJour([resa('z', '2026-11-12', '2026-11-15', { status: 'blocked' })], AUJ);
+  it('une date fermée sur Booking est un départ possible, jamais une arrivée', () => {
+    const jours = mouvementsParJour([resa('z', '2026-11-12', '2026-11-15', { status: 'blocked', platform: 'booking' })], AUJ);
     expect(jours.map(j => j.jour)).toEqual(['2026-11-15']);
     expect(jours[0].mouvements[0].type).toBe('depart');
+  });
+
+  it('une date fermée sur Airbnb ou un logiciel n’est NI un départ NI une arrivée (Casa Sol)', () => {
+    expect(mouvementsParJour([
+      resa('casa', '2026-11-12', '2026-11-13', { status: 'blocked', platform: 'airbnb' }),
+      resa('casa', '2026-11-13', '2026-11-14', { status: 'blocked', platform: 'lodgify' }),
+    ], AUJ)).toHaveLength(0);
+  });
+
+  it('une fermeture Booking qui recopie un séjour Airbnb ne double pas le départ', () => {
+    const jours = mouvementsParJour([
+      resa('casa', '2026-11-16', '2026-11-20', { platform: 'airbnb' }),
+      resa('casa', '2026-11-16', '2026-11-20', { status: 'blocked', platform: 'booking' }),
+    ], AUJ);
+    const j20 = jours.find(j => j.jour === '2026-11-20')!;
+    expect(j20.mouvements).toHaveLength(1);
+    expect(j20.mouvements[0].depart?.platform).toBe('airbnb');
+  });
+
+  it('un séjour à confirmer reste visible', () => {
+    const jours = mouvementsParJour([resa('t', '2026-11-12', '2026-11-14', { status: 'tentative' })], AUJ);
+    expect(jours.map(j => j.jour)).toEqual(['2026-11-12', '2026-11-14']);
   });
 
   it('compte les départs confirmés sans ménage', () => {

@@ -62,7 +62,7 @@ function Sejour({ r, sens }: { r: Reservation; sens: 'depart' | 'arrivee' }) {
       {nuits > 0 && <> · {nuits} nuit{nuits > 1 ? 's' : ''}</>}
       {' · '}{sens === 'depart' ? `arrivé le ${fmtDate(r.checkIn)}` : `repart le ${fmtDate(r.checkOut)}`}
       {r.status === 'tentative' && <span className="font-semibold" style={{ color: '#C48A2A' }}> · à confirmer</span>}
-      {r.status === 'blocked' && <span className="font-semibold" style={{ color: '#6B7280' }}> · date bloquée (séjour ou fermeture ?)</span>}
+      {r.status === 'blocked' && <span className="font-semibold" style={{ color: '#6B7280' }}> · date fermée sur Booking : séjour ou fermeture ?</span>}
     </p>
   );
 }
