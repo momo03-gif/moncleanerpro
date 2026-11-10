@@ -633,6 +633,7 @@ export default function MissionsPage() {
       {/* ── CRÉER ── */}
       {tab === 'Créer' && (
         <MissionCreatePanel
+          missions={missions}
           cleaners={cleaners}
           hotels={hotels}
           airbnbs={airbnbs}

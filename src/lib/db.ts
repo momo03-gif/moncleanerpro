@@ -449,6 +449,26 @@ export async function createMissionsBatchDB(params: {
   return { error: null, count: ((res.data?.ids as string[] | undefined) ?? []).length };
 }
 
+// ── PRÉPARER UNE JOURNÉE ─────────────────────────────────────────────────────
+// Les ménages d'un jour en une fois, chaque logement avec son heure, son
+// cleaner, sa durée et son prix. Le serveur ignore un logement qui a déjà son
+// ménage ce jour-là et crée les livraisons d'après la fiche du logement.
+export interface LigneJournee {
+  airbnbId: string; timeFrom?: string; cleanerId?: string;
+  durationMinutes?: number; price?: number; instructions?: string;
+}
+
+export async function createMissionsDayDB(date: string, lignes: LigneJournee[]): Promise<{
+  error: string | null; crees: number; ignores: number; livraisons: number;
+}> {
+  const res = await ecrireMission({ action: 'create-day', fields: { date, lignes } });
+  const d = res.data ?? {};
+  return {
+    error: res.error,
+    crees: Number(d.crees) || 0, ignores: Number(d.ignores) || 0, livraisons: Number(d.livraisons) || 0,
+  };
+}
+
 // ── RENDEZ-VOUS (service = 'appointment') ───────────────────────────────────
 // Personnes assignables à un rendez-vous : administrateurs (users.id) + cleaners
 // actifs (cleaners.id). Le rôle permet à la création de router l'assignation

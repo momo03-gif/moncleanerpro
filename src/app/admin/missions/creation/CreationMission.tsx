@@ -17,9 +17,10 @@ import ArriveeSuivante from '@/components/ArriveeSuivante';
 import { inputStyle } from '@/lib/ui';
 import { resolveCoords, type ProprietesCreation } from './commun';
 
+// Un logement par défaut : il n'y a quasiment que ça (aucun hôtel en base le 10/11/2026).
 const emptyForm = {
-  source: 'hotel' as MissionSource,
-  service: 'cleaning' as MissionService,  // ménage ou livraison
+  source: 'airbnb' as MissionSource,
+  service: 'cleaning' as MissionService,  // fixé par la carte choisie (MissionCreatePanel)
   hotelId: '', airbnbId: '',
   property: '', address: '',
   cleanerId: '', date: '', time: '',
@@ -64,13 +65,25 @@ function GainPreview({ gain, cleaner, minutes, service }: { gain: number; cleane
   );
 }
 
-type Props = Pick<ProprietesCreation, 'cleaners' | 'hotels' | 'airbnbs' | 'userId' | 'onReload' | 'onGoToMissions'>;
+type Props = Pick<ProprietesCreation, 'cleaners' | 'hotels' | 'airbnbs' | 'userId' | 'onReload' | 'onGoToMissions'> & {
+  /** Prestation choisie sur la carte : le formulaire ne la redemande pas. */
+  service?: MissionService;
+};
 
-export default function CreationMission({ cleaners, hotels, airbnbs, userId, onReload, onGoToMissions }: Props) {
+const TITRE: Record<string, string> = {
+  cleaning: 'Nouveau ménage', delivery: 'Nouvelle livraison',
+  repair: 'Nouvelle intervention', errand: 'Nouvelle course ou achat',
+};
+const FAIT: Record<string, string> = {
+  cleaning: 'Ménage créé.', delivery: 'Livraison créée.', repair: 'Intervention créée.', errand: 'Course créée.',
+};
+
+export default function CreationMission({ cleaners, hotels, airbnbs, userId, onReload, onGoToMissions, service }: Props) {
   const { toast } = useFeedback();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [form, setForm] = useState(emptyForm);
+  const vierge = { ...emptyForm, service: service ?? emptyForm.service };
+  const [form, setForm] = useState(vierge);
 
   function selectHotel(hotelId: string) {
     const h = hotels.find(x => x.id === hotelId);
@@ -163,6 +176,9 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
       ...p, errandBudget: v,
       price: p.feeAuto && errandCfg ? String(fraisServiceCourse(Number(v) || 0, errandCfg.pct, errandCfg.min)) : p.price,
     }));
+    // Course choisie sur la carte : ses réglages (frais, prime) se chargent à
+    // la première saisie du budget, puis recalculent les frais.
+    if (!errandCfg) void choisirCourse();
   }
 
   function cleanerWarning(cleanerId: string, date: string): string | null {
@@ -170,7 +186,7 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
     const c = cleaners.find(x => x.id === cleanerId);
     if (!c) return null;
     if (c.status === 'offline') return 'Ce cleaner est hors ligne. Vous pouvez quand même assigner.';
-    if (c.status === 'busy') return 'ℹ️ Ce cleaner est actuellement en mission.';
+    if (c.status === 'busy') return 'Ce cleaner est actuellement en mission.';
     if (c.available_days?.length > 0) {
       const day = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       if (!c.available_days.includes(day)) return `Ce cleaner n'est pas disponible ce jour-là. Vous pouvez quand même assigner.`;
@@ -184,22 +200,22 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
     setCreateError('');
 
     if (form.source === 'airbnb' && !form.airbnbId) {
-      setCreateError('Veuillez sélectionner un appartement.');
+      setCreateError('Choisissez le logement.');
       setCreating(false);
       return;
     }
     if (form.source === 'hotel' && !form.property.trim()) {
-      setCreateError('Veuillez renseigner le nom de la propriété.');
+      setCreateError('Indiquez le nom du lieu.');
       setCreating(false);
       return;
     }
     if (!form.date) {
-      setCreateError('Veuillez renseigner la date.');
+      setCreateError('Choisissez la date.');
       setCreating(false);
       return;
     }
     if (!form.time) {
-      setCreateError('Veuillez renseigner l\'heure.');
+      setCreateError('Choisissez l’heure.');
       setCreating(false);
       return;
     }
@@ -278,13 +294,13 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
     });
 
     if (result.error) {
-      setCreateError(`Erreur Supabase : ${result.error}`);
+      setCreateError(`Création impossible : ${result.error}`);
       setCreating(false);
       return;
     }
 
-    setForm(emptyForm);
-    toast('Mission créée.', 'success');
+    setForm(vierge);
+    toast(FAIT[form.service] ?? 'Mission créée.', 'success');
     await onReload();
     onGoToMissions();
     setCreating(false);
@@ -292,18 +308,17 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
 
   return (
     <form onSubmit={handleCreate} className="rounded-2xl border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
-      <h2 className="font-semibold mb-6" style={{ color: '#1A1A1A' }}>Nouvelle mission</h2>
-      {/* (formulaire mission ménage/livraison existant) */}
+      <h2 className="font-semibold mb-6" style={{ color: '#1A1A1A' }}>{TITRE[form.service] ?? 'Nouvelle mission'}</h2>
 
-      {/* Source */}
+      {/* Où : un logement (cas normal) ou une autre adresse (hôtel…). */}
       <div className="mb-6">
-        <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Source</label>
+        <label className="block text-xs font-semibold mb-2" style={{ color: '#7A7068' }}>Où ?</label>
         <div className="flex gap-2">
-          {(['hotel', 'airbnb'] as MissionSource[]).map(s => (
-            <button key={s} type="button" onClick={() => setForm({ ...emptyForm, source: s })}
+          {(['airbnb', 'hotel'] as MissionSource[]).map(s => (
+            <button key={s} type="button" onClick={() => setForm({ ...vierge, source: s, service: form.service })}
               className="flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all"
-              style={{ borderColor: form.source === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.source === s ? '#C9A84C12' : '#FFFFFF', color: form.source === s ? '#C9A84C' : '#7A7068' }}>
-              {s === 'hotel' ? 'Hôtel' : 'Airbnb'}
+              style={{ borderColor: form.source === s ? '#C9A84C' : '#E8E4DC', backgroundColor: form.source === s ? '#C9A84C12' : '#FFFFFF', color: form.source === s ? '#9A7B22' : '#7A7068' }}>
+              {s === 'airbnb' ? 'Un logement' : 'Hôtel ou autre adresse'}
             </button>
           ))}
         </div>
@@ -311,6 +326,7 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
 
       {/* Prestation : ménage (défaut), livraison ou intervention (artisan). */}
       <div className="mb-6">
+        {!service && (<>
         <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#7A7068' }}>Prestation</label>
         <div className="flex gap-2 flex-wrap">
           {(['cleaning', 'delivery', 'repair', 'errand'] as MissionService[]).map(s => (
@@ -326,6 +342,7 @@ export default function CreationMission({ cleaners, hotels, airbnbs, userId, onR
             </button>
           ))}
         </div>
+        </>)}
 
         {/* Consignes de livraison (mission de livraison). */}
         {form.service === 'delivery' && (

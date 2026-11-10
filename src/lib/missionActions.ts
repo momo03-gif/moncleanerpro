@@ -898,6 +898,71 @@ const ACTIONS: Record<string, Action> = {
     return ok({ ids: (data ?? []).map(r => r.id) });
   },
 
+  // « Préparer une journée » : les ménages d'un jour, en une fois — chaque
+  // logement avec SON heure, SON cleaner, sa durée et son prix. Un logement qui
+  // a déjà un ménage ce jour-là (synchro, saisie précédente) est ignoré : pas de
+  // doublon. Les livraisons suivent le réglage du logement (livraisonAuto).
+  async 'create-day'(db, s, b) {
+    if (s.role !== 'admin') return reserveAdmin;
+    const f = (b.fields ?? {}) as Record<string, unknown>;
+    const date = str(f.date);
+    const lignes = Array.isArray(f.lignes) ? f.lignes as Corps[] : [];
+    if (!date) return ko('Choisissez le jour.');
+    if (lignes.length === 0) return ko('Ajoutez au moins un logement.');
+    if (lignes.length > 100) return ko('100 logements au plus d’un coup.');
+
+    const aptIds = [...new Set(lignes.map(l => str(l.airbnbId)).filter((x): x is string => !!x))];
+    const { data: apts } = await db.from('airbnbs')
+      .select('id, partner_id, estimated_cleaning_minutes, client_price').in('id', aptIds);
+    const aptDe = new Map((apts ?? []).map(a => [a.id as string, a]));
+    const { data: deja } = await db.from('missions').select('airbnb_id')
+      .eq('date_from', date).in('airbnb_id', aptIds).neq('status', 'cancelled')
+      .or('service.is.null,service.eq.cleaning,service.eq.both');
+    const pris = new Set((deja ?? []).map(m => m.airbnb_id as string));
+
+    const cleanerIds = [...new Set(lignes.map(l => str(l.cleanerId)).filter((x): x is string => !!x))];
+    const { data: cls } = cleanerIds.length
+      ? await db.from('cleaners').select('id, name, hourly_rate').in('id', cleanerIds)
+      : { data: [] as { id: string; name: string; hourly_rate: number }[] };
+    const cleanerDe = new Map((cls ?? []).map(c => [c.id as string, c]));
+
+    let ignores = 0;
+    const rows: Record<string, unknown>[] = [];
+    for (const l of lignes) {
+      const aid = str(l.airbnbId);
+      const apt = aid ? aptDe.get(aid) : undefined;
+      if (!aid || !apt || pris.has(aid)) { ignores++; continue; }
+      pris.add(aid);
+      const defaut = apt.estimated_cleaning_minutes != null ? Number(apt.estimated_cleaning_minutes) : null;
+      const minutes = Math.max(0, num(l.durationMinutes) ?? defaut ?? 60);
+      const c = str(l.cleanerId) ? cleanerDe.get(str(l.cleanerId)!) : undefined;
+      const rate = Number(c?.hourly_rate) || 0;
+      rows.push({
+        type: 'regular', source: 'airbnb', service: 'cleaning',
+        airbnb_id: aid, partner_id: (apt.partner_id as string | null) ?? null,
+        created_by: s.id, created_by_role: 'admin', property_name: null, address: null,
+        date_from: date, time_from: str(l.timeFrom) ?? null, time_to: null,
+        hours_worked: heures(minutes), mission_duration_minutes: minutes,
+        cleaner_id: c?.id ?? null, cleaner_name: c?.name ?? null,
+        price: Math.max(0, num(l.price) ?? Number(apt.client_price) ?? 0),
+        cleaner_gain: c ? computeCleanerGain(rate, minutes) : 0,
+        cleaner_hourly_rate_snapshot: c ? rate : null,
+        apartment_default_duration_snapshot: defaut,
+        instructions: str(l.instructions) ?? null,
+        status: c ? 'assigned' : 'pending',
+      });
+    }
+    if (rows.length === 0) return ok({ crees: 0, ignores, livraisons: 0 });
+
+    const { data, error } = await db.from('missions').insert(rows).select('id, cleaner_id');
+    if (error) { console.error('missions/create-day:', error.message); return ko('Création impossible. Réessayez.', 500); }
+    const crees = data ?? [];
+    for (const r of crees.filter(r => r.cleaner_id)) await notifyCleanerNewMission(r.id as string);
+    await confierAuPrestataireAttitre(db, crees.filter(r => !r.cleaner_id).map(r => r.id as string));
+    const livraisons = await creerLivraisonsAssociees(db, crees.map(r => r.id as string));
+    return ok({ crees: crees.length, ignores, livraisons });
+  },
+
   async 'create-appointment'(db, s, b) {
     if (s.role !== 'admin') return reserveAdmin;
     const f = (b.fields ?? {}) as Record<string, unknown>;

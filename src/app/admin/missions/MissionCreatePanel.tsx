@@ -1,42 +1,74 @@
 'use client';
 
-// Onglet « Créer » de l'écran admin Missions. Cinq modes de création, chacun
-// dans son fichier (./creation/) avec son propre état ; ce panneau ne fait que
-// les onglets. Les modes restent MONTÉS (masqués) : passer de l'un à l'autre ne
-// perd pas une saisie en cours. Seuls deux signaux remontent au parent :
-// onReload (rafraîchir) et onGoToMissions (onglet Missions après une création).
+// Onglet « Créer » de l'écran admin Missions. On choisit d'abord QUOI créer,
+// sur une rangée de cartes ; le formulaire qui suit ne redemande pas la
+// prestation. « Préparer une journée » vient en premier : c'est l'usage
+// quotidien (les ménages du lendemain, préparés la veille au soir). Chaque
+// formulaire vit dans son fichier (./creation/) et reste MONTÉ (masqué) :
+// passer d'une carte à l'autre ne perd pas une saisie en cours.
 
 import { useState } from 'react';
+import type { Mission, MissionService } from '@/lib/types';
+import Icon, { type IconName } from '@/components/Icon';
 import type { ProprietesCreation } from './creation/commun';
+import CreationJournee from './creation/CreationJournee';
 import CreationMission from './creation/CreationMission';
-import CreationGroupee from './creation/CreationGroupee';
 import CreationRecurrente from './creation/CreationRecurrente';
 import CreationPonctuelle from './creation/CreationPonctuelle';
 import CreationRendezVous from './creation/CreationRendezVous';
 
-type Mode = 'single' | 'batch' | 'appointment' | 'oneshot' | 'recurring';
+type Choix = 'journee' | 'menage' | 'livraison' | 'intervention' | 'course' | 'recurrente' | 'plusieurs' | 'rdv';
 
-export default function MissionCreatePanel(props: ProprietesCreation) {
-  const [createMode, setCreateMode] = useState<Mode>('single');
+const CARTES: { id: Choix; titre: string; detail: string; icone: IconName }[] = [
+  { id: 'journee', titre: 'Préparer une journée', detail: 'Les ménages d’un jour, en une fois', icone: 'today' },
+  { id: 'menage', titre: 'Ménage', detail: 'Un logement, une date', icone: 'missions' },
+  { id: 'livraison', titre: 'Livraison', detail: 'Linge ou matériel à déposer', icone: 'delivery' },
+  { id: 'intervention', titre: 'Intervention', detail: 'Réparation par un artisan', icone: 'wrench' },
+  { id: 'course', titre: 'Course ou achat', detail: 'Acheter, faire doubler une clé…', icone: 'wallet' },
+  { id: 'recurrente', titre: 'Ménage récurrent', detail: 'Chaque semaine, mêmes jours', icone: 'calendar' },
+  { id: 'plusieurs', titre: 'Gros ménage à plusieurs', detail: 'Une intervention, plusieurs cleaners', icone: 'cleaners' },
+  { id: 'rdv', titre: 'Rendez-vous', detail: 'Visite, état des lieux, réunion', icone: 'clock' },
+];
+
+const SERVICE: Partial<Record<Choix, MissionService>> = {
+  menage: 'cleaning', livraison: 'delivery', intervention: 'repair', course: 'errand',
+};
+
+export default function MissionCreatePanel(props: ProprietesCreation & { missions: Mission[] }) {
+  const [choix, setChoix] = useState<Choix>('journee');
 
   return (
     <div>
-      {/* Mode de création — responsive : passe à la ligne sur petit écran. */}
-      <div className="flex flex-wrap gap-1 mb-5 p-1 rounded-2xl" style={{ backgroundColor: '#F5F3EF' }}>
-        {([['single', 'Une mission'], ['batch', 'Plusieurs appartements'], ['recurring', 'Récurrente'], ['oneshot', 'Intervention ponctuelle'], ['appointment', 'Rendez-vous']] as const).map(([m, label]) => (
-          <button key={m} type="button" onClick={() => setCreateMode(m)}
-            className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: createMode === m ? '#FFFFFF' : 'transparent', color: createMode === m ? '#1A1A1A' : '#A8A09A', boxShadow: createMode === m ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-            {label}
-          </button>
-        ))}
+      <p className="text-sm font-semibold mb-3" style={{ color: '#1A1A1A' }}>Que voulez-vous créer ?</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+        {CARTES.map(c => {
+          const actif = choix === c.id;
+          return (
+            <button key={c.id} type="button" onClick={() => setChoix(c.id)}
+              className="text-left rounded-2xl border p-3 transition-all"
+              style={{
+                borderColor: actif ? '#C9A84C' : '#E8E4DC',
+                backgroundColor: actif ? '#1A1A1A' : '#FFFFFF',
+                boxShadow: actif ? '0 4px 14px rgba(0,0,0,0.10)' : 'none',
+              }}>
+              <span style={{ color: actif ? '#C9A84C' : '#9A7B22' }}><Icon name={c.icone} size={18} /></span>
+              <p className="text-sm font-semibold mt-1.5" style={{ color: actif ? '#FFFFFF' : '#1A1A1A' }}>{c.titre}</p>
+              <p className="text-[11px] mt-0.5 leading-snug" style={{ color: actif ? '#B5ADA3' : '#A8A09A' }}>{c.detail}</p>
+            </button>
+          );
+        })}
       </div>
 
-      <div hidden={createMode !== 'single'}><CreationMission {...props} /></div>
-      <div hidden={createMode !== 'batch'}><CreationGroupee {...props} /></div>
-      <div hidden={createMode !== 'appointment'}><CreationRendezVous {...props} /></div>
-      <div hidden={createMode !== 'oneshot'}><CreationPonctuelle {...props} /></div>
-      <div hidden={createMode !== 'recurring'}><CreationRecurrente {...props} /></div>
+      <div hidden={choix !== 'journee'}>
+        <CreationJournee cleaners={props.cleaners} airbnbs={props.airbnbs} missions={props.missions}
+          onReload={props.onReload} onGoToMissions={props.onGoToMissions} />
+      </div>
+      {(['menage', 'livraison', 'intervention', 'course'] as Choix[]).map(c => (
+        <div key={c} hidden={choix !== c}><CreationMission {...props} service={SERVICE[c]} /></div>
+      ))}
+      <div hidden={choix !== 'recurrente'}><CreationRecurrente {...props} /></div>
+      <div hidden={choix !== 'plusieurs'}><CreationPonctuelle {...props} /></div>
+      <div hidden={choix !== 'rdv'}><CreationRendezVous {...props} /></div>
     </div>
   );
 }
