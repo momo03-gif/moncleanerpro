@@ -223,13 +223,6 @@ const ACTIONS: Record<string, Action> = {
     if (!missionId) return ko('Mission manquante.');
     const cleanerId = await idCleaner(db, s.id);
     if (!cleanerId) return ko('Cleaner introuvable.', 403);
-    // Livraison : une photo du dépôt, comme la photo « après » d'un ménage.
-    const { data: m } = await db.from('missions').select('service').eq('id', missionId).maybeSingle();
-    if (m?.service === 'delivery' && photosApresExigees(m.service)) {
-      const { count } = await db.from('mission_photos').select('id', { count: 'exact', head: true })
-        .eq('mission_id', missionId).eq('kind', 'after');
-      if ((count ?? 0) < PHOTOS_APRES_MIN) return ko(PHOTOS_REQUISES_ERROR, 400, { photosRequises: true });
-    }
     const { data, error } = await db.from('missions')
       .update({ status: 'done', ended_at: horodatage(b.at) })
       .eq('id', missionId).eq('cleaner_id', cleanerId)

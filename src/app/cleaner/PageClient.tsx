@@ -251,8 +251,6 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
     setBusy(true); setGeoError('');
     const res = await submitDeliver({ missionId: mission.id, userId });
     setBusy(false);
-    // Photo du dépôt manquante : on ouvre le panneau photos sur l'appareil photo.
-    if (res.error === PHOTOS_REQUISES_ERROR) { setPhotosRequises(true); return; }
     if (res.error) { setGeoError(res.error); return; }
     onUpdate();
   }
@@ -542,7 +540,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
         <div className="px-5 pb-4 space-y-3">
           {/* Photos d'abord : ce sont elles qui permettent de terminer. */}
           <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
-            userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress' || (isDelivery && isOpen)} exigeApres={photosRequises}
+            userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress'} exigeApres={photosRequises}
             modifiable={mission.status !== 'completed'} />
           {/* Checklist du logement : le standard demandé par la conciergerie, à
               cocher au fur et à mesure. */}
@@ -681,11 +679,6 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
               {busy ? '...' : <><Icon name="check" size={16} /> Terminer la mission</>}
             </button>
-          )}
-          {canDeliver && photosApresExigees(mission.service) && (
-            <p className="text-[11px] text-center" style={{ color: photosRequises ? '#B85A50' : '#A8A09A' }}>
-              {photosRequises ? 'Prenez une photo du dépôt dans le panneau Photos ci-dessus, puis marquez comme livré.' : 'Une photo du dépôt est demandée pour marquer comme livré.'}
-            </p>
           )}
           {canFinish && photosApresExigees(mission.service) && (
             <p className="text-[11px] text-center" style={{ color: photosRequises ? '#B85A50' : '#A8A09A' }}>
