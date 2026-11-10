@@ -37,6 +37,7 @@ export default function CreationJournee({ cleaners, airbnbs, missions, onReload,
   const [date, setDate] = useState(dansJoursParis(1));
   const [lignes, setLignes] = useState<Ligne[]>([]);
   const [recherche, setRecherche] = useState('');
+  const [coches, setCoches] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
   const menageurs = useMemo(() => cleaners.filter(c => canCleanerDoService(c, 'cleaning') && c.status !== 'inactive'), [cleaners]);
@@ -69,8 +70,29 @@ export default function CreationJournee({ cleaners, airbnbs, missions, onReload,
       price: a.clientPrice != null ? String(a.clientPrice) : '',
     };
   }
-  const ajouter = (a: Apartment) => { setLignes(l => [...l, ligneDe(a)]); setRecherche(''); };
-  const ajouterTous = () => { setLignes(l => [...l, ...proposes.map(ligneDe)]); setRecherche(''); };
+  // Les logements proposés, rangés par conciergerie.
+  const groupes = useMemo(() => {
+    const parConciergerie = new Map<string, Apartment[]>();
+    for (const a of proposes) {
+      const k = a.partnerName?.trim() || 'Sans conciergerie';
+      (parConciergerie.get(k) ?? parConciergerie.set(k, []).get(k)!).push(a);
+    }
+    return [...parConciergerie.entries()].sort(([a], [b]) =>
+      (a === 'Sans conciergerie' ? 1 : 0) - (b === 'Sans conciergerie' ? 1 : 0) || a.localeCompare(b, 'fr'));
+  }, [proposes]);
+
+  const basculer = (ids: string[], oui: boolean) => setCoches(prev => {
+    const n = new Set(prev);
+    for (const id of ids) { if (oui) n.add(id); else n.delete(id); }
+    return n;
+  });
+  // Les cochés encore proposés (un logement ajouté ou devenu « déjà prévu » sort de la liste).
+  const cochesVisibles = proposes.filter(a => coches.has(a.id));
+  function ajouterCoches() {
+    setLignes(l => [...l, ...cochesVisibles.map(ligneDe)]);
+    setCoches(new Set());
+    setRecherche('');
+  }
   const changer = (i: number, patch: Partial<Ligne>) => setLignes(l => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const retirer = (i: number) => setLignes(l => l.filter((_, j) => j !== i));
   const pourTous = (patch: Partial<Ligne>) => setLignes(l => l.map(x => ({ ...x, ...patch })));
@@ -145,42 +167,64 @@ export default function CreationJournee({ cleaners, airbnbs, missions, onReload,
       <div className="rounded-2xl border p-5" style={{ backgroundColor: '#FFFFFF', borderColor: '#E8E4DC' }}>
         <p className="text-sm font-semibold mb-3" style={{ color: '#1A1A1A' }}>
           <span className="inline-flex w-6 h-6 rounded-full items-center justify-center text-xs mr-2" style={{ backgroundColor: '#1A1A1A', color: '#C9A84C' }}>2</span>
-          Quels logements ajouter ?
+          Quels logements ? Cochez-en autant que vous voulez
         </p>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A8A09A' }}><Icon name="search" size={15} /></span>
-          <input value={recherche} onChange={e => setRecherche(e.target.value)}
-            placeholder="Nom du logement, conciergerie ou adresse"
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
-        </div>
-        {recherche.trim() && (
-          <div className="mt-2 rounded-xl border overflow-hidden" style={{ borderColor: '#E8E4DC', maxHeight: 280, overflowY: 'auto' }}>
-            {proposes.length === 0 ? (
-              <p className="text-xs px-3 py-3" style={{ color: '#A8A09A' }}>Aucun logement à ajouter pour cette recherche.</p>
-            ) : (
-              <>
-                {proposes.length > 1 && (
-                  <button type="button" onClick={ajouterTous}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold border-b" style={{ borderColor: '#F2EFE9', color: '#9A7B22' }}>
-                    + Ajouter les {proposes.length} logements
-                  </button>
-                )}
-                {proposes.slice(0, 50).map(a => (
-                  <button key={a.id} type="button" onClick={() => ajouter(a)}
-                    className="w-full text-left px-3 py-2 border-b last:border-0 hover:bg-[#FAFAF8] flex items-center gap-2" style={{ borderColor: '#F2EFE9' }}>
-                    <span className="text-sm font-medium flex-1 truncate" style={{ color: '#1A1A1A' }}>{a.name}</span>
-                    {a.partnerName && <span className="text-[11px] truncate max-w-[160px]" style={{ color: '#A8A09A' }}>{a.partnerName}</span>}
-                    <span style={{ color: '#C9A84C' }}><Icon name="plus" size={14} /></span>
-                  </button>
-                ))}
-              </>
-            )}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A8A09A' }}><Icon name="search" size={15} /></span>
+            <input value={recherche} onChange={e => setRecherche(e.target.value)}
+              placeholder="Filtrer : logement, conciergerie ou adresse"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm border" style={inputStyle} />
           </div>
+          {proposes.length > 0 && (
+            <button type="button" onClick={() => basculer(proposes.map(x => x.id), cochesVisibles.length < proposes.length)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+              {cochesVisibles.length < proposes.length ? `Tout cocher (${proposes.length})` : 'Tout décocher'}
+            </button>
+          )}
+        </div>
+
+        <div className="mt-2 rounded-xl border overflow-hidden" style={{ borderColor: '#E8E4DC', maxHeight: 340, overflowY: 'auto' }}>
+          {proposes.length === 0 ? (
+            <p className="text-xs px-3 py-3" style={{ color: '#A8A09A' }}>
+              {recherche.trim() ? 'Aucun logement pour ce filtre.' : 'Tous les logements sont déjà prévus ou ajoutés pour ce jour.'}
+            </p>
+          ) : groupes.map(([conciergerie, liste]) => {
+            const tous = liste.every(x => coches.has(x.id));
+            return (
+              <div key={conciergerie}>
+                <label className="flex items-center gap-2 px-3 py-2 sticky top-0 z-10 cursor-pointer border-b"
+                  style={{ backgroundColor: '#FAFAF8', borderColor: '#F2EFE9' }}>
+                  <input type="checkbox" checked={tous} onChange={e => basculer(liste.map(x => x.id), e.target.checked)}
+                    className="w-4 h-4 accent-[#C9A84C]" />
+                  <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>{conciergerie}</span>
+                  <span className="text-[11px]" style={{ color: '#A8A09A' }}>{liste.length}</span>
+                </label>
+                {liste.map(x => (
+                  <label key={x.id} className="flex items-center gap-2 px-3 py-2 pl-8 border-b last:border-0 cursor-pointer hover:bg-[#FAFAF8]"
+                    style={{ borderColor: '#F2EFE9' }}>
+                    <input type="checkbox" checked={coches.has(x.id)} onChange={e => basculer([x.id], e.target.checked)}
+                      className="w-4 h-4 accent-[#C9A84C]" />
+                    <span className="text-sm flex-1 truncate" style={{ color: '#1A1A1A' }}>{x.name}</span>
+                    {x.needsDelivery && <span style={{ color: '#C48A2A' }} title="Livraison à chaque ménage"><Icon name="delivery" size={13} /></span>}
+                  </label>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        {cochesVisibles.length > 0 && (
+          <button type="button" onClick={ajouterCoches}
+            className="mt-2 w-full py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2"
+            style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+            <Icon name="plus" size={15} /> Ajouter {cochesVisibles.length} logement{cochesVisibles.length > 1 ? 's' : ''} à la journée
+          </button>
         )}
 
         {lignes.length === 0 ? (
           <p className="text-xs mt-4" style={{ color: '#A8A09A' }}>
-            Cherchez un logement et cliquez dessus : sa durée, son prix et son cleaner attitré se remplissent tout seuls.
+            Cochez les logements puis ajoutez-les : leur durée, leur prix et leur cleaner attitré se remplissent tout seuls.
           </p>
         ) : (
           <>
