@@ -16,14 +16,6 @@ export function daysBetween(a: string, b: string) {
   return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
 }
 
-/** Titre d'une journée de départs : « Aujourd'hui », « Demain », sinon la date. */
-export function titreJour(jour: string, aujourdhui: string): string {
-  const ecart = daysBetween(aujourdhui, jour);
-  if (ecart === 0) return 'Aujourd’hui';
-  if (ecart === 1) return 'Demain';
-  return new Date(jour + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-}
-
 /** POST JSON vers une route de l'app ; renvoie le corps (vide si illisible). */
 export async function postJson<T = Record<string, unknown>>(url: string, corps: unknown): Promise<T> {
   const res = await fetch(url, {

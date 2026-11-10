@@ -49,6 +49,7 @@ function rowToReservation(r: any): Reservation {
     checkOut: r.check_out ?? '',
     checkInTime: r.check_in_time ? trimTime(r.check_in_time) : undefined,
     checkOutTime: r.check_out_time ? trimTime(r.check_out_time) : undefined,
+    guestsCount: r.guests_count != null ? Number(r.guests_count) : undefined,
     missionId: r.mission_id ?? undefined,
     missionCreatedAt: r.mission_created_at ?? undefined,
     createdAt: r.created_at ?? undefined,
@@ -73,7 +74,7 @@ export const FEED_SELECT = 'id, airbnb_id, partner_id, platform, ical_url, label
 // (cf. supabase/migration_reservations_verrouillage.sql) : ne pas les remettre
 // ici, la requête entière serait refusée.
 export const RESERVATION_SELECT = 'id, feed_id, airbnb_id, partner_id, platform, status, '
-  + 'check_in, check_out, check_in_time, check_out_time, mission_id, mission_created_at, '
+  + 'check_in, check_out, check_in_time, check_out_time, guests_count, mission_id, mission_created_at, '
   + 'created_at, airbnbs(name)';
 
 // Lecture par le serveur (cf. /api/reservations/lire) : ces tables ne sont plus

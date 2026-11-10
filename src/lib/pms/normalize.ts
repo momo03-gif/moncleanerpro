@@ -42,14 +42,25 @@ export function pickTime(row: Row, names: string[]): string | undefined {
   return h >= 0 && h <= 23 ? `${String(h).padStart(2, '0')}:${m[2] ?? '00'}` : undefined;
 }
 
-/** Somme des occupants, quelle que soit la façon dont l'éditeur les découpe. */
+/**
+ * Somme des occupants, quelle que soit la façon dont l'éditeur les découpe :
+ * un total, des adultes + enfants, ou un total par chambre (Lodgify :
+ * `rooms[].people`). Les bébés et animaux ne comptent pas.
+ */
 export function pickGuests(row: Row): number | undefined {
-  const single = pick(row, ['numberOfGuests', 'guests', 'people', 'persons', 'occupancy']);
+  const single = pick(row, ['numberOfGuests', 'guests', 'guests_count', 'people', 'persons', 'occupancy']);
   if (typeof single === 'number' && single > 0) return single;
-  const adults = pick(row, ['numAdult', 'adults', 'numAdults']);
-  const children = pick(row, ['numChild', 'children', 'numChildren', 'kids']);
+  const adults = pick(row, ['numAdult', 'adults', 'numAdults', 'adults_count']);
+  const children = pick(row, ['numChild', 'children', 'numChildren', 'kids', 'children_count']);
   const total = (typeof adults === 'number' ? adults : 0) + (typeof children === 'number' ? children : 0);
-  return total > 0 ? total : undefined;
+  if (total > 0) return total;
+  if (Array.isArray(row.rooms)) {
+    const parChambre = (row.rooms as unknown[])
+      .map(r => (r && typeof r === 'object' ? (r as Row).people : undefined))
+      .reduce<number>((s, n) => s + (typeof n === 'number' && n > 0 ? n : 0), 0);
+    if (parChambre > 0) return parChambre;
+  }
+  return undefined;
 }
 
 /** Nom du voyageur, en un seul morceau. */
@@ -147,8 +158,9 @@ export function toEvent(row: Row, prefix: string, fields: FieldNames): ICalEvent
     end,
     startTime: pickTime(row, fields.arrivalTime),
     endTime: pickTime(row, fields.departureTime),
-    // Un blocage de calendrier n'a pas de voyageur : pas de numéro à porter.
+    // Un blocage de calendrier n'a pas de voyageur : ni numéro, ni nombre.
     guestPhone: isBlocked(status) ? undefined : pickGuestPhone(row),
+    guests: isBlocked(status) ? undefined : guests,
   };
 }
 

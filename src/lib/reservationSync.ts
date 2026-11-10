@@ -278,6 +278,7 @@ export async function syncFeed(feed: {
         guest_phone: status === 'confirmed' ? (ev.guestPhone ?? null) : null,
         guest_phone_last4: status === 'confirmed' ? (hints.phoneLast4 ?? null) : null,
         reservation_url: hints.reservationUrl ?? null,
+        guests_count: status === 'confirmed' && ev.guests && ev.guests <= 99 ? ev.guests : null,
         raw: ev as unknown as Record<string, unknown>,
         updated_at: new Date().toISOString(),
       };

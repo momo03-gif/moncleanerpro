@@ -583,6 +583,7 @@ export interface Reservation {
   checkOut: string;           // YYYY-MM-DD (départ = jour du ménage)
   checkInTime?: string;       // HH:mm si disponible
   checkOutTime?: string;      // HH:mm si disponible
+  guestsCount?: number;       // nombre de voyageurs, si le logiciel le donne (jamais l'iCal)
   missionId?: string;         // mission ménage créée pour ce départ
   missionCreatedAt?: string;
   createdAt?: string;

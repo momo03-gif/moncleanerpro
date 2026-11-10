@@ -15,16 +15,33 @@ export interface AptOccupancy {
   nextArrival?: string;           // 1re arrivée >= aujourd'hui
 }
 
-export default function OngletOccupation({ occupation }: { occupation: AptOccupancy[] }) {
+function KPI({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="rounded-2xl border p-4" style={carte}>
+      <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+      <p className="text-xs mt-0.5" style={{ color: '#7A7068' }}>{label}</p>
+    </div>
+  );
+}
+
+export default function OngletOccupation({ occupation, kpis }: {
+  occupation: AptOccupancy[];
+  kpis: { occupied: number; leavingSoon: number; needsCleaning: number; missionCreated: number };
+}) {
   const lignes = occupation.filter(o => o.occupied || o.nextDeparture);
-  if (lignes.length === 0) {
-    return (
+  return (
+    <>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <KPI label="Occupés actuellement" value={kpis.occupied} color="#5B6EF5" />
+      <KPI label="Bientôt libérés (≤ 3 j)" value={kpis.leavingSoon} color="#C48A2A" />
+      <KPI label="Prochain ménage à prévoir" value={kpis.needsCleaning} color="#B85A50" />
+      <KPI label="Prochain ménage créé" value={kpis.missionCreated} color="#5A8A6A" />
+    </div>
+    {lignes.length === 0 ? (
       <div className="rounded-2xl p-10 text-center border" style={carte}>
         <p className="text-sm" style={{ color: '#A8A09A' }}>Aucune réservation active. Connectez des calendriers dans l’onglet Calendriers.</p>
       </div>
-    );
-  }
-  return (
+    ) : (
     <div className="rounded-2xl border overflow-hidden" style={carte}>
       {lignes.map(o => {
         const turnover = o.nextDeparture && o.nextArrival && o.nextArrival === o.nextDeparture.checkOut;
@@ -57,5 +74,7 @@ export default function OngletOccupation({ occupation }: { occupation: AptOccupa
         );
       })}
     </div>
+    )}
+    </>
   );
 }

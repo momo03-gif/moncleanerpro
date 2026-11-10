@@ -18,6 +18,8 @@ export interface ICalEvent {
   // le fournissent. Le champ vit ici parce que les connecteurs PMS rendent cette
   // même forme d'évènement (cf. pms/normalize.ts).
   guestPhone?: string;
+  // Nombre de voyageurs : même remarque, seules les API de PMS le donnent.
+  guests?: number;
 }
 
 // Déplie les lignes : une ligne continuée commence par un espace ou une tabulation

@@ -15,6 +15,7 @@
 // ⚠️ Ne jamais importer côté client.
 
 import type { ICalEvent } from '../ical';
+import { pickGuests } from './normalize';
 
 const BASE_V2 = 'https://connect.superhote.com/api/v2/public';
 
@@ -131,8 +132,10 @@ export async function listSuperhoteProperties(
 }
 
 /**
- * Séjours d'un logement. On ne garde QUE les dates et le statut : nom, e-mail
- * et téléphone du voyageur ne sont jamais recopiés.
+ * Séjours d'un logement. On ne garde QUE les dates, le statut et le nombre de
+ * voyageurs : nom, e-mail et téléphone du voyageur ne sont jamais recopiés.
+ * (Les heures d'arrivée/départ existent aussi, mais les lire changerait d'un
+ * coup l'heure de tous les ménages déjà prévus — à faire à part.)
  */
 export async function fetchSuperhoteReservations(
   creds: SuperhoteCredentials,
@@ -142,7 +145,10 @@ export async function fetchSuperhoteReservations(
   const jeton = exigerJetonV2(creds.apiKey);
   const rentalId = Number(propertyId);
   if (!Number.isFinite(rentalId)) throw new Error(`Identifiant de logement SuperHote invalide : « ${propertyId} ».`);
-  const resas = await toutesLesPagesV2<{ id?: number; rental_id?: number; checkin?: string; checkout?: string; status?: number }>(
+  const resas = await toutesLesPagesV2<{
+    id?: number; rental_id?: number; checkin?: string; checkout?: string; status?: number;
+    guests_count?: number; adults_count?: number; children_count?: number;
+  }>(
     jeton, `/reservations?rental_id=${rentalId}&checkout_from=${range.from}&checkin_to=${range.to}`, 'reservations');
   return resas
     // Ceinture et bretelles : on revérifie le logement, au cas où le filtre serait ignoré.
@@ -154,5 +160,6 @@ export async function fetchSuperhoteReservations(
       summary: 'Séjour SuperHote',
       start: r.checkin!.slice(0, 10),
       end: r.checkout!.slice(0, 10),
+      guests: pickGuests(r as Record<string, unknown>),
     }));
 }

@@ -1,7 +1,7 @@
 'use client';
 
 // Écran admin Réservations. Quatre onglets, du plus quotidien au plus
-// technique : les départs à venir (par défaut), l'occupation des logements,
+// technique : les mouvements du jour (départs et arrivées, par défaut), l'occupation des logements,
 // les calendriers connectés (par conciergerie, avec les outils de
 // branchement et de diagnostic) et les séjours terminés. Chaque onglet vit
 // dans son fichier ; cette page charge les données et porte la synchro.
@@ -16,18 +16,18 @@ import { aujourdhuiParis } from '@/lib/dateParis';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
-import OngletDeparts from './OngletDeparts';
+import OngletMouvements from './OngletMouvements';
 import OngletOccupation, { type AptOccupancy } from './OngletOccupation';
 import OngletCalendriers from './OngletCalendriers';
 import LigneReservation from './LigneReservation';
 import { daysBetween, postJson, carte } from './commun';
 
-type Onglet = 'departs' | 'occupation' | 'calendriers' | 'termines';
+type Onglet = 'mouvements' | 'occupation' | 'calendriers' | 'termines';
 
 export default function AdminReservationsPage() {
   const today = aujourdhuiParis();
   const { toast } = useFeedback();
-  const [onglet, setOnglet] = useState<Onglet>('departs');
+  const [onglet, setOnglet] = useState<Onglet>('mouvements');
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [feeds, setFeeds] = useState<ReservationFeed[]>([]);
@@ -85,14 +85,9 @@ export default function AdminReservationsPage() {
     setForcage(null);
   }
 
-  // Ce qui approche d'abord (du plus proche au plus lointain) ; le passé, du
-  // plus récent au plus ancien — on n'y descend que pour vérifier.
-  const { aVenir, termines } = useMemo(() => ({
-    aVenir: reservations.filter(r => r.checkOut >= today)
-      .sort((a, b) => a.checkOut.localeCompare(b.checkOut) || (a.apartmentName ?? '').localeCompare(b.apartmentName ?? '')),
-    termines: reservations.filter(r => r.checkOut < today)
-      .sort((a, b) => b.checkOut.localeCompare(a.checkOut)),
-  }), [reservations, today]);
+  // Le passé, du plus récent au plus ancien — on n'y descend que pour vérifier.
+  const termines = useMemo(() => reservations.filter(r => r.checkOut < today)
+    .sort((a, b) => b.checkOut.localeCompare(a.checkOut)), [reservations, today]);
 
   // Séjours impossibles : deux voyageurs ne peuvent pas occuper le même
   // logement en même temps — le signal le plus net qu'un calendrier exporte
@@ -139,7 +134,7 @@ export default function AdminReservationsPage() {
   if (loading) return <Loading className="p-6 text-sm" />;
 
   const ONGLETS: [Onglet, string, number | null][] = [
-    ['departs', 'Départs à venir', null],
+    ['mouvements', 'Départs et arrivées', null],
     ['occupation', 'Occupation', null],
     ['calendriers', 'Calendriers', enEchec || null],
     ['termines', 'Terminés', null],
@@ -175,11 +170,11 @@ export default function AdminReservationsPage() {
         ))}
       </div>
 
-      {onglet === 'departs' && (
-        <OngletDeparts aVenir={aVenir} conflits={conflits} kpis={kpis} partenaires={partenaires}
+      {onglet === 'mouvements' && (
+        <OngletMouvements reservations={reservations} conflits={conflits} partenaires={partenaires}
           aujourdhui={today} enCreation={forcage} onCreerMenage={creerMenage} />
       )}
-      {onglet === 'occupation' && <OngletOccupation occupation={occupation} />}
+      {onglet === 'occupation' && <OngletOccupation occupation={occupation} kpis={kpis} />}
       {onglet === 'calendriers' && (
         <OngletCalendriers feeds={feeds} apartments={apartments} partenaires={partenaires} onRecharger={load} />
       )}
@@ -194,7 +189,7 @@ export default function AdminReservationsPage() {
               Les {Math.min(60, termines.length)} séjours terminés les plus récents.
             </p>
             <div className="rounded-2xl border overflow-hidden" style={carte}>
-              {termines.slice(0, 60).map(r => <LigneReservation key={r.id} r={r} passe />)}
+              {termines.slice(0, 60).map(r => <LigneReservation key={r.id} r={r} />)}
             </div>
           </>
         )

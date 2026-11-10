@@ -43,6 +43,14 @@ describe('pickGuests — quel que soit le découpage', () => {
   it('additionne adultes et enfants', () => expect(pickGuests({ numAdult: 2, numChild: 3 })).toBe(5));
   it('accepte les adultes seuls', () => expect(pickGuests({ adults: 2 })).toBe(2));
   it('ne renvoie rien quand l’info manque', () => expect(pickGuests({})).toBeUndefined());
+  it('lit la forme SuperHote V2', () => {
+    expect(pickGuests({ guests_count: 4, adults_count: 3, children_count: 1 })).toBe(4);
+    expect(pickGuests({ adults_count: 2, children_count: 1 })).toBe(3);
+  });
+  it('additionne les chambres (Lodgify)', () => {
+    expect(pickGuests({ rooms: [{ people: 2, guest_breakdown: { adults: 2 } }, { people: 3 }] })).toBe(5);
+    expect(pickGuests({ rooms: [{ people: 0 }] })).toBeUndefined();
+  });
 });
 
 describe('pickGuestName', () => {
@@ -87,6 +95,7 @@ describe('toEvent — la règle de sûreté', () => {
       end: '2026-08-17',
       startTime: '16:00',
       endTime: '11:00',
+      guests: 3,
     });
   });
 
