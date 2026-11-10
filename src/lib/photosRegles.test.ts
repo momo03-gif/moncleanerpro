@@ -6,10 +6,10 @@ describe('photos de ménage — règles', () => {
     expect(photosApresExigees('cleaning')).toBe(true);
     expect(photosApresExigees('both')).toBe(true);
     expect(photosApresExigees(undefined)).toBe(true);   // défaut : ménage
+    expect(photosApresExigees('delivery')).toBe(true);  // photo du dépôt (11/11/2026)
   });
 
   it('ne les exige pas pour une livraison ni un rendez-vous', () => {
-    expect(photosApresExigees('delivery')).toBe(false);
     expect(photosApresExigees('appointment')).toBe(false);
   });
 
