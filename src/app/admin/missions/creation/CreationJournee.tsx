@@ -38,6 +38,13 @@ export default function CreationJournee({ cleaners, airbnbs, missions, onReload,
   const [lignes, setLignes] = useState<Ligne[]>([]);
   const [recherche, setRecherche] = useState('');
   const [coches, setCoches] = useState<Set<string>>(new Set());
+  // Conciergeries dépliées (repliées par défaut ; une recherche déplie tout).
+  const [ouvertes, setOuvertes] = useState<Set<string>>(new Set());
+  const deplier = (k: string) => setOuvertes(prev => {
+    const n = new Set(prev);
+    if (n.has(k)) n.delete(k); else n.add(k);
+    return n;
+  });
   const [busy, setBusy] = useState(false);
 
   const menageurs = useMemo(() => cleaners.filter(c => canCleanerDoService(c, 'cleaning') && c.status !== 'inactive'), [cleaners]);
@@ -184,23 +191,36 @@ export default function CreationJournee({ cleaners, airbnbs, missions, onReload,
           )}
         </div>
 
-        <div className="mt-2 rounded-xl border overflow-hidden" style={{ borderColor: '#E8E4DC', maxHeight: 340, overflowY: 'auto' }}>
+        <div className="mt-2 rounded-xl border overflow-hidden" style={{ borderColor: '#E8E4DC', maxHeight: 420, overflowY: 'auto' }}>
           {proposes.length === 0 ? (
             <p className="text-xs px-3 py-3" style={{ color: '#A8A09A' }}>
               {recherche.trim() ? 'Aucun logement pour ce filtre.' : 'Tous les logements sont déjà prévus ou ajoutés pour ce jour.'}
             </p>
           ) : groupes.map(([conciergerie, liste]) => {
             const tous = liste.every(x => coches.has(x.id));
+            const nbCoches = liste.filter(x => coches.has(x.id)).length;
+            const ouvert = !!recherche.trim() || ouvertes.has(conciergerie);
             return (
               <div key={conciergerie}>
-                <label className="flex items-center gap-2 px-3 py-2 sticky top-0 z-10 cursor-pointer border-b"
+                <div className="flex items-center gap-2 px-3 py-2.5 sticky top-0 z-10 border-b"
                   style={{ backgroundColor: '#FAFAF8', borderColor: '#F2EFE9' }}>
                   <input type="checkbox" checked={tous} onChange={e => basculer(liste.map(x => x.id), e.target.checked)}
-                    className="w-4 h-4 accent-[#C9A84C]" />
-                  <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>{conciergerie}</span>
-                  <span className="text-[11px]" style={{ color: '#A8A09A' }}>{liste.length}</span>
-                </label>
-                {liste.map(x => (
+                    aria-label={`Tout cocher : ${conciergerie}`} className="w-4 h-4 accent-[#C9A84C]" />
+                  <button type="button" onClick={() => deplier(conciergerie)} aria-expanded={ouvert}
+                    className="flex-1 flex items-center gap-2 text-left">
+                    <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>{conciergerie}</span>
+                    <span className="text-[11px]" style={{ color: '#A8A09A' }}>{liste.length} logement{liste.length > 1 ? 's' : ''}</span>
+                    {nbCoches > 0 && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#C9A84C22', color: '#9A7B22' }}>
+                        {nbCoches} coché{nbCoches > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <span className="ml-auto transition-transform" style={{ color: '#A8A09A', transform: ouvert ? 'rotate(180deg)' : 'none' }}>
+                      <Icon name="chevronDown" size={15} />
+                    </span>
+                  </button>
+                </div>
+                {ouvert && liste.map(x => (
                   <label key={x.id} className="flex items-center gap-2 px-3 py-2 pl-8 border-b last:border-0 cursor-pointer hover:bg-[#FAFAF8]"
                     style={{ borderColor: '#F2EFE9' }}>
                     <input type="checkbox" checked={coches.has(x.id)} onChange={e => basculer([x.id], e.target.checked)}
