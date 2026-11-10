@@ -99,14 +99,16 @@ export async function updateRecurringDB(id: string, fields: {
  * `sansCleaner` : les missions créées sans cleaner — à confier au prestataire
  * attitré de leur logement (cf. genererRecurrents, lib/recurringServer.ts ; ce
  * fichier est aussi chargé dans le navigateur, il n'importe rien de serveur).
+ * `crees` : toutes les missions créées — pour leurs livraisons.
  */
-export async function generateRecurringMissions(horizonDays = 180): Promise<{ created: number; sansCleaner: string[] }> {
+export async function generateRecurringMissions(horizonDays = 180): Promise<{ created: number; sansCleaner: string[]; crees: string[] }> {
   const today = parisToday();
   const horizon = addDaysStr(today, horizonDays);
 
   const { data: recs } = await supabase.from('recurring_missions').select('*').eq('active', true);
   const sansCleaner: string[] = [];
-  if (!recs || recs.length === 0) return { created: 0, sansCleaner: [] };
+  const crees: string[] = [];
+  if (!recs || recs.length === 0) return { created: 0, sansCleaner: [], crees: [] };
 
   // Taux horaire des cleaners (pour le gain), chargé une fois.
   const { data: cls } = await supabase.from('cleaners').select('id, name, hourly_rate');
@@ -169,10 +171,11 @@ export async function generateRecurringMissions(horizonDays = 180): Promise<{ cr
       if (error) console.error('generateRecurringMissions insert:', error.message);
       else {
         created += ins?.length ?? 0;
+        crees.push(...(ins ?? []).map(m => m.id as string));
         if (!r.cleaner_id) sansCleaner.push(...(ins ?? []).map(m => m.id as string));
       }
     }
     await supabase.from('recurring_missions').update({ last_generated_date: horizon }).eq('id', r.id);
   }
-  return { created, sansCleaner };
+  return { created, sansCleaner, crees };
 }

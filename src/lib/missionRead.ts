@@ -194,8 +194,9 @@ export async function lirePourSession(
       // Les agents d'un prestataire ne reçoivent que ce que leur prestataire leur donne.
       if (!admin && (await ficheCleaner(db, session.id))?.agent) return [];
       const { data, error } = await db.from('missions').select(MISSION_SELECT).eq('status', 'pending').is('pending_cleaner_id', null)
-        // Une intervention (artisan) se confie, elle ne se propose pas à l'équipe.
-        .or('service.is.null,service.neq.repair')
+        // Une intervention (artisan) se confie, et une livraison s'assigne par
+        // l'admin : ni l'une ni l'autre ne se propose à l'équipe.
+        .or('service.is.null,service.not.in.(repair,delivery)')
         // Une mission confiée à un prestataire n'est plus proposée à l'équipe.
         .is('prestataire_id', null)
         .order('date_from');

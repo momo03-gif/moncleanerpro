@@ -293,6 +293,8 @@ export interface Apartment {
   structureLabel?: string;   // libellé libre quand structureType = 'other'
   /** Domicile d'un particulier (crédit d'impôt) : jamais confié à un prestataire non déclaré SAP. */
   creditImpot?: boolean;
+  /** Chaque ménage reçoit sa livraison (créée sans livreur, cf. lib/livraisonAuto.ts). */
+  needsDelivery?: boolean;
   // Override du coût produits par ménage (centimes). Absent → coût global ProfitConfig.
   productCostCents?: number;
   portalCode?: string;

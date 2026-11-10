@@ -8,6 +8,7 @@ import { lirePourSession } from '@/lib/missionRead';
 import { notifyCleanerNewMission, notifyCleanerMissionUnassigned, notifyMissionCancelled, notifyMissionsTransferees, notifyPrestataireMissionReprise } from '@/lib/notificationEvents';
 import type { MissionService } from '@/lib/types';
 import { aujourdhuiParis } from '@/lib/dateParis';
+import { livraisonsLiees, retirerLivraisons } from '@/lib/livraisonAuto';
 
 export const runtime = 'nodejs';
 
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
       if (!droit.ok) return refus(droit.error);
       // Prévenir AVANT : une fois supprimée, la mission n'a plus de contexte.
       await notifyMissionCancelled(b.missionId, session.role, session.id);
+      const liees = await livraisonsLiees(db, [b.missionId]);
 
       let q = db.from('missions').delete().eq('id', b.missionId);
       // Garde atomique : hors admin, une mission close ne part pas, même si son
@@ -106,6 +108,7 @@ export async function POST(req: NextRequest) {
       const { data, error } = await q.select('id');
       if (error) { console.error('missions/delete:', error.message); return refus('Suppression impossible.', 500); }
       if (!data || data.length === 0) return refus('Cette mission ne peut plus être supprimée.');
+      await retirerLivraisons(db, liees);
       return NextResponse.json({ ok: true });
     }
 
@@ -115,9 +118,13 @@ export async function POST(req: NextRequest) {
       if (!estAdmin) return refus('Réservé à l’administration.');
       if (!b.recurringId) return refus('Récurrence manquante.', 400);
       const today = aujourdhuiParis();
+      const { data: aPurger } = await db.from('missions').select('id')
+        .eq('recurring_id', b.recurringId).gte('date_from', today).in('status', ['pending', 'assigned']);
+      const liees = await livraisonsLiees(db, (aPurger ?? []).map(m => m.id as string));
       const { error } = await db.from('missions').delete()
         .eq('recurring_id', b.recurringId).gte('date_from', today).in('status', ['pending', 'assigned']);
       if (error) { console.error('missions/delete-recurring:', error.message); return refus('Suppression impossible.', 500); }
+      await retirerLivraisons(db, liees);
       return NextResponse.json({ ok: true });
     }
 

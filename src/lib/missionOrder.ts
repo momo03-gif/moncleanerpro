@@ -14,6 +14,7 @@ import type { Mission } from './types';
 // les trois priorités ci-dessus s'appliquent telles quelles.
 
 const LABEL_NON_ASSIGNE = 'Non assigné';
+const LABEL_LIVRAISONS = 'Livraisons à assigner';
 
 /** Une relocation le jour même : nouvelle arrivée client à la date du ménage. */
 export function isSameDayTurnover(m: Mission): boolean {
@@ -113,9 +114,19 @@ export function collapseGroups(missions: Mission[]): PlanningEntry[] {
 }
 
 export interface CleanerMissionGroup {
+  /** Clé stable du groupe (rendu, recherche). */
+  key: string;
   cleanerId: string | null;
   cleanerName: string;
   missions: Mission[];
+  /** Livraisons sans livreur : à part, sous les ménages, pour les assigner en lot. */
+  livraisons?: boolean;
+}
+
+/** Le groupe d'une mission (cf. groupMissionsByCleaner). */
+export function cleDeGroupe(m: Mission): string {
+  if (m.cleanerId) return m.cleanerId;
+  return m.service === 'delivery' ? '__livraisons__' : '__unassigned__';
 }
 
 /**
@@ -126,13 +137,16 @@ export function groupMissionsByCleaner(missions: Mission[]): CleanerMissionGroup
   const groups = new Map<string, CleanerMissionGroup>();
 
   for (const m of missions) {
-    const key = m.cleanerId ?? '__unassigned__';
+    const key = cleDeGroupe(m);
     let g = groups.get(key);
     if (!g) {
+      const livraisons = key === '__livraisons__';
       g = {
+        key,
         cleanerId: m.cleanerId ?? null,
-        cleanerName: m.cleanerName?.trim() || LABEL_NON_ASSIGNE,
+        cleanerName: livraisons ? LABEL_LIVRAISONS : (m.cleanerName?.trim() || LABEL_NON_ASSIGNE),
         missions: [],
+        ...(livraisons ? { livraisons: true } : {}),
       };
       groups.set(key, g);
     }
@@ -142,9 +156,11 @@ export function groupMissionsByCleaner(missions: Mission[]): CleanerMissionGroup
   const list = Array.from(groups.values());
   list.forEach(g => g.missions.sort(compareMissionPriority));
   list.sort((a, b) => {
+    // « Non assigné » après les cleaners, puis les livraisons à assigner tout en bas.
+    if (!!a.livraisons !== !!b.livraisons) return a.livraisons ? 1 : -1;
     const aUn = a.cleanerId === null;
     const bUn = b.cleanerId === null;
-    if (aUn !== bUn) return aUn ? 1 : -1; // « Non assigné » en dernier
+    if (aUn !== bUn) return aUn ? 1 : -1;
     return a.cleanerName.localeCompare(b.cleanerName, 'fr', { sensitivity: 'base' });
   });
   return list;

@@ -19,6 +19,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { exigerAdmin } from '@/lib/apiGuard';
 import { genererRecurrents } from '@/lib/recurringServer';
 import { aujourdhuiParis } from '@/lib/dateParis';
+import { livraisonsLiees, retirerLivraisons } from '@/lib/livraisonAuto';
 
 export const runtime = 'nodejs';
 
@@ -98,10 +99,14 @@ export async function POST(req: Request) {
       // On réaligne l'agenda : les occurrences À VENIR et non démarrées sont
       // effacées puis régénérées selon la nouvelle règle. Les missions passées,
       // en cours ou terminées restent — ce sont des données de référence.
+      const { data: aPurger } = await db.from('missions').select('id')
+        .eq('recurring_id', b.id).gte('date_from', aujourdhuiParis()).in('status', ['pending', 'assigned']);
+      const liees = await livraisonsLiees(db, (aPurger ?? []).map(m => m.id as string));
       const { error: purge } = await db.from('missions').delete()
         .eq('recurring_id', b.id).gte('date_from', aujourdhuiParis())
         .in('status', ['pending', 'assigned']);
       if (purge) console.error('recurring/purge:', purge.message);
+      else await retirerLivraisons(db, liees);
 
       const gen = await genererRecurrents();
       return NextResponse.json({ ok: true, generated: gen.created });

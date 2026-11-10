@@ -5,6 +5,7 @@ import type { MissionService, MissionStatus } from './types';
 import { computeMissionGain, computeCleanerGain, billableHotelPrice } from './pay';
 import { canCleanerDoService, sansControleAdresse } from './service';
 import { confierAuPrestataireAttitre } from './prestataireConfier';
+import { creerLivraisonsAssociees, deplacerLivraisonsLiees, livraisonsLiees, retirerLivraisons } from './livraisonAuto';
 import { primeCourse, montantTicket, payeurValide, COURSE_TICKET_ERROR } from './course';
 import {
   distanceMeters, TRACKING_TOLERANCE_METERS, PROXIMITY_ERROR, ADDRESS_PROXIMITY_ERROR,
@@ -503,7 +504,10 @@ const ACTIONS: Record<string, Action> = {
     }).select('id').single();
     if (error) { console.error('missions/create-airbnb:', error.message); return ko('Création impossible.', 500); }
     await notifyPartnerCreatedMission(s.name || 'Un partenaire Airbnb', dateFrom, str(b.timeFrom) ?? '', data?.id ?? null);
-    if (data?.id) await confierAuPrestataireAttitre(db, [data.id as string]);
+    if (data?.id) {
+      await confierAuPrestataireAttitre(db, [data.id as string]);
+      await creerLivraisonsAssociees(db, [data.id as string]);
+    }
     return ok({ id: data?.id });
   },
 
@@ -528,7 +532,7 @@ const ACTIONS: Record<string, Action> = {
     const f = (b.fields ?? {}) as Record<string, unknown>;
     if (!missionId) return ko('Mission manquante.');
     const { data: row } = await db.from('missions')
-      .select('id, status, partner_id, airbnb_id, created_by, cleaner_id, service, mission_duration_minutes, apartment_default_duration_snapshot')
+      .select('id, status, partner_id, airbnb_id, created_by, cleaner_id, service, date_from, mission_duration_minutes, apartment_default_duration_snapshot')
       .eq('id', missionId).maybeSingle();
     if (!row) return ko('Mission introuvable.', 404);
 
@@ -618,6 +622,10 @@ const ACTIONS: Record<string, Action> = {
       const { data, error } = await q.select('id');
       if (error) { console.error('missions/update:', error.message); return ko('Enregistrement impossible.', 500); }
       if (!data || data.length === 0) return ko('Cette mission est clôturée et ne peut plus être modifiée.');
+      // Un ménage déplacé emmène sa livraison.
+      if (patch.date_from && patch.date_from !== row.date_from) {
+        await deplacerLivraisonsLiees(db, missionId, patch.date_from as string, (patch.time_from as string | null) ?? null);
+      }
     } else if (!paie) {
       return ok({ rien: true });
     }
@@ -655,10 +663,11 @@ const ACTIONS: Record<string, Action> = {
     // contexte. Décision manuelle : la synchro ne la recrée pas.
     if (st === 'cancelled') {
       await notifyMissionCancelled(missionId, s.role, s.id);
+      const liees = await livraisonsLiees(db, [missionId]);
       const { data: sup, error: errSup } = await db.from('missions')
         .delete().eq('id', missionId).neq('status', 'done').select('id');
       if (errSup) { console.error('missions/set-status delete:', errSup.message); return ko('Suppression impossible.', 500); }
-      if (sup?.length) return ok({ supprimee: true });
+      if (sup?.length) { await retirerLivraisons(db, liees); return ok({ supprimee: true }); }
     }
     const { error } = await db.from('missions').update({ status: st }).eq('id', missionId);
     if (error) { console.error('missions/set-status:', error.message); return ko('Enregistrement impossible.', 500); }
@@ -796,12 +805,15 @@ const ACTIONS: Record<string, Action> = {
         whole_property: f.wholeProperty === true,
         covered_unit_names: Array.isArray(f.coveredUnitNames) ? f.coveredUnitNames : null,
       } : {}),
+      // Livraison ajoutée à un ménage existant : elle le suivra.
+      ...(service === 'delivery' && str(f.linkedMissionId) ? { linked_mission_id: str(f.linkedMissionId) } : {}),
       status: cleanerId ? 'assigned' : 'pending',
     }).select('id').single();
     if (error) { console.error('missions/create:', error.message); return ko(error.message, 500); }
     if (cleanerId && data?.id) await notifyCleanerNewMission(data.id as string);
     // Personne de choisi : le prestataire attitré du logement, s'il y en a un.
     if (!cleanerId && data?.id) await confierAuPrestataireAttitre(db, [data.id as string]);
+    if (data?.id) await creerLivraisonsAssociees(db, [data.id as string]);
     return ok({ id: data?.id });
   },
 
@@ -882,6 +894,7 @@ const ACTIONS: Record<string, Action> = {
     if (error) { console.error('missions/create-batch:', error.message); return ko(error.message, 500); }
     if (cleanerId) for (const r of data ?? []) await notifyCleanerNewMission(r.id as string);
     else await confierAuPrestataireAttitre(db, (data ?? []).map(r => r.id as string));
+    await creerLivraisonsAssociees(db, (data ?? []).map(r => r.id as string));
     return ok({ ids: (data ?? []).map(r => r.id) });
   },
 

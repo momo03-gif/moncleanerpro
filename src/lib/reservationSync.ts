@@ -16,6 +16,7 @@ import { classifyEvent, parseICal, type ICalEvent } from './ical';
 import { detectPlatform } from './icalUrl';
 import { serviceParts } from './service';
 import { confierAuPrestataireAttitre } from './prestataireConfier';
+import { creerLivraisonsAssociees, deplacerLivraisonsLiees, livraisonsLiees, retirerLivraisons } from './livraisonAuto';
 import type { MissionService } from './types';
 import {
   departCredible, estRefletDUnSejour, nuitsAFermerAilleurs,
@@ -373,6 +374,7 @@ async function handleCancelledReservationMission(missionId: string) {
     // est reconfirmée, l'étape 2 lui recrée un ménage (une suppression À LA
     // MAIN, elle, garde cette date et n'est pas recréée — cf. materializeMissions).
     const { data: liees } = await db.from('reservations').select('id').eq('mission_id', missionId);
+    const livraisons = await livraisonsLiees(db, [missionId]);
     // Garde : toujours non assignée au moment de supprimer.
     const { data: supprimee, error: errSup } = await db.from('missions')
       .delete().eq('id', missionId).eq('status', 'pending').select('id');
@@ -381,6 +383,7 @@ async function handleCancelledReservationMission(missionId: string) {
       await db.from('missions').update({ status: 'cancelled' }).eq('id', missionId).eq('status', 'pending');
       return;
     }
+    if (supprimee?.length) await retirerLivraisons(db, livraisons);
     // La clé étrangère a déjà effacé mission_id ; on efface aussi la date.
     if (supprimee?.length && liees?.length) {
       await db.from('reservations').update({ mission_created_at: null }).in('id', liees.map(x => x.id as string));
@@ -442,6 +445,7 @@ async function applyReservationDateChange(
       date_from: newDate, time_from: newTime || DEFAULT_CHECKOUT_TIME,
     }).eq('id', missionId).in('status', ['pending', 'assigned']).select('id');
     if (!deplacee?.length) return;
+    await deplacerLivraisonsLiees(db, missionId, newDate, newTime || DEFAULT_CHECKOUT_TIME);
     const place = (m.airbnbs as { name?: string } | null)?.name ?? 'un logement';
     const message = `Le départ du voyageur de ${place} a changé : la mission est déplacée au ${fmtDateFr(newDate)}.`;
     if (m.prestataire_id) await notifyPrestataireSync(missionId, 'Mission déplacée', message);
@@ -738,6 +742,7 @@ export async function materializeMissions(): Promise<MaterializeResult> {
     await notifyPartnerCreatedMission('La synchronisation automatique', date, DEFAULT_CHECKOUT_TIME, mission.id);
     // Logement avec un prestataire attitré : le ménage lui est confié d'office.
     await confierAuPrestataireAttitre(db, [mission.id]);
+    await creerLivraisonsAssociees(db, [mission.id]);
 
     result.created++;
     result.details.push({ reservationId: first.id, missionId: mission.id, airbnbId: targetAirbnbId, date });

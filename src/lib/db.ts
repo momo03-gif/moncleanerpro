@@ -405,6 +405,8 @@ export async function createMissionDB(fields: {
   // Maison louée à la chambre : périmètre du ménage, identique à ce que produit
   // la synchro — une mission créée à la main doit être indiscernable des autres.
   coveredUnits?: string; wholeProperty?: boolean; coveredUnitNames?: string[];
+  /** Livraison : le ménage qu'elle accompagne (elle le suivra). */
+  linkedMissionId?: string;
 }): Promise<{ error: string | null }> {
   // Le gain du cleaner est calculé par le serveur avec le taux EN BASE : les
   // taux transmis ici (cleanerHourlyRate…) ne sont plus pris en compte.

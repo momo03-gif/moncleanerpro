@@ -28,6 +28,7 @@ const emptyForm = {
   estimatedMinutes: '60', zoneColor: '', zoneName: '', notes: '',
   structureType: 'apartment', structureLabel: '', productCostCents: '',
   creditImpot: false,
+  needsDelivery: false,
   // Prestataire attitré : '' = aucun (ménages à assigner comme d'habitude).
   prestataireId: '',
   // Maison à annonces multiples : '' = logement indépendant.
@@ -59,6 +60,7 @@ function aptToForm(a: Apartment): FormState {
     structureLabel: a.structureLabel ?? '',
     productCostCents: a.productCostCents != null ? String(a.productCostCents) : '',
     creditImpot: a.creditImpot === true,
+    needsDelivery: a.needsDelivery === true,
     prestataireId: a.prestataireId ?? '',
     partnerName: a.partnerName ?? '',
     portalCode: a.portalCode ?? '',
@@ -204,6 +206,7 @@ export default function AirbnbPage() {
       structureLabel: form.structureType === 'other' ? (form.structureLabel || undefined) : undefined,
       productCostCents: form.productCostCents ? Number(form.productCostCents) : undefined,
       creditImpot: form.creditImpot,
+      needsDelivery: form.needsDelivery,
       partnerName: form.partnerName || undefined,
       portalCode: form.portalCode || undefined,
       keyboxCode: form.keyboxCode || undefined,
@@ -552,6 +555,14 @@ export default function AirbnbPage() {
             </div>
           </div>
           <label className="flex items-start gap-3 mb-4 cursor-pointer select-none">
+            <input type="checkbox" checked={form.needsDelivery} onChange={e => setForm(p => ({ ...p, needsDelivery: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-[#C9A84C]" />
+            <span>
+              <span className="block text-sm font-medium" style={{ color: '#1A1A1A' }}>Besoin d’une livraison à chaque ménage</span>
+              <span className="block text-xs" style={{ color: '#A8A09A' }}>La livraison est créée avec le ménage, sans livreur : vous l’assignez depuis la liste des missions.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 mb-4 cursor-pointer select-none">
             <input type="checkbox" checked={form.creditImpot} onChange={e => setForm(p => ({ ...p, creditImpot: e.target.checked }))}
               className="mt-0.5 w-4 h-4 accent-[#C9A84C]" />
             <span>
@@ -684,6 +695,11 @@ function SiteRow({ apt, onEdit, onDelete, onMaps, prixKit = 0, prestataire }: {
         {apt.creditImpot && (
           <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#5A8A6A14', color: '#3F6B4F' }}>
             crédit d’impôt
+          </span>
+        )}
+        {apt.needsDelivery && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: '#C48A2A14', color: '#C48A2A' }}>
+            livraison
           </span>
         )}
         {prestataire && (

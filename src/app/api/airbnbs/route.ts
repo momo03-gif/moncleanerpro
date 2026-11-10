@@ -71,6 +71,8 @@ export async function POST(req: NextRequest) {
     'linge_mode', 'linge_kits', 'linge_forfait', 'linge_libelle',
     // Régime fiscal du ménage : décidé par nous, pas par le client.
     'credit_impot',
+    // Livraison créée avec chaque ménage : une organisation à nous.
+    'needs_delivery',
   ];
   function filtrer(champs: Record<string, unknown>): Record<string, unknown> {
     if (estAdmin) return champs;

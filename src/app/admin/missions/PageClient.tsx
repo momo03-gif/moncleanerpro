@@ -17,7 +17,7 @@ import { getTerrainMap, type TerrainInfo } from '@/lib/fieldContact';
 import type { Mission, HotelAnnounce, Apartment } from '@/lib/types';
 import { canCleanerDoService } from '@/lib/service';
 import Icon from '@/components/Icon';
-import { groupMissionsByCleaner, compareMissionPriority } from '@/lib/missionOrder';
+import { groupMissionsByCleaner, compareMissionPriority, cleDeGroupe } from '@/lib/missionOrder';
 import { ecouterMissions, fusionnerMissions } from '@/lib/missionsLive';
 import { inputStyle } from '@/lib/ui';
 import DateRangeFilter from '@/components/DateRangeFilter';
@@ -256,6 +256,11 @@ export default function MissionsPage() {
     setSelectedIds(new Set(filtered.filter(m => m.status !== 'completed' && m.status !== 'cancelled').map(m => m.id)));
   }
   function clearSelection() { setSelectedIds(new Set()); }
+  // Toutes les livraisons à assigner de la période, d'un coup (pas seulement
+  // celles affichées) : on les donne ensuite au livreur en une fois.
+  function selectionnerLivraisons(ids: string[]) {
+    setSelectedIds(prev => new Set([...prev, ...ids]));
+  }
 
   // Réordonne les missions d'un cleaner POUR UNE JOURNÉE et persiste le rang
   // manuel (0..n). Le tri partagé compare d'abord la date : échanger avec une
@@ -267,7 +272,7 @@ export default function MissionsPage() {
     const neighbor = visibleDay[visibleDay.indexOf(mission) + dir];
     if (!neighbor) return;
     const full = missions
-      .filter(x => (x.cleanerId ?? null) === (mission.cleanerId ?? null) && x.date === mission.date)
+      .filter(x => cleDeGroupe(x) === cleDeGroupe(mission) && x.date === mission.date)
       .sort(compareMissionPriority);
     const from = full.findIndex(x => x.id === mission.id);
     const to = full.findIndex(x => x.id === neighbor.id);
@@ -295,7 +300,7 @@ export default function MissionsPage() {
   const deplacerCarte = useCallback((missionId: string, dir: -1 | 1) => {
     const m = visiblesRef.current.find(x => x.id === missionId);
     if (!m) return;
-    const groupe = groupMissionsByCleaner(visiblesRef.current).find(g => (g.cleanerId ?? null) === (m.cleanerId ?? null));
+    const groupe = groupMissionsByCleaner(visiblesRef.current).find(g => g.key === cleDeGroupe(m));
     const journee = (groupe?.missions ?? []).filter(x => x.date === m.date);
     void reorderRef.current(m, journee, dir);
   }, []);
@@ -353,6 +358,7 @@ export default function MissionsPage() {
         cleanerId: liv.id, cleanerName: liv.name,
         price: 0,
         airbnbId: m.airbnbId, partnerId: m.partnerId,
+        linkedMissionId: m.id,
         createdBy: user?.id, createdByRole: 'admin',
       });
     }
@@ -562,17 +568,31 @@ export default function MissionsPage() {
                 {(() => { const n = filtered.filter(m => !m.cleanerName && !m.assigneeName && m.status !== 'cancelled' && m.status !== 'completed').length; return n > 0 ? <span style={{ color: '#C48A2A' }}><span className="font-semibold">{n}</span> non assignée{n > 1 ? 's' : ''}</span> : null; })()}
                 {(() => { const n = filtered.filter(m => m.nextArrival && m.nextArrival === m.date).length; return n > 0 ? <span style={{ color: '#B91C1C' }}><span className="font-semibold">{n}</span> arrivée{n > 1 ? 's' : ''} jour-même</span> : null; })()}
               </div>
-              {shownGroups.map(group => (
-                <section key={group.cleanerId ?? '__unassigned__'}>
+              {shownGroups.map(group => {
+                // Livraisons à assigner : toutes celles de la période, affichées ou non.
+                const aSelectionner = group.livraisons
+                  ? (allGroups.find(g => g.key === group.key)?.missions ?? [])
+                    .filter(m => m.status !== 'completed' && m.status !== 'cancelled').map(m => m.id)
+                  : [];
+                return (
+                <section key={group.key}>
                   <div className="flex items-center gap-2 mb-2">
+                    {group.livraisons && <span style={{ color: '#C48A2A' }}><Icon name="delivery" size={16} /></span>}
                     <h3 className="font-semibold text-base"
                       style={{ color: group.cleanerId ? '#1A1A1A' : '#C48A2A' }}>
                       {group.cleanerName}
                     </h3>
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                       style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>
-                      {group.missions.length}
+                      {group.livraisons ? aSelectionner.length : group.missions.length}
                     </span>
+                    {group.livraisons && aSelectionner.length > 0 && (
+                      <button onClick={() => selectionnerLivraisons(aSelectionner)}
+                        className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ backgroundColor: '#C48A2A', color: '#FFFFFF' }}>
+                        Tout sélectionner pour un livreur
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-2">
                     {group.missions.map(m => {
@@ -594,7 +614,8 @@ export default function MissionsPage() {
                     })}
                   </div>
                 </section>
-              ))}
+                );
+              })}
               {hasMore && (
                 <div className="text-center pt-2">
                   <button onClick={() => setVisibleCount(c => c + 60)}
