@@ -139,6 +139,8 @@ function AccessHelp({ site, guest }: { site?: SiteContact; guest?: GuestContact 
   );
 }
 
+const extraStatusDefini = (st?: string | null) => st === 'pending' || st === 'approved' || st === 'refused';
+
 function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { mission: Mission; userId: string; onUpdate: () => void; highlight?: boolean; terrain?: TerrainInfo }) {
   const { confirm, toast } = useFeedback();
   const [mapsOpen, setMapsOpen] = useState(false);
@@ -205,6 +207,14 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
   const [noShowMotif, setNoShowMotif] = useState<NoShowMotif>('no_show');
   const [noShowError, setNoShowError] = useState('');
   const canNoShow = (canStart || canFinish) && noShowPossible(mission.service);
+  // Plus de temps, no show, désistement : rares, rangés derrière « Un souci ? »
+  // pour que l'action du moment (Démarrer, Terminer) reste la seule en vue.
+  const [soucisOpen, setSoucisOpen] = useState(false);
+  const peutDemanderTemps = hasCleaning && (canStart || canFinish) && !extraStatusDefini(mission.extraTimeStatus);
+  // Se désister : seulement avant d'avoir commencé (une livraison n'a pas de démarrage).
+  const peutSeDesister = canStart || canDeliver;
+  const soucis = [peutDemanderTemps && 'plus de temps', canNoShow && 'voyageur absent ou encore là', peutSeDesister && 'désistement']
+    .filter(Boolean).join(', ');
 
   async function finish() {
     setBusy(true); setGeoError('');
@@ -357,17 +367,29 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
 
       {/* Infos */}
       <div className="px-5 py-4 space-y-3">
-        {mission.nextArrival && (
-          mission.nextArrival === mission.date ? (
+        {(() => {
+          // La prochaine arrivée : celle du serveur (avec le nombre de voyageurs)
+          // si on l'a, sinon celle notée sur la mission.
+          const a = terrain?.prochaineArrivee;
+          const date = a?.date ?? mission.nextArrival;
+          if (!date) return null;
+          const heure = a?.heure ?? mission.nextArrivalTime;
+          const voyageurs = a?.voyageurs;
+          const quiArrive = voyageurs ? `${voyageurs} voyageur${voyageurs > 1 ? 's' : ''}` : 'Prochains voyageurs';
+          return date === mission.date ? (
             <div className="px-3 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
-              Arrivée client le jour même{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''} — terminer à temps
+              {quiArrive} arrive{voyageurs && voyageurs > 1 ? 'nt' : ''} le jour même{heure ? ` à ${formatHour(heure)}` : ''} — terminer à temps
             </div>
           ) : (
-            <p className="text-xs" style={{ color: '#7A7068' }}>
-              Prochaine arrivée : {new Date(mission.nextArrival + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}{mission.nextArrivalTime ? ` à ${formatHour(mission.nextArrivalTime)}` : ''}
+            <p className="text-xs flex items-center gap-1.5" style={{ color: '#7A7068' }}>
+              <Icon name="user" size={13} />
+              {voyageurs
+                ? <span><b style={{ color: '#1A1A1A' }}>{quiArrive}</b> attendu{voyageurs > 1 ? 's' : ''} le </span>
+                : <span>Prochaine arrivée : </span>}
+              {new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}{heure ? ` à ${formatHour(heure)}` : ''}
             </p>
-          )
-        )}
+          );
+        })()}
         {/* Maison louée à la chambre : le cleaner doit savoir CE QU'IL FAIT avant
             d'arriver — toute la maison, ou telle(s) chambre(s) + les communs.
             Placé au-dessus de l'heure : c'est l'information la plus structurante
@@ -513,19 +535,20 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
 
       {/* Photos avant/après + rapport + temps supplémentaire — sans objet pour un
           rendez-vous (pas de logement à photographier / rapporter). */}
-      {mission.status !== 'cancelled' && !isAppointment && (
+      {mission.status !== 'cancelled' && !isAppointment
+        && (isSimple || mission.status === 'in_progress' || mission.status === 'completed') && (
         <div className="px-5 pb-4 space-y-3">
+          {/* Photos d'abord : ce sont elles qui permettent de terminer. */}
+          <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
+            userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress'} exigeApres={photosRequises}
+            modifiable={mission.status !== 'completed'} />
           {/* Checklist du logement : le standard demandé par la conciergerie, à
-              cocher au fur et à mesure. Ouverte par défaut sur une mission en
-              cours — c'est le fil conducteur du ménage. */}
+              cocher au fur et à mesure. */}
           {mission.airbnbId && serviceParts(mission.service).cleaning && (
             <ChecklistPanel airbnbId={mission.airbnbId} missionId={mission.id} mode="run"
               authorName={mission.cleanerName} readOnly={mission.status === 'completed'}
               showTimes defaultOpen={mission.status === 'in_progress'} />
           )}
-          <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
-            userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress'} exigeApres={photosRequises}
-            modifiable={mission.status !== 'completed'} />
           <MissionReport missionId={mission.id} mode="cleaner" userId={userId} units={mission.coveredUnitNames} />
           {/* Réparations du logement : ce que le cleaner signale ici reste ouvert
               jusqu'à ce que le propriétaire l'ait fait réparer. */}
@@ -548,44 +571,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
             <div className="px-3 py-2.5 rounded-xl text-xs" style={{ backgroundColor: '#B85A5012', color: '#B85A50' }}>
               Demande de temps supplémentaire refusée.
             </div>
-          ) : !extraOpen ? (
-            <button onClick={() => setExtraOpen(true)}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2"
-              style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-              <Icon name="timer" size={14} /> Demander plus de temps
-            </button>
-          ) : (
-            <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
-              <p className="text-[11px]" style={{ color: '#7A7068' }}>
-                Appartement très sale ? Prenez-le en photo et demandez du temps en plus.
-              </p>
-              <div className="flex gap-1.5">
-                {EXTRA_TIME_OPTIONS.map(opt => (
-                  <button key={opt} onClick={() => setExtraMinutes(opt)}
-                    className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
-                    style={{ backgroundColor: extraMinutes === opt ? '#C9A84C' : '#FFFFFF', color: extraMinutes === opt ? '#1A1A1A' : '#7A7068', border: '1px solid #E8E4DC' }}>
-                    +{opt}
-                  </button>
-                ))}
-              </div>
-              <input value={extraReason} onChange={e => setExtraReason(e.target.value)}
-                placeholder="Motif (facultatif)"
-                className="w-full px-3 py-2 rounded-lg text-sm border"
-                style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
-              {extraError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{extraError}</p>}
-              <div className="flex gap-2">
-                <button onClick={submitExtra} disabled={busy}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
-                  style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                  {busy ? '...' : `Demander +${extraMinutes} min`}
-                </button>
-                <button onClick={() => { setExtraOpen(false); setExtraError(''); }} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  Annuler
-                </button>
-              </div>
-            </div>
-          ))}
+          ) : null)}
         </div>
       )}
 
@@ -699,47 +685,104 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
               {photosRequises ? 'Ajoutez une photo « après » dans le panneau Photos ci-dessus, puis terminez.' : 'Une photo « après » au minimum est demandée pour terminer.'}
             </p>
           )}
-          {/* No show / prolongation : ménage impossible ou inutile — clôture sans ménage. */}
-          {canNoShow && (noShowOpen ? (
-            <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
-              <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_BOUTON}</p>
-              <NoShowMotifChoix valeur={noShowMotif} onChange={setNoShowMotif} />
-              <p className="text-[11px] leading-snug" style={{ color: '#7A7068' }}>
-                {noShowMotif === 'prolongation'
-                  ? <>Le voyageur est encore dans le logement ? N&apos;entrez pas. Prenez une photo de la porte (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.</>
-                  : <>Le voyageur n&apos;est pas venu et le logement est propre ? Prenez au moins une photo du logement tel que vous l&apos;avez trouvé (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.</>}
-              </p>
-              <input value={noShowNote} onChange={e => setNoShowNote(e.target.value)}
-                placeholder="Ce que vous avez constaté (facultatif)"
-                className="w-full px-3 py-2 rounded-lg text-sm border"
-                style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
-              {noShowError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{noShowError}</p>}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={declareNoShow} disabled={busy}
-                  className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
-                  style={{ backgroundColor: '#8A6BB0', color: '#FFFFFF' }}>
-                  {busy ? '...' : noShowMotif === 'prolongation' ? 'Confirmer : voyageur encore présent' : 'Confirmer : logement non utilisé'}
-                </button>
-                <button onClick={() => { setNoShowOpen(false); setNoShowError(''); }} disabled={busy}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  Annuler
-                </button>
+          {/* Un souci ? Plus de temps, no show, désistement — rares, repliés. */}
+          {soucis && (
+            soucisOpen || noShowOpen || extraOpen ? (
+              <div className="rounded-xl border p-3 space-y-2" style={{ borderColor: '#E8E4DC' }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold" style={{ color: '#7A7068' }}>Un souci ?</p>
+                  <button onClick={() => { setSoucisOpen(false); setNoShowOpen(false); setExtraOpen(false); }}
+                    aria-label="Fermer" style={{ color: '#A8A09A' }}><Icon name="close" size={14} /></button>
+                </div>
+                {peutDemanderTemps && (!extraOpen ? (
+                  <button onClick={() => setExtraOpen(true)}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2"
+                    style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                    <Icon name="timer" size={14} /> Demander plus de temps
+                  </button>
+                ) : (
+                  <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+                    <p className="text-[11px]" style={{ color: '#7A7068' }}>
+                      Appartement très sale ? Prenez-le en photo et demandez du temps en plus.
+                    </p>
+                    <div className="flex gap-1.5">
+                      {EXTRA_TIME_OPTIONS.map(opt => (
+                        <button key={opt} onClick={() => setExtraMinutes(opt)}
+                          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+                          style={{ backgroundColor: extraMinutes === opt ? '#C9A84C' : '#FFFFFF', color: extraMinutes === opt ? '#1A1A1A' : '#7A7068', border: '1px solid #E8E4DC' }}>
+                          +{opt}
+                        </button>
+                      ))}
+                    </div>
+                    <input value={extraReason} onChange={e => setExtraReason(e.target.value)}
+                      placeholder="Motif (facultatif)"
+                      className="w-full px-3 py-2 rounded-lg text-sm border"
+                      style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+                    {extraError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{extraError}</p>}
+                    <div className="flex gap-2">
+                      <button onClick={submitExtra} disabled={busy}
+                        className="flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                        style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+                        {busy ? '...' : `Demander +${extraMinutes} min`}
+                      </button>
+                      <button onClick={() => { setExtraOpen(false); setExtraError(''); }} disabled={busy}
+                        className="px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {/* No show / prolongation : ménage impossible ou inutile — clôture sans ménage. */}
+                {canNoShow && (noShowOpen ? (
+                  <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
+                    <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{NO_SHOW_BOUTON}</p>
+                    <NoShowMotifChoix valeur={noShowMotif} onChange={setNoShowMotif} />
+                    <p className="text-[11px] leading-snug" style={{ color: '#7A7068' }}>
+                      {noShowMotif === 'prolongation'
+                        ? <>Le voyageur est encore dans le logement ? N&apos;entrez pas. Prenez une photo de la porte (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.</>
+                        : <>Le voyageur n&apos;est pas venu et le logement est propre ? Prenez au moins une photo du logement tel que vous l&apos;avez trouvé (panneau Photos ci-dessus), puis confirmez. La mission sera clôturée sans ménage.</>}
+                    </p>
+                    <input value={noShowNote} onChange={e => setNoShowNote(e.target.value)}
+                      placeholder="Ce que vous avez constaté (facultatif)"
+                      className="w-full px-3 py-2 rounded-lg text-sm border"
+                      style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF', color: '#1A1A1A', outline: 'none' }} />
+                    {noShowError && <p className="text-[11px]" style={{ color: '#B85A50' }}>{noShowError}</p>}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button onClick={declareNoShow} disabled={busy}
+                        className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                        style={{ backgroundColor: '#8A6BB0', color: '#FFFFFF' }}>
+                        {busy ? '...' : noShowMotif === 'prolongation' ? 'Confirmer : voyageur encore présent' : 'Confirmer : logement non utilisé'}
+                      </button>
+                      <button onClick={() => { setNoShowOpen(false); setNoShowError(''); }} disabled={busy}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs border" style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setNoShowOpen(true)} disabled={busy}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold border disabled:opacity-50"
+                    style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
+                    {NO_SHOW_BOUTON}
+                  </button>
+                ))}
+                {/* Seule sortie possible pour le cleaner : rendre la mission à
+                    l'admin, et seulement AVANT de l'avoir commencée. */}
+                {peutSeDesister && (
+                  <button onClick={withdraw} disabled={busy}
+                    className="w-full py-2 rounded-xl text-xs font-medium disabled:opacity-50 transition-all"
+                    style={{ color: '#B85A50' }}>
+                    Me désister de cette mission
+                  </button>
+                )}
               </div>
-            </div>
-          ) : (
-            <button onClick={() => setNoShowOpen(true)} disabled={busy}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold border disabled:opacity-50"
-              style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
-              {NO_SHOW_BOUTON}
-            </button>
-          ))}
-          {/* Seule sortie possible pour le cleaner : rendre la mission à l'admin.
-              Il ne peut ni l'annuler ni la supprimer. */}
-          <button onClick={withdraw} disabled={busy}
-            className="w-full py-2 rounded-xl text-xs font-medium disabled:opacity-50 transition-all"
-            style={{ color: '#B85A50' }}>
-            Se désister
-          </button>
+            ) : (
+              <button onClick={() => setSoucisOpen(true)}
+                className="w-full py-2 rounded-xl text-xs font-medium" style={{ color: '#A8A09A' }}>
+                Un souci ? <span style={{ color: '#C9C2B8' }}>({soucis})</span>
+              </button>
+            )
+          )}
         </div>
       )}
     </div>

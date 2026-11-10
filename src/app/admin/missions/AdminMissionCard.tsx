@@ -87,8 +87,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   const { user } = useAuth();
   const { confirm, toast } = useFeedback();
   const [expanded, setExpanded] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [newCleaner, setNewCleaner] = useState('');
+  // Actions secondaires (confier, retirer, no show, temps, modifier, annuler).
+  const [plusOpen, setPlusOpen] = useState(false);
   // Sous-traitance : confier la mission à un prestataire (chargés à l'ouverture).
   const [confierOpen, setConfierOpen] = useState(false);
   const [prestataires, setPrestataires] = useState<Prestataire[] | null>(null);
@@ -268,14 +268,14 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
     onRefresh(mission.id);
   }
 
-  async function handleAssign() {
-    if (!newCleaner) return;
-    const c = cleaners.find(x => x.id === newCleaner);
+  // Assigner en un geste : choisir la personne dans la liste suffit.
+  async function assignerA(cleanerId: string) {
+    const c = cleaners.find(x => x.id === cleanerId);
+    if (!c) return;
     // Le gain cleaner est recalculé côté serveur : taux horaire × durée mission / 60.
     setBusy(true);
-    await assignCleanerToMissionDB(mission.id, newCleaner, c?.name ?? '');
-    setAssignOpen(false);
-    setNewCleaner('');
+    await assignCleanerToMissionDB(mission.id, cleanerId, c.name ?? '');
+    toast(`Mission assignée à ${c.name}.`, 'success');
     onRefresh(mission.id);
     setBusy(false);
   }
@@ -326,10 +326,10 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           <div className="flex items-center gap-1">
             <button onClick={onMoveUp} disabled={!canMoveUp} aria-label="Monter"
               className="w-7 h-7 rounded-lg text-sm font-bold disabled:opacity-30 transition-all"
-              style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#7A7068' }}>↑</button>
+              style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#7A7068' }}><Icon name="arrowUp" size={14} className="mx-auto" /></button>
             <button onClick={onMoveDown} disabled={!canMoveDown} aria-label="Descendre"
               className="w-7 h-7 rounded-lg text-sm font-bold disabled:opacity-30 transition-all"
-              style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#7A7068' }}>↓</button>
+              style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E4DC', color: '#7A7068' }}><Icon name="arrowDown" size={14} className="mx-auto" /></button>
           </div>
         </div>
       )}
@@ -341,7 +341,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           <button onClick={e => { e.stopPropagation(); onToggleSelect?.(mission.id); }} aria-label="Sélectionner"
             className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
             style={{ borderColor: selected ? '#C9A84C' : '#C8C2BA', backgroundColor: selected ? '#C9A84C' : '#FFFFFF' }}>
-            {selected && <span className="text-xs font-bold" style={{ color: '#1A1A1A' }}>✓</span>}
+            {selected && <span style={{ color: '#1A1A1A' }}><Icon name="check" size={12} strokeWidth={3} /></span>}
           </button>
         )}
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }}
@@ -350,12 +350,18 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
           {mission.time ? formatHour(mission.time) : '—'}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</p>
+          <p className="text-sm font-medium truncate flex items-center gap-1.5" style={{ color: '#1A1A1A' }}>
+            {serviceParts(mission.service).delivery && <span className="shrink-0" style={{ color: '#C48A2A' }} title="Livraison"><Icon name="delivery" size={14} /></span>}
+            <span className="truncate">{mission.property || 'Mission'}</span>
+          </p>
           <p className="text-xs truncate" style={{ color: unassigned ? '#C48A2A' : '#A8A09A' }}>
             {mission.prestataireName
               ? `${mission.prestataireName}${mission.cleanerName ? ` · ${mission.cleanerName}` : ' · agent à choisir'}`
-              : (mission.cleanerName ?? mission.assigneeName ?? 'Non assigné')}
+              : (mission.cleanerName ?? mission.assigneeName ?? 'À assigner')}
             {arrivalToday && <span className="font-semibold" style={{ color: '#B91C1C' }}> · Arrivée jour-même</span>}
+            {terrain?.prochaineArrivee?.voyageurs && (
+              <span style={{ color: '#7A7068' }}> · {terrain.prochaineArrivee.voyageurs} voyageur{terrain.prochaineArrivee.voyageurs > 1 ? 's' : ''} attendu{terrain.prochaineArrivee.voyageurs > 1 ? 's' : ''}</span>
+            )}
           </p>
         </div>
         {/* Pointage au coup d'œil */}
@@ -417,7 +423,6 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
       <div className="px-5 py-4 space-y-3">
         {/* Nom + adresse */}
         <div className="min-w-0">
-          <h3 className="font-semibold text-base truncate" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
           {mission.address && (
             <button onClick={() => setMapsOpen(true)}
               className="flex items-center gap-1 mt-0.5 text-left transition-colors max-w-full min-w-0"
@@ -786,80 +791,31 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               <p className="text-xs" style={{ color: '#A8A09A' }}>Aucun prestataire actif. Créez-en un dans Équipe › Prestataires.</p>
             )}
           </div>
-        ) : assignOpen ? (
-          /* Assigner / réassigner un cleaner */
-          <div className="flex gap-2">
-            <select value={newCleaner} onChange={e => setNewCleaner(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl text-sm border appearance-none"
-              style={{ ...inputStyle, color: newCleaner ? '#1A1A1A' : '#A8A09A' }}>
-              <option value="">Choisir un cleaner</option>
-              {cleaners.filter(c => canCleanerDoService(c, mission.service)).map(c => <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · Hors ligne' : ''}</option>)}
-            </select>
-            <button onClick={handleAssign} disabled={!newCleaner || busy}
-              className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
-              style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>OK</button>
-            <button onClick={() => { setAssignOpen(false); setNewCleaner(''); }}
-              className="px-3 py-2 rounded-xl text-sm"
-              style={{ backgroundColor: '#F5F3EF', color: '#7A7068' }}>✕</button>
-          </div>
         ) : (
           <>
-            <div className="flex gap-2 flex-wrap">
-              {/* Statut suivant logique */}
-              {mission.status === 'pending' && (
-                <button onClick={() => setAssignOpen(true)} disabled={busy}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                  style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-                  + Assigner un cleaner
-                </button>
+            {/* Action principale, selon l'état de la mission. */}
+            <div className="flex gap-2 flex-wrap items-center">
+              {(mission.status === 'pending' || mission.status === 'accepted') && !mission.prestataireId && (
+                <select value="" disabled={busy} onChange={e => e.target.value && assignerA(e.target.value)}
+                  aria-label={mission.status === 'pending' ? 'Assigner' : 'Changer de cleaner'}
+                  className="flex-1 min-w-[180px] px-3 py-2.5 rounded-xl text-sm font-semibold border appearance-none disabled:opacity-50"
+                  style={mission.status === 'pending'
+                    ? { ...inputStyle, backgroundColor: '#C9A84C', borderColor: '#C9A84C', color: '#1A1A1A' }
+                    : { ...inputStyle, color: '#7A7068' }}>
+                  <option value="">{mission.status === 'pending'
+                    ? (mission.service === 'delivery' ? 'Assigner un livreur…' : 'Assigner un cleaner…')
+                    : 'Changer de cleaner…'}</option>
+                  {cleaners.filter(c => canCleanerDoService(c, mission.service) && c.id !== mission.cleanerId).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}{c.status === 'offline' ? ' · hors ligne' : ''}</option>
+                  ))}
+                </select>
               )}
-              {mission.status === 'accepted' && (
-                <button onClick={() => setAssignOpen(true)} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  Réassigner cleaner
-                </button>
-              )}
-              {/* Sous-traitance : confier à un prestataire, ou le lui reprendre. */}
-              {(mission.status === 'pending' || mission.status === 'accepted') && mission.service !== 'appointment' && (
-                <button onClick={ouvrirConfier} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  {mission.prestataireId ? 'Changer de prestataire' : 'Confier à un prestataire'}
-                </button>
-              )}
-              {mission.prestataireId && (mission.status === 'pending' || mission.status === 'accepted') && (
-                <button onClick={handleReprendre} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                  style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
-                  Reprendre au prestataire
-                </button>
-              )}
-              {/* Retirer la mission au cleaner sans la réassigner tout de suite :
-                  elle retourne au pot commun et redevient demandable. */}
-              {(mission.status === 'accepted' || mission.status === 'in_progress') && mission.cleanerName && (
-                <button onClick={handleUnassign} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                  style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
-                  Retirer au cleaner
-                </button>
-              )}
-              {/* L'admin peut terminer/valider à la place du cleaner (oubli) — dès
-                  qu'un cleaner est assigné (en attente) ou en cours. */}
+              {/* L'admin peut terminer/valider à la place du cleaner (oubli). */}
               {(mission.status === 'accepted' || mission.status === 'in_progress') && (
                 <button onClick={() => changeStatus('completed')} disabled={busy}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                   style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
-                  {mission.service === 'delivery' ? '✓ Marquer livré' : '✓ Terminer'}
-                </button>
-              )}
-              {/* No show / prolongation : clôture sans ménage, au forfait déplacement. */}
-              {(mission.status === 'pending' || mission.status === 'accepted' || mission.status === 'in_progress')
-                && noShowPossible(mission.service) && !noShowOpen && (
-                <button onClick={ouvrirNoShow} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                  style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
-                  {NO_SHOW_BOUTON}
+                  <Icon name="check" size={15} /> {mission.service === 'delivery' ? 'Marquer livré' : 'Terminer'}
                 </button>
               )}
               {mission.noShow && mission.status === 'completed' && (
@@ -872,20 +828,85 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               {/* Mission terminée : l'admin peut la reprendre (« en cours »). */}
               {mission.status === 'completed' && !mission.noShow && (
                 <button onClick={handleReopen} disabled={busy}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                   style={{ backgroundColor: '#5B6EF5', color: '#FFFFFF' }}>
-                  ↺ Remettre en cours
+                  <Icon name="sync" size={15} /> Remettre en cours
                 </button>
               )}
-              {/* Annuler : dispo tant que la mission n'est pas déjà annulée. */}
-              {mission.status !== 'cancelled' && (
-                <button onClick={annuler} disabled={busy}
-                  className="px-4 py-2.5 rounded-xl text-sm border disabled:opacity-50"
-                  style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
-                  Annuler
-                </button>
-              )}
+              <button onClick={() => setPlusOpen(o => !o)} aria-expanded={plusOpen}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium border inline-flex items-center gap-1"
+                style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                Plus
+                <span className="transition-transform" style={{ transform: plusOpen ? 'rotate(180deg)' : 'none' }}><Icon name="chevronDown" size={14} /></span>
+              </button>
             </div>
+
+            {/* Le reste, à la demande. */}
+            {plusOpen && (
+              <div className="flex gap-2 flex-wrap">
+                {/* Sous-traitance : confier à un prestataire, ou le lui reprendre. */}
+                {(mission.status === 'pending' || mission.status === 'accepted') && mission.service !== 'appointment' && (
+                  <button onClick={ouvrirConfier} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                    style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                    {mission.prestataireId ? 'Changer de prestataire' : 'Confier à un prestataire'}
+                  </button>
+                )}
+                {mission.prestataireId && (mission.status === 'pending' || mission.status === 'accepted') && (
+                  <button onClick={handleReprendre} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                    style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+                    Reprendre au prestataire
+                  </button>
+                )}
+                {/* Retirer la mission au cleaner sans la réassigner tout de suite. */}
+                {(mission.status === 'accepted' || mission.status === 'in_progress') && mission.cleanerName && (
+                  <button onClick={handleUnassign} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                    style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+                    Retirer à {mission.cleanerName}
+                  </button>
+                )}
+                {/* No show / prolongation : clôture sans ménage, au forfait déplacement. */}
+                {(mission.status === 'pending' || mission.status === 'accepted' || mission.status === 'in_progress')
+                  && noShowPossible(mission.service) && !noShowOpen && (
+                  <button onClick={ouvrirNoShow} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                    style={{ borderColor: '#E8E4DC', color: '#8A6BB0' }}>
+                    {NO_SHOW_BOUTON}
+                  </button>
+                )}
+                {/* Ajouter du temps — possible même sur une mission TERMINÉE (régularise
+                    la durée payée). Sans objet sur un no show : forfait. */}
+                {mission.status !== 'cancelled' && !mission.noShow && !addTimeOpen && (
+                  <button onClick={() => setAddTimeOpen(true)} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50 inline-flex items-center gap-1.5"
+                    style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                    <Icon name="timer" size={13} /> Ajouter du temps
+                  </button>
+                )}
+                <button onClick={openEdit} disabled={busy}
+                  className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  Modifier
+                </button>
+                {/* Une seule sortie : annuler une mission à venir (elle quitte le
+                    planning, l'intervenant est prévenu), supprimer une mission close. */}
+                {mission.status === 'completed' || mission.status === 'cancelled' ? (
+                  <button onClick={handleDelete} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                    style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+                    Supprimer
+                  </button>
+                ) : (
+                  <button onClick={annuler} disabled={busy}
+                    className="px-3 py-2 rounded-xl text-xs font-medium border disabled:opacity-50"
+                    style={{ borderColor: '#EAC4BE', color: '#B85A50' }}>
+                    Annuler la mission
+                  </button>
+                )}
+              </div>
+            )}
 
             {noShowOpen && (
               <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
@@ -925,11 +946,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
               </div>
             )}
 
-            {/* Ajouter du temps — possible même sur une mission TERMINÉE (régularise la
-                durée payée par rapport au temps prévu, recalcule le gain cleaner).
-                Sans objet sur un no show : le cleaner est payé au forfait. */}
-            {mission.status !== 'cancelled' && !mission.noShow && (
-              addTimeOpen ? (
+            {addTimeOpen && mission.status !== 'cancelled' && !mission.noShow && (
                 <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: '#F8F6F2' }}>
                   <p className="text-[11px]" style={{ color: '#7A7068' }}>
                     Temps prévu actuel : <b>{formatDuration(mission.missionDurationMinutes)}</b>. Ajoutez le temps réellement passé en plus.
@@ -957,28 +974,7 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                     </button>
                   </div>
                 </div>
-              ) : (
-                <button onClick={() => setAddTimeOpen(true)} disabled={busy}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
-                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                  <Icon name="timer" size={14} /> Ajouter du temps{mission.status === 'completed' ? ' (mission terminée)' : ''}
-                </button>
-              )
             )}
-
-            {/* Modifier / Supprimer (créateur = admin ici) */}
-            <div className="flex gap-2">
-              <button onClick={openEdit} disabled={busy}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50"
-                style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
-                Modifier
-              </button>
-              <button onClick={handleDelete} disabled={busy}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium border disabled:opacity-50"
-                style={{ borderColor: '#E8E4DC', color: '#B85A50' }}>
-                Supprimer
-              </button>
-            </div>
           </>
         )}
       </div>

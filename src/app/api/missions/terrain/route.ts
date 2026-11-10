@@ -36,6 +36,9 @@ export interface TerrainInfo {
   accessVideoUrl?: string;
   siteContact?: { name?: string; phone?: string };
   guest?: { name?: string; phone?: string; phoneLast4?: string; reservationUrl?: string };
+  // Prochains voyageurs du logement (à partir du jour de la mission) : le
+  // cleaner prépare lits et serviettes, le livreur apporte le bon nombre de kits.
+  prochaineArrivee?: { date: string; heure?: string; voyageurs?: number };
 }
 
 export async function POST(req: NextRequest) {
@@ -51,15 +54,16 @@ export async function POST(req: NextRequest) {
   const estAdmin = appelant!.role === 'admin';
 
   const { data: missions } = await db.from('missions')
-    .select('id, status, airbnb_id, partner_id, cleaners!missions_cleaner_id_fkey(user_id), prestataires(user_id), '
+    .select('id, status, date_from, airbnb_id, partner_id, cleaners!missions_cleaner_id_fkey(user_id), prestataires(user_id), '
       + 'airbnbs(code_portail, code_boite, entry_instructions, notes, access_video_url, on_site_contact_name, on_site_contact_phone)')
     .in('id', ids);
 
   const terrain: Record<string, TerrainInfo> = {};
   const ouverts: string[] = [];   // ménages en cours, pour le contact voyageur
+  const aVenir: { id: string; airbnbId: string; date: string }[] = [];   // pour la prochaine arrivée
 
   type Ligne = {
-    id: string; status: string; airbnb_id: string | null; partner_id: string | null;
+    id: string; status: string; date_from: string; airbnb_id: string | null; partner_id: string | null;
     cleaners?: { user_id?: string } | null;
     prestataires?: { user_id?: string } | null;
     airbnbs?: Record<string, string | null> | null;
@@ -87,7 +91,10 @@ export async function POST(req: NextRequest) {
     if (nom || tel) info.siteContact = { name: nom, phone: tel };
 
     terrain[m.id] = info;
-    if (m.status !== 'done' && m.status !== 'cancelled') ouverts.push(m.id);
+    if (m.status !== 'done' && m.status !== 'cancelled') {
+      ouverts.push(m.id);
+      if (m.airbnb_id) aVenir.push({ id: m.id, airbnbId: m.airbnb_id, date: m.date_from });
+    }
   }
 
   // ── Le voyageur, seulement pour les ménages encore ouverts ─────────────────
@@ -115,6 +122,27 @@ export async function POST(req: NextRequest) {
       const fiche = terrain[row.mission_id];
       if (!fiche) continue;
       if (!fiche.guest || (!fiche.guest.phone && contact.phone)) fiche.guest = contact;
+    }
+  }
+
+  // ── La prochaine arrivée de chaque logement, missions ouvertes seulement ────
+  // Le premier séjour confirmé qui commence le jour de la mission ou après.
+  // Seul le nombre de voyageurs sort, jamais leur nom.
+  if (aVenir.length > 0) {
+    const debut = aVenir.map(x => x.date).sort()[0];
+    const { data: arrivees } = await db.from('reservations')
+      .select('airbnb_id, check_in, check_in_time, guests_count')
+      .in('airbnb_id', [...new Set(aVenir.map(x => x.airbnbId))])
+      .eq('status', 'confirmed').gte('check_in', debut)
+      .order('check_in').limit(1000);
+    for (const x of aVenir) {
+      const r = (arrivees ?? []).find(a => a.airbnb_id === x.airbnbId && (a.check_in as string) >= x.date);
+      if (!r) continue;
+      terrain[x.id].prochaineArrivee = {
+        date: r.check_in as string,
+        heure: r.check_in_time ? String(r.check_in_time).slice(0, 5) : undefined,
+        voyageurs: r.guests_count != null ? Number(r.guests_count) : undefined,
+      };
     }
   }
 

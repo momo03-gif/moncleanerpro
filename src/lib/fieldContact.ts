@@ -61,6 +61,9 @@ export interface TerrainInfo {
   accessVideoUrl?: string;
   siteContact?: SiteContact;
   guest?: GuestContact;
+  // Prochains voyageurs du logement (à partir du jour de la mission) : le
+  // cleaner prépare lits et serviettes, le livreur apporte le bon nombre de kits.
+  prochaineArrivee?: { date: string; heure?: string; voyageurs?: number };
 }
 
 /**
