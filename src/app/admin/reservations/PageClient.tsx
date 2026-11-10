@@ -11,16 +11,16 @@ import { getAirbnbs, getAllReservations, getAllReservationFeeds, getPartnerAccou
 import type { PartnerAccount } from '@/lib/db';
 import { ecouterReservations } from '@/lib/missionsLive';
 import type { Apartment, Reservation, ReservationFeed } from '@/lib/types';
-import { chevauchements, occupationsReelles } from '@/lib/reservationDedupe';
+import { chevauchements } from '@/lib/reservationDedupe';
 import { aujourdhuiParis } from '@/lib/dateParis';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
 import OngletMouvements from './OngletMouvements';
-import OngletOccupation, { type AptOccupancy } from './OngletOccupation';
+import OngletOccupation from './OngletOccupation';
 import OngletCalendriers from './OngletCalendriers';
 import LigneReservation from './LigneReservation';
-import { daysBetween, postJson, carte } from './commun';
+import { postJson, carte } from './commun';
 
 type Onglet = 'mouvements' | 'occupation' | 'calendriers' | 'termines';
 
@@ -94,40 +94,6 @@ export default function AdminReservationsPage() {
   // des indisponibilités au lieu de séjours, ou qu'un logement en porte un de trop.
   const conflits = useMemo(() => chevauchements(reservations), [reservations]);
 
-  // Occupation : même définition que le moteur — un séjour confirmé, OU une
-  // période fermée d'un flux Booking (même intitulé pour un séjour vendu et une
-  // date fermée). Deux écrans ne peuvent pas répondre différemment à « est-il
-  // occupé ? ». Le départ affiché est celui de l'occupation la plus LONGUE en
-  // cours : annoncer la plus courte enverrait l'intervenant chez un voyageur
-  // encore là.
-  const occupation = useMemo<AptOccupancy[]>(() => {
-    const byApt = new Map<string, Reservation[]>();
-    for (const r of occupationsReelles(reservations)) {
-      const list = byApt.get(r.airbnbId) ?? [];
-      list.push(r);
-      byApt.set(r.airbnbId, list);
-    }
-    return apartments.map(apt => {
-      const list = (byApt.get(apt.id) ?? []).sort((a, b) => a.checkOut.localeCompare(b.checkOut));
-      const enCours = list.filter(r => r.checkIn <= today && today < r.checkOut);
-      const current = enCours[enCours.length - 1];
-      const nextDeparture = list.find(r => r.checkOut >= today);
-      const nextArrival = list.map(r => r.checkIn).filter(d => d >= today).sort()[0];
-      return { apt, occupied: !!current, currentCheckOut: current?.checkOut, nextDeparture, nextArrival };
-    }).sort((a, b) => (a.nextDeparture?.checkOut ?? '9999').localeCompare(b.nextDeparture?.checkOut ?? '9999'));
-  }, [apartments, reservations, today]);
-
-  const kpis = useMemo(() => {
-    let occupied = 0, leavingSoon = 0, needsCleaning = 0, missionCreated = 0;
-    for (const o of occupation) {
-      if (o.occupied) occupied++;
-      if (o.nextDeparture && daysBetween(today, o.nextDeparture.checkOut) <= 3) leavingSoon++;
-      if (o.nextDeparture && !o.nextDeparture.missionId) needsCleaning++;
-      if (o.nextDeparture && o.nextDeparture.missionId) missionCreated++;
-    }
-    return { occupied, leavingSoon, needsCleaning, missionCreated };
-  }, [occupation, today]);
-
   const enEchec = feeds.filter(f => f.lastSyncStatus === 'error').length;
   const derniereSynchro = feeds.map(f => f.lastSyncAt).filter((x): x is string => !!x).sort().pop();
 
@@ -174,7 +140,9 @@ export default function AdminReservationsPage() {
         <OngletMouvements reservations={reservations} conflits={conflits} partenaires={partenaires}
           aujourdhui={today} enCreation={forcage} onCreerMenage={creerMenage} />
       )}
-      {onglet === 'occupation' && <OngletOccupation occupation={occupation} kpis={kpis} />}
+      {onglet === 'occupation' && (
+        <OngletOccupation apartments={apartments} reservations={reservations} feeds={feeds} aujourdhui={today} />
+      )}
       {onglet === 'calendriers' && (
         <OngletCalendriers feeds={feeds} apartments={apartments} partenaires={partenaires} onRecharger={load} />
       )}
