@@ -248,10 +248,10 @@ export async function syncFeed(feed: {
     // réservation déjà transformée en mission).
     const { data: prevRows } = await db
       .from('reservations')
-      .select('external_uid, check_out, check_out_time, mission_id')
+      .select('external_uid, status, check_out, check_out_time, mission_id')
       .eq('feed_id', feed.id);
-    const prev = new Map<string, { check_out: string; check_out_time: string | null; mission_id: string | null }>(
-      (prevRows ?? []).map((r: any) => [r.external_uid, { check_out: r.check_out, check_out_time: r.check_out_time, mission_id: r.mission_id }]),
+    const prev = new Map<string, { status: string; check_out: string; check_out_time: string | null; mission_id: string | null }>(
+      (prevRows ?? []).map((r: any) => [r.external_uid, { status: r.status, check_out: r.check_out, check_out_time: r.check_out_time, mission_id: r.mission_id }]),
     );
 
     for (const ev of events) {
@@ -288,6 +288,17 @@ export async function syncFeed(feed: {
       const { error } = await upsertReservation(db, row);
       if (error) { console.error('upsert reservation:', error.message); continue; }
       imported++;
+
+      // Réservation ANNULÉE par la plateforme. Les API de logiciels (Hostify,
+      // SuperHote, Lodgify…) ne retirent pas une réservation annulée : elles la
+      // renvoient avec ce statut. Seule une réservation DISPARUE annulait son
+      // ménage — 15 ménages fantômes à venir le 10/11/2026. Seulement sur une
+      // ANNULATION explicite : une ligne reclassée « bloquée » garde son ménage
+      // (cf. forcerMenagePourReservation).
+      const avant = prev.get(ev.uid);
+      if (status === 'cancelled' && avant?.mission_id && avant.status !== 'cancelled') {
+        await handleCancelledReservationMission(avant.mission_id);
+      }
 
       // FIX #1 — changement de date de départ après création de la mission.
       if (status === 'confirmed') {
@@ -992,6 +1003,34 @@ async function refreshNextArrivals(today: string, horizon: string): Promise<numb
   return changed;
 }
 
+/**
+ * Ménages synchronisés, pas encore assignés, dont toutes les réservations liées
+ * sont ANNULÉES. Chacun passe par handleCancelledReservationMission, qui
+ * revérifie qu'aucun séjour n'occupe encore cette date, prévient un
+ * prestataire, supprime le ménage et sa livraison, et libère la réservation
+ * pour qu'un séjour reconfirmé retrouve son ménage. Un ménage assigné n'est
+ * jamais touché ici : l'admin en est alerté au moment de l'annulation.
+ * Renvoie le nombre de ménages supprimés.
+ */
+export async function nettoyerMenagesDeSejoursAnnules(): Promise<number> {
+  const db = getSupabaseAdmin();
+  const { data, error } = await db.from('missions')
+    .select('id, reservations!reservations_mission_id_fkey(status)')
+    .eq('auto_synced', true).eq('status', 'pending')
+    .gte('date_from', parisToday());
+  if (error) { console.error('nettoyerMenagesDeSejoursAnnules:', error.message); return 0; }
+  let supprimes = 0;
+  for (const m of (data ?? []) as unknown as { id: string; reservations: { status: string }[] | null }[]) {
+    const liees = m.reservations ?? [];
+    if (liees.length === 0 || !liees.every(r => r.status === 'cancelled')) continue;
+    await handleCancelledReservationMission(m.id);
+    const { count } = await db.from('missions').select('id', { count: 'exact', head: true }).eq('id', m.id);
+    if (!count) supprimes++;
+  }
+  if (supprimes) console.warn(`Synchro : ${supprimes} ménage(s) de séjours annulés supprimé(s).`);
+  return supprimes;
+}
+
 // ── Orchestration ─────────────────────────────────────────────────────────────
 // Synchronise un ensemble de flux puis matérialise les missions. `feedFilter`
 // permet de cibler un partenaire (bouton « Synchroniser maintenant ») ou un flux.
@@ -1014,6 +1053,10 @@ export async function runReservationSync(feedFilter?: { partnerId?: string; feed
   for (const f of feeds ?? []) {
     results.push(await syncFeed(f as unknown as Parameters<typeof syncFeed>[0]));
   }
+
+  // Filet de sécurité : un ménage à venir dont TOUTES les réservations sont
+  // annulées n'a plus lieu d'être, quel que soit le chemin qui l'a laissé.
+  await nettoyerMenagesDeSejoursAnnules();
 
   // La matérialisation balaie toutes les réservations en attente (idempotente).
   const materialized = await materializeMissions();
