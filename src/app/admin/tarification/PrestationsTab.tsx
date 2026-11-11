@@ -266,8 +266,9 @@ function TarifRow({ tarif, busy, editing, onEdit, onSave, onRemove }: {
 
   if (!editing) {
     return (
-      <div className={`rounded-xl border px-3 py-2 flex items-center gap-3 ${tarif.actif ? 'border-line bg-card' : 'border-dashed border-line bg-surface-2'}`}>
-        <div className="flex-1 min-w-0">
+      <div className={`rounded-xl border px-3 py-2 flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 ${tarif.actif ? 'border-line bg-card' : 'border-dashed border-line bg-surface-2'}`}>
+        {/* Sur téléphone, le nom prend toute la ligne et les boutons passent dessous. */}
+        <div className="basis-full sm:basis-auto flex-1 min-w-0">
           <p className={`text-sm font-medium truncate ${tarif.actif ? 'text-ink' : 'text-faint'}`}>
             {displayName(tarif)}
             {!tarif.actif && <span className="text-[10px] ml-2 text-faint">désactivée</span>}
@@ -275,7 +276,7 @@ function TarifRow({ tarif, busy, editing, onEdit, onSave, onRemove }: {
           </p>
           {tarif.motsCles && <p className="text-[11px] truncate text-faint">{tarif.motsCles}</p>}
         </div>
-        <span className="text-right shrink-0 whitespace-nowrap">
+        <span className="sm:text-right shrink-0 whitespace-nowrap mr-auto sm:mr-0">
           <span className="block text-xs text-muted">{prix}</span>
           {aFourchette && tarif.prix > 0 && (
             <span className={`block text-[10px] ${hors ? 'text-warn font-semibold' : 'text-faint'}`}

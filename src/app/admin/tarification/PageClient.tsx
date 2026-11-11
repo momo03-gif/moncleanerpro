@@ -10,12 +10,13 @@
 // la clé publique, et chaque enregistrement passe par /api/admin/devis-config,
 // qui vérifie la session.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { getSimulatorConfigDB, type SimulatorConfig, type QuoteOption } from '@/lib/devisConfig';
 import { lireMontant, lireEntier, erreurFourchette } from '@/lib/montant';
 import { getTarifsDB, type Tarif } from '@/lib/devis';
 import PrestationsTab from './PrestationsTab';
 import GrilleAirbnbPdf from './GrilleAirbnbPdf';
+import ApercuDevis from './ApercuDevis';
 import { useFeedback } from '@/contexts/FeedbackContext';
 import Icon from '@/components/Icon';
 import Loading from '@/components/Loading';
@@ -50,7 +51,7 @@ export default function TarificationClient() {
   if (loading) return <Loading className="p-6 text-sm" />;
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-4 sm:p-6 max-w-4xl">
       <h1 className="text-xl font-bold text-ink">Tarification</h1>
       <p className="text-sm mt-1 text-muted">
         Tous les prix du site en un seul endroit : les prestations de chaque carte de la
@@ -106,8 +107,10 @@ export default function TarificationClient() {
             <code>supabase/migration_devis_simulateur.sql</code> dans Supabase.
           </p>
         </div>
-      ) : config && (
+      ) : config && tab !== 'prestations' && (
         <>
+          {/* Visible sur les quatre onglets du simulateur : on règle, on voit le prix. */}
+          <ApercuDevis config={config} />
           {tab === 'zones' && <ZonesTab config={config} send={send} confirm={confirm} />}
           {tab === 'tiers' && <TiersTab config={config} send={send} confirm={confirm} />}
           {tab === 'options' && <OptionsTab config={config} send={send} confirm={confirm} />}
@@ -188,7 +191,7 @@ function ZonesTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
             <ZoneForm draft={draft} setDraft={setDraft} busy={busy} onSave={save} onCancel={() => setEditing(null)} />
           ) : (
             <>
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <p className="font-semibold text-ink">{z.name}</p>
                   <p className="text-xs mt-0.5 text-muted">
@@ -242,8 +245,8 @@ function ZoneForm({ draft, setDraft, busy, onSave, onCancel }: {
 }) {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="sm:col-span-2">
           <label className="block text-xs font-semibold mb-1 text-muted">Nom de la zone</label>
           <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
             placeholder="Lyon intramuros" className={FIELD} />
@@ -395,9 +398,13 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
     if (ok) setDraft(emptyTierDraft());
   }
 
+  // Sur téléphone, chaque palier devient une petite carte aux champs étiquetés ;
+  // à partir de la tablette, on retrouve le tableau à colonnes.
+  const rouge = (err?: string) => (err ? ' border-danger-line' : '');
+
   return (
     <div className="rounded-2xl border border-line bg-card overflow-hidden">
-      <div className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide border-b border-hairline text-muted">
+      <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide border-b border-hairline text-muted">
         <span className="col-span-2">Jusqu&apos;à (m²)</span>
         <span className="col-span-2">Libellé</span>
         <span className="col-span-3">Voyageurs compris</span>
@@ -407,21 +414,30 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       </div>
       {rows.map((t, i) => {
         const err = erreurs[t.id];
-        const champ = `${FIELD} col-span-2${err ? ' border-danger-line' : ''}`;
         return (
-          <div key={t.id || i} className="px-4 py-2 border-b last:border-0 border-hairline">
-            <div className="grid grid-cols-12 gap-2 items-center">
-              <input className={champ} value={t.maxM2} inputMode="numeric" onBlur={() => saveRow(i)}
-                onChange={e => setRow(i, { maxM2: e.target.value })} />
-              <input className={`${FIELD} col-span-2`} value={t.label} onBlur={() => saveRow(i)}
-                onChange={e => setRow(i, { label: e.target.value })} />
-              <input className={`${FIELD} col-span-3${err ? ' border-danger-line' : ''}`} value={t.cap} inputMode="numeric" placeholder="illimité" onBlur={() => saveRow(i)}
-                onChange={e => setRow(i, { cap: e.target.value })} />
-              <input className={champ} value={t.base} inputMode="decimal" placeholder="sur devis" onBlur={() => saveRow(i)}
-                onChange={e => setRow(i, { base: e.target.value })} />
-              <input className={champ} value={t.max} inputMode="decimal" placeholder="prix ferme" onBlur={() => saveRow(i)}
-                onChange={e => setRow(i, { max: e.target.value })} />
-              <div className="col-span-1 flex justify-end items-center gap-1">
+          <div key={t.id || i} className="px-4 py-3 sm:py-2 border-b last:border-0 border-hairline">
+            <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-end sm:items-center">
+              <Cellule label="Jusqu'à (m²)" className="sm:col-span-2">
+                <input className={FIELD + rouge(err)} value={t.maxM2} inputMode="numeric" onBlur={() => saveRow(i)}
+                  onChange={e => setRow(i, { maxM2: e.target.value })} />
+              </Cellule>
+              <Cellule label="Libellé" className="sm:col-span-2">
+                <input className={FIELD} value={t.label} onBlur={() => saveRow(i)}
+                  onChange={e => setRow(i, { label: e.target.value })} />
+              </Cellule>
+              <Cellule label="Voyageurs compris" className="col-span-2 sm:col-span-3">
+                <input className={FIELD + rouge(err)} value={t.cap} inputMode="numeric" placeholder="illimité" onBlur={() => saveRow(i)}
+                  onChange={e => setRow(i, { cap: e.target.value })} />
+              </Cellule>
+              <Cellule label="Prix de" className="sm:col-span-2">
+                <input className={FIELD + rouge(err)} value={t.base} inputMode="decimal" placeholder="sur devis" onBlur={() => saveRow(i)}
+                  onChange={e => setRow(i, { base: e.target.value })} />
+              </Cellule>
+              <Cellule label="à" className="sm:col-span-2">
+                <input className={FIELD + rouge(err)} value={t.max} inputMode="decimal" placeholder="prix ferme" onBlur={() => saveRow(i)}
+                  onChange={e => setRow(i, { max: e.target.value })} />
+              </Cellule>
+              <div className="col-span-2 sm:col-span-1 flex justify-end items-center gap-1">
                 {/* Trois états lisibles d'un coup d'œil : modifié, enregistré, au repos. */}
                 {savedId === t.id
                   ? <span className="text-success" title="Enregistré"><Icon name="check" size={15} /></span>
@@ -438,20 +454,33 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
       })}
 
       {/* Nouveau palier — mêmes colonnes que la grille, pour qu'on voie où il ira. */}
-      <div className="grid grid-cols-12 gap-2 items-center px-4 py-2 border-t border-hairline bg-surface-2">
-        <input className={`${FIELD} col-span-2`} value={draft.maxM2} inputMode="numeric" placeholder="m²"
-          onChange={e => setDraft(d => ({ ...d, maxM2: e.target.value }))} />
-        <input className={`${FIELD} col-span-2`} value={draft.label} placeholder="T6, Loft…"
-          onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
-        <input className={`${FIELD} col-span-3`} value={draft.capText} inputMode="numeric" placeholder="voyageurs"
-          onChange={e => setDraft(d => ({ ...d, capText: e.target.value }))} />
-        <input className={`${FIELD} col-span-2`} value={draft.basePrice} inputMode="decimal" placeholder="sur devis"
-          onChange={e => setDraft(d => ({ ...d, basePrice: e.target.value }))} />
-        <input className={`${FIELD} col-span-2`} value={draft.priceMax} inputMode="decimal" placeholder="prix ferme"
-          onChange={e => setDraft(d => ({ ...d, priceMax: e.target.value }))} />
-        <button onClick={addRow} disabled={busy || !draft.label.trim() || !draft.maxM2}
-          aria-label="Ajouter ce palier"
-          className="col-span-1 text-xs font-semibold text-gold-ink disabled:opacity-40">Ajouter</button>
+      <div className="px-4 py-3 sm:py-2 border-t border-hairline bg-surface-2">
+        <p className="sm:hidden text-xs font-semibold mb-2 text-ink">Nouveau palier</p>
+        <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-end sm:items-center">
+          <Cellule label="Jusqu'à (m²)" className="sm:col-span-2">
+            <input className={FIELD} value={draft.maxM2} inputMode="numeric" placeholder="m²"
+              onChange={e => setDraft(d => ({ ...d, maxM2: e.target.value }))} />
+          </Cellule>
+          <Cellule label="Libellé" className="sm:col-span-2">
+            <input className={FIELD} value={draft.label} placeholder="T6, Loft…"
+              onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
+          </Cellule>
+          <Cellule label="Voyageurs compris" className="col-span-2 sm:col-span-3">
+            <input className={FIELD} value={draft.capText} inputMode="numeric" placeholder="voyageurs"
+              onChange={e => setDraft(d => ({ ...d, capText: e.target.value }))} />
+          </Cellule>
+          <Cellule label="Prix de" className="sm:col-span-2">
+            <input className={FIELD} value={draft.basePrice} inputMode="decimal" placeholder="sur devis"
+              onChange={e => setDraft(d => ({ ...d, basePrice: e.target.value }))} />
+          </Cellule>
+          <Cellule label="à" className="sm:col-span-2">
+            <input className={FIELD} value={draft.priceMax} inputMode="decimal" placeholder="prix ferme"
+              onChange={e => setDraft(d => ({ ...d, priceMax: e.target.value }))} />
+          </Cellule>
+          <button onClick={addRow} disabled={busy || !draft.label.trim() || !draft.maxM2}
+            aria-label="Ajouter ce palier"
+            className="col-span-2 sm:col-span-1 text-xs font-semibold text-gold-ink disabled:opacity-40 justify-self-end">Ajouter</button>
+        </div>
       </div>
 
       <div className="px-4 py-3 border-t border-hairline flex items-center gap-3 flex-wrap">
@@ -479,6 +508,16 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
         ce qui évite d&apos;annoncer un montant sur un logement hors norme.
       </p>
     </div>
+  );
+}
+
+/** Un champ de palier : étiquette visible seulement sur téléphone (le tableau a ses en-têtes). */
+function Cellule({ label, className = '', children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <label className={`block min-w-0 ${className}`}>
+      <span className="sm:hidden block text-[10px] font-semibold mb-0.5 text-muted">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -567,7 +606,7 @@ function OptionsTab({ config, send, confirm }: { config: SimulatorConfig; send: 
           {editing === o.id ? (
             <OptionForm draft={draft} setDraft={setDraft} busy={busy} onSave={save} onCancel={() => setEditing(null)} />
           ) : (
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="font-semibold text-ink">{o.label}</p>
                 <p className="text-xs mt-0.5 text-muted">
