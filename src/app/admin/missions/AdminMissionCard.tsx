@@ -316,7 +316,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
   const ecartBg = cEcart == null ? '#F5F3EF' : cEcart > 5 ? '#B85A5015' : cEcart < -5 ? '#5A8A6A15' : '#F5F3EF';
 
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: expanded ? '#D8D0C4' : '#E8E4DC' }}>
+    <div className="rounded-2xl border overflow-hidden transition-shadow hover:shadow-[0_4px_14px_rgba(26,26,26,0.06)]"
+      style={{ backgroundColor: '#FFFFFF', borderColor: expanded ? '#D8D0C4' : '#E8E4DC', boxShadow: expanded ? '0 4px 14px rgba(26,26,26,0.06)' : undefined }}>
       {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
 
       {/* ── Ordre manuel (classement par cleaner) ── */}
@@ -344,9 +345,8 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             {selected && <span style={{ color: '#1A1A1A' }}><Icon name="check" size={12} strokeWidth={3} /></span>}
           </button>
         )}
-        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }}
-          title={missionStatusLabel(mission.status, mission.service, mission.noShow)} />
-        <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#1A1A1A', width: 44 }}>
+        <span className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: st.color }} aria-hidden />
+        <span className="text-[15px] font-bold tabular-nums shrink-0" style={{ color: '#1A1A1A', width: 48 }}>
           {mission.time ? formatHour(mission.time) : '—'}
         </span>
         <div className="flex-1 min-w-0">
@@ -364,9 +364,11 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
             )}
           </p>
         </div>
-        {/* Pointage au coup d'œil */}
-        {inProgress && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: '#5B6EF515', color: '#5B6EF5' }}>● en cours</span>
+        {/* Statut en toutes lettres (le temps réel prend sa place une fois terminée). */}
+        {!(mission.status === 'completed' && cReal != null) && (
+          <span className="hidden sm:inline text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: st.bg, color: st.color }}>
+            {inProgress ? 'En cours' : missionStatusLabel(mission.status, mission.service, mission.noShow)}
+          </span>
         )}
         {mission.status === 'completed' && cReal != null && (
           <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: ecartBg, color: ecartColor }}

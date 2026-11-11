@@ -326,11 +326,11 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
   // Mise en avant de la mission active (en cours / prochaine à faire) : anneau doré.
   const inProgress = mission.status === 'in_progress';
   return (
-    <div className="rounded-2xl border overflow-hidden transition-all"
+    <div className="rounded-3xl border overflow-hidden transition-all"
       style={{
         backgroundColor: '#FFFFFF',
         borderColor: highlight ? '#C9A84C' : '#E8E4DC',
-        boxShadow: highlight ? '0 0 0 3px #C9A84C22' : 'none',
+        boxShadow: highlight ? '0 0 0 3px #C9A84C22, 0 6px 18px rgba(26,26,26,0.06)' : '0 1px 2px rgba(26,26,26,0.04)',
       }}>
       {mapsOpen && mission.address && <MapsModal address={mission.address} onClose={() => setMapsOpen(false)} />}
 
@@ -341,27 +341,36 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
         </div>
       )}
 
-      {/* Header */}
-      <div className="px-5 py-4 border-b" style={{ borderColor: '#F2EFE9' }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs mb-0.5" style={{ color: '#A8A09A' }}>
-              {new Date(mission.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
-            {mission.address && (
-              <button onClick={() => setMapsOpen(true)}
-                className="flex items-center gap-1 mt-0.5 text-left transition-colors"
-                style={{ color: '#A8A09A' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#A8A09A')}>
-                <Icon name="pin" size={13} className="shrink-0" />
-                <span className="text-xs truncate max-w-[220px]">{mission.address}</span>
-              </button>
-            )}
+      {/* En-tête : l'heure d'abord (c'est ce qu'on cherche), puis le lieu. */}
+      <div className="px-4 py-4 border-b flex items-stretch gap-3" style={{ borderColor: '#F2EFE9' }}>
+        <div className="w-[68px] shrink-0 rounded-xl flex flex-col items-center justify-center py-2"
+          style={{ backgroundColor: isDelivery ? '#C48A2A12' : '#C9A84C14' }}>
+          <span style={{ color: isDelivery ? '#C48A2A' : '#9A7B22' }}>
+            <Icon name={isDelivery ? 'delivery' : isAppointment ? 'calendar' : 'clock'} size={16} />
+          </span>
+          <span className="text-lg font-bold leading-tight mt-0.5 tabular-nums" style={{ color: '#1A1A1A' }}>
+            {mission.time ? formatHour(mission.time) : '—'}
+          </span>
+          <span className="text-[10px] capitalize" style={{ color: '#A8A09A' }}>
+            {new Date(mission.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-[15px] font-semibold leading-snug" style={{ color: '#1A1A1A' }}>{mission.property || 'Mission'}</h3>
+            <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0"
+              style={{ backgroundColor: st.bg, color: st.color }}>{missionStatusLabel(mission.status, mission.service, mission.noShow)}</span>
           </div>
-          <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
-            style={{ backgroundColor: st.bg, color: st.color }}>{missionStatusLabel(mission.status, mission.service, mission.noShow)}</span>
+          {mission.address && (
+            <button onClick={() => setMapsOpen(true)}
+              className="flex items-center gap-1 mt-1 text-left transition-colors max-w-full"
+              style={{ color: '#7A7068' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#C9A84C')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#7A7068')}>
+              <Icon name="pin" size={13} className="shrink-0" />
+              <span className="text-xs truncate underline decoration-dotted underline-offset-2">{mission.address}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -402,12 +411,6 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          {mission.time && (
-            <div className="flex items-center gap-1.5" style={{ color: '#C9A84C' }}>
-              <Icon name="clock" size={15} />
-              <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{formatHour(mission.time)}</span>
-            </div>
-          )}
           {(mission.missionDurationMinutes ?? 0) > 0 && (
             <div className="flex items-center gap-1.5" style={{ color: '#C9A84C' }}>
               <Icon name="timer" size={15} />
@@ -444,20 +447,22 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
         {(portalCode || keyboxCode || extra) && (
           <>
             {(portalCode || keyboxCode) && (
-              <div className="flex flex-wrap gap-2">
+              <div className={`grid gap-2 ${portalCode && keyboxCode ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {portalCode && (
-                  <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
-                    style={{ backgroundColor: '#C9A84C20', color: '#C48A2A' }}>
-                    <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Portail</span>
-                    {portalCode}
-                  </span>
+                  <div className="rounded-xl px-3 py-2.5 border" style={{ backgroundColor: '#C9A84C10', borderColor: '#C9A84C40' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: '#9A7B22' }}>
+                      <Icon name="lock" size={11} /> Code portail
+                    </p>
+                    <p className="text-xl font-mono font-bold tracking-wider mt-0.5 select-all" style={{ color: '#1A1A1A' }}>{portalCode}</p>
+                  </div>
                 )}
                 {keyboxCode && (
-                  <span className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
-                    style={{ backgroundColor: '#5B6EF518', color: '#5B6EF5' }}>
-                    <span className="font-sans font-normal" style={{ color: '#A8A09A' }}>Clé</span>
-                    {keyboxCode}
-                  </span>
+                  <div className="rounded-xl px-3 py-2.5 border" style={{ backgroundColor: '#5B6EF50D', borderColor: '#5B6EF533' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: '#5B6EF5' }}>
+                      <Icon name="lock" size={11} /> Boîte à clés
+                    </p>
+                    <p className="text-xl font-mono font-bold tracking-wider mt-0.5 select-all" style={{ color: '#1A1A1A' }}>{keyboxCode}</p>
+                  </div>
                 )}
               </div>
             )}
@@ -538,10 +543,13 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
       {mission.status !== 'cancelled' && !isAppointment
         && (isSimple || mission.status === 'in_progress' || mission.status === 'completed') && (
         <div className="px-5 pb-4 space-y-3">
-          {/* Photos d'abord : ce sont elles qui permettent de terminer. */}
-          <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
-            userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress'} exigeApres={photosRequises}
-            modifiable={mission.status !== 'completed'} />
+          {/* Photos d'abord : ce sont elles qui permettent de terminer. Pas pour une
+              livraison : inutiles au livreur (11/11/2026). */}
+          {!isDelivery && (
+            <MissionPhotos key={photosRequises ? 'photos-requises' : 'photos'} missionId={mission.id} mode="cleaner"
+              userId={userId} defaultOpen={photosRequises || mission.status === 'in_progress'} exigeApres={photosRequises}
+              modifiable={mission.status !== 'completed'} />
+          )}
           {/* Checklist du logement : le standard demandé par la conciergerie, à
               cocher au fur et à mesure. */}
           {mission.airbnbId && serviceParts(mission.service).cleaning && (
@@ -658,7 +666,7 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
           {/* Livraison / rendez-vous : un seul clic pour clôturer, sans pointage ni GPS. */}
           {canDeliver && (
             <button onClick={deliver} disabled={busy}
-              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-2xl text-[15px] font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
               style={{ backgroundColor: isAppointment ? '#7C5CBF' : '#C48A2A', color: '#FFFFFF' }}>
               {!isAppointment && <Icon name="delivery" size={16} />}
               {busy ? '...' : isAppointment ? 'Marquer comme terminé' : 'Marquer comme livré'}
@@ -666,16 +674,16 @@ function MissionCard({ mission, userId, onUpdate, highlight, terrain }: { missio
           )}
           {canStart && (
             <button onClick={start} disabled={busy}
-              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+              className="w-full py-3.5 rounded-2xl text-[15px] font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
               style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
-              {busy ? '...' : 'Démarrer la mission'}
+              {busy ? '...' : <><Icon name="play" size={16} /> Démarrer la mission</>}
             </button>
           )}
           {/* Course : le ticket d'abord, puis « Terminer ». */}
           {canFinish && mission.service === 'errand' && <TicketCourse mission={mission} onSaved={onUpdate} />}
           {canFinish && (
             <button onClick={finish} disabled={busy || (mission.service === 'errand' && !(mission.errandSpent != null && mission.errandPaidBy))}
-              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-2xl text-[15px] font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
               style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
               {busy ? '...' : <><Icon name="check" size={16} /> Terminer la mission</>}
             </button>
