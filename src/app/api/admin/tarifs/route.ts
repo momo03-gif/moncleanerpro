@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { montantServeurValide } from '@/lib/montant';
 
 export const runtime = 'nodejs';
 
@@ -35,6 +36,24 @@ function toRow(t: TarifInput): Record<string, unknown> {
   return row;
 }
 
+const UNITES = new Set(['forfait', 'm2', 'heure', 'piece']);
+
+/**
+ * Dernier filet avant la base : ces prix partent sur le site public. L'écran
+ * contrôle déjà la saisie ; ici on refuse ce qui aurait échappé (montant
+ * négatif, texte, fourchette inversée, unité inconnue).
+ */
+function erreurTarif(t: TarifInput): string | null {
+  for (const [k, v] of [['prix', t.prix], ['prix « de »', t.prixMin], ['prix « à »', t.prixMax]] as const) {
+    if (v !== undefined && !montantServeurValide(v)) return `Le ${k} n’est pas un montant valide.`;
+  }
+  if (t.prixMin != null && t.prixMax != null && t.prixMin > t.prixMax) {
+    return 'Le prix « de » ne peut pas dépasser le prix « à ».';
+  }
+  if (t.unite !== undefined && !UNITES.has(t.unite)) return 'Unité inconnue.';
+  return null;
+}
+
 // GET ?actifs=1 → la grille complète, prix compris (admin uniquement).
 export async function GET(req: NextRequest) {
   const session = await getSessionUser();
@@ -63,6 +82,11 @@ export async function POST(req: NextRequest) {
       if (!t.id && !t.nom?.trim()) {
         return NextResponse.json({ error: 'Nom de prestation requis.' }, { status: 400 });
       }
+      if (t.nom !== undefined && !t.nom.trim()) {
+        return NextResponse.json({ error: 'Le nom de la prestation ne peut pas être vide.' }, { status: 400 });
+      }
+      const invalide = erreurTarif(t);
+      if (invalide) return NextResponse.json({ error: invalide }, { status: 400 });
       const { error } = t.id
         ? await db.from('tarifs').update(toRow(t)).eq('id', t.id)
         : await db.from('tarifs').insert({ actif: true, ...toRow(t) });
@@ -78,6 +102,10 @@ export async function POST(req: NextRequest) {
       // grille corrigée doit corriger, pas empiler.
       const rows = (body.rows ?? []).filter(r => r.nom?.trim());
       if (rows.length === 0) return NextResponse.json({ error: 'Aucune ligne valide.' }, { status: 400 });
+      for (const r of rows) {
+        const invalide = erreurTarif(r);
+        if (invalide) return NextResponse.json({ error: `« ${r.nom} » : ${invalide}` }, { status: 400 });
+      }
 
       const { data: existing, error: exErr } = await db.from('tarifs').select('id, nom_prestation');
       if (exErr) throw exErr;
@@ -86,9 +114,12 @@ export async function POST(req: NextRequest) {
       let inserted = 0, updated = 0;
       for (const r of rows) {
         const id = byName.get(r.nom!.toLowerCase().trim());
+        // Une prestation existante GARDE son état actif/désactivé, sauf si le
+        // fichier le précise dans sa colonne « Actif ». Avant, chaque ré-import
+        // remettait en ligne ce qu'on avait désactivé exprès.
         const { error } = id
-          ? await db.from('tarifs').update(toRow({ ...r, actif: true })).eq('id', id)
-          : await db.from('tarifs').insert({ actif: true, ...toRow(r) });
+          ? await db.from('tarifs').update(toRow(r)).eq('id', id)
+          : await db.from('tarifs').insert({ ...toRow(r), actif: r.actif ?? true });
         if (error) throw error;
         if (id) updated++; else inserted++;
       }

@@ -97,7 +97,7 @@ export async function updateTarifDB(id: string, f: { nom?: string; unite?: Tarif
 // existe déjà, sinon insère) : ré-importer un fichier corrigé ne crée pas de
 // doublons, et la boucle ne fait plus un aller-retour réseau par ligne.
 export async function importTarifsDB(rows: {
-  nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null; categorie?: string;
+  nom: string; unite: TarifUnite; prix: number; motsCles?: string; prixMin?: number | null; prixMax?: number | null; categorie?: string; actif?: boolean;
 }[]): Promise<{ error: string | null; inserted: number; updated: number }> {
   const clean = rows.filter(r => r.nom.trim());
   if (clean.length === 0) return { error: 'Aucune ligne valide dans le fichier.', inserted: 0, updated: 0 };

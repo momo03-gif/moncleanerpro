@@ -13,6 +13,8 @@ import type { TarifUnite } from './devis';
 export interface TarifImportRow {
   nom: string; unite: TarifUnite; prix: number;
   motsCles?: string; prixMin?: number | null; prixMax?: number | null; categorie?: string;
+  /** Colonne « Actif » : absente ou vide → `undefined` = on garde l'état actuel en base. */
+  actif?: boolean;
 }
 export interface TarifCsvResult { rows: TarifImportRow[]; errors: string[] }
 
@@ -35,6 +37,26 @@ function splitCsvLine(line: string, delim: string): string[] {
   }
   out.push(cur);
   return out.map(s => s.trim());
+}
+
+// Modèle CSV téléchargeable depuis Tarification (mêmes colonnes que l'export de
+// la grille MonCleanerPro).
+export const CSV_TEMPLATE = `Prestation;Unité;Prix;Mots-clés;Actif
+Entretien classique - T2;forfait;70-120;t2, deux pièces, appartement;oui
+Nettoyage vitres;piece;6-12;vitres, fenêtres, baies, carreaux;oui
+Fin de chantier;m2;5-12;travaux, rénovation, chantier;oui
+Ménage régulier;heure;25-35;récurrent, entretien, heure;oui
+`;
+
+// Colonne « Actif » : oui/non, 1/0, vrai/faux, actif/inactif. Vide ou illisible →
+// `undefined` : un ré-import ne doit pas remettre en ligne une prestation qu'on
+// avait désactivée exprès, juste parce que la colonne n'est pas remplie.
+export function parseActif(raw: string): boolean | undefined {
+  const v = stripAccentsLower(raw ?? '');
+  if (!v) return undefined;
+  if (/^(oui|o|yes|y|1|vrai|true|actif|active|x)$/.test(v)) return true;
+  if (/^(non|n|no|0|faux|false|inactif|inactive|desactive|desactivee)$/.test(v)) return false;
+  return undefined;
 }
 
 // Mappe un libellé d'unité vers l'enum autorisé (forfait | m2 | heure | piece).
@@ -108,7 +130,11 @@ export function parseTarifsCsv(text: string): TarifCsvResult {
     const { prix, prixMin, prixMax } = parsePrix(idx.prix !== undefined ? cells[idx.prix] ?? '' : '');
     const motsCles = idx.mots !== undefined ? (cells[idx.mots] ?? '').trim() : '';
     const categorie = idx.categorie !== undefined ? (cells[idx.categorie] ?? '').trim() : '';
-    rows.push({ nom, unite, prix, prixMin, prixMax, motsCles: motsCles || undefined, categorie: categorie || undefined });
+    const actif = idx.actif !== undefined ? parseActif(cells[idx.actif] ?? '') : undefined;
+    rows.push({
+      nom, unite, prix, prixMin, prixMax, motsCles: motsCles || undefined, categorie: categorie || undefined,
+      ...(actif !== undefined ? { actif } : {}),
+    });
   }
   if (rows.length === 0) errors.push('Aucune ligne de prestation trouvée.');
   return { rows, errors };

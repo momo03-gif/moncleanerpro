@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { montantServeurValide } from '@/lib/montant';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,17 @@ export async function GET() {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Réservé à l’administration.' }, { status: 403 });
   const { getSimulatorConfigDB } = await import('@/lib/devisConfig');
   return NextResponse.json({ config: await getSimulatorConfigDB(getSupabaseAdmin()) }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+const bad = (error: string) => NextResponse.json({ error }, { status: 400 });
+const entierValide = (v: unknown) => v == null || (typeof v === 'number' && Number.isInteger(v) && v >= 0);
+
+/** Paliers « jusqu'à N voyageurs : X € » d'une option. */
+function paliersOptionValides(tiers: unknown): boolean {
+  if (tiers == null) return true;
+  if (!Array.isArray(tiers)) return false;
+  return tiers.every(t => t && typeof t === 'object'
+    && entierValide((t as { max?: unknown }).max) && montantServeurValide((t as { fee?: unknown }).fee));
 }
 
 export async function POST(req: NextRequest) {
@@ -44,6 +56,7 @@ export async function POST(req: NextRequest) {
       case 'zone.save': {
         const z = body.zone;
         if (!z?.name?.trim()) return NextResponse.json({ error: 'Nom de zone requis.' }, { status: 400 });
+        if (!montantServeurValide(z.fee ?? 0)) return bad('Le supplément de la zone n’est pas un montant valide.');
         const row = {
           name: z.name.trim(),
           fee: Number(z.fee ?? 0),
@@ -72,6 +85,10 @@ export async function POST(req: NextRequest) {
         if (!t?.label?.trim() || !t.maxM2) {
           return NextResponse.json({ error: 'Libellé et surface maximale requis.' }, { status: 400 });
         }
+        if (!entierValide(t.maxM2)) return bad('La surface doit être un nombre entier de m².');
+        if (!montantServeurValide(t.basePrice) || !montantServeurValide(t.priceMax)) return bad('Le prix du palier n’est pas un montant valide.');
+        if (t.basePrice != null && t.priceMax != null && t.basePrice > t.priceMax) return bad('Le prix « de » ne peut pas dépasser le prix « à ».');
+        if (!entierValide(t.capacityIncluded)) return bad('Le nombre de voyageurs compris doit être un nombre entier.');
         const row = {
           max_m2: Number(t.maxM2),
           label: t.label.trim(),
@@ -100,6 +117,8 @@ export async function POST(req: NextRequest) {
       case 'option.save': {
         const o = body.option;
         if (!o?.label?.trim()) return NextResponse.json({ error: 'Libellé requis.' }, { status: 400 });
+        if (!montantServeurValide(o.fee ?? 0)) return bad('Le montant de l’option n’est pas valide.');
+        if (!paliersOptionValides(o.tiers)) return bad('Un palier de l’option n’est pas valide.');
         const row = {
           label: o.label.trim(),
           fee: Number(o.fee ?? 0),
@@ -138,6 +157,16 @@ export async function POST(req: NextRequest) {
       // ── Barème général ──────────────────────────────────────────────────
       case 'settings.save': {
         const s = body.settings ?? {};
+        if (s.extraGuestFee !== undefined && !montantServeurValide(s.extraGuestFee)) return bad('Le supplément voyageurs n’est pas un montant valide.');
+        if (s.bathroomSurcharge !== undefined) {
+          const ok = Array.isArray(s.bathroomSurcharge) && s.bathroomSurcharge.every(b => b && typeof b === 'object'
+            && entierValide((b as { from?: unknown }).from) && Number((b as { from?: unknown }).from) >= 2
+            && montantServeurValide((b as { fee?: unknown }).fee));
+          if (!ok) return bad('Un palier « salles de bain » n’est pas valide.');
+        }
+        if (s.minM2 !== undefined && (!entierValide(s.minM2) || s.minM2 < 1)) return bad('La surface minimale doit être un nombre entier.');
+        if (s.maxM2 !== undefined && !entierValide(s.maxM2)) return bad('La surface maximale doit être un nombre entier.');
+        if (s.minM2 !== undefined && s.maxM2 !== undefined && s.minM2 >= s.maxM2) return bad('La surface minimale doit être plus petite que la maximale.');
         const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
         if (s.extraGuestFee !== undefined) patch.extra_guest_fee = Number(s.extraGuestFee);
         if (s.bathroomSurcharge !== undefined) patch.bathroom_surcharge = s.bathroomSurcharge;

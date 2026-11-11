@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTarifsCsv, parsePrix, parseUnite } from './tarifsCsv';
+import { parseTarifsCsv, parsePrix, parseUnite, parseActif } from './tarifsCsv';
 
 describe('parsePrix — fourchette / prix simple', () => {
   it('fourchette « 40-70 » → min 40, max 70, prix milieu 55', () => {
@@ -60,5 +60,24 @@ Vitrerie;Fenêtre;piece;6-12;vitres, fenêtres;oui`;
     const { rows, errors } = parseTarifsCsv('a;b;c\n1;2;3');
     expect(rows).toHaveLength(0);
     expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
+describe('colonne Actif — un ré-import ne réactive pas en douce', () => {
+  it('lit oui / non et laisse undefined quand la case est vide', () => {
+    const { rows } = parseTarifsCsv('Prestation;Unité;Prix;Mots-clés;Actif\nA;forfait;10;;oui\nB;forfait;10;;non\nC;forfait;10;;\n');
+    expect(rows[0].actif).toBe(true);
+    expect(rows[1].actif).toBe(false);
+    expect(rows[2].actif).toBeUndefined();
+    expect('actif' in rows[2]).toBe(false);
+  });
+  it('sans colonne Actif → undefined partout', () => {
+    const { rows } = parseTarifsCsv('Prestation;Prix\nA;10\n');
+    expect(rows[0].actif).toBeUndefined();
+  });
+  it('parseActif', () => {
+    expect(parseActif('Oui')).toBe(true);
+    expect(parseActif('Inactif')).toBe(false);
+    expect(parseActif('peut-être')).toBeUndefined();
   });
 });
