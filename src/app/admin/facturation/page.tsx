@@ -67,6 +67,13 @@ export default function FacturationPage() {
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<'new' | 'history'>('new');
+  // ?tab=history (bloc « À faire » du tableau de bord) ouvre l'historique, là où
+  // se suivent les paiements. Lu après le montage : la page est rendue côté serveur.
+  useEffect(() => {
+    // Une seule fois, au montage : l'URL n'est pas lisible pendant le rendu serveur.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (new URLSearchParams(window.location.search).get('tab') === 'history') setTab('history');
+  }, []);
   const [viewing, setViewing] = useState<InvoiceRecord | null>(null);
   // Dépôt du PDF et règlement : une facture à la fois, avec son message d'erreur.
   const [invoiceBusy, setInvoiceBusy] = useState<string | null>(null);

@@ -12,10 +12,31 @@ export type IconName =
   | 'logout' | 'bell' | 'plus' | 'menu' | 'close' | 'check' | 'award' | 'book' | 'play'
   | 'sync' | 'calendar' | 'link' | 'delivery' | 'parking' | 'wrench'
   | 'clock' | 'timer' | 'pin' | 'chevronDown' | 'chevronRight' | 'camera' | 'image' | 'trash' | 'phone' | 'arrowUp' | 'arrowDown'
-  | 'search' | 'lock' | 'star' | 'copy';
+  | 'search' | 'lock' | 'star' | 'copy'
+  | 'tag' | 'cart' | 'target' | 'briefcase';
 
 // Chaque entrée = contenu SVG (paths) dessiné dans un viewBox 24×24.
 const PATHS: Record<IconName, React.ReactNode> = {
+  // Menu admin : une icône par écran (Tarification, Courses, Prospects,
+  // Prestataires partageaient celle d'un voisin).
+  tag: (<>
+    <path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z" />
+    <circle cx="7.5" cy="7.5" r="1.3" />
+  </>),
+  cart: (<>
+    <circle cx="8" cy="20.5" r="1" />
+    <circle cx="18.5" cy="20.5" r="1" />
+    <path d="M2 2.5h2.5l2.7 12.4a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21.5 7H5.6" />
+  </>),
+  target: (<>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1" />
+  </>),
+  briefcase: (<>
+    <rect x="2.5" y="7" width="19" height="13" rx="2" />
+    <path d="M16 20V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v15" />
+  </>),
   dashboard: (<>
     <rect x="3" y="3" width="7" height="9" rx="1.5" />
     <rect x="14" y="3" width="7" height="5" rx="1.5" />

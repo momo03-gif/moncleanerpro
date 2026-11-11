@@ -51,6 +51,12 @@ export async function getOpenIncidentsDB(): Promise<OpenIncident[]> {
 
 
 
+/** Marque un incident comme traité (admin). Lève une erreur lisible en cas d'échec. */
+export async function resolveIncidentDB(missionId: string): Promise<void> {
+  const r = await annexe('incident-resolve', { missionId });
+  if (!r?.ok) throw new Error(r?.error ?? 'Enregistrement impossible.');
+}
+
 export const cleRapport = (missionId: string) => `rapport:${missionId}`;
 
 export async function getMissionReportDB(missionId: string): Promise<MissionReport | null> {

@@ -100,6 +100,18 @@ export default function MissionsPage() {
   const [staff, setStaff] = useState<{ id: string; name: string; role: string }[]>([]);
   const [recurrings, setRecurrings] = useState<RecurringMission[]>([]);
 
+  // ?mission=<id> (depuis le planning du tableau de bord) : la carte de cette
+  // mission est amenée à l'écran et entourée, pour l'assigner ou la suivre sans
+  // la chercher dans la liste.
+  const focusId = searchParams.get('mission');
+  useEffect(() => {
+    if (!focusId || loading) return;
+    const t = setTimeout(() => {
+      document.getElementById(`mission-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [focusId, loading]);
+
   // Deep-link depuis le tableau de bord : ?view=today|tomorrow|overdue|unassigned
   // ouvre directement la bonne vue filtrée (onglet Missions + période + statut).
   useEffect(() => {
@@ -601,7 +613,9 @@ export default function MissionsPage() {
                       const dayIndex = dayList.indexOf(m);
                       const many = dayList.length > 1;
                       return (
-                      <AdminMissionCard key={m.id} mission={m} cleaners={cleaners} onRefresh={rafraichirCarte}
+                      <div key={m.id} id={`mission-${m.id}`}
+                        className={focusId === m.id ? 'rounded-2xl ring-2 ring-offset-2 ring-gold' : undefined}>
+                      <AdminMissionCard mission={m} cleaners={cleaners} onRefresh={rafraichirCarte}
                         terrain={terrain[m.id]}
                         selectable={m.status !== 'completed' && m.status !== 'cancelled'}
                         selected={selectedIds.has(m.id)}
@@ -610,6 +624,7 @@ export default function MissionsPage() {
                         canMoveUp={dayIndex > 0}
                         canMoveDown={dayIndex < dayList.length - 1}
                         onMove={many ? deplacerCarte : undefined} />
+                      </div>
                       );
                     })}
                   </div>

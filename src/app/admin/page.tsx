@@ -11,6 +11,10 @@ import { collapseGroups } from '@/lib/missionOrder';
 import { todayStr, addDaysStr } from '@/lib/dateRange';
 import Loading from '@/components/Loading';
 import { getSessionCache, setSessionCache } from '@/lib/sessionCache';
+import { vueFacture } from '@/lib/factureStatut';
+import { computeStats, todayISO, type Prospect } from '@/lib/prospectsCompute';
+import { moneyCentimes as money } from '@/lib/format';
+import Icon from '@/components/Icon';
 
 // Perf : la couche données (supabase) est importée en différé → elle ne pèse
 // pas sur le chargement initial du tableau de bord.
@@ -44,6 +48,31 @@ function Tile({ label, value, sub, href, tone = 'plain' }: {
   return href ? <Link href={href} className="block">{inner}</Link> : inner;
 }
 
+// « À faire » côté argent et clients : devis, factures, prospects. Mêmes règles
+// que les écrans concernés (vueFacture, computeStats) — rien n'est recalculé ici.
+interface AFaire {
+  devis: number;
+  enRetard: { n: number; montant: number };
+  aPayer: { n: number; montant: number };
+  relances: number;
+}
+
+async function chargerAFaire(): Promise<AFaire> {
+  const [devis, factures, prospects] = await Promise.all([
+    import('@/lib/devis').then(d => d.getDevisPendingCountDB()).catch(() => 0),
+    loadDb().then(d => d.getInvoicesDB()).catch(() => []),
+    fetch('/api/admin/prospects').then(r => (r.ok ? r.json() : null)).then(d => (d?.prospects ?? []) as Prospect[]).catch(() => [] as Prospect[]),
+  ]);
+  // Mêmes règles que l'écran Facturation (vueFacture) : rien n'est recalculé ici.
+  const enRetard = { n: 0, montant: 0 }, aPayer = { n: 0, montant: 0 };
+  for (const f of factures) {
+    const v = vueFacture({ status: f.status, dueDate: f.dueDate, paidAt: f.paidAt });
+    const cible = v.etat === 'en_retard' ? enRetard : v.etat === 'a_payer' ? aPayer : null;
+    if (cible) { cible.n++; cible.montant += Number(f.total) || 0; }
+  }
+  return { devis, enRetard, aPayer, relances: computeStats(prospects, todayISO()).urgents };
+}
+
 export default function AdminDashboard() {
   // Affichage instantané depuis le cache de session si on revient sur la page.
   const cached = getSessionCache<DashCache>(DASH_CACHE_KEY);
@@ -56,6 +85,10 @@ export default function AdminDashboard() {
   const [muettes, setMuettes] = useState<{ conciergerie: string; logiciel: string; joursSilence: number; derniereNouvelle: string; flux: number }[]>([]);
   const [loading, setLoading] = useState(cached === undefined);
   const [actionErr, setActionErr] = useState<string | null>(null);
+  // « À faire » côté argent et clients : devis, factures, prospects. Chargé à
+  // part, sans retarder le tableau de bord ; un échec laisse simplement le bloc vide.
+  const [aFaire, setAFaire] = useState<AFaire | null>(null);
+  const [incidentErr, setIncidentErr] = useState<string | null>(null);
 
   // Dates LOCALES (pas UTC) : sinon le tableau de bord affiche la veille entre
   // minuit et 2h du matin en heure française.
@@ -88,12 +121,28 @@ export default function AdminDashboard() {
       setFailingFeeds(failing);
       // Indépendant du reste : un échec ici ne retarde pas le tableau de bord.
       db.getConnexionsMuettes().then(setMuettes).catch(() => {});
+      chargerAFaire().then(setAFaire).catch(() => {});
       const pendingList = await loadPending();
       setSessionCache<DashCache>(DASH_CACHE_KEY, { missions: m, cleaners: c, pending: pendingList, incidents: inc, failingFeeds: failing });
       setLoading(false);
     }
     load();
   }, []);
+
+  // Incident traité : il quitte le tableau de bord. Le constat reste dans le
+  // rapport de la mission (historique du logement).
+  async function resoudreIncident(missionId: string) {
+    setIncidentErr(null);
+    const avant = incidents;
+    setIncidents(l => l.filter(i => i.missionId !== missionId));
+    try {
+      const { resolveIncidentDB } = await loadReports();
+      await resolveIncidentDB(missionId);
+    } catch (e) {
+      setIncidents(avant);
+      setIncidentErr(e instanceof Error ? e.message : 'Enregistrement impossible.');
+    }
+  }
 
   // L'échec doit être visible : sinon la fiche reste en attente et le partenaire
   // se voit refuser la connexion alors que l'admin a cru le valider.
@@ -179,9 +228,41 @@ export default function AdminDashboard() {
         <Tile label="Demain" value={tomorrowCount} sub="à venir" href="/admin/missions?view=tomorrow" />
         <Tile label="En retard" value={overdue.length} sub={overdue.length ? 'à régler' : 'rien à signaler'} href="/admin/missions?view=overdue" tone={overdue.length ? 'alert' : 'plain'} />
         <Tile label="À assigner" value={unassigned.length} sub={unassigned.length ? 'sans cleaner' : 'tout est assigné'} href="/admin/missions?view=unassigned" tone={unassigned.length ? 'warn' : 'plain'} />
-        <Tile label="Incidents" value={incidents.length} sub={incidents.length ? 'à traiter' : 'aucun'} tone={incidents.length ? 'alert' : 'plain'} />
+        <Tile label="Incidents" value={incidents.length} sub={incidents.length ? 'à traiter' : 'aucun'} href={incidents.length ? '#incidents' : undefined} tone={incidents.length ? 'alert' : 'plain'} />
         <Tile label="Cleaners dispos" value={available.length} sub={`sur ${cleaners.length}`} href="/admin/cleaners" />
       </div>
+
+      {/* ── À faire : devis, factures, relances ── */}
+      {aFaire && (() => {
+        const lignes = [
+          aFaire.devis > 0 && { href: '/admin/devis', tone: '#C9A84C',
+            texte: `${aFaire.devis} demande${aFaire.devis > 1 ? 's' : ''} de devis à traiter` },
+          aFaire.enRetard.n > 0 && { href: '/admin/facturation?tab=history', tone: '#B85A50',
+            texte: `${aFaire.enRetard.n} facture${aFaire.enRetard.n > 1 ? 's' : ''} en retard de paiement`, montant: aFaire.enRetard.montant },
+          aFaire.aPayer.n > 0 && { href: '/admin/facturation?tab=history', tone: '#C48A2A',
+            texte: `${aFaire.aPayer.n} facture${aFaire.aPayer.n > 1 ? 's' : ''} en attente de paiement`, montant: aFaire.aPayer.montant },
+          aFaire.relances > 0 && { href: '/admin/prospects', tone: '#7A7068',
+            texte: `${aFaire.relances} prospect${aFaire.relances > 1 ? 's' : ''} à relancer` },
+        ].filter(Boolean) as { href: string; tone: string; texte: string; montant?: number }[];
+        if (lignes.length === 0) return null;
+        return (
+          <div className="rounded-2xl border overflow-hidden mb-8" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
+            <div className="px-5 py-3.5 flex items-center gap-3 border-b" style={{ borderColor: '#F2EFE9', backgroundColor: '#FAFAF8' }}>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#C9A84C' }} />
+              <h2 className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>À faire</h2>
+            </div>
+            {lignes.map((l, i) => (
+              <Link key={l.texte} href={l.href}
+                className={`px-5 py-3 flex items-center gap-3 hover:bg-[#FAFAF8] ${i < lignes.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: l.tone }} />
+                <span className="text-sm flex-1 min-w-0" style={{ color: '#1A1A1A' }}>{l.texte}</span>
+                {l.montant != null && <span className="text-sm font-semibold shrink-0" style={{ color: '#1A1A1A' }}>{money(l.montant)}</span>}
+                <span className="shrink-0" style={{ color: '#A8A09A' }}><Icon name="chevronRight" size={14} /></span>
+              </Link>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ── Comptes en attente ── */}
       {pending.length > 0 && (
@@ -223,21 +304,45 @@ export default function AdminDashboard() {
 
       {/* ── Incidents signalés (rapports avec un dégât/problème) ── */}
       {incidents.length > 0 && (
-        <div className="rounded-2xl border overflow-hidden mb-8" style={{ borderColor: '#EAC4BE', backgroundColor: '#FFFFFF' }}>
+        <div id="incidents" className="rounded-2xl border overflow-hidden mb-8 scroll-mt-4" style={{ borderColor: '#EAC4BE', backgroundColor: '#FFFFFF' }}>
           <div className="px-5 py-3.5 flex items-center gap-3 border-b" style={{ borderColor: '#F2EFE9', backgroundColor: '#B85A5008' }}>
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#B85A50' }} />
             <h2 className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>Incidents signalés</h2>
             <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#B85A5015', color: '#B85A50' }}>{incidents.length}</span>
           </div>
+          {incidentErr && (
+            <div role="alert" className="mx-5 mt-4 rounded-xl border px-4 py-3 text-sm"
+              style={{ borderColor: '#E4B7B1', backgroundColor: '#FDF3F2', color: '#8A3A31' }}>
+              {incidentErr}
+            </div>
+          )}
           {incidents.slice(0, 6).map((inc, i) => (
-            <div key={inc.missionId} className={`px-5 py-3.5 ${i < Math.min(incidents.length, 6) - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{inc.property || 'Logement'}</p>
-                {inc.date && <span className="text-xs shrink-0" style={{ color: '#A8A09A' }}>{inc.date}</span>}
+            <div key={inc.missionId} className={`px-5 py-3.5 flex items-start gap-3 ${i < Math.min(incidents.length, 6) - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium truncate" style={{ color: '#1A1A1A' }}>{inc.property || 'Logement'}</p>
+                  {inc.date && (
+                    <span className="text-xs shrink-0" style={{ color: '#A8A09A' }}>
+                      {new Date(inc.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm mt-0.5" style={{ color: '#B85A50' }}>{inc.issues}</p>
               </div>
-              <p className="text-sm mt-0.5" style={{ color: '#B85A50' }}>{inc.issues}</p>
+              {/* Clore l'incident : il quitte le tableau de bord, le constat reste
+                  dans le rapport de la mission. */}
+              <button onClick={() => resoudreIncident(inc.missionId)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold border shrink-0"
+                style={{ borderColor: '#E8E4DC', color: '#5A8A6A' }}>
+                Marquer comme traité
+              </button>
             </div>
           ))}
+          {incidents.length > 6 && (
+            <p className="px-5 py-2.5 text-xs border-t" style={{ borderColor: '#F2EFE9', color: '#A8A09A' }}>
+              Et {incidents.length - 6} autre{incidents.length - 6 > 1 ? 's' : ''} : traitez les plus anciens pour les voir apparaître.
+            </p>
+          )}
         </div>
       )}
 
@@ -290,8 +395,11 @@ export default function AdminDashboard() {
                 const who = e.groupSize > 1
                   ? `${e.groupSize} intervenants${e.assignees.length ? ` · ${e.assignees.join(', ')}` : ''}`
                   : (m.cleanerName || m.assigneeName || (isAppointment ? 'Non assigné' : 'Non assignée'));
+                // Ligne cliquable : ouvre la mission dans l'écran Missions, mise en
+                // évidence — pour l'assigner ou la suivre sans la chercher.
                 return (
-                  <div key={m.groupId || m.id} className={`px-5 py-3.5 flex items-center gap-4 ${i < entries.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
+                  <Link key={m.groupId || m.id} href={`/admin/missions?view=today&mission=${m.id}`}
+                    className={`px-5 py-3.5 flex items-center gap-4 hover:bg-[#FAFAF8] ${i < entries.length - 1 ? 'border-b' : ''}`} style={{ borderColor: '#F2EFE9' }}>
                     <span className="text-sm font-semibold tabular-nums shrink-0" style={{ color: '#7A7068', width: 44 }}>{formatHour(m.time) || '—'}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
@@ -306,7 +414,7 @@ export default function AdminDashboard() {
                       <p className="text-xs truncate" style={{ color: (m.cleanerName || m.assigneeName || e.groupSize > 1) ? '#A8A09A' : '#B85A50' }}>{who}</p>
                     </div>
                     <span className="text-xs px-2 py-1 rounded-full font-medium shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                  </div>
+                  </Link>
                 );
               });
             })()}

@@ -40,7 +40,7 @@ const navGroups: NavGroup[] = [
     // partenaire avant d'avoir des sites, et les réservations arrivent ensuite.
     title: 'Clients',
     items: [
-      { href: '/admin/prospects', label: 'Prospects', icon: 'request' },
+      { href: '/admin/prospects', label: 'Prospects', icon: 'target' },
       { href: '/admin/comptes', label: 'Partenaires', icon: 'accounts' },
       { href: '/admin/airbnb', label: 'Sites', icon: 'building' },
       { href: '/admin/reservations', label: 'Réservations', icon: 'sync' },
@@ -50,7 +50,7 @@ const navGroups: NavGroup[] = [
     title: 'Équipe',
     items: [
       { href: '/admin/cleaners', label: 'Cleaners', icon: 'cleaners' },
-      { href: '/admin/prestataires', label: 'Prestataires', icon: 'accounts' },
+      { href: '/admin/prestataires', label: 'Prestataires', icon: 'briefcase' },
       { href: '/admin/rh', label: 'Règles RH', icon: 'award' },
       { href: '/admin/formation', label: 'Formation', icon: 'book' },
     ],
@@ -63,9 +63,9 @@ const navGroups: NavGroup[] = [
       // ici en pastille plutôt que dans la cloche générale.
       { href: '/admin/devis', label: 'Devis', icon: 'request', badge: 'devis' },
       { href: '/admin/facturation', label: 'Facturation', icon: 'invoice' },
-      { href: '/admin/tarification', label: 'Tarification', icon: 'invoice' },
+      { href: '/admin/tarification', label: 'Tarification', icon: 'tag' },
       { href: '/admin/comptabilite', label: 'Comptabilité', icon: 'wallet' },
-      { href: '/admin/courses', label: 'Courses & avances', icon: 'wallet' },
+      { href: '/admin/courses', label: 'Courses & avances', icon: 'cart' },
       { href: '/admin/parking', label: 'Parking', icon: 'parking' },
       { href: '/admin/stats', label: 'Statistiques', icon: 'stats' },
     ],

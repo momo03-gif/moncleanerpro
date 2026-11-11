@@ -23,6 +23,12 @@ export type Reponse = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown> = {}): Reponse => ({ status: 200, body: { ok: true, ...body } });
 const ko = (error: string, status = 400): Reponse => ({ status, body: { error } });
 const refuse = ko('Accès refusé.', 403);
+// Colonne pas encore créée (migration non exécutée) : on retombe sur l'ancien
+// comportement plutôt que de casser l'écran. 42703 = colonne inconnue (lecture),
+// PGRST204 = colonne absente du schéma (écriture).
+const colonneAbsente = (e: { code?: string; message?: string } | null) =>
+  !!e && (e.code === '42703' || e.code === 'PGRST204' || /issues_resolved/.test(e.message ?? ''));
+
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v : undefined);
 
 const PHOTOS_BUCKET = 'mission_photos';
@@ -459,7 +465,11 @@ const OPS: Record<string, Op> = {
     if (lien !== 'admin' && lien !== 'cleaner') return refuse;
     const issues = str(r.issues) ?? null;
     const lostFound = str(r.lostFound) ?? null;
-    const { error } = await db.from('mission_reports').upsert({
+    // Un incident marqué « traité » se ROUVRE si le constat change : un nouveau
+    // dégât signalé sur la même mission ne doit pas rester caché.
+    const { data: avant } = await db.from('mission_reports').select('issues').eq('mission_id', missionId).maybeSingle();
+    const constatChange = (avant?.issues ?? null) !== issues;
+    const ligne = {
       mission_id: missionId,
       consumables: Array.isArray(r.consumables) ? r.consumables.filter(x => typeof x === 'string') : [],
       consumables_note: str(r.consumablesNote) ?? null,
@@ -471,7 +481,15 @@ const OPS: Record<string, Op> = {
       note: str(r.note) ?? null,
       submitted_by: str(r.submittedBy) ?? s.name ?? null,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'mission_id' });
+    };
+    const aEcrire: Record<string, unknown> = constatChange
+      ? { ...ligne, issues_resolved_at: null, issues_resolved_by: null } : ligne;
+    let { error } = await db.from('mission_reports').upsert(aEcrire, { onConflict: 'mission_id' });
+    // Migration pas encore passée : on enregistre le rapport comme avant. Le
+    // rapport du cleaner ne doit JAMAIS échouer pour une colonne de suivi admin.
+    if (error && constatChange && colonneAbsente(error)) {
+      ({ error } = await db.from('mission_reports').upsert(ligne, { onConflict: 'mission_id' }));
+    }
     if (error) { console.error('annexes/report-save:', error.message); return ko('Enregistrement impossible.', 500); }
     return ok();
   },
@@ -479,9 +497,16 @@ const OPS: Record<string, Op> = {
   // Incidents signalés sur les rapports (tableau de bord admin).
   async incidents(db, s) {
     if (s.role !== 'admin') return refuse;
-    const { data, error } = await db.from('mission_reports')
-      .select('mission_id, issues, updated_at, missions(property_name, date_from, status, airbnbs(name))')
-      .not('issues', 'is', null).order('updated_at', { ascending: false }).limit(200);
+    const lire = (ouvertsSeulement: boolean) => {
+      let q = db.from('mission_reports')
+        .select('mission_id, issues, updated_at, missions(property_name, date_from, status, airbnbs(name))')
+        .not('issues', 'is', null);
+      // Seuls les incidents NON traités : avant, ils restaient « à traiter » à vie.
+      if (ouvertsSeulement) q = q.is('issues_resolved_at', null);
+      return q.order('updated_at', { ascending: false }).limit(200);
+    };
+    let { data, error } = await lire(true);
+    if (error && colonneAbsente(error)) ({ data, error } = await lire(false));
     if (error) { console.error('annexes/incidents:', error.message); return ko('Lecture impossible.', 500); }
     const statut: Record<string, string> = { pending: 'pending', assigned: 'accepted', inprogress: 'in_progress', done: 'completed', cancelled: 'cancelled' };
     return ok({
@@ -496,6 +521,24 @@ const OPS: Record<string, Op> = {
         };
       }),
     });
+  },
+
+  // Incident clos par l'administration. Le constat reste dans le rapport
+  // (historique du logement) ; seul son suivi change.
+  async 'incident-resolve'(db, s, b) {
+    if (s.role !== 'admin') return refuse;
+    const missionId = str(b.missionId);
+    if (!missionId) return ko('Mission manquante.');
+    const { error } = await db.from('mission_reports')
+      .update({ issues_resolved_at: new Date().toISOString(), issues_resolved_by: s.name ?? null })
+      .eq('mission_id', missionId);
+    if (error) {
+      console.error('annexes/incident-resolve:', error.message);
+      return ko(colonneAbsente(error)
+        ? 'La base n’est pas encore à jour : exécutez supabase/migration_incidents_traites.sql dans Supabase.'
+        : 'Enregistrement impossible.', 500);
+    }
+    return ok();
   },
 
   // ── Réparations ──
