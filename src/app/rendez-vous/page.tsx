@@ -1,5 +1,9 @@
 import { Suspense } from 'react';
 import PageClient from './PageClient';
+import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
+
+// Page publique : zoom autorisé (cf. lib/vitrineViewport.ts).
+export const viewport = VITRINE_VIEWPORT;
 
 export const metadata = {
   title: 'Prendre rendez-vous',

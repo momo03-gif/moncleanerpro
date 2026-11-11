@@ -10,7 +10,17 @@
 // assumé pour la rapidité).
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-if (dsn && typeof window !== 'undefined') {
+// Vitrine (moncleanerpro.fr : accueil, pages SEO, blog, devis) : PAS de Sentry.
+// Même différé, son exécution bloquait le téléphone ~0,5 s pendant la mesure de
+// vitesse de Google — pour surveiller des pages statiques qui ne plantent pas.
+// Il reste chargé là où il sert : l'APPLICATION (app.moncleanerpro.fr et les
+// espaces connectés).
+const estApplication = typeof window !== 'undefined' && (
+  window.location.hostname.startsWith('app.')
+  || /^\/(?:(?:admin|cleaner|airbnb|hotel|prestataire|login|register|reset)(?:\/|$)|devis\/)/.test(window.location.pathname)
+);
+
+if (dsn && typeof window !== 'undefined' && estApplication) {
   const loadSentry = () =>
     import('@sentry/nextjs').then((Sentry) => {
       Sentry.init({ dsn, enabled: true, tracesSampleRate: 0, sendDefaultPii: false });

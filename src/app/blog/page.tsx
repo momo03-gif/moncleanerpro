@@ -4,6 +4,10 @@ import type { Metadata } from 'next';
 import Motion from '../accueil/Motion';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
 import { BLOG_POSTS } from '@/lib/blogPosts';
+import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
+
+// Page publique : zoom autorisé (cf. lib/vitrineViewport.ts).
+export const viewport = VITRINE_VIEWPORT;
 
 const GOLD = '#C9A84C', INK = '#1A1A1A', VOID = '#0D0D0D', CREAM = '#FAFAF8', MUTED = '#7A7068', BORDER = '#E8E4DC';
 

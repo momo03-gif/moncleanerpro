@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import PageClient from './PageClient';
 import DevisContent from './DevisContent';
+import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
+
+// Page publique : zoom autorisé (cf. lib/vitrineViewport.ts).
+export const viewport = VITRINE_VIEWPORT;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Page publique « Demander un devis ».

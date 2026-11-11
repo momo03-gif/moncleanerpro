@@ -5,6 +5,10 @@ import { notFound } from 'next/navigation';
 import Motion from '../../accueil/Motion';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
 import { BLOG_POSTS, BLOG_SLUGS, getBlogPost } from '@/lib/blogPosts';
+import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
+
+// Page publique : zoom autorisé (cf. lib/vitrineViewport.ts).
+export const viewport = VITRINE_VIEWPORT;
 
 export const dynamicParams = false;
 export function generateStaticParams() {

@@ -10,6 +10,10 @@ import { SINCE, ENTITY_ID, PROFILES } from '@/lib/proof';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
 import QuickQuote from '@/components/QuickQuote';
 import FloatingContact from '@/components/FloatingContact';
+import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
+
+// Page publique : zoom autorisé (cf. lib/vitrineViewport.ts).
+export const viewport = VITRINE_VIEWPORT;
 
 // Pages d'atterrissage SEO (service × Lyon) — rendu 100 % statique.
 // dynamicParams=false : seuls les slugs connus existent, tout le reste → 404

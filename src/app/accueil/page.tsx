@@ -1,11 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
 import Motion from './Motion';
 import { SEO_PAGES, SERVED_CITIES, getCityGeo } from '@/lib/seoPages';
-import TrustBar from '@/components/TrustBar';
+import TrustBar, { ReviewsInline } from '@/components/TrustBar';
 import QuickQuote from '@/components/QuickQuote';
-import { SINCE, ENTITY_ID, PROFILES } from '@/lib/proof';
+import { SINCE, ENTITY_ID, PROFILES, REVIEWS, CHIFFRES, AVIS_CHOISIS } from '@/lib/proof';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
 import FloatingContact from '@/components/FloatingContact';
 
@@ -64,7 +65,12 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = VITRINE_VIEWPORT;
+
 const GOLD = '#C9A84C';
+// Or assombri pour les PETITS textes sur fond clair : l'or vif y était trop pâle
+// pour être lu (contraste insuffisant). L'or vif reste sur boutons et titres.
+const GOLD_TXT = '#8A6A1E';
 const INK = '#1A1A1A';
 const VOID = '#0D0D0D';
 const CREAM = '#FAFAF8';
@@ -128,23 +134,32 @@ const values = [
   { icon: IconMonitor, title: 'Suivi digital', text: 'Chaque mission est planifiée et suivie sur notre plateforme : traçabilité complète et rapports d’intervention.' },
 ];
 
-const stats = [
-  { value: '24h', label: 'Devis renvoyé' },
-  { value: '5', label: 'Secteurs couverts' },
-  { value: '100%', label: 'Missions contrôlées' },
-  { value: 'Lyon', label: '& Rhône-Alpes' },
+// Trois portes d'entrée en haut de page : l'accueil parlait à tout le monde à
+// la fois (hôtels, EHPAD, conciergeries, particuliers), personne ne s'y
+// reconnaissait. Chaque profil mène à SA page, avec SON argumentaire.
+const profils = [
+  { titre: 'Conciergerie ou propriétaire Airbnb', href: '/menage-airbnb-lyon' },
+  { titre: 'Particulier', href: '/menage-domicile-lyon' },
+  { titre: 'Entreprise ou hôtel', href: '/entreprise-nettoyage-lyon' },
+];
+
+// Ce que la plateforme montre de chaque ménage : le vrai avantage, jusqu'ici
+// résumé en « suivi digital » et caché dans la FAQ.
+const plateforme = [
+  { icon: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /><path d="m9 15 2 2 4-4" /></>,
+    title: 'Planifié tout seul', text: 'Votre calendrier Airbnb, Booking ou votre logiciel de gestion est synchronisé : chaque départ de voyageur crée son ménage, sans message de votre part.' },
+  { icon: <><rect x="3" y="5" width="18" height="15" rx="2" /><circle cx="12" cy="12.5" r="3.5" /><path d="M8 5l1.5-2h5L16 5" /></>,
+    title: 'Photos après chaque passage', text: 'L’intervenant photographie le logement terminé. Vous les retrouvez dans votre espace, sans vous déplacer.' },
+  { icon: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h4" /></>,
+    title: 'Rapport d’état', text: 'Consommables à prévoir, dégât constaté, objet oublié par un voyageur : c’est signalé le jour même.' },
+  { icon: <><path d="M20 7H4l1.5 12a2 2 0 0 0 2 1.7h9a2 2 0 0 0 2-1.7Z" /><path d="M9 7V5a3 3 0 0 1 6 0v2" /></>,
+    title: 'Linge et consommables', text: 'Fournis et suivis si vous le souhaitez : draps, serviettes, produits d’accueil, au rythme de vos séjours.' },
 ];
 
 const steps = [
   { n: '01', title: 'Vous décrivez votre besoin', text: 'En ligne en 2 minutes, ou par téléphone. Type de bien, surface, fréquence : notre assistant intelligent vous propose une estimation immédiate.' },
   { n: '02', title: 'On valide ensemble le devis', text: 'Un devis clair, transparent et sans engagement, ajusté à votre réalité et confirmé sous 24h.' },
   { n: '03', title: 'Nos équipes interviennent', text: 'Un(e) intervenant(e) formé(e) prend en charge la mission, avec check-list qualité et rapport d’intervention à la clé.' },
-];
-
-const testimonials = [
-  { name: 'Conciergerie Airbnb', role: 'Lyon 3e', text: "Des ménages réguliers, fiables et toujours au rendez-vous entre deux voyageurs. Le suivi digital nous fait gagner un temps fou." },
-  { name: 'Résidence hôtelière', role: 'Villeurbanne', text: "Cadence hôtelière tenue sans faille, finitions impeccables. Une équipe sérieuse sur qui on peut compter." },
-  { name: 'Propriétaire particulier', role: 'Métropole de Lyon', text: "Grand ménage nickel, devis clair et intervenants soigneux. Exactement le sérieux que je cherchais." },
 ];
 
 // Les trois premières répondent comme un assistant IA a besoin qu'on lui
@@ -272,7 +287,7 @@ export default function VitrinePage() {
           <nav className="hidden md:flex items-center gap-7 text-sm" style={{ color: MUTED }}>
             <a href="#secteurs" className="mcp-link hover:opacity-70">Secteurs</a>
             <a href="#prestations" className="mcp-link hover:opacity-70">Prestations</a>
-            <a href="#process" className="mcp-link hover:opacity-70">Déroulé</a>
+            <a href="#plateforme" className="mcp-link hover:opacity-70">Suivi en ligne</a>
             <a href="#avis" className="mcp-link hover:opacity-70">Avis</a>
             <Link href="/blog" className="mcp-link hover:opacity-70">Blog</Link>
             <a href="#faq" className="mcp-link hover:opacity-70">FAQ</a>
@@ -310,10 +325,20 @@ export default function VitrinePage() {
                 <Icon path={IconPhone} size={18} /> {PHONE}
               </a>
             </div>
-            <div className="mcp-rise mt-10 flex flex-wrap gap-x-8 gap-y-2 text-sm" style={{ animationDelay: '320ms', color: '#8A857C' }}>
-              <span className="inline-flex items-center gap-2"><span style={{ color: GOLD }}><Icon path={IconCheck} size={16} /></span> Devis sous 24h</span>
-              <span className="inline-flex items-center gap-2"><span style={{ color: GOLD }}><Icon path={IconCheck} size={16} /></span> Équipe formée &amp; encadrée</span>
-              <span className="inline-flex items-center gap-2"><span style={{ color: GOLD }}><Icon path={IconCheck} size={16} /></span> Contrôle qualité systématique</span>
+            {/* La note Google, argument le plus fort, à côté du bouton de devis —
+                elle n'apparaissait qu'en bas de page. */}
+            <div className="mcp-rise mt-7" style={{ animationDelay: '300ms' }}><ReviewsInline tone="dark" /></div>
+            <div className="mcp-rise mt-10" style={{ animationDelay: '360ms' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#8A857C' }}>Vous êtes</p>
+              <div className="mt-3 flex flex-wrap gap-2.5">
+                {profils.map(pr => (
+                  <Link key={pr.href} href={pr.href}
+                    className="mcp-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.16)' }}>
+                    {pr.titre} <span aria-hidden style={{ color: GOLD }}>→</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -322,10 +347,10 @@ export default function VitrinePage() {
       {/* ── CHIFFRES CLÉS ─────────────────────────────────────────────────── */}
       <section style={{ backgroundColor: INK, color: '#FFFFFF' }}>
         <div className="max-w-7xl mx-auto px-5 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {stats.map((s, i) => (
-            <div key={s.label} data-reveal style={{ transitionDelay: `${i * 70}ms` }}>
-              <p className="text-3xl md:text-4xl font-bold" data-count={s.value} style={{ color: GOLD, letterSpacing: '-0.02em' }}>{s.value}</p>
-              <p className="mt-1 text-sm" style={{ color: '#B8B2A8' }}>{s.label}</p>
+          {CHIFFRES.map((c, i) => (
+            <div key={c.libelle} data-reveal style={{ transitionDelay: `${i * 70}ms` }}>
+              <p className="text-3xl md:text-4xl font-bold" {...(c.anime ? { 'data-count': c.valeur } : {})} style={{ color: GOLD, letterSpacing: '-0.02em' }}>{c.valeur}</p>
+              <p className="mt-1 text-sm" style={{ color: '#B8B2A8' }}>{c.libelle}</p>
             </div>
           ))}
         </div>
@@ -334,7 +359,7 @@ export default function VitrinePage() {
       {/* ── SECTEURS ──────────────────────────────────────────────────────── */}
       <section id="secteurs" className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         <div data-reveal>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos secteurs</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Nos secteurs</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un savoir-faire adapté à chaque activité</h2>
           <p className="mt-4 max-w-2xl" style={{ color: MUTED }}>
             Du professionnel de l’hébergement au particulier, nous ajustons nos protocoles,
@@ -349,9 +374,92 @@ export default function VitrinePage() {
               </div>
               <h3 className="text-lg font-bold">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>{s.text}</p>
-              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: GOLD }}>En savoir plus <span aria-hidden>→</span></span>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: GOLD_TXT }}>En savoir plus <span aria-hidden>→</span></span>
             </a>
           ))}
+        </div>
+      </section>
+
+      {/* ── PLATEFORME : ce que voit le client de chaque ménage ───────────────
+          L'avantage qui distingue MonCleanerPro, surtout pour une conciergerie.
+          Il se résumait à « suivi digital » ; ici il se montre point par point. */}
+      <section id="plateforme" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
+        <div className="max-w-7xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-[0.9fr_1.1fr] gap-14 items-center">
+          <div data-reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Conciergeries &amp; propriétaires Airbnb</p>
+            <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>
+              Chaque ménage, visible depuis votre téléphone
+            </h2>
+            <p className="mt-4" style={{ color: '#B8B2A8' }}>
+              Plus besoin de nous prévenir à chaque réservation, ni de passer vérifier sur place.
+              Tout ce qui se passe dans votre logement est consigné sur notre plateforme et
+              accessible dans votre espace en ligne.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Btn href="/menage-airbnb-lyon" variant="gold">Le ménage Airbnb en détail</Btn>
+              <Link href="/devis-en-ligne" className="mcp-btn inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold" style={{ color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.22)' }}>
+                Estimer mon ménage
+              </Link>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {plateforme.map((f, i) => (
+              <div key={f.title} data-reveal className="rounded-2xl p-6" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', transitionDelay: `${i * 70}ms` }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(201,168,76,0.14)', color: GOLD }}>
+                  <Icon path={f.icon} size={22} />
+                </div>
+                <h3 className="font-bold">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: '#B8B2A8' }}>{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── AVIS CLIENTS : les vrais, ceux de la fiche Google ─────────────────
+          Placés tôt : ils répondent à « est-ce qu'on peut leur faire
+          confiance ? » avant qu'on demande quoi que ce soit au visiteur. */}
+      <section id="avis" style={{ backgroundColor: '#FFFFFF', borderBottom: `1px solid ${BORDER}` }}>
+        <div className="max-w-7xl mx-auto px-5 py-20 md:py-28">
+          <div data-reveal className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Avis Google vérifiés</p>
+              <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Ce que disent nos clients</h2>
+              <div className="mt-4"><ReviewsInline /></div>
+            </div>
+            <Btn href={REVIEWS.url} variant="outline" external>Lire tous les avis sur Google</Btn>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {AVIS_CHOISIS.map((t, i) => (
+              <figure key={t.nom} data-reveal className="mcp-card rounded-2xl p-7 flex flex-col" style={{ backgroundColor: CREAM, border: `1px solid ${BORDER}`, transitionDelay: `${(i % 3) * 90}ms` }}>
+                <div className="flex gap-1 mb-4" style={{ color: GOLD }} role="img" aria-label="5 étoiles sur 5">
+                  {[0, 1, 2, 3, 4].map(k => (
+                    <svg key={k} width={16} height={16} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 2.9 6.3 6.8.7-5 4.6 1.4 6.7L12 17.8 5.9 20.9l1.4-6.7-5-4.6 6.8-.7Z" /></svg>
+                  ))}
+                </div>
+                <blockquote className="text-sm leading-relaxed flex-1" style={{ color: INK }}>« {t.texte} »</blockquote>
+                <figcaption className="mt-5 text-sm">
+                  <span className="font-bold">{t.nom}</span>
+                  <span style={{ color: MUTED }}> · {t.contexte}</span>
+                  <span className="block text-xs mt-0.5" style={{ color: MUTED }}>Avis Google · {t.date}</span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DEMANDE DE DEVIS, DANS LA PAGE ────────────────────────────────────
+          Remontée juste après les avis : le visiteur vient de lire les preuves,
+          c'est le moment de lui proposer d'agir. Elle était tout en bas, après le
+          bloc contact. Même formulaire, même table, même écran admin que les
+          pages SEO. */}
+      <TrustBar withReviews={false} />
+      <section id="devis" aria-label="Demander un devis" style={{ backgroundColor: '#FFFFFF', borderBottom: `1px solid ${BORDER}` }}>
+        <div className="max-w-5xl mx-auto px-5 py-14 md:py-16">
+          <div data-reveal className="max-w-2xl mx-auto">
+            <QuickQuote service="nettoyage professionnel" slug="accueil" />
+          </div>
         </div>
       </section>
 
@@ -364,7 +472,7 @@ export default function VitrinePage() {
       <section id="credit-impot" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-7xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-2 gap-14 items-center">
           <div data-reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Particuliers</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Particuliers</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>
               La moitié de votre ménage prise en charge par l’État
             </h2>
@@ -388,7 +496,7 @@ export default function VitrinePage() {
             </div>
           </div>
           <div data-reveal className="rounded-2xl border p-9 md:p-11" style={{ backgroundColor: '#FFFFFF', borderColor: BORDER }}>
-            <p className="text-6xl md:text-7xl font-bold" style={{ color: GOLD, letterSpacing: '-0.03em' }}>50 %</p>
+            <p className="text-6xl md:text-7xl font-bold" style={{ color: '#A8873B', letterSpacing: '-0.03em' }}>50 %</p>
             <p className="mt-3 text-lg font-bold" style={{ color: INK }}>pris en charge, déduits immédiatement</p>
             <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
               Dans la limite de 12 000 € de dépenses par an et par foyer fiscal, majorée de 1 500 €
@@ -410,7 +518,7 @@ export default function VitrinePage() {
       <section id="prestations" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
         <div className="max-w-7xl mx-auto px-5 py-20 md:py-28 grid lg:grid-cols-2 gap-14 items-center">
           <div data-reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Nos prestations</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Nos prestations</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des interventions sur mesure, un standard constant</h2>
             <p className="mt-4" style={{ color: MUTED }}>
               Chaque prestation est cadrée, planifiée et contrôlée. Vous obtenez un
@@ -435,7 +543,7 @@ export default function VitrinePage() {
       {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────────── */}
       <section id="process" className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         <div data-reveal>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Comment ça marche</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Comment ça marche</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>De la demande à l’intervention, en 3 étapes</h2>
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
@@ -455,7 +563,7 @@ export default function VitrinePage() {
       {/* ── POURQUOI NOUS ─────────────────────────────────────────────────── */}
       <section id="pourquoi" className="max-w-7xl mx-auto px-5 pb-20 md:pb-28">
         <div data-reveal>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Pourquoi MonCleanerPro</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Pourquoi MonCleanerPro</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Un service premium, pensé pour durer</h2>
         </div>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -483,34 +591,11 @@ export default function VitrinePage() {
         </div>
       </section>
 
-      {/* ── AVIS CLIENTS ──────────────────────────────────────────────────── */}
-      <section id="avis" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-        <div className="max-w-7xl mx-auto px-5 py-20 md:py-28">
-          <div data-reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Ils nous font confiance</p>
-            <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Des clients exigeants, satisfaits durablement</h2>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <figure key={t.name} data-reveal className="mcp-card rounded-2xl p-7" style={{ backgroundColor: CREAM, border: `1px solid ${BORDER}`, transitionDelay: `${i * 90}ms` }}>
-                <div className="flex gap-1 mb-4" style={{ color: GOLD }} aria-label="5 étoiles">
-                  {[0, 1, 2, 3, 4].map(k => (
-                    <svg key={k} width={16} height={16} viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 2.9 6.3 6.8.7-5 4.6 1.4 6.7L12 17.8 5.9 20.9l1.4-6.7-5-4.6 6.8-.7Z" /></svg>
-                  ))}
-                </div>
-                <blockquote className="text-sm leading-relaxed" style={{ color: INK }}>« {t.text} »</blockquote>
-                <figcaption className="mt-4 text-sm"><span className="font-bold">{t.name}</span><span style={{ color: MUTED }}> · {t.role}</span></figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section id="faq" className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-12">
           <div data-reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Questions fréquentes</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Questions fréquentes</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-bold" style={{ letterSpacing: '-0.02em' }}>Tout ce qu’il faut savoir</h2>
             <p className="mt-4" style={{ color: MUTED }}>Une autre question ? Appelez-nous, on répond vite.</p>
             <div className="mt-6"><Btn href={PHONE_HREF} variant="outline"><Icon path={IconPhone} size={18} /> {PHONE}</Btn></div>
@@ -549,27 +634,10 @@ export default function VitrinePage() {
         </div>
       </section>
 
-      <TrustBar />
-
-      {/* ── DEMANDE DE DEVIS, DANS LA PAGE ────────────────────────────────────
-          L'accueil est la page la plus vue, et elle n'avait aucun formulaire :
-          tous ses boutons envoyaient vers /devis-en-ligne, où le visiteur doit
-          recommencer un parcours. Chaque page traversée en perd une partie.
-          Le formulaire est posé APRÈS la réassurance — le visiteur a vu les
-          preuves — et AVANT les zones desservies, qui invitent à cliquer ailleurs.
-          Même formulaire, même table, même écran admin que les pages SEO. */}
-      <section aria-label="Demander un devis" style={{ backgroundColor: '#FFFFFF', borderTop: `1px solid ${BORDER}` }}>
-        <div className="max-w-5xl mx-auto px-5 py-14 md:py-16">
-          <div data-reveal className="max-w-2xl mx-auto">
-            <QuickQuote service="nettoyage professionnel" slug="accueil" />
-          </div>
-        </div>
-      </section>
-
       {/* ── ZONES DESSERVIES (SEO local longue traîne) ────────────────────── */}
       <section aria-label="Zones desservies" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-7xl mx-auto px-5 py-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Zones desservies</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_TXT }}>Zones desservies</p>
           <h2 className="mt-2 text-lg font-bold">Nettoyage professionnel à Lyon, dans la métropole et le Beaujolais</h2>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
             {['Lyon 1er', 'Lyon 2e', 'Lyon 3e', 'Lyon 4e', 'Lyon 5e', 'Lyon 6e', 'Lyon 7e', 'Lyon 8e', 'Lyon 9e'].join(' · ')}

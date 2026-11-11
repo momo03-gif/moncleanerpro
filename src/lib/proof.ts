@@ -14,7 +14,7 @@
 // d'un balisage du site. Ici, les avis servent uniquement à convaincre le
 // visiteur une fois qu'il est sur la page — ce qui est déjà beaucoup.
 export const REVIEWS = {
-  count: 36,
+  count: 50,
   // Note moyenne affichée. `null` tant qu'elle n'est pas confirmée : mieux vaut
   // n'afficher que le nombre d'avis qu'une note approximative.
   rating: 5 as number | null,
@@ -80,4 +80,40 @@ export const SOURCES = [
   'Réseaux sociaux',
   'Déjà client',
   'Autre',
+];
+
+// ── Chiffres clés de la vitrine ───────────────────────────────────────────────
+// Uniquement des faits vérifiables, tirés de la plateforme (11/11/2026 :
+// 2 153 ménages terminés, 65 logements). Arrondis VERS LE BAS (« 2 000+ »)
+// pour rester vrais longtemps sans mise à jour. `anime` : compteur animé à
+// l'apparition — jamais pour une année, ça n'aurait aucun sens.
+export const CHIFFRES: { valeur: string; libelle: string; anime?: boolean }[] = [
+  { valeur: '2 000+', libelle: 'ménages réalisés' },
+  { valeur: '60+', libelle: 'logements suivis', anime: true },
+  { valeur: '5,0/5', libelle: `sur ${REVIEWS.count} avis Google` },
+  { valeur: String(SINCE), libelle: 'année de création' },
+];
+
+// ── Avis clients affichés sur la vitrine ─────────────────────────────────────
+// De VRAIS avis Google (fiche MonCleanerPro), extraits mot pour mot — seules
+// quelques fautes de frappe évidentes sont corrigées. Nom abrégé (prénom +
+// initiale) : l'avis est public, mais inutile d'exposer le nom complet.
+// Le contexte (« Conciergerie Airbnb »…) est déduit du texte de l'avis.
+// Ils remplacent des témoignages anonymes non vérifiables : présenter comme
+// réels des avis qui ne le sont pas est une pratique commerciale trompeuse.
+// Pour en changer : relire les avis via le bot (Desktop/mon-cleaner-bo).
+export interface AvisClient { nom: string; date: string; contexte: string; texte: string }
+export const AVIS_CHOISIS: AvisClient[] = [
+  { nom: 'Benjamin L.', date: 'novembre 2026', contexte: 'Conciergerie Airbnb',
+    texte: "Le ménage est bien fait et l'équipe est sérieuse. Leur application apporte un énorme plus car tu es au courant de tout. […] Ils sont très fiables et jamais de ménage raté, tout est fait à temps." },
+  { nom: 'Meyo R.', date: 'novembre 2025', contexte: 'Hôte Airbnb',
+    texte: "Les ménages sont toujours faits à l’heure, les draps parfaitement pliés et les consommables bien remis. Depuis que je travaille avec MONCLEANERPRO, mes notes Airbnb ont remonté." },
+  { nom: 'Noam L.', date: 'mai 2026', contexte: 'État des lieux de sortie',
+    texte: "Mon appartement était très sale, avec énormément de graisse et de saletés partout, et ils ont réussi à tout remettre parfaitement propre. Grâce à leur travail, j’ai pu récupérer ma caution." },
+  { nom: 'Discophil E.', date: 'novembre 2026', contexte: 'Nettoyage de bureau',
+    texte: "Depuis 1 an il me gère le nettoyage de mon bureau, jamais eu de problème. Travail sérieux et propre. Équipe ponctuelle, agréable et disponible." },
+  { nom: 'Eve L.', date: 'juin 2026', contexte: 'Salle de réception, Vaulx-en-Velin',
+    texte: "Plusieurs boissons avaient été renversées et le sol collait vraiment partout. […] Le lendemain, la salle était impeccable, propre et prête à être réutilisée." },
+  { nom: 'Pauline M.', date: 'mai 2026', contexte: 'Ménage complet',
+    texte: "Mon appartement était impeccable après leur passage, avec une vraie attention aux détails. Le personnel est également très agréable et à l’écoute des demandes." },
 ];

@@ -102,7 +102,8 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
 
   return (
     <form onSubmit={onSubmit} className="rounded-2xl p-5 sm:p-7" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${BORDER}` }} noValidate>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Demande rapide</p>
+      {/* Or assombri : l'or vif est trop pâle pour un petit texte sur fond clair. */}
+      <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#8A6A1E' }}>Demande rapide</p>
       <h3 className="mt-2 text-xl sm:text-2xl font-bold" style={{ color: INK, letterSpacing: '-0.02em' }}>
         Recevez votre devis sous 24h
       </h3>

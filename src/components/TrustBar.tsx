@@ -29,7 +29,7 @@ function Star({ filled }: { filled: boolean }) {
 }
 
 // Ligne d'avis réutilisable. `tone="dark"` pour les fonds sombres (hero des
-// pages SEO) : une note 5/5 sur 36 avis est l'argument le plus fort de la page,
+// pages SEO) : une note 5/5 sur des dizaines d’avis est l'argument le plus fort de la page,
 // elle doit être visible à côté du bouton de devis, pas seulement en milieu de page.
 export function ReviewsInline({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   if (!REVIEWS.count) return null;
@@ -56,11 +56,13 @@ export function ReviewsInline({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
     : inner;
 }
 
-export default function TrustBar({ withGuarantee = true }: { withGuarantee?: boolean }) {
+// `withReviews={false}` quand la page vient d'afficher ses avis juste au-dessus :
+// la même note répétée deux fois de suite fait remplissage.
+export default function TrustBar({ withGuarantee = true, withReviews = true }: { withGuarantee?: boolean; withReviews?: boolean }) {
   return (
     <section aria-label="Nos engagements" style={{ backgroundColor: CREAM, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
       <div className="max-w-5xl mx-auto px-5 py-10 sm:py-12">
-        {REVIEWS.count > 0 && (
+        {withReviews && REVIEWS.count > 0 && (
           <div className="text-center mb-8"><ReviewsInline /></div>
         )}
 
@@ -84,7 +86,7 @@ export default function TrustBar({ withGuarantee = true }: { withGuarantee?: boo
 
         {withGuarantee && (
           <div className="mt-8 rounded-2xl p-5 sm:p-6" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${BORDER}` }}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>{GUARANTEE.title}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#8A6A1E' }}>{GUARANTEE.title}</p>
             <p className="mt-2 text-sm sm:text-[15px] leading-relaxed" style={{ color: '#3F3A34' }}>{GUARANTEE.text}</p>
           </div>
         )}
