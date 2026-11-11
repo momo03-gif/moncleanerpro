@@ -286,13 +286,10 @@ function TarifRow({ tarif, busy, editing, onEdit, onSave, onRemove }: {
           )}
         </span>
         <span className="text-[10px] shrink-0 text-faint">{UNITE_LABEL[tarif.unite] ?? tarif.unite}</span>
-        <button onClick={() => onSave({ actif: !tarif.actif })} disabled={busy}
-          className={`text-[11px] font-semibold px-2 py-1 rounded shrink-0 border ${tarif.actif ? 'border-line text-muted' : 'border-gold text-gold-ink'}`}>
-          {tarif.actif ? 'Active' : 'Réactiver'}
-        </button>
+        {/* Une seule action sur la ligne : désactiver et supprimer sont dans
+            « Modifier ». Trois boutons par ligne rendaient la liste illisible. */}
         <button onClick={() => { setDraft(initial()); setErreur(null); onEdit(); }}
-          className="text-xs font-semibold px-2 py-1 rounded border border-line text-muted shrink-0">Modifier</button>
-        <button onClick={onRemove} aria-label={`Supprimer ${tarif.nom}`} className="text-danger px-1 shrink-0"><Icon name="close" size={14} /></button>
+          className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-line text-muted shrink-0">Modifier</button>
       </div>
     );
   }
@@ -312,10 +309,20 @@ function TarifRow({ tarif, busy, editing, onEdit, onSave, onRemove }: {
       <input className={FIELD} value={draft.motsCles} placeholder="Mots-clés — servent à l'agent d'estimation"
         onChange={e => setDraft(d => ({ ...d, motsCles: e.target.value }))} />
       {erreur && <p className="text-xs font-semibold text-danger">{erreur}</p>}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap items-center">
         <button disabled={busy || !draft.nom.trim()} onClick={save}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-ink disabled:opacity-50">Enregistrer</button>
         <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs border border-line text-muted">Annuler</button>
+        <span className="flex gap-2 ml-auto">
+          {/* Désactiver = retirer de la page de devis sans perdre la ligne. */}
+          <button onClick={() => onSave({ actif: !tarif.actif })} disabled={busy}
+            title={tarif.actif ? 'Retirer de la page de devis sans la supprimer' : 'Remettre sur la page de devis'}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tarif.actif ? 'border-line text-muted' : 'border-gold text-gold-ink'}`}>
+            {tarif.actif ? 'Désactiver' : 'Réactiver'}
+          </button>
+          <button onClick={onRemove} disabled={busy}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-danger-line text-danger">Supprimer</button>
+        </span>
       </div>
     </div>
   );

@@ -59,41 +59,28 @@ export default function TarificationClient() {
         immédiatement sur le site.
       </p>
 
-      {/* Deux niveaux distincts : ce qui vaut pour TOUTES les cartes de la page de
-          devis, et ce qui n'appartient qu'à la carte Airbnb & Conciergerie.
-          À plat, on croyait régler des paramètres généraux. */}
-      <div className="mt-5 mb-5 space-y-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 text-faint">
-            Toutes les cartes de la page de devis
-          </p>
-          <button onClick={() => setTab('prestations')}
-            className={`text-sm font-semibold px-4 py-2 rounded-xl border ${tab === 'prestations' ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line text-muted'}`}>
-            Prestations
-          </button>
+      {/* Une seule rangée d'onglets, coupée en deux par un séparateur : ce qui
+          vaut pour TOUTES les cartes de la page de devis, puis ce qui n'appartient
+          qu'à la carte Airbnb & Conciergerie. La phrase sous les onglets rappelle
+          la portée de l'onglet ouvert — à plat et sans elle, on croyait régler
+          des paramètres généraux. */}
+      <div className="mt-5 mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Onglet actif={tab === 'prestations'} onClick={() => setTab('prestations')}>Prestations</Onglet>
+          <span className="hidden sm:block w-px h-6 mx-1 bg-line" aria-hidden />
+          <span className="basis-full sm:basis-auto text-[11px] font-semibold uppercase tracking-wider text-faint sm:mr-1">Airbnb</span>
+          {([['tiers', 'Paliers'], ['zones', 'Zones'], ['options', 'Options'],
+             ['reglages', 'Salles de bain & surface']] as const).map(([id, label]) => (
+            <Onglet key={id} actif={tab === id} onClick={() => setTab(id)}>{label}</Onglet>
+          ))}
         </div>
-
-        <div className="rounded-2xl border border-line bg-surface-2 p-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">
-                Carte « Airbnb &amp; Conciergerie » uniquement
-              </p>
-              <p className="text-xs mt-0.5 text-muted">
-                Le barème du simulateur : il ne s&apos;applique qu&apos;à cette carte.
-              </p>
-            </div>
-            {config && <GrilleAirbnbPdf config={config} />}
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {([['tiers', 'Paliers de surface'], ['zones', 'Zones & communes'],
-               ['options', 'Options'], ['reglages', 'Salles de bain & surface']] as const).map(([id, label]) => (
-              <button key={id} onClick={() => setTab(id)}
-                className={`text-sm font-semibold px-4 py-2 rounded-xl border ${tab === id ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line bg-card text-muted'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between gap-3 flex-wrap mt-3 pt-3 border-t border-hairline">
+          <p className="text-xs text-muted">
+            {tab === 'prestations'
+              ? 'Les prix de toutes les cartes de la page de devis.'
+              : 'Le barème du simulateur : il ne s’applique qu’à la carte « Airbnb & Conciergerie ».'}
+          </p>
+          {tab !== 'prestations' && config && <GrilleAirbnbPdf config={config} />}
         </div>
       </div>
 
@@ -118,6 +105,15 @@ export default function TarificationClient() {
         </>
       )}
     </div>
+  );
+}
+
+function Onglet({ actif, onClick, children }: { actif: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button onClick={onClick} aria-pressed={actif}
+      className={`text-sm font-semibold px-3.5 py-1.5 rounded-xl border ${actif ? 'border-gold bg-gold-soft text-gold-ink' : 'border-line bg-card text-muted'}`}>
+      {children}
+    </button>
   );
 }
 
@@ -494,19 +490,14 @@ function TiersTab({ config, send, confirm }: { config: SimulatorConfig; send: Se
         </button>
       </div>
 
-      <p className="px-4 py-3 text-[11px] text-faint">
-        Chaque modification s&apos;enregistre dès que vous quittez le champ ; une saisie illisible
-        n&apos;est jamais enregistrée et s&apos;affiche en rouge.
-        Les paliers se classent tout seuls par surface : peu importe l&apos;ordre de saisie.
-        « Voyageurs compris » est le nombre de personnes déjà couvert par le prix du
-        palier : au-delà seulement, le supplément ci-dessus s&apos;applique, et il se compte
-        par tranche de deux — une personne en plus coûte autant que deux, trois autant que
-        quatre. Laisser vide signifie aucune limite, donc jamais de supplément.
-        Le prix s&apos;annonce en fourchette : « de 30 à 35 € ». Laisser la borne haute vide
-        donne un prix ferme. Laisser les deux vides signifie « sur devis » — au-delà de ce
-        palier, le simulateur cesse de chiffrer et invite le visiteur à vous contacter,
-        ce qui évite d&apos;annoncer un montant sur un logement hors norme.
-      </p>
+      {/* Légende courte : le détail du calcul se lit mieux dans « Tester un devis ». */}
+      <ul className="px-4 py-3 border-t border-hairline grid gap-x-6 gap-y-1 sm:grid-cols-2 text-[11px] text-muted">
+        <li><span className="font-semibold text-ink">Prix « à » vide</span> : prix ferme</li>
+        <li><span className="font-semibold text-ink">Les deux prix vides</span> : sur devis au-delà de ce palier</li>
+        <li><span className="font-semibold text-ink">Voyageurs compris vide</span> : aucune limite, jamais de supplément</li>
+        <li><span className="font-semibold text-ink">Au-delà</span> : supplément par tranche de 2 voyageurs (1 en plus = 2)</li>
+        <li className="sm:col-span-2 text-faint">Enregistré dès que vous quittez le champ · classé tout seul par surface · une saisie illisible n&apos;est pas enregistrée</li>
+      </ul>
     </div>
   );
 }
