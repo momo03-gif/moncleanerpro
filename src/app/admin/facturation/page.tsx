@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import type { Mission, CompanyInfo, InvoiceLine, InvoiceRecord } from '@/lib/types';
 import { lignesFacture, totauxFacture, appliquerCorrections, type MenageAFacturer } from '@/lib/factureLignes';
+import { montantsDepuisLignesHT, montantsFactureEnregistree } from '@/lib/factureTva';
 import { vueFacture } from '@/lib/factureStatut';
 import { inputStyle } from '@/lib/ui';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
@@ -160,7 +161,7 @@ export default function FacturationPage() {
       // Course : les achats refacturés au réel, sur leur propre ligne (hors base
       // du crédit d'impôt, comme le linge). Intervention, no show : rien.
       fourniture: m.service === 'errand'
-        ? ((m.errandSpent ?? 0) > 0 ? { montant: m.errandSpent!, libelle: LIBELLE_ACHATS, kits: 0 } : null)
+        ? ((m.errandSpent ?? 0) > 0 ? { montant: m.errandSpent!, libelle: LIBELLE_ACHATS, kits: 0, horsTva: true } : null)
         : m.noShow || m.service === 'repair' ? null : (fournitures[m.id] ?? null),
     })),
     amounts,
@@ -174,9 +175,13 @@ export default function FacturationPage() {
     date: l.date, label: l.label, type: l.type, apartment: l.apartment,
     cleaner: l.cleaner, qty: l.quantite,
     unitPrice: l.unitPrice, amount: l.amount,
+    ...(l.horsTva ? { horsTva: true } : {}),
   }));
   const totaux = totauxFacture(lignes);
-  const total = totaux.total;
+  // Les prix du site sont HT : la TVA s'AJOUTE (lib/factureTva.ts). `total` est
+  // le montant dû TTC — c'est lui qu'on enregistre, comme avant.
+  const montants = montantsDepuisLignesHT(liveLines, !!company.vat);
+  const total = montants.ttc;
   const partnerType = selMissions[0]?.source ?? 'airbnb';
 
   // Le libellé vient des missions, la fiche vient des comptes : on les relie par
@@ -196,7 +201,10 @@ export default function FacturationPage() {
   function buildText(): string {
     const head = `Facture ${invoiceNo} — ${partner}\nPériode : ${fmtDateFR(from)} au ${fmtDateFR(to)}\n\n`;
     const body = liveLines.map(l => `• ${fmtDateFR(l.date)} — ${l.label} : ${l.amount.toFixed(2)} €`).join('\n');
-    const foot = `\n\nTotal : ${total.toFixed(2)} €\n\n${company.name || 'MonCleanerPro'}`;
+    const detail = montants.tvaApplicable
+      ? `\n\nTotal HT : ${montants.ht.toFixed(2)} €\nTVA 20 % : ${montants.tva.toFixed(2)} €${montants.debours > 0 ? `\nAchats refacturés au réel : ${montants.debours.toFixed(2)} €` : ''}`
+      : '';
+    const foot = `${detail}\n\nTotal${montants.tvaApplicable ? ' TTC' : ''} : ${total.toFixed(2)} €\n\n${company.name || 'MonCleanerPro'}`;
     return head + body + foot;
   }
   function buildHtml(): string {
@@ -232,6 +240,10 @@ export default function FacturationPage() {
         <table style="width:100%;margin-top:18px"><tr>
           <td></td>
           <td style="width:220px">
+            ${montants.tvaApplicable ? `<div style="font-size:12px;color:#4A443D;text-align:right;line-height:1.8;margin-bottom:8px">
+              Sous-total HT <strong style="color:#1A1A1A">${money(montants.ht)}</strong><br>
+              TVA 20 % <strong style="color:#1A1A1A">${money(montants.tva)}</strong>${montants.debours > 0 ? `<br>Achats refacturés au réel <strong style="color:#1A1A1A">${money(montants.debours)}</strong>` : ''}
+            </div>` : ''}
             <div style="background:#C9A84C;border-radius:12px;padding:14px 18px;text-align:right">
               <span style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#1A1A1A">Total TTC</span>
               <div style="font-size:21px;font-weight:800;color:#1A1A1A;margin-top:2px">${money(total)}</div>
@@ -279,8 +291,10 @@ export default function FacturationPage() {
     const fige = await chargerFournitures(selMissions.map(m => m.id), true);
     if (Object.keys(fige).length > 0) setFournitures(fige);
 
-    const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, qty, unitPrice }) =>
-      ({ date, label, type, amount, apartment, cleaner, qty, unitPrice }));
+    // `horsTva` est conservé dans la facture archivée : sans lui, une facture
+    // avec des achats de course ne se relirait pas au bon format.
+    const lines: InvoiceLine[] = liveLines.map(({ date, label, type, amount, apartment, cleaner, qty, unitPrice, horsTva }) =>
+      ({ date, label, type, amount, apartment, cleaner, qty, unitPrice, ...(horsTva ? { horsTva } : {}), prixHT: true }));
     const { saveInvoiceDB, getInvoicesDB } = await loadDb();
     const res = await saveInvoiceDB({ number: invoiceNo, partnerLabel: partner, partnerType, periodFrom: from, periodTo: to, total, lines });
     if (res.error) { setSavedMsg('Erreur : ' + res.error); return; }
@@ -521,7 +535,7 @@ export default function FacturationPage() {
         <InvoiceDoc company={company} number={invoiceNo} partnerLabel={partner} partnerType={partnerType} status="pending"
           clientAddress={billingFor(partner)?.address} clientEmail={billingFor(partner)?.email}
           clientPhone={billingFor(partner)?.phone}
-          from={from} to={to} lines={liveLines} total={total} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
+          from={from} to={to} lines={liveLines} total={total} montants={montants} editable onAmount={(id, v) => setAmounts(a => ({ ...a, [id]: v }))} />
       )}
       {tab === 'new' && (!partner || liveLines.length === 0) && (
         <div className="rounded-2xl p-10 flex flex-col items-center text-center border print-hidden" style={{ borderColor: '#E8E4DC', backgroundColor: '#FFFFFF' }}>
@@ -535,7 +549,8 @@ export default function FacturationPage() {
           partnerType={viewing.partnerType} status={viewing.status}
           clientAddress={billingFor(viewing.partnerLabel)?.address} clientEmail={billingFor(viewing.partnerLabel)?.email}
           clientPhone={billingFor(viewing.partnerLabel)?.phone}
-          from={viewing.periodFrom} to={viewing.periodTo} lines={viewing.lines} total={viewing.total} />
+          from={viewing.periodFrom} to={viewing.periodTo} lines={viewing.lines} total={viewing.total}
+          montants={montantsFactureEnregistree(viewing.lines, viewing.total, !!company.vat)} />
       )}
     </div>
   );

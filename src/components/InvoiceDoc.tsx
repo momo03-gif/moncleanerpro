@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import type { CompanyInfo, InvoiceLine } from '@/lib/types';
 import { MISSION_TYPE_LABEL } from '@/lib/labels';
 import { moneyCentimes as money } from '@/lib/format';
+import type { MontantsFacture } from '@/lib/factureTva';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Document imprimable FACTURE / DEVIS — gabarit unique, une seule identité.
@@ -35,7 +36,7 @@ function fmtDateFR(d: string) {
 // ── Document facture premium (imprimable), partagé live / historique ────────────
 // Réutilisé tel quel pour les DEVIS (LOT 8) via docLabel / validUntil — même
 // identité visuelle, aucune duplication du gabarit.
-export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientAddress, clientEmail, clientPhone, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC', totalIsHT = false }: {
+export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientAddress, clientEmail, clientPhone, status, from, to, lines, total, editable, onAmount, docLabel = 'FACTURE', validUntil, totalLabel = 'Total TTC', totalIsHT = false, montants }: {
   company: CompanyInfo;
   number: string; partnerLabel: string; partnerType?: string; status?: string;
   // Adresse du destinataire : mention OBLIGATOIRE sur une facture
@@ -51,6 +52,8 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
   validUntil?: string;
   totalLabel?: string;
   totalIsHT?: boolean;   // true = le `total` fourni est HT (devis) → on ajoute la TVA
+  /** Montants déjà calculés (factures : lib/factureTva.ts). Prioritaires sur `total`. */
+  montants?: MontantsFacture;
 }) {
   const [qrSvg, setQrSvg] = useState('');
 
@@ -79,10 +82,17 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
   // `total` reçu = TTC pour une FACTURE (logique conservée) ; = HT pour un DEVIS
   // (les prix saisis sont hors taxe → on AJOUTE la TVA 20 %). totalIsHT distingue.
   // Un devis HT applique toujours la TVA ; une facture selon le n° de TVA société.
-  const vatApplicable = !!company.vat || totalIsHT;
-  const subtotalHT = totalIsHT ? total : (vatApplicable ? total / 1.2 : total);
-  const vatAmount = vatApplicable ? subtotalHT * 0.2 : 0;
-  const totalTTC = subtotalHT + vatAmount;
+  // Une FACTURE arrive avec ses `montants` calculés par lib/factureTva.ts : les
+  // prix du site sont HT, la TVA s'AJOUTE (et les anciennes factures, au total
+  // TTC, sont reconnues et rendues comme avant). Sans `montants`, logique d'origine.
+  const vatApplicable = montants ? montants.tvaApplicable : (!!company.vat || totalIsHT);
+  const subtotalHT = montants ? montants.ht : (totalIsHT ? total : (vatApplicable ? total / 1.2 : total));
+  const vatAmount = montants ? montants.tva : (vatApplicable ? subtotalHT * 0.2 : 0);
+  const debours = montants?.debours ?? 0;
+  const totalTTC = montants ? montants.ttc : subtotalHT + vatAmount;
+  // Lignes en HT : devis, ou facture au nouveau format. Mention utile au client
+  // (et attendue sur une facture soumise à TVA : prix unitaire hors taxe).
+  const lignesHT = vatApplicable && (montants ? montants.lignesHT : totalIsHT);
 
   // Un DEVIS n'a pas de statut de paiement (ce n'est pas une facture) → badge « Devis ».
   const badge = docLabel === 'DEVIS'
@@ -185,8 +195,8 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
               <th style={{ ...th, textAlign: 'left', ...(isDevis ? { borderTopLeftRadius: 10 } : {}) }}>{isDevis ? 'Prestation' : 'Appartement / Chambre'}</th>
               {!isDevis && <th style={{ ...th, textAlign: 'left' }}>Prestation</th>}
               <th style={{ ...th, textAlign: 'center' }}>Qté</th>
-              <th style={{ ...th, textAlign: 'right' }}>P.U.</th>
-              <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 10 }}>Montant</th>
+              <th style={{ ...th, textAlign: 'right' }}>{lignesHT ? 'P.U. HT' : 'P.U.'}</th>
+              <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 10 }}>{lignesHT ? 'Montant HT' : 'Montant'}</th>
             </tr>
           </thead>
           <tbody>
@@ -243,6 +253,12 @@ export function InvoiceDoc({ company, number, partnerLabel, partnerType, clientA
               <span>{vatApplicable ? 'TVA 20 %' : 'TVA'}</span>
               <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{vatApplicable ? money(vatAmount) : 'Non applicable'}</span>
             </div>
+            {debours > 0 && (
+              <div style={totRow}>
+                <span>Achats refacturés au réel</span>
+                <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{money(debours)}</span>
+              </div>
+            )}
           </div>
           <div style={{ marginTop: dense ? 7 : 10, background: '#C9A84C', borderRadius: 14, padding: `${dense ? 11 : 15}px 18px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 6px 16px rgba(201,168,76,0.28)' }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#1A1A1A' }}>{totalLabel}</span>

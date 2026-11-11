@@ -34,7 +34,7 @@ export interface MenageAFacturer {
   /** Prix du ménage seul, hors fourniture. */
   prix: number;
   /** La fourniture de ce passage, si le logement en a une. */
-  fourniture?: { montant: number; libelle: string; kits: number } | null;
+  fourniture?: { montant: number; libelle: string; kits: number; horsTva?: boolean } | null;
 }
 
 export interface LigneFacture {
@@ -52,6 +52,8 @@ export interface LigneFacture {
   amount: number;
   /** Vrai pour une ligne de marchandise : hors crédit d'impôt. */
   fourniture?: boolean;
+  /** Débours refacturé au réel (achats d'une course) : pas de TVA ajoutée. */
+  horsTva?: boolean;
 }
 
 const centimes = (v: number) => Math.round(v * 100) / 100;
@@ -94,6 +96,7 @@ export function lignesFacture(menages: MenageAFacturer[]): LigneFacture[] {
         unitPrice: centimes(f.montant),
         amount: centimes(f.montant),
         fourniture: true,
+        ...(f.horsTva ? { horsTva: true } : {}),
       });
     }
   }

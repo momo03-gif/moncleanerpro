@@ -431,6 +431,10 @@ export interface InvoiceLine {
   /** Quantité facturée. JAMAIS une durée : voir l'entête de lib/factureLignes.ts. */
   qty?: number;
   unitPrice?: number;
+  /** Débours (achats d'une course refacturés au réel) : pas de TVA ajoutée. Cf. lib/factureTva.ts. */
+  horsTva?: boolean;
+  /** Montant HT (factures émises depuis le 11/11/2026). Absent = ancienne facture au total TTC. */
+  prixHT?: boolean;
 }
 
 export interface InvoiceRecord {

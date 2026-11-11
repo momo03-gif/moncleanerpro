@@ -1,4 +1,5 @@
 import { saveInvoiceDB } from './db';
+import { montantsDepuisLignesHT } from './factureTva';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Module Devis + Grille tarifaire (LOT 8 / 8A / 8B) — couche d'accès données.
@@ -227,7 +228,10 @@ export async function setDevisStatusByTokenDB(token: string, status: DevisStatus
 }
 
 // Conversion d'un devis ACCEPTÉ en facture (réutilise saveInvoiceDB → table invoices).
-export async function convertDevisToInvoiceDB(devis: Devis): Promise<{ error: string | null; number: string | null }> {
+// Les lignes d'un devis sont HT : la facture garde ces lignes et enregistre le
+// montant dû TTC (lib/factureTva.ts). Avant, le total HT du devis devenait le
+// TTC de la facture — le client payait 20 % de moins que le devis accepté.
+export async function convertDevisToInvoiceDB(devis: Devis, tvaApplicable = true): Promise<{ error: string | null; number: string | null }> {
   const today = new Date();
   const invoiceNo = `FAC-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}-${(devis.partnerLabel || 'DEVIS').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() || 'XXXX'}`;
   const dateStr = today.toISOString().split('T')[0];
@@ -236,8 +240,10 @@ export async function convertDevisToInvoiceDB(devis: Devis): Promise<{ error: st
     partnerLabel: devis.partnerLabel || devis.clientName || 'Client',
     partnerType: devis.partnerType || 'devis',
     periodFrom: dateStr, periodTo: dateStr,
-    total: devis.total,
-    lines: devis.lines.map(l => ({ date: dateStr, label: l.nom, type: 'devis', amount: l.total, unitPrice: l.prix_unitaire })),
+    // Le total HT du devis fait foi (pour un devis du site, il peut différer de
+    // la somme des lignes : milieu de la fourchette).
+    total: montantsDepuisLignesHT([{ amount: devis.total }], tvaApplicable).ttc,
+    lines: devis.lines.map(l => ({ date: dateStr, label: l.nom, type: 'devis', amount: l.total, unitPrice: l.prix_unitaire, prixHT: true })),
   });
   if (res.error) return { error: res.error, number: null };
   await setDevisStatusDB(devis.id, 'accepte');

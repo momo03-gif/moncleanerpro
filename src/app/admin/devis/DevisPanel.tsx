@@ -631,7 +631,7 @@ function DevisHistory({ company, list, onChanged, onEdit, resendId }: { company:
   }
 
   async function convert(d: Devis) {
-    const res = await convertDevisToInvoiceDB(d);
+    const res = await convertDevisToInvoiceDB(d, !!company.vat);
     if (res.error) setConvertMsg(res.error);
     else { setConvertMsg(`Facture ${res.number} créée depuis ${d.number}.`); onChanged(); }
   }
