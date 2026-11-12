@@ -237,6 +237,7 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
   // Écarter demande une confirmation sur place (2e clic) : la demande porte le
   // nom et le besoin d'un vrai client, on ne la fait pas disparaître d'un clic.
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [repondre, setRepondre] = useState<string | null>(null);
 
   if (list.length === 0) {
     return (
@@ -260,8 +261,8 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
         const quand = d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
         const origine = d.partnerType === 'airbnb' ? 'espace partenaire' : 'site public';
         return (
-          <div key={d.id} className="rounded-2xl border p-4 flex items-start justify-between gap-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#EBD9A8' }}>
-            <div className="min-w-0">
+          <div key={d.id} className="rounded-2xl border p-4 flex flex-wrap items-start justify-between gap-4" style={{ backgroundColor: '#FFFFFF', borderColor: '#EBD9A8' }}>
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{d.clientName || d.partnerLabel || 'Client'}</p>
                 <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: '#FBF4E2', color: '#C48A2A' }}>À traiter</span>
@@ -301,6 +302,12 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
               <button onClick={() => onTraiter(d)} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
                 Chiffrer
               </button>
+              {d.clientEmail && (
+                <button onClick={() => setRepondre(r => (r === d.id ? null : d.id))} className="px-4 py-2 rounded-xl text-xs font-semibold border"
+                  style={{ borderColor: '#E8E4DC', color: '#7A7068' }}>
+                  Répondre par email
+                </button>
+              )}
               {confirming === d.id ? (
                 <div className="flex items-center gap-2">
                   <button onClick={() => { setConfirming(null); onEcarter(d); }} className="text-xs font-semibold" style={{ color: '#B85A50' }}>Confirmer</button>
@@ -310,9 +317,79 @@ function DevisRequests({ list, onTraiter, onNew, onEcarter }: { list: Devis[]; o
                 <button onClick={() => setConfirming(d.id)} className="text-xs" style={{ color: '#A8A09A' }}>Écarter</button>
               )}
             </div>
+            {repondre === d.id && d.clientEmail && (
+              <ReponseEmail devis={d} onFermer={() => setRepondre(null)} />
+            )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── RÉPONDRE À UNE DEMANDE, SANS DEVIS ──────────────────────────────────────────
+// Beaucoup de demandes sont des QUESTIONS (« forfait ou horaire ? », « vous
+// facturez qui ? ») avant tout chiffrage. Sans réponse possible depuis l'écran,
+// elles restaient des semaines sans suite. Part de l'adresse pro, comme les
+// devis ; la demande reste « à traiter » tant qu'aucun devis n'est envoyé.
+function texteVersHtml(texte: string): string {
+  const echappe = texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const gras = echappe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#1A1A1A">${gras.replace(/\n/g, '<br>')}</div>`;
+}
+
+function ReponseEmail({ devis, onFermer }: { devis: Devis; onFermer: () => void }) {
+  const prenom = (devis.clientName || '').trim().split(/\s+/)[0] ?? '';
+  const nom = prenom ? prenom.charAt(0).toUpperCase() + prenom.slice(1) : '';
+  const [sujet, setSujet] = useState('Votre demande – MonCleanerPro');
+  const [corps, setCorps] = useState(
+    `Bonjour${nom ? ` ${nom}` : ''},\n\nMerci pour votre demande.\n\n\n\nBien cordialement,\n\nL'équipe MonCleanerPro\n07 83 43 17 00 · info@moncleanerpro.fr`,
+  );
+  const [etat, setEtat] = useState<'saisie' | 'envoi' | 'envoye'>('saisie');
+  const [erreur, setErreur] = useState('');
+
+  async function envoyer() {
+    setEtat('envoi'); setErreur('');
+    try {
+      const res = await fetch('/api/send-invoice', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          to: devis.clientEmail, subject: sujet.trim(),
+          text: corps.replace(/\*\*/g, ''), html: texteVersHtml(corps),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) { setErreur(data.error || "Échec de l'envoi."); setEtat('saisie'); return; }
+      setEtat('envoye');
+    } catch {
+      setErreur("Échec de l'envoi (connexion)."); setEtat('saisie');
+    }
+  }
+
+  if (etat === 'envoye') {
+    return (
+      <div className="basis-full mt-3 rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-3"
+        style={{ borderColor: '#BFD8C6', backgroundColor: '#F1F8F3', color: '#3F6B4C' }}>
+        <span>Réponse envoyée à {devis.clientEmail}. La demande reste à traiter jusqu’à l’envoi d’un devis.</span>
+        <button onClick={onFermer} className="text-xs font-semibold shrink-0">Fermer</button>
+      </div>
+    );
+  }
+  return (
+    <div className="basis-full mt-3 rounded-xl border p-4 space-y-2.5" style={{ borderColor: '#E8E4DC', backgroundColor: '#FAFAF8' }}>
+      <p className="text-xs" style={{ color: '#7A7068' }}>À : <span className="font-semibold">{devis.clientEmail}</span></p>
+      <input value={sujet} onChange={e => setSujet(e.target.value)} aria-label="Objet" className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+      <textarea value={corps} onChange={e => setCorps(e.target.value)} aria-label="Message" rows={12}
+        className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+      <p className="text-xs" style={{ color: '#A8A09A' }}>Astuce : **texte** s’affiche en gras dans l’email.</p>
+      {erreur && <p role="alert" className="text-sm" style={{ color: '#B85A50' }}>{erreur}</p>}
+      <div className="flex items-center gap-2">
+        <button onClick={envoyer} disabled={etat === 'envoi' || !sujet.trim() || !corps.trim()}
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: '#C9A84C', color: '#1A1A1A' }}>
+          {etat === 'envoi' ? 'Envoi…' : 'Envoyer'}
+        </button>
+        <button onClick={onFermer} disabled={etat === 'envoi'} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: '#7A7068' }}>Annuler</button>
+      </div>
     </div>
   );
 }

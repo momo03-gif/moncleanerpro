@@ -13,6 +13,22 @@ const SPAMS = [
     description: 'Hello business owner! Are you looking for a reliable marketing agency for your business? We offer SEO and web development. '.padEnd(320, 'x'),
     total: 0, lignes: 0,
   },
+  // Passés entre les mailles avant le renforcement (octobre-novembre 2026).
+  {
+    clientName: 'MAHAZOMANA Vohitsiry', clientEmail: 'tsoaainay@gmail.com', clientPhone: '0384249763',
+    clientAddress: 'Antananarivo', description: 'Besoin : En une phase Commune : Antananarivo Page d’origine : /nettoyage-bureaux-lyon',
+    total: 0, lignes: 0,
+  },
+  {
+    clientName: 'Stojanovic', clientEmail: 'stojanovicluka28@yahoo.com', clientPhone: '0650991652', clientAddress: 'Lyon',
+    description: "Besoin : Bonjour ! Je me permets de vous contacter car je développe **Hospitality Builder**, une activité spécialisée dans l'optimisation des logements Airbnb. J'accompagne les propriétaires pour améliorer leurs annonces afin d'augmenter leur visibilité. Je cherche actuellement à développer un réseau de partenaires.",
+    total: 0, lignes: 0,
+  },
+  {
+    clientName: 'José Perrier', clientEmail: 'j.perrier@bpoaction-madagascar.com', clientPhone: '0775957071', clientAddress: 'Paris',
+    description: "Besoin : Bonjour, Nous sommes heureux de vous présenter nos services d'externalisation en prise de RDV, facturation et gestion comptes patients.",
+    total: 0, lignes: 0,
+  },
 ];
 
 // De vraies demandes, elles aussi reçues.
@@ -26,6 +42,16 @@ const VRAIS = [
     clientName: 'Lucas ouillon', clientEmail: 'lcimmobilier.contact@gmail.com', clientPhone: '0667284784',
     clientAddress: 'Lyon 3', description: 'Bonjour, il y a entrée automatique pour le logement (via lien internet). Il y a en moyenne deux départs par semaine.',
     total: 83, lignes: 2,
+  },
+  // Le client poli qui emploie des formules de démarchage : il doit passer.
+  {
+    clientName: 'Sophie Durand', clientEmail: 'sophie.durand@gmail.com', clientPhone: '0611223344', clientAddress: 'Lyon 7',
+    description: "Bonjour, je me permets de vous contacter pour le ménage de nos bureaux (200 m²), deux fois par semaine. Si cela vous intéresse, rappelez-moi.",
+    total: 0, lignes: 0,
+  },
+  {
+    clientName: 'Marc', clientEmail: 'marc@conciergerie-lyon.fr', clientPhone: '0622334455', clientAddress: 'Lyon 2',
+    description: 'Conciergerie, 12 logements, besoin de ménages entre chaque voyageur. Visite au Museo possible ?', total: 0, lignes: 0,
   },
   // Le client maladroit : deux mots, pas d'adresse. Il doit passer.
   { clientName: 'M. Bernard', clientEmail: 'bernard@free.fr', clientPhone: '0612345678', description: 'ménage appartement', total: 0, lignes: 0 },
