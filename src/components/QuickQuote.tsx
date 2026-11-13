@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { SOURCES } from '@/lib/proof';
 import { trackConversion } from '@/lib/adsTracking';
+import { FREQUENCES, emailPlausible } from '@/lib/frequence';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Formulaire de demande court, posé DANS les pages SEO.
@@ -45,10 +46,12 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
     const commune = String(f.get('commune') ?? '').trim();
     const besoin = String(f.get('besoin') ?? '').trim();
     const source = String(f.get('source') ?? '').trim();
+    const frequence = String(f.get('frequence') ?? '').trim();
     // Champ piège : invisible pour un humain, rempli par les robots.
     const website = String(f.get('website') ?? '').trim();
 
     if (!nom || !email || !tel) { setState('error'); setMessage('Merci d’indiquer votre nom, votre téléphone et votre email.'); return; }
+    if (!emailPlausible(email)) { setState('error'); setMessage('Cet email semble incomplet : vérifiez-le, c’est par là que nous vous envoyons le devis.'); return; }
     setState('sending');
 
     // Le téléphone part dans sa PROPRE colonne (clientPhone) : noyé dans la
@@ -56,6 +59,7 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
     // reste du texte libre, c'est bien ce que c'est.
     const description = [
       besoin && `Besoin : ${besoin}`,
+      frequence && `Fréquence : ${frequence}`,
       commune && `Commune : ${commune}`,
       source && `Nous a connus par : ${source}`,
       `Page d’origine : /${slug} (${service})`,
@@ -132,6 +136,13 @@ export default function QuickQuote({ service, slug }: { service: string; slug: s
           <label style={label} htmlFor="qq-besoin">Votre besoin</label>
           <textarea id="qq-besoin" name="besoin" rows={3} style={{ ...field, resize: 'vertical' }}
             placeholder={`En une ou deux phrases : ${service.toLowerCase()}, surface, fréquence souhaitée…`} />
+        </div>
+        <div className="sm:col-span-2">
+          <label style={label} htmlFor="qq-frequence">Fréquence souhaitée</label>
+          <select id="qq-frequence" name="frequence" style={field} defaultValue="">
+            <option value="">— Choisir —</option>
+            {FREQUENCES.map(x => <option key={x} value={x}>{x}</option>)}
+          </select>
         </div>
         <div className="sm:col-span-2">
           <label style={label} htmlFor="qq-source">Comment nous avez-vous connus ?</label>

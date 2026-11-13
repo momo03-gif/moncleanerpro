@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Motion from '../../accueil/Motion';
 import CookieSettingsLink from '@/components/CookieSettingsLink';
+import QuickQuote from '@/components/QuickQuote';
 import { BLOG_POSTS, BLOG_SLUGS, getBlogPost } from '@/lib/blogPosts';
 import { VITRINE_VIEWPORT } from '@/lib/vitrineViewport';
 
@@ -15,7 +16,7 @@ export function generateStaticParams() {
   return BLOG_SLUGS.map(slug => ({ slug }));
 }
 
-const GOLD = '#C9A84C', INK = '#1A1A1A', VOID = '#0D0D0D', CREAM = '#FAFAF8', MUTED = '#7A7068', BORDER = '#E8E4DC';
+const GOLD = '#C9A84C', INK = '#1A1A1A', CREAM = '#FAFAF8', MUTED = '#7A7068', BORDER = '#E8E4DC';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -123,11 +124,10 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
           })}
         </div>
 
-        {/* CTA */}
-        <div className="mt-10 rounded-2xl p-7 md:p-8 text-center" style={{ backgroundColor: VOID, color: '#FFFFFF' }}>
-          <p className="text-lg font-bold">Besoin d’un nettoyage professionnel à Lyon ?</p>
-          <p className="mt-2 text-sm" style={{ color: '#B8B2A8' }}>Devis gratuit et transparent sous 24h, sans engagement.</p>
-          <Link href="/devis-en-ligne" className="mt-5 inline-flex items-center px-6 py-3 rounded-xl text-sm font-semibold" style={{ backgroundColor: GOLD, color: INK }}>Demander un devis gratuit</Link>
+        {/* Même formulaire court que les pages de service : le lecteur convaincu
+            par l'article demande son devis sur place, sans repartir de zéro. */}
+        <div className="mt-10">
+          <QuickQuote service={p.keyword} slug={`blog/${p.slug}`} />
         </div>
       </article>
 

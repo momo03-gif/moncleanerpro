@@ -10,6 +10,7 @@ import type { SimulatorConfig } from '@/lib/devisConfig';
 import { trackConversion } from '@/lib/adsTracking';
 import AirbnbSimulator, { SIMULATOR_CSS, type SimulatorSubmission } from './AirbnbSimulator';
 import { moneyArrondi as money } from '@/lib/format';
+import { FREQUENCES, emailPlausible } from '@/lib/frequence';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Page publique « Demander un devis » — sélecteur structuré (catégories →
@@ -54,7 +55,7 @@ export default function DevisEnLignePage() {
   const [expanded, setExpanded] = useState(false);
   const [desc, setDesc] = useState('');
   const [aiMsg, setAiMsg] = useState('');
-  const [form, setForm] = useState({ nom: '', tel: '', email: '', adresse: '', message: '', website: '' });
+  const [form, setForm] = useState({ nom: '', tel: '', email: '', adresse: '', frequence: '', message: '', website: '' });
   // Heure d'ouverture de la page : un envoi en moins de trois secondes trahit un
   // robot (cf. spamScore.ts). Fixée après le montage, jamais pendant le rendu.
   const ouvertureRef = useRef(0);
@@ -123,6 +124,7 @@ export default function DevisEnLignePage() {
   async function submit() {
     setErr('');
     if (!form.nom.trim() || !form.email.trim() || !form.tel.trim()) { setErr('Renseignez votre nom, téléphone et email.'); return; }
+    if (!emailPlausible(form.email)) { setErr('Cet email semble incomplet : vérifiez-le, c’est par là que nous vous envoyons le devis.'); return; }
     // Le simulateur produit déjà ses lignes chiffrées : on ne repasse pas par la
     // sélection par cases, qui est vide dans ce parcours.
     // Le serveur recalcule les lignes depuis la grille : on n'envoie que CE QUI
@@ -143,13 +145,16 @@ export default function DevisEnLignePage() {
           elapsedMs: ouvertureRef.current ? Date.now() - ouvertureRef.current : undefined,
           description: [
             desc, form.message,
+            form.frequence && `Fréquence : ${form.frequence}`,
             // Le simulateur décrit le logement (surface, voyageurs, zone) : c'est
             // ce dont l'équipe a besoin pour confirmer, pas une fourchette de cases.
             simQuote
               ? `${simQuote.summary} — ${simQuote.onRequest
                   ? 'sur devis'
                   : `estimation ${money(simQuote.total)}${simQuote.totalMax > simQuote.total ? ` à ${money(simQuote.totalMax)}` : ''}`}`
-              : `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`,
+              : totals.max > 0
+                ? `Fourchette estimée : ${money(totals.min)} – ${money(totals.max)}`
+                : 'Sur devis (aucune fourchette automatique)',
           ].filter(Boolean).join(' — '),
           ...(simQuote ? { simulation: simQuote.state } : { selection: sel }),
           origin: origin.current,
@@ -396,7 +401,7 @@ function TicketLines({ sel, byName, onRemove, showPrice = false, prix = {} }: { 
 const fourchette = (p?: { min: number; max: number }) => (p ? `${money(p.min)} – ${money(p.max)}` : '…');
 
 // ── Vue récap + formulaire ──
-function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number; parNom?: Record<string, { min: number; max: number }> }; sel: Sel; byName: Map<string, Tarif>; simQuote: SimulatorSubmission | null; form: { nom: string; tel: string; email: string; adresse: string; message: string; website: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
+function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, submit, busy, err }: { totals: { min: number; max: number; quote: string[]; incomplete: string[]; count: number; parNom?: Record<string, { min: number; max: number }> }; sel: Sel; byName: Map<string, Tarif>; simQuote: SimulatorSubmission | null; form: { nom: string; tel: string; email: string; adresse: string; frequence: string; message: string; website: string }; setForm: (f: any) => void; onBack: () => void; onHome: () => void; submit: () => void; busy: boolean; err: string }) {
   // ── Crédit d'impôt services à la personne ──
   // Le particulier ne règle que la moitié (avance immédiate URSSAF). On ne
   // l'annonce QUE si toute la sélection s'y prête : un Airbnb ou un local pro
@@ -447,8 +452,21 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
                 {totals.count ? <TicketLines sel={sel} byName={byName} onRemove={() => {}} showPrice prix={totals.parNom} /> : <div className="dv-ticket-empty">Aucune prestation. <button className="dv-link" onClick={onHome}>Choisir des prestations</button></div>}
               </div>
               {totals.count > 0 && (
-                <div className="dv-ticket-total"><div className="dv-tt-row"><span>Estimation indicative</span><strong>{money(totals.min)} – {money(totals.max)}</strong></div>
-                  {totals.quote.length > 0 && <div className="dv-tt-note">+ {totals.quote.length} sur devis</div>}</div>
+                <div className="dv-ticket-total">
+                  {/* Rien que du « sur devis » : afficher « 0 € – 0 € » faisait croire
+                      à une panne (deux demandes d'octobre, dont un hôtel). */}
+                  {totals.max > 0 ? (
+                    <>
+                      <div className="dv-tt-row"><span>Estimation indicative</span><strong>{money(totals.min)} – {money(totals.max)}</strong></div>
+                      {totals.quote.length > 0 && <div className="dv-tt-note">+ {totals.quote.length} sur devis</div>}
+                    </>
+                  ) : (
+                    <>
+                      <div className="dv-tt-row"><span>Devis sur mesure</span><strong>Sur devis</strong></div>
+                      <div className="dv-tt-note">Ces prestations se chiffrent selon vos locaux : envoyez votre demande, nous revenons vers vous sous 24h.</div>
+                    </>
+                  )}
+                </div>
               )}
             </>
           )}
@@ -476,10 +494,15 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
         <div className="dv-disc">Cette estimation est <strong>indicative</strong> et peut varier selon l’état des lieux, l’accessibilité et vos besoins constatés sur place. Le devis définitif vous sera confirmé avant intervention.</div>
         <h3 className="dv-form-title">Vos coordonnées</h3>
         <div className="dv-form">
-          <Field label="Nom complet" req val={form.nom} on={v => set('nom', v)} ph="Jean Dupont" />
-          <Field label="Téléphone" req val={form.tel} on={v => set('tel', v)} ph="06 12 34 56 78" />
-          <Field label="Email" req val={form.email} on={v => set('email', v)} ph="vous@email.fr" />
-          <Field label="Adresse / Ville" val={form.adresse} on={v => set('adresse', v)} ph="Adresse d’intervention" />
+          <Field label="Nom complet" req val={form.nom} on={v => set('nom', v)} ph="Jean Dupont" auto="name" />
+          <Field label="Téléphone" req val={form.tel} on={v => set('tel', v)} ph="06 12 34 56 78" type="tel" auto="tel" />
+          <Field label="Email" req val={form.email} on={v => set('email', v)} ph="vous@email.fr" type="email" auto="email" />
+          <Field label="Adresse / Ville" val={form.adresse} on={v => set('adresse', v)} ph="Adresse d’intervention" auto="street-address" />
+          <div className="dv-field dv-full"><label htmlFor="dv-frequence">Fréquence souhaitée</label>
+            <select id="dv-frequence" value={form.frequence} onChange={e => set('frequence', e.target.value)}>
+              <option value="">— Choisir —</option>
+              {FREQUENCES.map(x => <option key={x} value={x}>{x}</option>)}
+            </select></div>
           <div className="dv-field dv-full"><label>Description complémentaire</label>
             <textarea value={form.message} onChange={e => set('message', e.target.value)} placeholder="État général, contraintes d’accès, urgence, fréquence souhaitée…" /></div>
 
@@ -489,7 +512,7 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
             <input id="dv-website" name="website" type="text" tabIndex={-1} autoComplete="off"
               value={form.website} onChange={e => set('website', e.target.value)} /></div>
         </div>
-        {err && <p className="dv-err-msg">{err}</p>}
+        {err && <p className="dv-err-msg">{err} Vous pouvez aussi nous appeler au <a href="tel:+33783431700" style={{ color: 'inherit' }}>07 83 43 17 00</a>.</p>}
         <div className="dv-recap-actions">
           <button className="dv-btn dv-btn-primary" onClick={submit} disabled={busy}>{busy ? 'Envoi…' : 'Envoyer ma demande'}</button>
         </div>
@@ -497,8 +520,10 @@ function Recap({ totals, sel, byName, simQuote, form, setForm, onBack, onHome, s
     </>
   );
 }
-function Field({ label, req, val, on, ph }: { label: string; req?: boolean; val: string; on: (v: string) => void; ph?: string }) {
-  return <div className="dv-field"><label>{label}{req && <span className="dv-req"> *</span>}</label><input value={val} onChange={e => on(e.target.value)} placeholder={ph} /></div>;
+// type + autoComplete : sur téléphone, le clavier adapté et le remplissage
+// automatique évitent de tout taper, c'est là que l'on perd le plus de visiteurs.
+function Field({ label, req, val, on, ph, type = 'text', auto }: { label: string; req?: boolean; val: string; on: (v: string) => void; ph?: string; type?: string; auto?: string }) {
+  return <div className="dv-field"><label>{label}{req && <span className="dv-req"> *</span>}</label><input type={type} autoComplete={auto} value={val} onChange={e => on(e.target.value)} placeholder={ph} /></div>;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -616,9 +641,9 @@ const CSS = `
 .dv-form{display:grid;grid-template-columns:1fr 1fr;gap:13px;} @media(max-width:600px){.dv-form{grid-template-columns:1fr;}}
 .dv-field{display:flex;flex-direction:column;gap:5px;} .dv-full{grid-column:1/-1;}
 .dv-field label{font-size:13px;font-weight:600;} .dv-req{color:var(--danger);}
-.dv-field input,.dv-field textarea{border:1.4px solid var(--line2);border-radius:10px;padding:11px 13px;font-size:14.5px;background:var(--sf);color:var(--ink);width:100%;font-family:inherit;}
+.dv-field input,.dv-field textarea,.dv-field select{border:1.4px solid var(--line2);border-radius:10px;padding:11px 13px;font-size:14.5px;background:var(--sf);color:var(--ink);width:100%;font-family:inherit;}
 .dv-field textarea{resize:vertical;min-height:84px;line-height:1.5;}
-.dv-field input:focus,.dv-field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-s);}
+.dv-field input:focus,.dv-field textarea:focus,.dv-field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-s);}
 .dv-recap-actions{margin-top:22px;} .dv-err-msg{color:var(--danger);font-size:13px;margin-top:14px;}
 /* Footer + confirmation */
 .dv-foot{border-top:1px solid var(--line);padding:22px 0 0;color:var(--faint);font-size:12.5px;}
