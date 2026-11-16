@@ -5,6 +5,7 @@ import { APT_SELECT } from '@/lib/db/airbnbs';
 import { chargerPrestataireConfiable, confierAuPrestataireAttitre } from '@/lib/prestataireConfier';
 import { peutConfier, CREDIT_IMPOT_REFUS } from '@/lib/prestataireRegles';
 import { aujourdhuiParis } from '@/lib/dateParis';
+import { comptePourNom, transfererLogement } from '@/lib/transfertLogement';
 
 export const runtime = 'nodejs';
 
@@ -91,6 +92,11 @@ export async function POST(req: NextRequest) {
         row.partner_id = appelant!.id;
         row.partner_name = (await nomPartenaire([appelant!.id]))[appelant!.id] ?? appelant!.name ?? null;
       }
+      // Créé par l'admin pour une conciergerie qui a un compte : le partenaire doit
+      // le voir tout de suite, sans qu'on ait à le rattacher à la main.
+      else if (row.partner_name && !row.partner_id) {
+        row.partner_id = await comptePourNom(db, String(row.partner_name));
+      }
       if (!row.name || !row.address) return refus('Nom et adresse requis.', 400);
 
       const { data, error } = await db.from('airbnbs').insert(row).select('id').single();
@@ -104,8 +110,27 @@ export async function POST(req: NextRequest) {
       const patch = filtrer(b.patch ?? {});
       if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true });
 
+      // Changement de partenaire (admin) : le nom tapé désigne le compte qui doit
+      // voir le logement. Cf. lib/transfertLogement.ts.
+      let transfert: { vers: string | null } | null = null;
+      if (estAdmin && 'partner_name' in patch && !('partner_id' in patch)) {
+        const { data: avant } = await db.from('airbnbs').select('partner_id, partner_name').eq('id', b.id).maybeSingle();
+        const nouveauNom = String(patch.partner_name ?? '');
+        if (avant && nouveauNom.trim() !== String(avant.partner_name ?? '').trim()) {
+          const vers = await comptePourNom(db, nouveauNom);
+          // Aucun compte à ce nom : on ne touche pas au rattachement. Des logements
+          // affichent volontairement un autre nom que leur compte (Kozy → compte
+          // SCI CAVA) : les délier sur une simple retouche du nom serait pire.
+          if (vers && vers !== (avant.partner_id ?? null)) transfert = { vers };
+        }
+      }
+
       const { error } = await db.from('airbnbs').update(patch).eq('id', b.id);
       if (error) { console.error('airbnbs/update:', error.message); return refus('Enregistrement impossible.', 500); }
+      if (transfert) {
+        try { await transfererLogement(db, b.id, transfert.vers); }
+        catch (e) { console.error('airbnbs/transfert:', e); return refus('Fiche enregistrée, mais le changement de propriétaire a échoué. Réessayez.', 500); }
+      }
       return NextResponse.json({ ok: true });
     }
 

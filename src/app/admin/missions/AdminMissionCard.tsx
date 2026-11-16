@@ -813,7 +813,12 @@ function AdminMissionCard({ mission, cleaners, onRefresh, selectable, selected, 
                 </select>
               )}
               {/* L'admin peut terminer/valider à la place du cleaner (oubli). */}
-              {(mission.status === 'accepted' || mission.status === 'in_progress') && (
+              {/* Confiée à un prestataire qui n'a pas choisi d'agent dans l'appli, la
+                  mission reste « en attente » même faite (cas Rochetaillée / Zoumana,
+                  novembre 2026) : l'admin doit pouvoir la valider aussi. Le montant
+                  dû au prestataire est fixé au moment où on la lui confie. */}
+              {(mission.status === 'accepted' || mission.status === 'in_progress'
+                || (mission.status === 'pending' && !!mission.prestataireId)) && (
                 <button onClick={() => changeStatus('completed')} disabled={busy}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                   style={{ backgroundColor: '#5A8A6A', color: '#FFFFFF' }}>
