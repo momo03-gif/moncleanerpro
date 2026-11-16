@@ -2,7 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SessionUser } from './sessionToken';
 import type { MissionService, MissionStatus } from './types';
-import { computeMissionGain, computeCleanerGain, billableHotelPrice } from './pay';
+import { computeMissionGain, computeCleanerGain, billableHotelPrice, tempsRetenu } from './pay';
 import { canCleanerDoService, sansControleAdresse } from './service';
 import { confierAuPrestataireAttitre } from './prestataireConfier';
 import { creerLivraisonsAssociees, deplacerLivraisonsLiees, livraisonsLiees, retirerLivraisons } from './livraisonAuto';
@@ -142,10 +142,25 @@ export async function cloturerArgent(db: SupabaseClient, missionId: string, actu
   const { data: m } = await db.from('missions').select('*').eq('id', missionId).maybeSingle();
   if (!m) return { error: 'Mission introuvable.' };
 
-  const mins = Math.max(0, Math.round(actualMinutes));
+  // Le temps mesuré par le serveur (début → fin) fait foi : celui envoyé par le
+  // téléphone ne sert que s'il n'y a pas de pointage en base.
+  const mesure = m.actual_duration_minutes != null ? Number(m.actual_duration_minutes) : actualMinutes;
   const svc = (m.service ?? 'cleaning') as string;
   const planned = Number(m.mission_duration_minutes) || 0;
+  // Seul le temps accordé est payé et facturé. Plus de 5 min au-delà : le
+  // dépassement attend l'admin, qui l'ajoute au temps accordé s'il l'accepte
+  // (cf. tempsRetenu dans lib/pay.ts). Un Airbnb est déjà payé au temps accordé ;
+  // l'hôtel était le seul ménage payé au temps pointé.
+  const auReel = m.source === 'hotel' && svc === 'cleaning';
+  const { payees, aValider } = auReel ? tempsRetenu(planned, mesure) : { payees: Math.max(0, Math.round(mesure)), aValider: 0 };
+  const mins = payees;
   const patch: Record<string, unknown> = {};
+  if (aValider > 0 && m.extra_time_status !== 'pending') {
+    patch.extra_time_minutes = aValider;
+    patch.extra_time_reason = `Dépassement pointé : ${mesure} min pour ${planned} min prévues.`;
+    patch.extra_time_status = 'pending';
+    patch.extra_time_requested_at = new Date().toISOString();
+  }
   const rate = Number(m.cleaner_hourly_rate_snapshot) || 0;
   if (m.source === 'hotel' && svc === 'cleaning' && rate > 0) patch.cleaner_gain = computeCleanerGain(rate, mins);
   // Même règle pour le prestataire : un ménage d'hôtel se paie au temps réel.
@@ -159,6 +174,7 @@ export async function cloturerArgent(db: SupabaseClient, missionId: string, actu
 
   const { error } = await db.from('missions').update(patch).eq('id', missionId);
   if (error) { console.error('cloturerArgent:', error.message); return { error: 'Enregistrement impossible.' }; }
+  if (patch.extra_time_status === 'pending') await notifyExtraTimeRequested(missionId, aValider);
   return { error: null };
 }
 
@@ -714,12 +730,17 @@ const ACTIONS: Record<string, Action> = {
     const missionId = str(b.missionId);
     if (!missionId) return ko('Mission manquante.');
     const { data: m } = await db.from('missions')
-      .select('mission_duration_minutes, extra_time_minutes, extra_time_status').eq('id', missionId).maybeSingle();
+      .select('mission_duration_minutes, extra_time_minutes, extra_time_status, source, service, status, price').eq('id', missionId).maybeSingle();
     if (!m) return ko('Mission introuvable.', 404);
     if (m.extra_time_status !== 'pending') return ko('Aucune demande en attente.');
     if (b.approve === true) {
       const extra = Math.max(0, Math.round(Number(m.extra_time_minutes) || 0));
-      const r = await appliquerDuree(db, missionId, { minutes: (Number(m.mission_duration_minutes) || 0) + extra });
+      const prevu = Number(m.mission_duration_minutes) || 0;
+      // Hôtel déjà terminé : le dépassement accepté se facture aussi, comme avant
+      // la règle des 5 minutes (le client paie le temps réel au-delà du prévu).
+      const hotelTermine = m.source === 'hotel' && (m.service ?? 'cleaning') === 'cleaning' && m.status === 'done';
+      const prix = hotelTermine ? billableHotelPrice(Number(m.price) || 0, prevu, prevu + extra) : null;
+      const r = await appliquerDuree(db, missionId, { minutes: prevu + extra, price: prix });
       if (r.error) return ko(r.error, 500);
     }
     const { error } = await db.from('missions')

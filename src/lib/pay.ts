@@ -60,3 +60,19 @@ export function computeMissionGain(params: {
   if (parts.delivery) gain += Number(params.deliveryRate) || 0;
   return Math.round(gain * 100) / 100;
 }
+
+// ── Dépassement du temps accordé (pointage) ────────────────────────────────────
+// Règle de l'utilisateur (novembre 2026) : on ne paie QUE le temps accordé.
+// Un dépassement de plus de 5 min devient une demande de temps supplémentaire ;
+// acceptée par l'admin, elle s'ajoute au temps accordé (et donc à la paie).
+// Jusqu'à 5 min, rien n'est demandé : le temps accordé suffit.
+export const TOLERANCE_DEPASSEMENT_MIN = 5;
+
+/** Minutes payées (le temps accordé) et minutes à faire valider, pour un temps pointé. */
+export function tempsRetenu(plannedMinutes: number, realMinutes: number): { payees: number; aValider: number } {
+  const planned = Math.max(0, Math.round(Number(plannedMinutes) || 0));
+  const real = Math.max(0, Math.round(Number(realMinutes) || 0));
+  // Sans temps accordé, il n'y a rien à quoi se tenir : le pointage fait foi.
+  if (planned <= 0) return { payees: real, aValider: 0 };
+  return { payees: planned, aValider: real > planned + TOLERANCE_DEPASSEMENT_MIN ? real - planned : 0 };
+}
